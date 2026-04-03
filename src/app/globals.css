@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #faf8f5;
+  --foreground: #1a1814;
+  --accent: #c45c26;
+  --accent-muted: #e8d5c4;
+  --card: #ffffff;
+  --muted: #6b6560;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #12100e;
+    --foreground: #f5f0e8;
+    --accent: #e07a3a;
+    --accent-muted: #3d342c;
+    --card: #1c1916;
+    --muted: #a39e96;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}

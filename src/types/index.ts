@@ -1,0 +1,67 @@
+export type FormFieldType = "text" | "textarea" | "file" | "email" | "link";
+
+export type FormFieldConfig = {
+  id: string;
+  label: string;
+  type: FormFieldType;
+  required: boolean;
+};
+
+export type Testimonial = {
+  name: string;
+  quote: string;
+  role?: string;
+};
+
+export type FAQ = {
+  q: string;
+  a: string;
+};
+
+export type ProductRow = {
+  id: string;
+  name: string;
+  description: string;
+  slug: string;
+  old_slugs: string[];
+  price: number;
+  discount_price: number | null;
+  media_type: "image" | "video";
+  media_url: string;
+  features: string[];
+  gallery: string[];
+  testimonials: Testimonial[];
+  faqs: FAQ[];
+  meta_pixel_id: string | null;
+  form_title: string;
+  form_fields: FormFieldConfig[];
+  created_at: string;
+};
+
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";
+
+export type OrderRow = {
+  id: string;
+  product_id: string;
+  customer_name: string | null;
+  phone: string | null;
+  address: string | null;
+  payment_method: string | null;
+  payment_number: string | null;
+  transaction_reference: string | null;
+  receipt_image_url: string | null;
+  total_price: number;
+  status: OrderStatus;
+  form_data: Record<string, unknown>;
+  completion_token: string;
+  created_at: string;
+};
+
+export type PaymentMethodRow = {
+  id: string;
+  label: string;
+  account_number: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+};
