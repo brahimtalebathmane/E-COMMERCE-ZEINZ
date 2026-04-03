@@ -34,7 +34,7 @@ npm run dev
 
 ## Netlify deployment
 
-Connect the repo and use the included `netlify.toml` (build `npm run build`, Next.js plugin). Set all environment variables in the Netlify UI.
+Connect the repo and use the included `netlify.toml` (build `npm run build`, Next.js plugin). Do **not** set **Publish directory** to `.next` in the Netlify UI — `@netlify/plugin-nextjs` controls the output. Set all environment variables in the Netlify UI.
 
 ## Features (short)
 
