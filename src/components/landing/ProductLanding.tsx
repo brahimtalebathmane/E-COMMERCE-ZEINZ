@@ -8,6 +8,7 @@ import { BuyModal } from "./BuyModal";
 import { PostPaymentForm } from "./PostPaymentForm";
 import { MetaPixel } from "@/components/MetaPixel";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatPrice } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
@@ -88,14 +89,14 @@ export function ProductLanding({ product }: Props) {
           {price.discounted != null ? (
             <>
               <span className="text-[var(--muted)] line-through">
-                ${price.original.toFixed(2)}
+                {formatPrice(price.original)}
               </span>
               <span className="text-2xl font-semibold text-[var(--accent)]">
-                ${price.discounted.toFixed(2)}
+                {formatPrice(price.discounted)}
               </span>
             </>
           ) : (
-            <span className="text-2xl font-semibold">${price.original.toFixed(2)}</span>
+            <span className="text-2xl font-semibold">{formatPrice(price.original)}</span>
           )}
         </div>
         <button

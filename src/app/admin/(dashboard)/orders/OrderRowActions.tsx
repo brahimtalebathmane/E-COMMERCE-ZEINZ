@@ -10,6 +10,7 @@ import { useState } from "react";
 type Props = {
   orderId: string;
   completionToken: string;
+  totalPrice: number;
   status: OrderStatus;
   formComplete: boolean;
   receiptPath: string | null;
@@ -18,6 +19,7 @@ type Props = {
 export function OrderRowActions({
   orderId,
   completionToken,
+  totalPrice,
   status,
   formComplete,
   receiptPath,
@@ -35,7 +37,7 @@ export function OrderRowActions({
     }
   }
 
-  const waUrl = buildCompletionWhatsAppUrl(orderId, completionToken);
+  const waUrl = buildCompletionWhatsAppUrl(orderId, completionToken, null, totalPrice);
 
   return (
     <div className="flex flex-col gap-2">

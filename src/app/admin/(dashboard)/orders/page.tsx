@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/types";
 import { OrderRowActions } from "./OrderRowActions";
 import { adminAr as a } from "@/locales/admin-ar";
+import { formatPrice } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -163,7 +164,7 @@ export default async function AdminOrdersPage() {
                     {o.transaction_reference ?? "—"}
                   </td>
                   <td className="px-3 py-2 align-top" dir="ltr">
-                    ${Number(o.total_price).toFixed(2)}
+                    {formatPrice(Number(o.total_price))}
                   </td>
                   <td className="max-w-[260px] px-3 py-2 align-top text-[var(--muted)]">
                     <OrderFormDataCell fd={fd} emptyLabel={a.orders.formDataEmpty} />
@@ -172,6 +173,7 @@ export default async function AdminOrdersPage() {
                     <OrderRowActions
                       orderId={o.id}
                       completionToken={o.completion_token}
+                      totalPrice={Number(o.total_price)}
                       status={o.status}
                       formComplete={formComplete}
                       receiptPath={o.receipt_image_url}

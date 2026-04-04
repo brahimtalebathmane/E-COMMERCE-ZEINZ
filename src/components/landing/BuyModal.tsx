@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { PostPaymentForm } from "./PostPaymentForm";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
+import { formatPrice } from "@/lib/currency";
 
 type Method = {
   id: string;
@@ -186,7 +187,7 @@ export function BuyModal({ product, open, onClose }: Props) {
   function whatsappHref() {
     const phoneE164 =
       process.env.NEXT_PUBLIC_WHATSAPP_E164?.replace(/\D/g, "") ?? "";
-    const priceStr = `$${Number(total).toFixed(2)}`;
+    const priceStr = formatPrice(Number(total));
     const text = t("buyModal.whatsappOrderText", {
       name: product.name,
       price: priceStr,
@@ -212,6 +213,9 @@ export function BuyModal({ product, open, onClose }: Props) {
           <div className="min-w-0 flex-1 text-start">
             <h2 className="text-xl font-semibold">{t("buyModal.checkout")}</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">{product.name}</p>
+            <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
+              {t("buyModal.amountDue", { price: formatPrice(total) })}
+            </p>
           </div>
           <button
             type="button"

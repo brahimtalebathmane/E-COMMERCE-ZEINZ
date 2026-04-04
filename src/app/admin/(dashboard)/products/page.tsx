@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
+import { formatPrice } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -42,12 +43,11 @@ export default async function AdminProductsPage() {
                   {p.slug}
                 </td>
                 <td className="px-4 py-3" dir="ltr">
-                  $
-                  {(
+                  {formatPrice(
                     p.discount_price != null
                       ? Number(p.discount_price)
-                      : Number(p.price)
-                  ).toFixed(2)}
+                      : Number(p.price),
+                  )}
                 </td>
                 <td className="px-4 py-3 text-end">
                   <Link

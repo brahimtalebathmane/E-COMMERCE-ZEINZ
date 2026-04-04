@@ -295,6 +295,7 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            placeholder={a.productForm.pricePlaceholder}
             dir="ltr"
           />
         </div>

@@ -6,6 +6,7 @@ import { trackPurchase } from "@/components/MetaPixel";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
+import { CURRENCY_CODE } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
@@ -13,9 +14,6 @@ type Props = {
   completionToken: string;
   onDone?: () => void;
 };
-
-const CURRENCY =
-  process.env.NEXT_PUBLIC_PIXEL_CURRENCY?.trim() || "USD";
 
 export function PostPaymentForm({
   product,
@@ -120,7 +118,7 @@ export function PostPaymentForm({
       if (prod?.name) {
         trackPurchase({
           value: Number(order!.total_price),
-          currency: CURRENCY,
+          currency: CURRENCY_CODE,
           content_name: prod.name,
           content_ids: [order!.product_id],
           content_type: "product",

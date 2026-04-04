@@ -20,6 +20,7 @@
   },
   "buyModal": {
     "checkout": "إتمام الشراء",
+    "amountDue": "المبلغ: {{price}}",
     "close": "إغلاق",
     "directPayment": "دفع مباشر",
     "orderViaWhatsApp": "طلب عبر الواتساب",

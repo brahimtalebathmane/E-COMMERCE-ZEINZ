@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatPrice } from "@/lib/currency";
 
 type ProductRow = {
   name: string;
@@ -49,13 +50,12 @@ export function CatalogPageClient({ products, configured }: Props) {
               className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-5 py-4 transition hover:border-[var(--accent)]"
             >
               <span className="font-medium">{p.name}</span>
-              <span className="shrink-0 text-sm text-[var(--muted)]">
-                $
-                {(
+              <span className="shrink-0 text-sm text-[var(--muted)]" dir="ltr">
+                {formatPrice(
                   p.discount_price != null
                     ? Number(p.discount_price)
-                    : Number(p.price)
-                ).toFixed(2)}
+                    : Number(p.price),
+                )}
               </span>
             </Link>
           </li>
