@@ -21,7 +21,7 @@ export function CatalogPageClient({ products, configured }: Props) {
 
   if (!configured) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16" dir={dir}>
+      <div className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 py-16" dir={dir}>
         <h1 className="text-3xl font-bold tracking-tight">{t("catalog.configureTitle")}</h1>
         <p className="mt-4 text-sm text-[var(--muted)]">
           {t("catalog.configureHint")}{" "}
@@ -39,7 +39,7 @@ export function CatalogPageClient({ products, configured }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16" dir={dir}>
+    <div className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 py-16" dir={dir}>
       <h1 className="text-3xl font-bold tracking-tight">{t("catalog.title")}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">{t("catalog.subtitle")}</p>
       <ul className="mt-10 space-y-3">
@@ -47,9 +47,9 @@ export function CatalogPageClient({ products, configured }: Props) {
           <li key={p.slug}>
             <Link
               href={`/${p.slug}`}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-5 py-4 transition hover:border-[var(--accent)]"
+              className="flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition hover:border-[var(--accent)] sm:px-5"
             >
-              <span className="font-medium">{p.name}</span>
+              <span className="min-w-0 flex-1 break-words font-medium">{p.name}</span>
               <span className="shrink-0 text-sm text-[var(--muted)]" dir="ltr">
                 {formatPrice(
                   p.discount_price != null

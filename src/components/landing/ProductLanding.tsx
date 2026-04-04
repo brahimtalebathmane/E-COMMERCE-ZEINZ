@@ -76,13 +76,13 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="mx-auto max-w-5xl px-3 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:px-8"
+      className="mx-auto min-w-0 max-w-5xl overflow-x-clip px-3 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:px-8"
       dir={dir}
     >
       <MetaPixel pixelId={product.meta_pixel_id} />
 
       <header className="px-1 text-center sm:px-0">
-        <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
+        <h1 className="text-balance break-words text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
           {product.name}
         </h1>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-base sm:mt-4 sm:gap-3 sm:text-lg">
@@ -103,8 +103,8 @@ export function ProductLanding({ product }: Props) {
         </div>
       </header>
 
-      <section className="mt-8 sm:mt-10">
-        <div className="overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-sm sm:rounded-3xl">
+      <section className="mt-8 min-w-0 sm:mt-10">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-sm sm:rounded-3xl">
           <LandingMedia product={product} priority />
         </div>
         <div className="mt-4 flex justify-center px-1 sm:mt-6">
@@ -141,7 +141,7 @@ export function ProductLanding({ product }: Props) {
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.description")}
           </h2>
-          <p className="mt-3 whitespace-pre-wrap text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-4 sm:text-base">
+          <p className="mt-3 whitespace-pre-wrap break-words text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-4 sm:text-base">
             {product.description}
           </p>
         </section>
@@ -152,13 +152,19 @@ export function ProductLanding({ product }: Props) {
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.gallery")}
           </h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3 sm:gap-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:mt-6 sm:grid-cols-3 sm:gap-4">
             {product.gallery.map((url) => (
               <div
                 key={url}
-                className="relative aspect-square overflow-hidden rounded-xl border border-[var(--accent-muted)] sm:rounded-2xl"
+                className="relative aspect-square min-w-0 overflow-hidden rounded-xl border border-[var(--accent-muted)] sm:rounded-2xl"
               >
-                <Image src={url} alt="" fill className="object-cover" sizes="50vw" />
+                <Image
+                  src={url}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 399px) 100vw, (max-width: 639px) 50vw, 33vw"
+                />
               </div>
             ))}
           </div>
@@ -176,7 +182,7 @@ export function ProductLanding({ product }: Props) {
                 key={`${tItem.name}-${i}`}
                 className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 sm:rounded-2xl sm:p-6"
               >
-                <blockquote className="text-start text-sm leading-relaxed text-[var(--foreground)]">
+                <blockquote className="break-words text-start text-sm leading-relaxed text-[var(--foreground)]">
                   &ldquo;{tItem.quote}&rdquo;
                 </blockquote>
                 <figcaption className="mt-3 text-start text-xs font-medium text-[var(--muted)]">
@@ -200,10 +206,10 @@ export function ProductLanding({ product }: Props) {
                 key={`${faq.q}-${i}`}
                 className="group rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-3 sm:rounded-2xl sm:px-5 sm:py-4"
               >
-                <summary className="cursor-pointer text-start text-sm font-medium leading-snug">
+                <summary className="cursor-pointer break-words text-start text-sm font-medium leading-snug">
                   {faq.q}
                 </summary>
-                <p className="mt-2 text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-3">
+                <p className="mt-2 break-words text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-3">
                   {faq.a}
                 </p>
               </details>
