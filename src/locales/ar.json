@@ -56,7 +56,9 @@
     "placeholderUrl": "https://",
     "requiredField": "حقل إلزامي",
     "fieldOptional": "اختياري",
-    "formLegend": "الحقول المعلّمة بعلامة * إلزامية. يمكنك ترك الحقول الموسومة بـ (اختياري) فارغة."
+    "formLegend": "الحقول المعلّمة بعلامة * إلزامية. يمكنك ترك الحقول الموسومة بـ (اختياري) فارغة.",
+    "formLegendRequiredOnly": "جميع الحقول أدناه إلزامية (معلّمة بـ *).",
+    "formLegendOptionalOnly": "جميع الحقول أدناه اختيارية — يمكنك تركها فارغة."
   },
   "completeOrder": {
     "loading": "جاري التحميل…",
@@ -94,7 +96,8 @@
     "couldNotSaveOrder": "تعذر حفظ الطلب",
     "somethingWrong": "حدث خطأ ما",
     "orderSubmitFailed": "حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى",
-    "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول."
+    "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول.",
+    "postPaymentIncomplete": "يرجى إكمال جميع الحقول الإلزامية في النموذج."
   },
   "lang": {
     "ar": "عربي",

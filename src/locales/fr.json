@@ -56,7 +56,9 @@
     "placeholderUrl": "https://",
     "requiredField": "obligatoire",
     "fieldOptional": "facultatif",
-    "formLegend": "Les champs suivis d’un astérisque (*) sont obligatoires. Les champs indiqués comme (facultatif) peuvent être laissés vides."
+    "formLegend": "Les champs suivis d’un astérisque (*) sont obligatoires. Les champs indiqués comme (facultatif) peuvent être laissés vides.",
+    "formLegendRequiredOnly": "Tous les champs ci-dessous sont obligatoires (marqués d’un *).",
+    "formLegendOptionalOnly": "Tous les champs ci-dessous sont facultatifs — vous pouvez les laisser vides."
   },
   "completeOrder": {
     "loading": "Chargement…",
@@ -94,7 +96,8 @@
     "couldNotSaveOrder": "Impossible d’enregistrer la commande",
     "somethingWrong": "Une erreur s’est produite",
     "orderSubmitFailed": "Une erreur s’est produite lors de l’envoi de la commande. Réessayez.",
-    "supabaseEnvMissing": "Configuration serveur incomplète. Contactez l’administrateur."
+    "supabaseEnvMissing": "Configuration serveur incomplète. Contactez l’administrateur.",
+    "postPaymentIncomplete": "Veuillez remplir tous les champs obligatoires du formulaire."
   },
   "lang": {
     "ar": "AR",

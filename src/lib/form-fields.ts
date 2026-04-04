@@ -6,6 +6,28 @@ function isFormFieldType(v: unknown): v is FormFieldType {
   return typeof v === "string" && VALID_TYPES.includes(v as FormFieldType);
 }
 
+/** Parses admin / DB JSON: supports `required`, string booleans, and legacy `optional`. */
+function parseRequiredFlag(o: Record<string, unknown>): boolean {
+  if (typeof o.required === "boolean") return o.required;
+  if (o.required === "true") return true;
+  if (o.required === "false") return false;
+  if (typeof o.optional === "boolean") return !o.optional;
+  if (o.optional === "true") return false;
+  if (o.optional === "false") return true;
+  return false;
+}
+
+function isNonEmptyFieldValue(
+  type: FormFieldType,
+  v: unknown,
+): boolean {
+  if (v === undefined || v === null) return false;
+  if (type === "file") {
+    return typeof v === "string" && v.trim().length > 0;
+  }
+  return String(v).trim().length > 0;
+}
+
 /**
  * Ensures each stored JSON field has a boolean `required` and valid shape.
  */
@@ -22,9 +44,27 @@ export function normalizeFormFields(raw: unknown): FormFieldConfig[] {
         : `field-${i}`;
     const label = typeof o.label === "string" ? o.label : "";
     const type = isFormFieldType(o.type) ? o.type : "text";
-    const required = o.required === true;
+    const required = parseRequiredFlag(o);
     out.push({ id, label, type, required });
     i += 1;
   }
   return out;
+}
+
+/**
+ * Server-side check that all required post-payment fields have values in `form_data`
+ * (field ids as keys). Used when confirming an order.
+ */
+export function validatePostPaymentFormCompletion(
+  rawFields: unknown,
+  formData: Record<string, unknown>,
+): string | null {
+  const fields = normalizeFormFields(rawFields);
+  for (const f of fields) {
+    if (!f.required) continue;
+    if (!isNonEmptyFieldValue(f.type, formData[f.id])) {
+      return "Post-payment form incomplete";
+    }
+  }
+  return null;
 }

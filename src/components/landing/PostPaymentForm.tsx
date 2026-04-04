@@ -168,9 +168,13 @@ export function PostPaymentForm({
       <h3 className="text-start text-xl font-semibold text-[var(--foreground)]">
         {title}
       </h3>
-      {hasRequired && hasOptional ? (
+      {fields.length > 0 ? (
         <p className="mt-3 text-start text-xs text-[var(--muted)]">
-          {t("postPayment.formLegend")}
+          {hasRequired && hasOptional
+            ? t("postPayment.formLegend")
+            : hasRequired
+              ? t("postPayment.formLegendRequiredOnly")
+              : t("postPayment.formLegendOptionalOnly")}
         </p>
       ) : null}
       <div className="mt-6 space-y-5">

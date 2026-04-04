@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validatePostPaymentFormCompletion } from "@/lib/form-fields";
 import { createServiceClient } from "@/lib/supabase/service";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -109,6 +110,26 @@ export async function PATCH(request: Request, context: Ctx) {
       body.form_data !== undefined
         ? { ...(existing.form_data as Record<string, unknown>), ...body.form_data }
         : (existing.form_data as Record<string, unknown>);
+
+    if (body.confirm_purchase) {
+      const { data: productRow, error: productErr } = await supabase
+        .from("products")
+        .select("form_fields")
+        .eq("id", existing.product_id)
+        .maybeSingle();
+
+      if (productErr || !productRow) {
+        return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      }
+
+      const incomplete = validatePostPaymentFormCompletion(
+        productRow.form_fields,
+        nextForm as Record<string, unknown>,
+      );
+      if (incomplete) {
+        return NextResponse.json({ error: incomplete }, { status: 400 });
+      }
+    }
 
     const patch: Record<string, unknown> = {};
 

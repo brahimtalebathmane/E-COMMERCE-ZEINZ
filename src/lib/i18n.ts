@@ -72,6 +72,7 @@ export function mapApiErrorToKey(error: string): string | null {
     "Could not load order": "completeOrder.loadFailed",
     "Invalid server response": "errors.invalidServerResponse",
     "Receipt upload failed": "errors.receiptUploadFailed",
+    "Post-payment form incomplete": "errors.postPaymentIncomplete",
   };
   if (extra[normalized]) return extra[normalized];
   if (
