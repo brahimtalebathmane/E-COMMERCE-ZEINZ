@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormFieldConfig, FormFieldType } from "@/types";
+import { adminAr as a } from "@/locales/admin-ar";
 
 type Props = {
   value: FormFieldConfig[];
@@ -9,13 +10,21 @@ type Props = {
 
 const TYPES: FormFieldType[] = ["text", "textarea", "file", "email", "link"];
 
+const TYPE_LABEL: Record<FormFieldType, string> = {
+  text: a.fieldTypes.text,
+  textarea: a.fieldTypes.textarea,
+  file: a.fieldTypes.file,
+  email: a.fieldTypes.email,
+  link: a.fieldTypes.link,
+};
+
 export function FormBuilder({ value, onChange }: Props) {
   function addField() {
     onChange([
       ...value,
       {
         id: crypto.randomUUID(),
-        label: "New field",
+        label: a.formBuilder.newFieldDefault,
         type: "text",
         required: false,
       },
@@ -44,14 +53,14 @@ export function FormBuilder({ value, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Post-payment form fields</h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-sm font-semibold">{a.formBuilder.title}</h3>
         <button
           type="button"
           onClick={addField}
           className="rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
         >
-          Add field
+          {a.formBuilder.addField}
         </button>
       </div>
       <div className="space-y-3">
@@ -62,7 +71,7 @@ export function FormBuilder({ value, onChange }: Props) {
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="text-xs text-[var(--muted)]">Label</label>
+                <label className="text-xs text-[var(--muted)]">{a.formBuilder.fieldLabel}</label>
                 <input
                   className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
                   value={f.label}
@@ -70,7 +79,7 @@ export function FormBuilder({ value, onChange }: Props) {
                 />
               </div>
               <div>
-                <label className="text-xs text-[var(--muted)]">Type</label>
+                <label className="text-xs text-[var(--muted)]">{a.formBuilder.type}</label>
                 <select
                   className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
                   value={f.type}
@@ -80,7 +89,7 @@ export function FormBuilder({ value, onChange }: Props) {
                 >
                   {TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {t}
+                      {TYPE_LABEL[t]}
                     </option>
                   ))}
                 </select>
@@ -92,7 +101,7 @@ export function FormBuilder({ value, onChange }: Props) {
                     checked={f.required}
                     onChange={(e) => update(i, { required: e.target.checked })}
                   />
-                  Required
+                  {a.formBuilder.required}
                 </label>
               </div>
             </div>
@@ -102,31 +111,28 @@ export function FormBuilder({ value, onChange }: Props) {
                 className="text-xs text-[var(--muted)] underline"
                 onClick={() => move(i, -1)}
               >
-                Up
+                {a.formBuilder.up}
               </button>
               <button
                 type="button"
                 className="text-xs text-[var(--muted)] underline"
                 onClick={() => move(i, 1)}
               >
-                Down
+                {a.formBuilder.down}
               </button>
               <button
                 type="button"
                 className="text-xs text-red-600 underline"
                 onClick={() => remove(i)}
               >
-                Remove
+                {a.formBuilder.remove}
               </button>
             </div>
           </div>
         ))}
       </div>
       {value.length === 0 ? (
-        <p className="text-xs text-[var(--muted)]">
-          No fields yet. Customers can still confirm after payment if you add none
-          (not recommended).
-        </p>
+        <p className="text-xs text-[var(--muted)]">{a.formBuilder.emptyHint}</p>
       ) : null}
     </div>
   );

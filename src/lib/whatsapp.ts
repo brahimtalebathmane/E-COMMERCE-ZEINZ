@@ -7,7 +7,7 @@ export function buildCompletionWhatsAppUrl(
 ): string {
   const base = getPublicSiteUrl();
   const path = `${base}/complete-order/${orderId}?token=${encodeURIComponent(completionToken)}`;
-  const text = `Please complete your order details: ${path}`;
+  const text = `يرجى إكمال تفاصيل طلبك: ${path}`;
   const phone = (adminPhoneE164 ?? process.env.NEXT_PUBLIC_WHATSAPP_E164 ?? "")
     .replace(/\D/g, "");
   if (!phone) {

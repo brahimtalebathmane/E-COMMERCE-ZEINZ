@@ -6,6 +6,7 @@ import {
   updatePaymentMethodAction,
 } from "@/app/admin/(dashboard)/payment-methods/actions";
 import type { PaymentMethodRow } from "@/types";
+import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -42,29 +43,30 @@ export function CreatePaymentMethodForm() {
       onSubmit={onSubmit}
       className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6"
     >
-      <h2 className="text-lg font-semibold">Add method</h2>
+      <h2 className="text-lg font-semibold">{a.paymentMethods.addMethod}</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium">Label</label>
+          <label className="text-xs font-medium">{a.paymentMethods.label}</label>
           <input
             required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Bank transfer"
+            placeholder={a.paymentMethods.placeholderLabel}
           />
         </div>
         <div>
-          <label className="text-xs font-medium">Account / number shown to buyer</label>
+          <label className="text-xs font-medium">{a.paymentMethods.accountNumber}</label>
           <input
             required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={number}
             onChange={(e) => setNumber(e.target.value)}
+            dir="ltr"
           />
         </div>
         <div>
-          <label className="text-xs font-medium">Sort order</label>
+          <label className="text-xs font-medium">{a.paymentMethods.sortOrder}</label>
           <input
             type="number"
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -78,7 +80,7 @@ export function CreatePaymentMethodForm() {
         disabled={busy}
         className="mt-4 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {busy ? "Saving…" : "Add"}
+        {busy ? a.paymentMethods.saving : a.paymentMethods.add}
       </button>
     </form>
   );
@@ -111,7 +113,7 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
   }
 
   async function onDelete() {
-    if (!confirm("Delete this payment method?")) return;
+    if (!confirm(a.paymentMethods.deleteConfirm)) return;
     setBusy(true);
     try {
       await deletePaymentMethodAction(row.id);
@@ -130,7 +132,7 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
     >
       <div className="grid flex-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
         <div>
-          <label className="text-xs text-[var(--muted)]">Label</label>
+          <label className="text-xs text-[var(--muted)]">{a.paymentMethods.label}</label>
           <input
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
             value={label}
@@ -138,15 +140,16 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
           />
         </div>
         <div>
-          <label className="text-xs text-[var(--muted)]">Number</label>
+          <label className="text-xs text-[var(--muted)]">{a.paymentMethods.numberField}</label>
           <input
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
             value={number}
             onChange={(e) => setNumber(e.target.value)}
+            dir="ltr"
           />
         </div>
         <div>
-          <label className="text-xs text-[var(--muted)]">Sort</label>
+          <label className="text-xs text-[var(--muted)]">{a.paymentMethods.sortOrder}</label>
           <input
             type="number"
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
@@ -162,7 +165,7 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
             onChange={(e) => setActive(e.target.checked)}
           />
           <label htmlFor={`a-${row.id}`} className="text-sm">
-            Active
+            {a.paymentMethods.active}
           </label>
         </div>
       </div>
@@ -172,7 +175,7 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
           disabled={busy}
           className="rounded-lg bg-[var(--accent-muted)] px-3 py-2 text-xs font-semibold disabled:opacity-60"
         >
-          Save
+          {a.paymentMethods.save}
         </button>
         <button
           type="button"
@@ -180,7 +183,7 @@ export function PaymentMethodEditor({ row }: { row: PaymentMethodRow }) {
           onClick={() => void onDelete()}
           className="rounded-lg border border-red-300 px-3 py-2 text-xs text-red-700 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
         >
-          Delete
+          {a.paymentMethods.delete}
         </button>
       </div>
     </form>

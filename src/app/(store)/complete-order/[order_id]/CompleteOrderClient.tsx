@@ -5,10 +5,14 @@ import { useEffect, useState } from "react";
 import type { ProductRow } from "@/types";
 import { PostPaymentForm } from "@/components/landing/PostPaymentForm";
 import { MetaPixel } from "@/components/MetaPixel";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translate } from "@/lib/i18n";
+import { translateErrorMessage } from "@/lib/translate-error";
 
 type Props = { orderId: string };
 
 export function CompleteOrderClient({ orderId }: Props) {
+  const { t, locale, dir } = useLanguage();
   const sp = useSearchParams();
   const token = sp.get("token") ?? "";
 
@@ -20,9 +24,10 @@ export function CompleteOrderClient({ orderId }: Props) {
   useEffect(() => {
     if (!token) {
       setLoading(false);
-      setError("Missing token. Open the full link from your WhatsApp message.");
+      setError(translate(locale, "completeOrder.missingToken"));
       return;
     }
+    setLoading(true);
     void (async () => {
       const res = await fetch(
         `/api/orders/${orderId}?token=${encodeURIComponent(token)}`,
@@ -36,14 +41,15 @@ export function CompleteOrderClient({ orderId }: Props) {
         error?: string;
       };
       if (!res.ok) {
-        setError(json.error ?? "Could not load order");
+        const msg = json.error ?? "Could not load order";
+        setError(translateErrorMessage(locale, msg));
         setLoading(false);
         return;
       }
       const raw = json.order?.products;
       const pr = Array.isArray(raw) ? raw[0] : raw;
       if (!pr) {
-        setError("Product missing for this order");
+        setError(translate(locale, "completeOrder.productMissing"));
         setLoading(false);
         return;
       }
@@ -82,19 +88,22 @@ export function CompleteOrderClient({ orderId }: Props) {
       setProduct(mapped);
       setLoading(false);
     })();
-  }, [orderId, token]);
+  }, [orderId, token, locale]);
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
-        Loading…
+      <div
+        className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]"
+        dir={dir}
+      >
+        {t("completeOrder.loading")}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <div className="mx-auto max-w-lg px-4 py-16 text-center" dir={dir}>
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
@@ -102,8 +111,8 @@ export function CompleteOrderClient({ orderId }: Props) {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <p className="font-medium">This order is already complete.</p>
+      <div className="mx-auto max-w-lg px-4 py-16 text-center" dir={dir}>
+        <p className="font-medium">{t("completeOrder.alreadyComplete")}</p>
       </div>
     );
   }
@@ -111,10 +120,12 @@ export function CompleteOrderClient({ orderId }: Props) {
   if (!product) return null;
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
+    <div className="mx-auto max-w-xl px-4 py-10" dir={dir}>
       <MetaPixel pixelId={product.meta_pixel_id} />
-      <h1 className="text-2xl font-semibold">Complete your order</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">{product.name}</p>
+      <h1 className="text-start text-2xl font-semibold">
+        {t("completeOrder.pageTitle")}
+      </h1>
+      <p className="mt-2 text-start text-sm text-[var(--muted)]">{product.name}</p>
       <div className="mt-8">
         <PostPaymentForm
           product={product}

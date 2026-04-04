@@ -3,6 +3,7 @@
 import type { OrderStatus } from "@/types";
 import { updateOrderStatusAction } from "@/app/admin/(dashboard)/orders/actions";
 import { buildCompletionWhatsAppUrl } from "@/lib/whatsapp";
+import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,10 +45,10 @@ export function OrderRowActions({
         value={status}
         onChange={(e) => void onStatus(e.target.value as OrderStatus)}
       >
-        <option value="pending">pending</option>
-        <option value="confirmed">confirmed</option>
-        <option value="shipped">shipped</option>
-        <option value="cancelled">cancelled</option>
+        <option value="pending">{a.orderStatus.pending}</option>
+        <option value="confirmed">{a.orderStatus.confirmed}</option>
+        <option value="shipped">{a.orderStatus.shipped}</option>
+        <option value="cancelled">{a.orderStatus.cancelled}</option>
       </select>
       {!formComplete ? (
         <a
@@ -56,10 +57,10 @@ export function OrderRowActions({
           rel="noreferrer"
           className="text-center text-xs font-medium text-[var(--accent)] underline"
         >
-          Send form link (WhatsApp)
+          {a.orderActions.sendFormLink}
         </a>
       ) : (
-        <span className="text-xs text-[var(--muted)]">Form done</span>
+        <span className="text-xs text-[var(--muted)]">{a.orderActions.formDone}</span>
       )}
       {receiptPath ? (
         <button
@@ -74,7 +75,7 @@ export function OrderRowActions({
               );
               const json = (await res.json()) as { signedUrl?: string; error?: string };
               if (!res.ok) {
-                alert(json.error ?? "Could not sign URL");
+                alert(json.error ?? a.orderActions.signUrlFailed);
                 return;
               }
               if (json.signedUrl) {
@@ -85,7 +86,7 @@ export function OrderRowActions({
             }
           }}
         >
-          Preview receipt
+          {a.orderActions.previewReceipt}
         </button>
       ) : null}
     </div>

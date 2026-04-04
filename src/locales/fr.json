@@ -1,0 +1,98 @@
+{
+  "catalog": {
+    "title": "Catalogue",
+    "subtitle": "Pages d’atterrissage par produit — choisissez un produit pour voir sa page.",
+    "configureTitle": "Catalogue",
+    "configureHint": "Définissez",
+    "configureAnd": "et",
+    "configureSuffix": "pour charger les produits.",
+    "noProducts": "Aucun produit pour l’instant. Ajoutez-en un depuis l’administration.",
+    "adminLink": "Administration"
+  },
+  "product": {
+    "buyNow": "Acheter maintenant",
+    "features": "Caractéristiques",
+    "description": "Description",
+    "gallery": "Galerie",
+    "testimonials": "Témoignages",
+    "faq": "FAQ",
+    "afterPaymentHint": "Après le paiement, vous compléterez un court formulaire ici — ou revenez plus tard via le lien que nous vous envoyons."
+  },
+  "buyModal": {
+    "checkout": "Paiement",
+    "close": "Fermer",
+    "orderViaWhatsApp": "Commander via WhatsApp",
+    "orPayDirectly": "ou payer directement",
+    "paymentMethod": "Mode de paiement",
+    "sendPaymentTo": "Envoyer le paiement à",
+    "noPaymentMethods": "Aucun mode de paiement configuré. Ajoutez-en dans l’administration ou définissez PAYMENT_METHODS_JSON dans l’environnement.",
+    "yourName": "Votre nom (facultatif)",
+    "phone": "Téléphone (facultatif)",
+    "address": "Adresse (facultatif)",
+    "transactionRef": "Référence de transaction (facultatif)",
+    "receiptImage": "Reçu de paiement (image)",
+    "receiptHint": "5 Mo max. Images uniquement.",
+    "processing": "Traitement…",
+    "uploadReceipt": "Téléverser le reçu et continuer",
+    "choosePayment": "Choisissez un mode de paiement",
+    "uploadReceiptRequired": "Téléversez votre reçu de paiement (image)",
+    "receiptUploaded": "Reçu téléversé avec succès",
+    "whatsappOrderText": "Je souhaite commander : Produit : {{name}}, Prix : {{price}}"
+  },
+  "postPayment": {
+    "defaultTitle": "Quelques détails pour finaliser votre commande",
+    "thankYouTitle": "Merci — tout est prêt",
+    "thankYouBody": "Nous avons bien reçu vos informations. Notre équipe vous contactera bientôt.",
+    "fileUploaded": "Fichier téléversé",
+    "uploadFailed": "Échec du téléversement",
+    "fillField": "Veuillez remplir : {{label}}",
+    "uploadField": "Veuillez téléverser : {{label}}",
+    "orderConfirmed": "Commande confirmée",
+    "confirmFailed": "Échec de la confirmation",
+    "confirmOrder": "Confirmer la commande",
+    "confirming": "Confirmation…",
+    "uploading": "Téléversement…",
+    "savedSecure": "Enregistré dans un stockage sécurisé",
+    "placeholderUrl": "https://"
+  },
+  "completeOrder": {
+    "loading": "Chargement…",
+    "missingToken": "Jeton manquant. Ouvrez le lien complet depuis votre message WhatsApp.",
+    "loadFailed": "Impossible de charger la commande",
+    "productMissing": "Produit introuvable pour cette commande",
+    "alreadyComplete": "Cette commande est déjà terminée.",
+    "pageTitle": "Finaliser votre commande"
+  },
+  "notFound": {
+    "title": "Produit introuvable",
+    "body": "Cette page a peut-être été déplacée. Essayez le dernier lien fourni par le vendeur.",
+    "backHome": "Retour à l’accueil"
+  },
+  "errors": {
+    "invalidJson": "JSON invalide",
+    "tokenRequired": "jeton requis",
+    "notFound": "Introuvable",
+    "completionTokenRequired": "completion_token requis",
+    "updateFailed": "Échec de la mise à jour",
+    "productNotFound": "Produit introuvable",
+    "createFailed": "Échec de la création",
+    "invalidOrder": "Commande invalide",
+    "fileOrderTokenFieldRequired": "fichier, order_id, completion_token et field_id requis",
+    "fileOrderTokenRequired": "fichier, order_id et completion_token requis",
+    "unauthorized": "Non autorisé",
+    "forbidden": "Interdit",
+    "pathRequired": "chemin requis",
+    "failed": "Échec",
+    "couldNotSignUrl": "Impossible de signer l’URL",
+    "invalidServerResponse": "Réponse serveur invalide",
+    "couldNotCreateOrder": "Impossible de créer la commande",
+    "receiptUploadFailed": "Échec du téléversement du reçu",
+    "couldNotSaveReceipt": "Impossible d’enregistrer le reçu",
+    "couldNotSaveOrder": "Impossible d’enregistrer la commande",
+    "somethingWrong": "Une erreur s’est produite"
+  },
+  "lang": {
+    "ar": "AR",
+    "fr": "FR"
+  }
+}

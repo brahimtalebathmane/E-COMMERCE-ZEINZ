@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/types";
 import { OrderRowActions } from "./OrderRowActions";
+import { adminAr as a } from "@/locales/admin-ar";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function AdminOrdersPage() {
   if (error) {
     return (
       <p className="text-sm text-red-600">
-        Could not load orders: {error.message}
+        {a.orders.loadError} {error.message}
       </p>
     );
   }
@@ -57,23 +58,21 @@ export default async function AdminOrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Orders</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">
-        Receipts and uploads use signed URLs for preview (private storage).
-      </p>
+      <h1 className="text-2xl font-semibold">{a.orders.title}</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">{a.orders.subtitle}</p>
       <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--accent-muted)]">
         <table className="min-w-[1200px] w-full divide-y divide-[var(--accent-muted)] text-xs">
-          <thead className="bg-[var(--card)] text-left uppercase text-[var(--muted)]">
+          <thead className="bg-[var(--card)] text-start uppercase text-[var(--muted)]">
             <tr>
-              <th className="px-3 py-2">Customer</th>
-              <th className="px-3 py-2">Phone</th>
-              <th className="px-3 py-2">Address</th>
-              <th className="px-3 py-2">Product</th>
-              <th className="px-3 py-2">Payment</th>
-              <th className="px-3 py-2">Ref</th>
-              <th className="px-3 py-2">Total</th>
-              <th className="px-3 py-2">Form data</th>
-              <th className="px-3 py-2">Actions</th>
+              <th className="px-3 py-2">{a.orders.customer}</th>
+              <th className="px-3 py-2">{a.orders.phone}</th>
+              <th className="px-3 py-2">{a.orders.address}</th>
+              <th className="px-3 py-2">{a.orders.product}</th>
+              <th className="px-3 py-2">{a.orders.payment}</th>
+              <th className="px-3 py-2">{a.orders.ref}</th>
+              <th className="px-3 py-2">{a.orders.total}</th>
+              <th className="px-3 py-2">{a.orders.formData}</th>
+              <th className="px-3 py-2">{a.orders.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--accent-muted)]">
@@ -84,23 +83,27 @@ export default async function AdminOrdersPage() {
               return (
                 <tr key={o.id}>
                   <td className="px-3 py-2 align-top">{o.customer_name ?? "—"}</td>
-                  <td className="px-3 py-2 align-top">{o.phone ?? "—"}</td>
+                  <td className="px-3 py-2 align-top" dir="ltr">
+                    {o.phone ?? "—"}
+                  </td>
                   <td className="max-w-[180px] px-3 py-2 align-top whitespace-pre-wrap">
                     {o.address ?? "—"}
                   </td>
                   <td className="px-3 py-2 align-top">{productName}</td>
                   <td className="px-3 py-2 align-top">
                     <div>{o.payment_method ?? "—"}</div>
-                    <div className="font-mono text-[10px] text-[var(--muted)]">
+                    <div className="font-mono text-[10px] text-[var(--muted)]" dir="ltr">
                       {o.payment_number ?? ""}
                     </div>
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-3 py-2 align-top" dir="ltr">
                     {o.transaction_reference ?? "—"}
                   </td>
-                  <td className="px-3 py-2 align-top">${Number(o.total_price).toFixed(2)}</td>
+                  <td className="px-3 py-2 align-top" dir="ltr">
+                    ${Number(o.total_price).toFixed(2)}
+                  </td>
                   <td className="max-w-[220px] px-3 py-2 align-top font-mono text-[10px] text-[var(--muted)]">
-                    <pre className="whitespace-pre-wrap break-all">
+                    <pre className="whitespace-pre-wrap break-all" dir="ltr">
                       {JSON.stringify(fd, null, 0)}
                     </pre>
                   </td>
@@ -120,7 +123,7 @@ export default async function AdminOrdersPage() {
         </table>
       </div>
       {rows.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--muted)]">No orders yet.</p>
+        <p className="mt-6 text-sm text-[var(--muted)]">{a.orders.noOrders}</p>
       ) : null}
     </div>
   );

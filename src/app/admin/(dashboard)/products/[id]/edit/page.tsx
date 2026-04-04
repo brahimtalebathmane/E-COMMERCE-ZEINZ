@@ -1,5 +1,6 @@
 import { ProductForm } from "@/components/admin/ProductForm";
 import { createClient } from "@/lib/supabase/server";
+import { adminAr as a } from "@/locales/admin-ar";
 import type { ProductRow } from "@/types";
 import { notFound } from "next/navigation";
 
@@ -49,7 +50,7 @@ export default async function EditProductPage({ params }: PageProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Edit product</h1>
+      <h1 className="text-2xl font-semibold">{a.editProduct.title}</h1>
       <div className="mt-8">
         <ProductForm mode="edit" initial={product} />
       </div>

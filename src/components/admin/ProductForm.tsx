@@ -8,6 +8,7 @@ import {
   updateProductAction,
   type ProductPayload,
 } from "@/app/admin/(dashboard)/products/actions";
+import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -108,7 +109,7 @@ export function ProductForm({ mode, initial }: Props) {
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : a.productForm.failedSave);
     } finally {
       setBusy(false);
     }
@@ -116,7 +117,7 @@ export function ProductForm({ mode, initial }: Props) {
 
   async function onDelete() {
     if (!initial || mode !== "edit") return;
-    if (!confirm("Delete this product? Orders are kept, but the page will 404.")) {
+    if (!confirm(a.productForm.deleteConfirm)) {
       return;
     }
     setBusy(true);
@@ -126,26 +127,28 @@ export function ProductForm({ mode, initial }: Props) {
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
+      setError(err instanceof Error ? err.message : a.productForm.failedDelete);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8">
+    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start">
       {mode === "edit" && initial ? (
         <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
           <p>
-            <span className="text-[var(--muted)]">Slug (fixed):</span>{" "}
-            <code className="font-mono">{initial.slug}</code>
+            <span className="text-[var(--muted)]">{a.productForm.slugFixed}</span>{" "}
+            <code className="font-mono" dir="ltr">
+              {initial.slug}
+            </code>
           </p>
         </div>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Name</label>
+          <label className="text-sm font-medium">{a.productForm.name}</label>
           <input
             required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -154,7 +157,7 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Description</label>
+          <label className="text-sm font-medium">{a.productForm.description}</label>
           <textarea
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -163,7 +166,7 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Price</label>
+          <label className="text-sm font-medium">{a.productForm.price}</label>
           <input
             required
             type="number"
@@ -175,7 +178,7 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Discount price (optional)</label>
+          <label className="text-sm font-medium">{a.productForm.discount}</label>
           <input
             type="number"
             step="0.01"
@@ -183,32 +186,33 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={discount}
             onChange={(e) => setDiscount(e.target.value)}
-            placeholder="Leave empty to use regular price"
+            placeholder={a.productForm.discountPlaceholder}
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Media type</label>
+          <label className="text-sm font-medium">{a.productForm.mediaType}</label>
           <select
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={mediaType}
             onChange={(e) => setMediaType(e.target.value as "image" | "video")}
           >
-            <option value="image">Image</option>
-            <option value="video">Video (Mux / Cloudflare Stream URL)</option>
+            <option value="image">{a.productForm.mediaImage}</option>
+            <option value="video">{a.productForm.mediaVideo}</option>
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium">Media URL</label>
+          <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
           <input
             required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={mediaUrl}
             onChange={(e) => setMediaUrl(e.target.value)}
             placeholder="https://"
+            dir="ltr"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Features (one per line)</label>
+          <label className="text-sm font-medium">{a.productForm.features}</label>
           <textarea
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -217,7 +221,7 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Gallery image URLs (one per line)</label>
+          <label className="text-sm font-medium">{a.productForm.gallery}</label>
           <textarea
             rows={3}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -226,46 +230,49 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Testimonials (JSON array)</label>
+          <label className="text-sm font-medium">{a.productForm.testimonialsJson}</label>
           <textarea
             rows={6}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 font-mono text-xs"
             value={testimonialsJson}
             onChange={(e) => setTestimonialsJson(e.target.value)}
+            dir="ltr"
           />
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Example:{" "}
-            <code className="rounded bg-[var(--accent-muted)]/50 px-1">
+            {a.productForm.exampleLabel}:{" "}
+            <code className="rounded bg-[var(--accent-muted)]/50 px-1" dir="ltr">
               {`[{"name":"Alex","quote":"Great"}]`}
             </code>
           </p>
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">FAQ (JSON array)</label>
+          <label className="text-sm font-medium">{a.productForm.faqJson}</label>
           <textarea
             rows={6}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 font-mono text-xs"
             value={faqsJson}
             onChange={(e) => setFaqsJson(e.target.value)}
+            dir="ltr"
           />
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Example:{" "}
-            <code className="rounded bg-[var(--accent-muted)]/50 px-1">
+            {a.productForm.exampleLabel}:{" "}
+            <code className="rounded bg-[var(--accent-muted)]/50 px-1" dir="ltr">
               {`[{"q":"Shipping?","a":"2-day"}]`}
             </code>
           </p>
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Meta Pixel ID</label>
+          <label className="text-sm font-medium">{a.productForm.metaPixel}</label>
           <input
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={metaPixel}
             onChange={(e) => setMetaPixel(e.target.value)}
-            placeholder="Digits only"
+            placeholder={a.productForm.metaPlaceholder}
+            dir="ltr"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Post-payment form title</label>
+          <label className="text-sm font-medium">{a.productForm.formTitle}</label>
           <input
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={formTitle}
@@ -277,9 +284,7 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         {mode === "edit" ? (
           <div className="sm:col-span-2">
-            <label className="text-sm font-medium">
-              Legacy slugs (one per line, optional redirects)
-            </label>
+            <label className="text-sm font-medium">{a.productForm.legacySlugs}</label>
             <textarea
               rows={3}
               className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
@@ -300,7 +305,11 @@ export function ProductForm({ mode, initial }: Props) {
           disabled={busy}
           className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {busy ? "Saving…" : mode === "create" ? "Create product" : "Save changes"}
+          {busy
+            ? a.productForm.saving
+            : mode === "create"
+              ? a.productForm.create
+              : a.productForm.saveChanges}
         </button>
         {mode === "edit" ? (
           <button
@@ -309,7 +318,7 @@ export function ProductForm({ mode, initial }: Props) {
             onClick={() => void onDelete()}
             className="rounded-xl border border-red-300 px-6 py-3 text-sm font-semibold text-red-700 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
           >
-            Delete
+            {a.productForm.delete}
           </button>
         ) : null}
       </div>

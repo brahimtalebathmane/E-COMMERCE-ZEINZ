@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { FormFieldConfig, ProductRow } from "@/types";
 import { trackPurchase } from "@/components/MetaPixel";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateErrorMessage } from "@/lib/translate-error";
 
 type Props = {
   product: ProductRow;
@@ -21,6 +23,7 @@ export function PostPaymentForm({
   completionToken,
   onDone,
 }: Props) {
+  const { t, locale, dir } = useLanguage();
   const fields = useMemo(
     () => (Array.isArray(product.form_fields) ? product.form_fields : []),
     [product.form_fields],
@@ -50,14 +53,15 @@ export function PostPaymentForm({
       });
       const json = (await res.json()) as { storage_path?: string; error?: string };
       if (!res.ok) {
-        throw new Error(json.error ?? "Upload failed");
+        const msg = json.error ?? "Upload failed";
+        throw new Error(translateErrorMessage(locale, msg));
       }
       if (json.storage_path) {
         setField(field.id, json.storage_path);
-        toast.success("File uploaded");
+        toast.success(t("postPayment.fileUploaded"));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
+      toast.error(e instanceof Error ? e.message : t("postPayment.uploadFailed"));
     } finally {
       setUploading(null);
     }
@@ -68,9 +72,9 @@ export function PostPaymentForm({
       if (!f.required) continue;
       const v = values[f.id];
       if (f.type === "file") {
-        if (!v) return `Please upload: ${f.label}`;
+        if (!v) return t("postPayment.uploadField", { label: f.label });
       } else if (!v || !String(v).trim()) {
-        return `Please fill: ${f.label}`;
+        return t("postPayment.fillField", { label: f.label });
       }
     }
     return null;
@@ -106,7 +110,8 @@ export function PostPaymentForm({
       };
 
       if (!res.ok) {
-        throw new Error(json.error ?? "Could not save order");
+        const msg = json.error ?? "Could not save order";
+        throw new Error(translateErrorMessage(locale, msg));
       }
 
       const order = json.order;
@@ -122,11 +127,13 @@ export function PostPaymentForm({
         });
       }
 
-      toast.success("Order confirmed");
+      toast.success(t("postPayment.orderConfirmed"));
       setFinished(true);
       onDone?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to confirm");
+      toast.error(
+        e instanceof Error ? e.message : t("postPayment.confirmFailed"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -134,34 +141,42 @@ export function PostPaymentForm({
 
   if (finished) {
     return (
-      <div className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-8 text-center shadow-sm">
+      <div
+        className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-8 text-center shadow-sm"
+        dir={dir}
+      >
         <p className="text-lg font-semibold text-[var(--foreground)]">
-          Thank you — you&apos;re all set
+          {t("postPayment.thankYouTitle")}
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          We received your details. Our team will follow up shortly.
+          {t("postPayment.thankYouBody")}
         </p>
       </div>
     );
   }
 
   const title =
-    product.form_title?.trim() || "A few more details to complete your order";
+    product.form_title?.trim() || t("postPayment.defaultTitle");
 
   return (
-    <div className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 shadow-sm">
-      <h3 className="text-xl font-semibold text-[var(--foreground)]">{title}</h3>
+    <div
+      className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 shadow-sm"
+      dir={dir}
+    >
+      <h3 className="text-start text-xl font-semibold text-[var(--foreground)]">
+        {title}
+      </h3>
       <div className="mt-6 space-y-5">
         {fields.map((field) => (
           <div key={field.id}>
-            <label className="block text-sm font-medium text-[var(--foreground)]">
+            <label className="block text-start text-sm font-medium text-[var(--foreground)]">
               {field.label}
               {field.required ? <span className="text-red-500"> *</span> : null}
             </label>
             <div className="mt-1.5">
               {field.type === "text" && (
                 <input
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -169,7 +184,7 @@ export function PostPaymentForm({
               {field.type === "email" && (
                 <input
                   type="email"
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -177,16 +192,16 @@ export function PostPaymentForm({
               {field.type === "link" && (
                 <input
                   type="url"
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
-                  placeholder="https://"
+                  placeholder={t("postPayment.placeholderUrl")}
                 />
               )}
               {field.type === "textarea" && (
                 <textarea
                   rows={4}
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -204,11 +219,13 @@ export function PostPaymentForm({
                     className="text-sm"
                   />
                   {uploading === field.id ? (
-                    <p className="text-xs text-[var(--muted)]">Uploading…</p>
+                    <p className="text-start text-xs text-[var(--muted)]">
+                      {t("postPayment.uploading")}
+                    </p>
                   ) : null}
                   {values[field.id] ? (
-                    <p className="text-xs text-green-700 dark:text-green-400">
-                      Saved to secure storage
+                    <p className="text-start text-xs text-green-700 dark:text-green-400">
+                      {t("postPayment.savedSecure")}
                     </p>
                   ) : null}
                 </div>
@@ -226,10 +243,10 @@ export function PostPaymentForm({
         {submitting ? (
           <span className="inline-flex items-center gap-2">
             <Spinner />
-            Confirming…
+            {t("postPayment.confirming")}
           </span>
         ) : (
-          "Confirm order"
+          t("postPayment.confirmOrder")
         )}
       </button>
     </div>

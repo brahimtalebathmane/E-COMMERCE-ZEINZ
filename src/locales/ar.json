@@ -1,0 +1,98 @@
+{
+  "catalog": {
+    "title": "الكتالوج",
+    "subtitle": "صفحات هبوط لمنتج واحد — اختر منتجاً لعرض صفحته.",
+    "configureTitle": "الكتالوج",
+    "configureHint": "عيّن",
+    "configureAnd": "و",
+    "configureSuffix": "لتحميل المنتجات.",
+    "noProducts": "لا توجد منتجات بعد. أضف منتجاً من لوحة التحكم.",
+    "adminLink": "الإدارة"
+  },
+  "product": {
+    "buyNow": "اشترِ الآن",
+    "features": "المميزات",
+    "description": "الوصف",
+    "gallery": "معرض الصور",
+    "testimonials": "آراء العملاء",
+    "faq": "الأسئلة الشائعة",
+    "afterPaymentHint": "بعد الدفع ستُكمل نموذجاً قصيراً هنا — أو عد لاحقاً عبر الرابط الذي نرسله لك."
+  },
+  "buyModal": {
+    "checkout": "إتمام الشراء",
+    "close": "إغلاق",
+    "orderViaWhatsApp": "اطلب عبر واتساب",
+    "orPayDirectly": "أو ادفع مباشرة",
+    "paymentMethod": "طريقة الدفع",
+    "sendPaymentTo": "أرسل الدفع إلى",
+    "noPaymentMethods": "لا توجد طرق دفع. أضفها من لوحة التحكم أو عيّن PAYMENT_METHODS_JSON في البيئة.",
+    "yourName": "اسمك (اختياري)",
+    "phone": "الهاتف (اختياري)",
+    "address": "العنوان (اختياري)",
+    "transactionRef": "مرجع العملية (اختياري)",
+    "receiptImage": "إيصال الدفع (صورة)",
+    "receiptHint": "بحد أقصى 5 ميجابايت. صور فقط.",
+    "processing": "جاري المعالجة…",
+    "uploadReceipt": "ارفع الإيصال وتابع",
+    "choosePayment": "اختر طريقة الدفع",
+    "uploadReceiptRequired": "ارفع إيصال الدفع (صورة)",
+    "receiptUploaded": "تم رفع الإيصال بنجاح",
+    "whatsappOrderText": "أريد الطلب: المنتج: {{name}}، السعر: {{price}}"
+  },
+  "postPayment": {
+    "defaultTitle": "بعض التفاصيل الإضافية لإتمام طلبك",
+    "thankYouTitle": "شكراً — تم كل شيء",
+    "thankYouBody": "استلمنا بياناتك. سيتواصل فريقنا معك قريباً.",
+    "fileUploaded": "تم رفع الملف",
+    "uploadFailed": "فشل الرفع",
+    "fillField": "يرجى تعبئة: {{label}}",
+    "uploadField": "يرجى رفع: {{label}}",
+    "orderConfirmed": "تم تأكيد الطلب",
+    "confirmFailed": "فشل التأكيد",
+    "confirmOrder": "تأكيد الطلب",
+    "confirming": "جاري التأكيد…",
+    "uploading": "جاري الرفع…",
+    "savedSecure": "تم الحفظ في تخزين آمن",
+    "placeholderUrl": "https://"
+  },
+  "completeOrder": {
+    "loading": "جاري التحميل…",
+    "missingToken": "الرمز مفقود. افتح الرابط الكامل من رسالة واتساب.",
+    "loadFailed": "تعذر تحميل الطلب",
+    "productMissing": "المنتج غير موجود لهذا الطلب",
+    "alreadyComplete": "هذا الطلب مكتمل بالفعل.",
+    "pageTitle": "أكمل طلبك"
+  },
+  "notFound": {
+    "title": "المنتج غير موجود",
+    "body": "قد تكون الصفحة قد انتقلت. جرّب فتح أحدث رابط من البائع.",
+    "backHome": "العودة للرئيسية"
+  },
+  "errors": {
+    "invalidJson": "JSON غير صالح",
+    "tokenRequired": "الرمز مطلوب",
+    "notFound": "غير موجود",
+    "completionTokenRequired": "رمز الإكمال مطلوب",
+    "updateFailed": "فشل التحديث",
+    "productNotFound": "المنتج غير موجود",
+    "createFailed": "فشل الإنشاء",
+    "invalidOrder": "طلب غير صالح",
+    "fileOrderTokenFieldRequired": "الملف ورقم الطلب والرمز وحقل المعرّف مطلوبة",
+    "fileOrderTokenRequired": "الملف ورقم الطلب والرمز مطلوبة",
+    "unauthorized": "غير مصرح",
+    "forbidden": "ممنوع",
+    "pathRequired": "المسار مطلوب",
+    "failed": "فشل",
+    "couldNotSignUrl": "تعذر إنشاء الرابط",
+    "invalidServerResponse": "استجابة غير صالحة من الخادم",
+    "couldNotCreateOrder": "تعذر إنشاء الطلب",
+    "receiptUploadFailed": "فشل رفع الإيصال",
+    "couldNotSaveReceipt": "تعذر حفظ الإيصال",
+    "couldNotSaveOrder": "تعذر حفظ الطلب",
+    "somethingWrong": "حدث خطأ ما"
+  },
+  "lang": {
+    "ar": "عربي",
+    "fr": "فرنسي"
+  }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { adminAr as a } from "@/locales/admin-ar";
 
 export const dynamic = "force-dynamic";
 
@@ -15,21 +16,21 @@ export default async function AdminProductsPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Products</h1>
+        <h1 className="text-2xl font-semibold">{a.products.title}</h1>
         <Link
           href="/admin/products/new"
           className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
         >
-          New product
+          {a.products.newProduct}
         </Link>
       </div>
       <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--accent-muted)]">
         <table className="min-w-full divide-y divide-[var(--accent-muted)] text-sm">
-          <thead className="bg-[var(--card)] text-left text-xs uppercase text-[var(--muted)]">
+          <thead className="bg-[var(--card)] text-start text-xs uppercase text-[var(--muted)]">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3">Price</th>
+              <th className="px-4 py-3">{a.products.name}</th>
+              <th className="px-4 py-3">{a.products.slug}</th>
+              <th className="px-4 py-3">{a.products.price}</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -37,8 +38,10 @@ export default async function AdminProductsPage() {
             {rows.map((p) => (
               <tr key={p.id}>
                 <td className="px-4 py-3 font-medium">{p.name}</td>
-                <td className="px-4 py-3 font-mono text-xs">{p.slug}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 font-mono text-xs" dir="ltr">
+                  {p.slug}
+                </td>
+                <td className="px-4 py-3" dir="ltr">
                   $
                   {(
                     p.discount_price != null
@@ -46,16 +49,16 @@ export default async function AdminProductsPage() {
                       : Number(p.price)
                   ).toFixed(2)}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-end">
                   <Link
                     href={`/admin/products/${p.id}/edit`}
                     className="text-[var(--accent)] underline"
                   >
-                    Edit
+                    {a.products.edit}
                   </Link>
                   <span className="mx-2 text-[var(--muted)]">·</span>
                   <Link href={`/${p.slug}`} className="text-[var(--muted)] underline">
-                    View
+                    {a.products.view}
                   </Link>
                 </td>
               </tr>
@@ -64,7 +67,7 @@ export default async function AdminProductsPage() {
         </table>
       </div>
       {rows.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--muted)]">No products yet.</p>
+        <p className="mt-6 text-sm text-[var(--muted)]">{a.products.noProducts}</p>
       ) : null}
     </div>
   );
