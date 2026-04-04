@@ -13,7 +13,7 @@ export default function AdminDashboardLayout({
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <Link href="/admin" className="min-w-0 shrink">
             <span className="sr-only">{a.nav.title}</span>
-            <SiteLogo />
+            <SiteLogo alt="" />
           </Link>
           <nav className="flex flex-wrap gap-4 text-sm">
             <Link
