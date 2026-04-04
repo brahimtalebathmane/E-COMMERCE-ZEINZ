@@ -81,6 +81,12 @@ export const adminAr = {
     save: "حفظ",
     delete: "حذف",
     deleteConfirm: "حذف طريقة الدفع هذه؟",
+    logoUrl: "رابط شعار الدفع (صورة)",
+    logoUrlHint:
+      "PNG أو JPG أو SVG — اتركه فارغاً إن لم يكن هناك شعار. يجب أن يبدأ الرابط بـ https://",
+    logoUrlInvalid:
+      "رابط الصورة غير صالح. استخدم https:// مع مسار ينتهي بـ .png أو .jpg أو .jpeg أو .svg",
+    logoPreview: "معاينة الشعار",
   },
   productForm: {
     slugFixed: "المسار (ثابت):",

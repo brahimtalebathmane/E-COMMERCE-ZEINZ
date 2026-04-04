@@ -61,6 +61,7 @@ export type PaymentMethodRow = {
   id: string;
   label: string;
   account_number: string;
+  payment_logo_url: string | null;
   sort_order: number;
   active: boolean;
   created_at: string;

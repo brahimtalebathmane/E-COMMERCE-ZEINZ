@@ -5,6 +5,7 @@ type MethodRow = {
   id: string;
   label: string;
   account_number: string;
+  payment_logo_url: string | null;
   sort_order: number;
 };
 
@@ -16,10 +17,14 @@ function parseEnvMethods(): MethodRow[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.map((row, i) => {
       const r = row as Record<string, unknown>;
+      const rawLogo = r.payment_logo_url;
+      const logoStr =
+        typeof rawLogo === "string" && rawLogo.trim() ? rawLogo.trim() : null;
       return {
         id: String(r.id ?? `env-${i}`),
         label: String(r.label ?? "Payment"),
         account_number: String(r.account_number ?? r.number ?? ""),
+        payment_logo_url: logoStr,
         sort_order: Number(r.sort_order ?? i),
       };
     });
@@ -32,7 +37,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payment_methods")
-    .select("id, label, account_number, sort_order")
+    .select("id, label, account_number, payment_logo_url, sort_order")
     .eq("active", true)
     .order("sort_order", { ascending: true });
 

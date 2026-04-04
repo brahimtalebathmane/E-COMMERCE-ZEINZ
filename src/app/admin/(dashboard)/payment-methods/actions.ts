@@ -1,7 +1,16 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizePaymentLogoUrl, isValidPaymentLogoUrl } from "@/lib/payment-logo-url";
+import { adminAr as a } from "@/locales/admin-ar";
 import { revalidatePath } from "next/cache";
+
+function assertValidLogoUrl(raw: string): string | null {
+  if (!isValidPaymentLogoUrl(raw)) {
+    throw new Error(a.paymentMethods.logoUrlInvalid);
+  }
+  return normalizePaymentLogoUrl(raw);
+}
 
 async function assertAdmin() {
   const supabase = await createClient();
@@ -23,13 +32,16 @@ async function assertAdmin() {
 export async function createPaymentMethodAction(input: {
   label: string;
   account_number: string;
+  payment_logo_url: string;
   sort_order: number;
   active: boolean;
 }) {
   const supabase = await assertAdmin();
+  const payment_logo_url = assertValidLogoUrl(input.payment_logo_url);
   const { error } = await supabase.from("payment_methods").insert({
     label: input.label.trim(),
     account_number: input.account_number.trim(),
+    payment_logo_url,
     sort_order: input.sort_order,
     active: input.active,
   });
@@ -42,16 +54,19 @@ export async function updatePaymentMethodAction(
   input: {
     label: string;
     account_number: string;
+    payment_logo_url: string;
     sort_order: number;
     active: boolean;
   },
 ) {
   const supabase = await assertAdmin();
+  const payment_logo_url = assertValidLogoUrl(input.payment_logo_url);
   const { error } = await supabase
     .from("payment_methods")
     .update({
       label: input.label.trim(),
       account_number: input.account_number.trim(),
+      payment_logo_url,
       sort_order: input.sort_order,
       active: input.active,
     })

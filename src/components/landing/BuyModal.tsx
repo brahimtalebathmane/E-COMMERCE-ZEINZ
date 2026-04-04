@@ -1,6 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
+  const u = url?.trim();
+  if (!u) return null;
+  if (failed) {
+    return (
+      <div
+        className="h-14 w-14 shrink-0 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)]/90"
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <img
+      src={u}
+      alt=""
+      className="h-14 w-14 shrink-0 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] object-contain p-1"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 import type { ProductRow } from "@/types";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
 import { toast } from "sonner";
@@ -12,6 +37,7 @@ type Method = {
   id: string;
   label: string;
   account_number: string;
+  payment_logo_url: string | null;
   sort_order: number;
 };
 
@@ -230,12 +256,17 @@ export function BuyModal({ product, open, onClose }: Props) {
 
             {selected ? (
               <div className="rounded-xl bg-[var(--accent-muted)]/40 p-4">
-                <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                  {t("buyModal.sendPaymentTo")}
-                </p>
-                <p className="mt-1 font-mono text-lg font-semibold tracking-tight" dir="ltr">
-                  {selected.account_number}
-                </p>
+                <div className="flex items-start gap-3">
+                  <DirectPaymentLogo url={selected.payment_logo_url} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
+                      {t("buyModal.sendPaymentTo")}
+                    </p>
+                    <p className="mt-1 font-mono text-lg font-semibold tracking-tight" dir="ltr">
+                      {selected.account_number}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-start text-sm text-amber-700 dark:text-amber-300">
