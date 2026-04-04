@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_Arabic } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Tajawal } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -7,10 +7,11 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const notoSansArabic = Noto_Sans_Arabic({
-  variable: "--font-noto",
+const tajawal = Tajawal({
+  variable: "--font-arabic",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "700", "800"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -23,6 +24,12 @@ export const metadata: Metadata = {
   description: "Single-product landing and checkout",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="ar" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${notoSansArabic.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+        className={`${tajawal.variable} ${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
         {children}
       </body>

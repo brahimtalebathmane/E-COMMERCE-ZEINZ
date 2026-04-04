@@ -10,9 +10,10 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
-          "var(--font-noto)",
+          "var(--font-arabic)",
           "var(--font-geist-sans)",
-          "system-ui",
+          "Segoe UI",
+          "Tahoma",
           "sans-serif",
         ],
         mono: ["var(--font-geist-mono)", "monospace"],

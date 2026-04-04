@@ -7,7 +7,7 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[var(--background)]" dir="rtl" lang="ar">
+    <div className="min-h-screen bg-[var(--background)] font-sans" dir="rtl" lang="ar">
       <header className="border-b border-[var(--accent-muted)] bg-[var(--card)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <Link href="/admin" className="font-semibold">
