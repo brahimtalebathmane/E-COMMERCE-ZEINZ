@@ -57,13 +57,11 @@ export function BuyModal({ product, open, onClose }: Props) {
 
   const [methods, setMethods] = useState<Method[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [transactionReference, setTransactionReference] = useState("");
-  const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [phase, setPhase] = useState<"pay" | "form">("pay");
+  const [phase, setPhase] = useState<"choose" | "direct" | "form">("choose");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [completionToken, setCompletionToken] = useState<string | null>(null);
 
@@ -79,9 +77,12 @@ export function BuyModal({ product, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setPhase("pay");
+      setPhase("choose");
       setFile(null);
-      setTransactionReference("");
+      setPhone("");
+      setAddress("");
+      setOrderId(null);
+      setCompletionToken(null);
       setBusy(false);
     }
   }, [open]);
@@ -107,8 +108,6 @@ export function BuyModal({ product, open, onClose }: Props) {
           product_id: product.id,
           payment_method: selected.label,
           payment_number: selected.account_number,
-          transaction_reference: transactionReference.trim() || undefined,
-          customer_name: customerName.trim() || undefined,
           phone: phone.trim() || undefined,
           address: address.trim() || undefined,
         }),
@@ -223,21 +222,34 @@ export function BuyModal({ product, open, onClose }: Props) {
           </button>
         </div>
 
-        {phase === "pay" ? (
+        {phase === "choose" ? (
+          <div className="mt-8 flex flex-col gap-3 sm:mt-10">
+            <button
+              type="button"
+              onClick={() => setPhase("direct")}
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3.5 text-base font-semibold text-white shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90"
+            >
+              {t("buyModal.directPayment")}
+            </button>
+            <a
+              href={whatsappHref()}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => onClose()}
+              className="inline-flex w-full items-center justify-center rounded-xl border-2 border-[var(--accent-muted)] bg-[var(--background)] px-4 py-3.5 text-base font-medium text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/40"
+            >
+              {t("buyModal.orderViaWhatsApp")}
+            </a>
+          </div>
+        ) : phase === "direct" ? (
           <div className="mt-6 space-y-5">
-            <div className="flex gap-2">
-              <a
-                href={whatsappHref()}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex flex-1 items-center justify-center rounded-xl border border-[var(--accent-muted)] px-4 py-3 text-sm font-medium hover:bg-[var(--accent-muted)]"
-              >
-                {t("buyModal.orderViaWhatsApp")}
-              </a>
-            </div>
-            <p className="text-center text-xs text-[var(--muted)]">
-              {t("buyModal.orPayDirectly")}
-            </p>
+            <button
+              type="button"
+              onClick={() => setPhase("choose")}
+              className="text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+            >
+              {t("buyModal.backToOptions")}
+            </button>
 
             <div>
               <label className="text-sm font-medium">{t("buyModal.paymentMethod")}</label>
@@ -274,21 +286,14 @@ export function BuyModal({ product, open, onClose }: Props) {
               </p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium">{t("buyModal.yourName")}</label>
-                <input
-                  className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
+            <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium">{t("buyModal.phone")}</label>
                 <input
                   className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="tel"
                 />
               </div>
               <div>
@@ -297,19 +302,9 @@ export function BuyModal({ product, open, onClose }: Props) {
                   className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  autoComplete="street-address"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">
-                {t("buyModal.transactionRef")}
-              </label>
-              <input
-                className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
-                value={transactionReference}
-                onChange={(e) => setTransactionReference(e.target.value)}
-              />
             </div>
 
             <div>
