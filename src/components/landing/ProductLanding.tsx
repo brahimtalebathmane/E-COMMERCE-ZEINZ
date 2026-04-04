@@ -1,13 +1,27 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { ProductRow } from "@/types";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
-import { BuyModal } from "./BuyModal";
-import { PostPaymentForm } from "./PostPaymentForm";
 import { LandingMedia } from "./LandingMedia";
-import { MetaPixel } from "@/components/MetaPixel";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+const BuyModal = dynamic(
+  () => import("./BuyModal").then((m) => ({ default: m.BuyModal })),
+  { ssr: false },
+);
+
+const PostPaymentForm = dynamic(
+  () => import("./PostPaymentForm").then((m) => ({ default: m.PostPaymentForm })),
+  { ssr: false },
+);
+
+const MetaPixel = dynamic(
+  () =>
+    import("@/components/MetaPixel").then((m) => ({ default: m.MetaPixel })),
+  { ssr: false },
+);
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
 
@@ -164,6 +178,9 @@ export function ProductLanding({ product }: Props) {
                   fill
                   className="object-cover"
                   sizes="(max-width: 399px) 100vw, (max-width: 639px) 50vw, 33vw"
+                  loading="lazy"
+                  fetchPriority="low"
+                  decoding="async"
                 />
               </div>
             ))}

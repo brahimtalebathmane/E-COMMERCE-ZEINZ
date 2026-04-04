@@ -1,6 +1,12 @@
+import dynamic from "next/dynamic";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { StoreToaster } from "@/components/StoreToaster";
 import { StoreHeader } from "@/components/store/StoreHeader";
+
+const StoreToaster = dynamic(() =>
+  import("@/components/StoreToaster").then((m) => ({
+    default: m.StoreToaster,
+  })),
+);
 
 export default function StoreLayout({
   children,

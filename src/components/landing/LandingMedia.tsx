@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import type { ProductRow } from "@/types";
 
 const MuxPlayer = dynamic(
-  () => import("@mux/mux-player-react").then((mod) => mod.default),
+  () => import("@mux/mux-player-react/lazy").then((mod) => mod.default),
   {
     ssr: false,
     loading: () => (
@@ -23,12 +23,6 @@ function isHls(url: string) {
   return /\.m3u8($|\?)/i.test(url) || /stream\.mux\.com/i.test(url);
 }
 
-/**
- * Mux playback IDs appear in:
- * - https://stream.mux.com/{playbackId}.m3u8
- * - https://player.mux.com/{playbackId} or /embed/{playbackId}
- * - https://watch.mux.com/{playbackId}
- */
 function muxPlaybackIdFromUrl(url: string): string | null {
   const u = url.trim();
   if (!u) return null;
@@ -48,6 +42,31 @@ function isMuxHostedUrl(url: string): boolean {
   return /(?:stream|player|watch)\.mux\.com/i.test(url);
 }
 
+function muxPosterUrl(playbackId: string): string {
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&width=1280&fit_mode=preserve`;
+}
+
+/** Cloudflare Stream embed (adaptive playback inside iframe). */
+function isCloudflareStreamEmbedUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "iframe.videodelivery.net") return true;
+    if (
+      /\.cloudflarestream\.com$/i.test(u.hostname) &&
+      /\/iframe\/?$/i.test(u.pathname)
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function isCloudflareStreamHlsUrl(url: string): boolean {
+  return /cloudflarestream\.com/i.test(url) && /\.m3u8($|\?)/i.test(url);
+}
+
 type Props = {
   product: ProductRow;
   priority?: boolean;
@@ -57,6 +76,8 @@ const muxPlayerCommon = {
   streamType: "on-demand" as const,
   accentColor: "#00ff00",
   playsInline: true,
+  preload: "metadata" as const,
+  capRenditionToPlayerSize: true,
 };
 
 const muxPlayerLayoutClass =
@@ -87,19 +108,44 @@ export function LandingMedia({ product, priority }: Props) {
           className="object-contain sm:object-cover"
           sizes="100vw"
           priority={priority}
+          fetchPriority={priority ? "high" : "auto"}
         />
       </div>
     );
   }
 
-  /** Mux: HLS, stream host, or any URL we can resolve to a playback ID (e.g. player.mux.com/…). */
-  if (muxPlaybackId || isHls(url) || isMuxHostedUrl(url)) {
+  if (isCloudflareStreamEmbedUrl(url)) {
+    return (
+      <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
+        <iframe
+          src={url}
+          title={product.name}
+          className="absolute inset-0 h-full w-full border-0"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          loading={priority ? "eager" : "lazy"}
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+    );
+  }
+
+  /** Mux (HLS ABR) or generic HLS / Cloudflare Stream manifest — mux-player uses adaptive streaming. */
+  if (
+    muxPlaybackId ||
+    isHls(url) ||
+    isMuxHostedUrl(url) ||
+    isCloudflareStreamHlsUrl(url)
+  ) {
+    const placeholder = muxPlaybackId ? muxPosterUrl(muxPlaybackId) : undefined;
     return (
       <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
         {muxPlaybackId ? (
           <MuxPlayer
             playbackId={muxPlaybackId}
             {...muxPlayerCommon}
+            placeholder={placeholder}
+            poster={placeholder}
             metadataVideoTitle={product.name}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
@@ -123,7 +169,8 @@ export function LandingMedia({ product, priority }: Props) {
       src={url}
       controls
       playsInline
-      preload="metadata"
+      preload="none"
+      {...(priority ? { fetchPriority: "high" as const } : {})}
     />
   );
 }
