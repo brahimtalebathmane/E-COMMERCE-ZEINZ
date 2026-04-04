@@ -1,4 +1,5 @@
 import { ProductForm } from "@/components/admin/ProductForm";
+import { normalizeFormFields } from "@/lib/form-fields";
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
 import type { ProductRow } from "@/types";
@@ -27,9 +28,7 @@ function mapRow(row: Record<string, unknown>): ProductRow {
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
     whatsapp_e164: (row.whatsapp_e164 as string | null) ?? null,
     form_title: (row.form_title as string) ?? "",
-    form_fields: Array.isArray(row.form_fields)
-      ? (row.form_fields as ProductRow["form_fields"])
-      : [],
+    form_fields: normalizeFormFields(row.form_fields),
     created_at: row.created_at as string,
   };
 }

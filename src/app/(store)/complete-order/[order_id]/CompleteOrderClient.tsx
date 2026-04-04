@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ProductRow } from "@/types";
+import { normalizeFormFields } from "@/lib/form-fields";
 import { PostPaymentForm } from "@/components/landing/PostPaymentForm";
 import { MetaPixel } from "@/components/MetaPixel";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -80,9 +81,7 @@ export function CompleteOrderClient({ orderId }: Props) {
         meta_pixel_id: (pr.meta_pixel_id as string | null) ?? null,
         whatsapp_e164: (pr.whatsapp_e164 as string | null) ?? null,
         form_title: String(pr.form_title ?? ""),
-        form_fields: Array.isArray(pr.form_fields)
-          ? (pr.form_fields as ProductRow["form_fields"])
-          : [],
+        form_fields: normalizeFormFields(pr.form_fields),
         created_at: String(pr.created_at ?? ""),
       };
 

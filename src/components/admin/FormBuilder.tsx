@@ -94,15 +94,36 @@ export function FormBuilder({ value, onChange }: Props) {
                   ))}
                 </select>
               </div>
-              <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={f.required}
-                    onChange={(e) => update(i, { required: e.target.checked })}
-                  />
-                  {a.formBuilder.required}
-                </label>
+              <div className="sm:col-span-2">
+                <span className="text-xs text-[var(--muted)]">
+                  {a.formBuilder.requirement}
+                </span>
+                <div
+                  className="mt-2 flex flex-wrap gap-4"
+                  role="group"
+                  aria-label={a.formBuilder.requirement}
+                >
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name={`form-field-req-${f.id}`}
+                      className="accent-[var(--accent)]"
+                      checked={f.required}
+                      onChange={() => update(i, { required: true })}
+                    />
+                    {a.formBuilder.requiredOption}
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name={`form-field-req-${f.id}`}
+                      className="accent-[var(--accent)]"
+                      checked={!f.required}
+                      onChange={() => update(i, { required: false })}
+                    />
+                    {a.formBuilder.optionalOption}
+                  </label>
+                </div>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">

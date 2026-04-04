@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormFieldConfig, ProductRow, Testimonial, FAQ } from "@/types";
+import { normalizeFormFields } from "@/lib/form-fields";
 import { FormBuilder } from "@/components/admin/FormBuilder";
 import {
   createProductAction,
@@ -173,8 +174,8 @@ export function ProductForm({ mode, initial }: Props) {
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
   const [formTitle, setFormTitle] = useState(initial?.form_title ?? "");
-  const [formFields, setFormFields] = useState<FormFieldConfig[]>(
-    initial?.form_fields ?? [],
+  const [formFields, setFormFields] = useState<FormFieldConfig[]>(() =>
+    normalizeFormFields(initial?.form_fields ?? []),
   );
   const [oldSlugs, setOldSlugs] = useState<string[]>(() =>
     initial?.old_slugs?.length ? [...initial.old_slugs] : [],

@@ -53,7 +53,10 @@
     "confirming": "جاري التأكيد…",
     "uploading": "جاري الرفع…",
     "savedSecure": "تم الحفظ في تخزين آمن",
-    "placeholderUrl": "https://"
+    "placeholderUrl": "https://",
+    "requiredField": "حقل إلزامي",
+    "fieldOptional": "اختياري",
+    "formLegend": "الحقول المعلّمة بعلامة * إلزامية. يمكنك ترك الحقول الموسومة بـ (اختياري) فارغة."
   },
   "completeOrder": {
     "loading": "جاري التحميل…",

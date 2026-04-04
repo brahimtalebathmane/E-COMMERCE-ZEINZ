@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { FormFieldConfig, ProductRow } from "@/types";
+import { normalizeFormFields } from "@/lib/form-fields";
 import { trackPurchase } from "@/components/MetaPixel";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -23,9 +24,12 @@ export function PostPaymentForm({
 }: Props) {
   const { t, locale, dir } = useLanguage();
   const fields = useMemo(
-    () => (Array.isArray(product.form_fields) ? product.form_fields : []),
+    () => normalizeFormFields(product.form_fields),
     [product.form_fields],
   );
+
+  const hasRequired = fields.some((f) => f.required);
+  const hasOptional = fields.some((f) => !f.required);
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<string | null>(null);
@@ -164,12 +168,29 @@ export function PostPaymentForm({
       <h3 className="text-start text-xl font-semibold text-[var(--foreground)]">
         {title}
       </h3>
+      {hasRequired && hasOptional ? (
+        <p className="mt-3 text-start text-xs text-[var(--muted)]">
+          {t("postPayment.formLegend")}
+        </p>
+      ) : null}
       <div className="mt-6 space-y-5">
         {fields.map((field) => (
           <div key={field.id}>
             <label className="block text-start text-sm font-medium text-[var(--foreground)]">
-              {field.label}
-              {field.required ? <span className="text-red-500"> *</span> : null}
+              <span>{field.label}</span>
+              {field.required ? (
+                <>
+                  <span className="text-red-500" aria-hidden>
+                    {" "}
+                    *
+                  </span>
+                  <span className="sr-only"> {t("postPayment.requiredField")}</span>
+                </>
+              ) : (
+                <span className="ms-1 font-normal text-[var(--muted)]">
+                  ({t("postPayment.fieldOptional")})
+                </span>
+              )}
             </label>
             <div className="mt-1.5">
               {field.type === "text" && (
@@ -177,6 +198,8 @@ export function PostPaymentForm({
                   className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
+                  required={field.required}
+                  aria-required={field.required}
                 />
               )}
               {field.type === "email" && (
@@ -185,6 +208,8 @@ export function PostPaymentForm({
                   className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
+                  required={field.required}
+                  aria-required={field.required}
                 />
               )}
               {field.type === "link" && (
@@ -194,6 +219,8 @@ export function PostPaymentForm({
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                   placeholder={t("postPayment.placeholderUrl")}
+                  required={field.required}
+                  aria-required={field.required}
                 />
               )}
               {field.type === "textarea" && (
@@ -202,6 +229,8 @@ export function PostPaymentForm({
                   className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
+                  required={field.required}
+                  aria-required={field.required}
                 />
               )}
               {field.type === "file" && (
@@ -210,6 +239,7 @@ export function PostPaymentForm({
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     disabled={uploading === field.id}
+                    aria-required={field.required}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) void uploadFieldFile(field, f);

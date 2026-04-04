@@ -53,7 +53,10 @@
     "confirming": "Confirmation…",
     "uploading": "Téléversement…",
     "savedSecure": "Enregistré dans un stockage sécurisé",
-    "placeholderUrl": "https://"
+    "placeholderUrl": "https://",
+    "requiredField": "obligatoire",
+    "fieldOptional": "facultatif",
+    "formLegend": "Les champs suivis d’un astérisque (*) sont obligatoires. Les champs indiqués comme (facultatif) peuvent être laissés vides."
   },
   "completeOrder": {
     "loading": "Chargement…",
