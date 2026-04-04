@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { FormFieldConfig, ProductRow } from "@/types";
-import { normalizeFormFields } from "@/lib/form-fields";
+import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { trackPurchase } from "@/components/MetaPixel";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -26,10 +26,11 @@ export function PostPaymentForm({
   embedded = false,
 }: Props) {
   const { t, locale, dir } = useLanguage();
-  const fields = useMemo(
-    () => normalizeFormFields(product.form_fields),
-    [product.form_fields],
+  const copy = useMemo(
+    () => getLocalizedProductCopy(locale, product),
+    [locale, product],
   );
+  const fields: FormFieldConfig[] = copy.form_fields;
 
   const hasRequired = fields.some((f) => f.required);
   const hasOptional = fields.some((f) => !f.required);
@@ -120,13 +121,12 @@ export function PostPaymentForm({
       }
 
       const order = json.order;
-      const p = order?.products;
-      const prod = Array.isArray(p) ? p[0] : p;
-      if (prod?.name) {
+      const displayName = getLocalizedProductCopy(locale, product).name;
+      if (displayName) {
         trackPurchase({
           value: Number(order!.total_price),
           currency: CURRENCY_CODE,
-          content_name: prod.name,
+          content_name: displayName,
           content_ids: [order!.product_id],
           content_type: "product",
         });
@@ -165,7 +165,7 @@ export function PostPaymentForm({
   }
 
   const title =
-    product.form_title?.trim() || t("postPayment.defaultTitle");
+    copy.form_title?.trim() || t("postPayment.defaultTitle");
 
   return (
     <div

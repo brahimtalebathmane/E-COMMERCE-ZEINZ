@@ -111,6 +111,8 @@ export const adminAr = {
     logoPreview: "معاينة الشعار",
   },
   productForm: {
+    langArabic: "عربي",
+    langFrench: "Français",
     slugFixed: "المسار (ثابت):",
     name: "الاسم",
     description: "الوصف",
@@ -128,8 +130,11 @@ export const adminAr = {
     mediaUrl: "رابط الوسائط",
     features: "المميزات",
     featuresHint: "أضف كل ميزة في حقل منفصل. يمكنك تغيير الترتيب أو الحذف.",
+    featuresHintBilingual:
+      "لكل ميزة حقل عربي (إلزامي لحفظ السطر) وحقل فرنسي اختياري. إذا تركت الفرنسية فارغة يظهر العربي في واجهة الفرنسية.",
     addFeature: "إضافة ميزة",
     featurePlaceholder: "نص الميزة",
+    featurePlaceholderFr: "Texte (français)",
     gallery: "معرض الصور",
     galleryHint: "أضف رابطاً لكل صورة. تظهر معاينة عند نجاح التحميل.",
     addGalleryImage: "إضافة صورة",
@@ -137,18 +142,25 @@ export const adminAr = {
     galleryPreview: "معاينة",
     testimonialsSection: "آراء العملاء",
     testimonialsHint: "اسم صاحب الرأي والنص. الحقل «الصفة» اختياري.",
+    testimonialsHintBilingual:
+      "أدخل النص العربي أولاً (مطلوب لحفظ الرأي). يمكنك إضافة ترجمة فرنسية لكل حقل؛ إن تركتها فارغة يُعرض العربي.",
     addTestimonial: "إضافة رأي",
     testimonialName: "اسم الشخص",
     testimonialQuote: "النص",
     testimonialRole: "الصفة (اختياري)",
     faqSection: "الأسئلة الشائعة",
     faqHint: "أضف سؤالاً وجواباً لكل عنصر.",
+    faqHintBilingual:
+      "السؤال والجواب العربيان مطلوبان لحفظ العنصر. أضف الفرنسية اختيارياً؛ إن لم تُدخل يُعرض العربي.",
     addFaq: "إضافة سؤال",
     faqQuestion: "السؤال",
     faqAnswer: "الجواب",
     metaPixel: "معرّف Meta Pixel",
     metaPlaceholder: "أرقام فقط",
     formTitle: "عنوان النموذج بعد الدفع",
+    formFieldLabelsFrench: "تسميات الحقول بالفرنسية (نفس النسق العربي)",
+    formFieldLabelsFrenchHint:
+      "الحقول أعلاه (عربي) تتحكم في المعرف والنوع. هنا أدخل التسمية المعروضة للعميل عند اختيار الفرنسية فقط.",
     legacySlugs: "مسارات قديمة لإعادة التوجيه",
     legacySlugsHint:
       "إذا غيّر المنتج مساره، أضف المسارات القديمة هنا حتى تبقى الروابط تعمل.",

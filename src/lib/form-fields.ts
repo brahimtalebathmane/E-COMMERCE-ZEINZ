@@ -31,6 +31,21 @@ function isNonEmptyFieldValue(
 /**
  * Ensures each stored JSON field has a boolean `required` and valid shape.
  */
+/** Keeps French field rows aligned with Arabic (same ids, types, required). */
+export function alignFormFieldsFr(
+  ar: FormFieldConfig[],
+  frPrev: FormFieldConfig[],
+): FormFieldConfig[] {
+  const frById = new Map(frPrev.map((f) => [f.id, f]));
+  return ar.map((a) => {
+    const existing = frById.get(a.id);
+    return {
+      ...a,
+      label: existing?.label ?? "",
+    };
+  });
+}
+
 export function normalizeFormFields(raw: unknown): FormFieldConfig[] {
   if (!Array.isArray(raw)) return [];
   const out: FormFieldConfig[] = [];

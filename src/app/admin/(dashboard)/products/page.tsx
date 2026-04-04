@@ -9,7 +9,7 @@ export default async function AdminProductsPage() {
   const supabase = await createClient();
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, slug, price, discount_price, created_at")
+    .select("id, name_ar, slug, price, discount_price, created_at")
     .order("created_at", { ascending: false });
 
   const rows = products ?? [];
@@ -38,7 +38,7 @@ export default async function AdminProductsPage() {
           <tbody className="divide-y divide-[var(--accent-muted)]">
             {rows.map((p) => (
               <tr key={p.id}>
-                <td className="px-4 py-3 font-medium">{p.name}</td>
+                <td className="px-4 py-3 font-medium">{p.name_ar}</td>
                 <td className="px-4 py-3 font-mono text-xs" dir="ltr">
                   {p.slug}
                 </td>

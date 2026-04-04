@@ -113,7 +113,7 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
               </h3>
               {product ? (
                 <div className="mt-3 space-y-2 text-sm">
-                  <p className="font-medium text-[var(--foreground)]">{product.name}</p>
+                  <p className="font-medium text-[var(--foreground)]">{product.name_ar}</p>
                   <p className="text-[var(--muted)]">
                     <Link
                       href={`/${product.slug}`}
@@ -134,7 +134,7 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
                       </div>
                     ) : null}
                     <div className="pt-1 text-[var(--muted)]">
-                      <p className="text-xs leading-relaxed">{product.description || "—"}</p>
+                      <p className="text-xs leading-relaxed">{product.description_ar || "—"}</p>
                     </div>
                     <div className="text-xs text-[var(--muted)]">
                       {product.media_type === "video"

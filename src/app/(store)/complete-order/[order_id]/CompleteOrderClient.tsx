@@ -1,9 +1,10 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ProductRow } from "@/types";
-import { normalizeFormFields } from "@/lib/form-fields";
+import { mapProductRow } from "@/lib/products";
+import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { PostPaymentForm } from "@/components/landing/PostPaymentForm";
 import { MetaPixel } from "@/components/MetaPixel";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -61,34 +62,15 @@ export function CompleteOrderClient({ orderId }: Props) {
         return;
       }
 
-      const mapped: ProductRow = {
-        id: String(pr.id),
-        name: String(pr.name),
-        description: String(pr.description ?? ""),
-        slug: String(pr.slug),
-        old_slugs: [],
-        price: Number(pr.price),
-        discount_price:
-          pr.discount_price === null || pr.discount_price === undefined
-            ? null
-            : Number(pr.discount_price),
-        media_type: pr.media_type as "image" | "video",
-        media_url: String(pr.media_url),
-        features: (pr.features as string[]) ?? [],
-        gallery: (pr.gallery as string[]) ?? [],
-        testimonials: (pr.testimonials as ProductRow["testimonials"]) ?? [],
-        faqs: (pr.faqs as ProductRow["faqs"]) ?? [],
-        meta_pixel_id: (pr.meta_pixel_id as string | null) ?? null,
-        whatsapp_e164: (pr.whatsapp_e164 as string | null) ?? null,
-        form_title: String(pr.form_title ?? ""),
-        form_fields: normalizeFormFields(pr.form_fields),
-        created_at: String(pr.created_at ?? ""),
-      };
-
-      setProduct(mapped);
+      setProduct(mapProductRow(pr as Record<string, unknown>));
       setLoading(false);
     })();
   }, [orderId, token, locale]);
+
+  const copy = useMemo(
+    () => (product ? getLocalizedProductCopy(locale, product) : null),
+    [locale, product],
+  );
 
   if (loading) {
     return (
@@ -123,7 +105,7 @@ export function CompleteOrderClient({ orderId }: Props) {
     );
   }
 
-  if (!product) return null;
+  if (!product || !copy) return null;
 
   return (
     <div
@@ -134,7 +116,7 @@ export function CompleteOrderClient({ orderId }: Props) {
       <h1 className="text-start text-xl font-semibold sm:text-2xl">
         {t("completeOrder.pageTitle")}
       </h1>
-      <p className="mt-2 text-start text-sm text-[var(--muted)]">{product.name}</p>
+      <p className="mt-2 text-start text-sm text-[var(--muted)]">{copy.name}</p>
       <div className="mt-8">
         <PostPaymentForm
           product={product}

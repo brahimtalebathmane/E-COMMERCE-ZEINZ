@@ -13,6 +13,8 @@ import {
 } from "react";
 import type MuxPlayerElement from "@mux/mux-player";
 import type { ProductRow } from "@/types";
+import { getLocalizedProductCopy } from "@/lib/product-locale";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const MuxPlayer = dynamic(
   () => import("@mux/mux-player-react/lazy").then((mod) => mod.default),
@@ -120,6 +122,11 @@ const muxPlayerLayoutClass =
   "absolute inset-0 block h-full w-full max-h-full max-w-full";
 
 export function LandingMedia({ product, priority }: Props) {
+  const { locale } = useLanguage();
+  const displayName = useMemo(
+    () => getLocalizedProductCopy(locale, product).name,
+    [locale, product],
+  );
   const url = product.media_url?.trim() ?? "";
   const [muxAspect, setMuxAspect] = useState("16 / 9");
   const [nativeAspect, setNativeAspect] = useState("16 / 9");
@@ -215,7 +222,7 @@ export function LandingMedia({ product, priority }: Props) {
       <div className="relative aspect-video w-full min-w-0 max-h-[min(85vh,56rem)] bg-[var(--accent-muted)]">
         <Image
           src={url}
-          alt={product.name}
+          alt={displayName}
           fill
           className="object-contain sm:object-cover"
           sizes="(max-width: 640px) 100vw, min(90vw, 1280px)"
@@ -241,7 +248,7 @@ export function LandingMedia({ product, priority }: Props) {
       >
         <iframe
           src={iframeSrc}
-          title={product.name}
+          title={displayName}
           className="absolute inset-0 h-full w-full border-0"
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
@@ -278,7 +285,7 @@ export function LandingMedia({ product, priority }: Props) {
             {...muxPlayerOpts(priority)}
             placeholder={placeholder}
             poster={placeholder}
-            metadataVideoTitle={product.name}
+            metadataVideoTitle={displayName}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
             onLoadedMetadata={handleMuxLoadedMetadata}
@@ -288,7 +295,7 @@ export function LandingMedia({ product, priority }: Props) {
             ref={muxRef}
             src={url}
             {...muxPlayerOpts(priority)}
-            metadataVideoTitle={product.name}
+            metadataVideoTitle={displayName}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
             onLoadedMetadata={handleMuxLoadedMetadata}

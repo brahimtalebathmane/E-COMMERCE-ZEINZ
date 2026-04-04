@@ -14,7 +14,7 @@ export default async function HomePage() {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
-    .select("name, slug, discount_price, price")
+    .select("name_ar, name_fr, slug, discount_price, price")
     .order("created_at", { ascending: false });
 
   const products = data ?? [];

@@ -3,21 +3,28 @@
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatPrice } from "@/lib/currency";
+import type { Locale } from "@/lib/i18n";
 
-type ProductRow = {
-  name: string;
+type CatalogProduct = {
+  name_ar: string;
+  name_fr: string;
   slug: string;
   discount_price: number | null;
   price: number;
 };
 
+function catalogDisplayName(p: CatalogProduct, locale: Locale): string {
+  if (locale === "fr" && p.name_fr.trim()) return p.name_fr;
+  return p.name_ar;
+}
+
 type Props = {
-  products: ProductRow[];
+  products: CatalogProduct[];
   configured: boolean;
 };
 
 export function CatalogPageClient({ products, configured }: Props) {
-  const { t, dir } = useLanguage();
+  const { t, dir, locale } = useLanguage();
 
   if (!configured) {
     return (
@@ -55,7 +62,9 @@ export function CatalogPageClient({ products, configured }: Props) {
               href={`/${p.slug}`}
               className="flex min-h-[52px] min-w-0 touch-manipulation items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition active:bg-[var(--accent-muted)]/30 hover:border-[var(--accent)] sm:min-h-0 sm:px-5"
             >
-              <span className="min-w-0 flex-1 break-words font-medium">{p.name}</span>
+              <span className="min-w-0 flex-1 break-words font-medium">
+                {catalogDisplayName(p, locale)}
+              </span>
               <span className="shrink-0 text-sm text-[var(--muted)]" dir="ltr">
                 {formatPrice(
                   p.discount_price != null

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { ProductRow } from "@/types";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
+import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -33,7 +34,11 @@ const primaryCtaClass =
   "store-btn-primary rounded-2xl px-6 py-3.5 shadow-lg shadow-[var(--accent)]/25";
 
 export function ProductLanding({ product }: Props) {
-  const { t, dir } = useLanguage();
+  const { t, dir, locale } = useLanguage();
+  const copy = useMemo(
+    () => getLocalizedProductCopy(locale, product),
+    [locale, product],
+  );
   const [open, setOpen] = useState(false);
   const [resume, setResume] = useState<{
     orderId: string;
@@ -97,7 +102,7 @@ export function ProductLanding({ product }: Props) {
 
       <header className="px-0 text-center sm:px-0">
         <h1 className="text-balance break-words text-[clamp(1.375rem,5vw,3rem)] font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
-          {product.name}
+          {copy.name}
         </h1>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-base sm:mt-4 sm:gap-3 sm:text-lg">
           {price.discounted != null ? (
@@ -132,13 +137,13 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      {product.features?.length ? (
+      {copy.features?.length ? (
         <section className="mt-12 sm:mt-16">
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.features")}
           </h2>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3">
-            {product.features.map((f) => (
+            {copy.features.map((f) => (
               <li
                 key={f}
                 className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-3 py-3 text-start text-sm leading-relaxed sm:px-4"
@@ -150,13 +155,13 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      {product.description?.trim() ? (
+      {copy.description?.trim() ? (
         <section className="mt-12 sm:mt-16">
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.description")}
           </h2>
           <p className="mt-3 whitespace-pre-wrap break-words text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-4 sm:text-base">
-            {product.description}
+            {copy.description}
           </p>
         </section>
       ) : null}
@@ -189,13 +194,13 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      {product.testimonials?.length ? (
+      {copy.testimonials?.length ? (
         <section className="mt-12 sm:mt-16">
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.testimonials")}
           </h2>
           <div className="mt-4 grid gap-3 sm:mt-6 md:grid-cols-2 md:gap-4">
-            {product.testimonials.map((tItem, i) => (
+            {copy.testimonials.map((tItem, i) => (
               <figure
                 key={`${tItem.name}-${i}`}
                 className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 sm:rounded-2xl sm:p-6"
@@ -213,13 +218,13 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      {product.faqs?.length ? (
+      {copy.faqs?.length ? (
         <section className="mt-12 sm:mt-16">
           <h2 className="text-balance text-xl font-semibold sm:text-2xl">
             {t("product.faq")}
           </h2>
           <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-3">
-            {product.faqs.map((faq, i) => (
+            {copy.faqs.map((faq, i) => (
               <details
                 key={`${faq.q}-${i}`}
                 className="group rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-3 sm:rounded-2xl sm:px-5 sm:py-4"

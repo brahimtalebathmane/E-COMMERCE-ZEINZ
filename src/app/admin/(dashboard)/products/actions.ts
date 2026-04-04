@@ -7,21 +7,28 @@ import type { FormFieldConfig, Testimonial, FAQ } from "@/types";
 import { revalidatePath } from "next/cache";
 
 export type ProductPayload = {
-  name: string;
-  description: string;
+  name_ar: string;
+  name_fr: string;
+  description_ar: string;
+  description_fr: string;
   price: number;
   discount_price: number | null;
   media_type: "image" | "video";
   media_url: string;
-  features: string[];
+  features_ar: string[];
+  features_fr: string[];
   gallery: string[];
-  testimonials: Testimonial[];
-  faqs: FAQ[];
+  testimonials_ar: Testimonial[];
+  testimonials_fr: Testimonial[];
+  faqs_ar: FAQ[];
+  faqs_fr: FAQ[];
   meta_pixel_id: string | null;
   /** E.164 digits only; null clears to env fallback on storefront. */
   whatsapp_e164: string | null;
-  form_title: string;
-  form_fields: FormFieldConfig[];
+  form_title_ar: string;
+  form_title_fr: string;
+  form_fields_ar: FormFieldConfig[];
+  form_fields_fr: FormFieldConfig[];
   old_slugs: string[];
 };
 
@@ -49,9 +56,9 @@ async function slugExists(supabase: Awaited<ReturnType<typeof createClient>>, sl
 
 async function allocateUniqueSlug(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  name: string,
+  nameAr: string,
 ): Promise<string> {
-  const base = slugify(name);
+  const base = slugify(nameAr);
   if (!base || RESERVED_SLUGS.has(base)) {
     throw new Error("Choose a different product name (reserved or empty slug).");
   }
@@ -71,25 +78,32 @@ async function allocateUniqueSlug(
 export async function createProductAction(payload: ProductPayload) {
   const supabase = await assertAdmin();
 
-  const candidate = await allocateUniqueSlug(supabase, payload.name);
+  const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
   const { error } = await supabase.from("products").insert({
-    name: payload.name.trim(),
-    description: payload.description,
+    name_ar: payload.name_ar.trim(),
+    name_fr: payload.name_fr.trim(),
+    description_ar: payload.description_ar,
+    description_fr: payload.description_fr,
     slug: candidate,
     old_slugs: payload.old_slugs.filter(Boolean),
     price: payload.price,
     discount_price: payload.discount_price,
     media_type: payload.media_type,
     media_url: payload.media_url.trim(),
-    features: payload.features,
+    features_ar: payload.features_ar,
+    features_fr: payload.features_fr,
     gallery: payload.gallery,
-    testimonials: payload.testimonials,
-    faqs: payload.faqs,
+    testimonials_ar: payload.testimonials_ar,
+    testimonials_fr: payload.testimonials_fr,
+    faqs_ar: payload.faqs_ar,
+    faqs_fr: payload.faqs_fr,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
     whatsapp_e164: payload.whatsapp_e164,
-    form_title: payload.form_title.trim(),
-    form_fields: payload.form_fields,
+    form_title_ar: payload.form_title_ar.trim(),
+    form_title_fr: payload.form_title_fr.trim(),
+    form_fields_ar: payload.form_fields_ar,
+    form_fields_fr: payload.form_fields_fr,
   });
 
   if (error) throw new Error(error.message);
@@ -115,20 +129,27 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
   const { error } = await supabase
     .from("products")
     .update({
-      name: payload.name.trim(),
-      description: payload.description,
+      name_ar: payload.name_ar.trim(),
+      name_fr: payload.name_fr.trim(),
+      description_ar: payload.description_ar,
+      description_fr: payload.description_fr,
       price: payload.price,
       discount_price: payload.discount_price,
       media_type: payload.media_type,
       media_url: payload.media_url.trim(),
-      features: payload.features,
+      features_ar: payload.features_ar,
+      features_fr: payload.features_fr,
       gallery: payload.gallery,
-      testimonials: payload.testimonials,
-      faqs: payload.faqs,
+      testimonials_ar: payload.testimonials_ar,
+      testimonials_fr: payload.testimonials_fr,
+      faqs_ar: payload.faqs_ar,
+      faqs_fr: payload.faqs_fr,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
       whatsapp_e164: payload.whatsapp_e164,
-      form_title: payload.form_title.trim(),
-      form_fields: payload.form_fields,
+      form_title_ar: payload.form_title_ar.trim(),
+      form_title_fr: payload.form_title_fr.trim(),
+      form_fields_ar: payload.form_fields_ar,
+      form_fields_fr: payload.form_fields_fr,
       old_slugs: payload.old_slugs.filter(Boolean),
     })
     .eq("id", id);

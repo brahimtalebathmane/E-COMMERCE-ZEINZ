@@ -34,20 +34,27 @@ export async function GET(request: Request, context: Ctx) {
       status,
       products (
         id,
-        name,
-        description,
+        name_ar,
+        name_fr,
+        description_ar,
+        description_fr,
         slug,
-        form_title,
-        form_fields,
+        form_title_ar,
+        form_title_fr,
+        form_fields_ar,
+        form_fields_fr,
         meta_pixel_id,
         discount_price,
         price,
         media_type,
         media_url,
-        features,
+        features_ar,
+        features_fr,
         gallery,
-        testimonials,
-        faqs,
+        testimonials_ar,
+        testimonials_fr,
+        faqs_ar,
+        faqs_fr,
         whatsapp_e164,
         created_at
       )
@@ -114,7 +121,7 @@ export async function PATCH(request: Request, context: Ctx) {
     if (body.confirm_purchase) {
       const { data: productRow, error: productErr } = await supabase
         .from("products")
-        .select("form_fields")
+        .select("form_fields_ar")
         .eq("id", existing.product_id)
         .maybeSingle();
 
@@ -123,7 +130,7 @@ export async function PATCH(request: Request, context: Ctx) {
       }
 
       const incomplete = validatePostPaymentFormCompletion(
-        productRow.form_fields,
+        productRow.form_fields_ar,
         nextForm as Record<string, unknown>,
       );
       if (incomplete) {
@@ -164,7 +171,8 @@ export async function PATCH(request: Request, context: Ctx) {
       form_data,
       products (
         id,
-        name,
+        name_ar,
+        name_fr,
         slug,
         meta_pixel_id
       )

@@ -27,12 +27,12 @@ export default async function AdminOrdersPage() {
       completion_token,
       created_at,
       products (
-        name,
+        name_ar,
         slug,
         whatsapp_e164,
         price,
         discount_price,
-        description,
+        description_ar,
         media_type,
         media_url
       )

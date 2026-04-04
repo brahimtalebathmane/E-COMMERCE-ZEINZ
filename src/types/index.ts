@@ -20,24 +20,42 @@ export type FAQ = {
 
 export type ProductRow = {
   id: string;
-  name: string;
-  description: string;
+  name_ar: string;
+  name_fr: string;
+  description_ar: string;
+  description_fr: string;
   slug: string;
   old_slugs: string[];
   price: number;
   discount_price: number | null;
   media_type: "image" | "video";
   media_url: string;
-  features: string[];
+  features_ar: string[];
+  features_fr: string[];
   gallery: string[];
-  testimonials: Testimonial[];
-  faqs: FAQ[];
+  testimonials_ar: Testimonial[];
+  testimonials_fr: Testimonial[];
+  faqs_ar: FAQ[];
+  faqs_fr: FAQ[];
   meta_pixel_id: string | null;
   /** E.164 digits (e.g. 222… for Mauritania). Null uses NEXT_PUBLIC_WHATSAPP_E164. */
   whatsapp_e164: string | null;
+  form_title_ar: string;
+  form_title_fr: string;
+  form_fields_ar: FormFieldConfig[];
+  form_fields_fr: FormFieldConfig[];
+  created_at: string;
+};
+
+/** Resolved strings for the current storefront locale (Arabic or French with Arabic fallback). */
+export type LocalizedProductCopy = {
+  name: string;
+  description: string;
+  features: string[];
+  testimonials: Testimonial[];
+  faqs: FAQ[];
   form_title: string;
   form_fields: FormFieldConfig[];
-  created_at: string;
 };
 
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";

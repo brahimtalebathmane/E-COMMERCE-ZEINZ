@@ -1,7 +1,10 @@
 "use client";
 
 import type { FormFieldConfig, ProductRow, Testimonial, FAQ } from "@/types";
-import { normalizeFormFields } from "@/lib/form-fields";
+import {
+  alignFormFieldsFr,
+  normalizeFormFields,
+} from "@/lib/form-fields";
 import { FormBuilder } from "@/components/admin/FormBuilder";
 import {
   createProductAction,
@@ -21,11 +24,11 @@ function moveAt<T>(arr: T[], i: number, dir: -1 | 1): T[] {
   const j = i + dir;
   if (j < 0 || j >= arr.length) return arr;
   const next = [...arr];
-  const a = next[i];
-  const b = next[j];
-  if (a === undefined || b === undefined) return arr;
-  next[i] = b;
-  next[j] = a;
+  const x = next[i];
+  const y = next[j];
+  if (x === undefined || y === undefined) return arr;
+  next[i] = y;
+  next[j] = x;
   return next;
 }
 
@@ -35,6 +38,26 @@ function newRowId(): string {
   }
   return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+type FeatureRow = { ar: string; fr: string };
+
+type TestimonialDraft = {
+  id: string;
+  name_ar: string;
+  name_fr: string;
+  quote_ar: string;
+  quote_fr: string;
+  role_ar: string;
+  role_fr: string;
+};
+
+type FaqDraft = {
+  id: string;
+  q_ar: string;
+  q_fr: string;
+  a_ar: string;
+  a_fr: string;
+};
 
 function GalleryUrlRow({
   url,
@@ -122,21 +145,31 @@ function GalleryUrlRow({
   );
 }
 
-type TestimonialDraft = Testimonial & { id: string };
-type FaqDraft = FAQ & { id: string };
-
 type Props = {
   mode: "create" | "edit";
   initial?: ProductRow;
 };
+
+function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
+  const ar = initial?.features_ar ?? [];
+  const fr = initial?.features_fr ?? [];
+  const n = Math.max(ar.length, fr.length, 0);
+  if (n === 0) return [];
+  return Array.from({ length: n }, (_, i) => ({
+    ar: ar[i] ?? "",
+    fr: fr[i] ?? "",
+  }));
+}
 
 export function ProductForm({ mode, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [name, setName] = useState(initial?.name ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
+  const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
+  const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
+  const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
+  const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
   const [price, setPrice] = useState(String(initial?.price ?? "0"));
   const [discount, setDiscount] = useState(
     initial?.discount_price != null ? String(initial.discount_price) : "",
@@ -145,8 +178,8 @@ export function ProductForm({ mode, initial }: Props) {
     initial?.media_type ?? "image",
   );
   const [mediaUrl, setMediaUrl] = useState(initial?.media_url ?? "");
-  const [features, setFeatures] = useState<string[]>(() =>
-    initial?.features?.length ? [...initial.features] : [],
+  const [featureRows, setFeatureRows] = useState<FeatureRow[]>(() =>
+    buildInitialFeatures(initial),
   );
   const [gallery, setGallery] = useState<{ id: string; url: string }[]>(() =>
     initial?.gallery?.length
@@ -154,28 +187,40 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [testimonials, setTestimonials] = useState<TestimonialDraft[]>(() =>
-    initial?.testimonials?.length
-      ? initial.testimonials.map((t, i) => ({
+    initial?.testimonials_ar?.length
+      ? initial.testimonials_ar.map((t, i) => ({
           id: `testimonial-init-${i}`,
-          name: t.name,
-          quote: t.quote,
-          role: t.role,
+          name_ar: t.name,
+          name_fr: initial.testimonials_fr[i]?.name ?? "",
+          quote_ar: t.quote,
+          quote_fr: initial.testimonials_fr[i]?.quote ?? "",
+          role_ar: t.role ?? "",
+          role_fr: initial.testimonials_fr[i]?.role ?? "",
         }))
       : [],
   );
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
-    initial?.faqs?.length
-      ? initial.faqs.map((f, i) => ({
+    initial?.faqs_ar?.length
+      ? initial.faqs_ar.map((f, i) => ({
           id: `faq-init-${i}`,
-          q: f.q,
-          a: f.a,
+          q_ar: f.q,
+          q_fr: initial.faqs_fr[i]?.q ?? "",
+          a_ar: f.a,
+          a_fr: initial.faqs_fr[i]?.a ?? "",
         }))
       : [],
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
-  const [formTitle, setFormTitle] = useState(initial?.form_title ?? "");
-  const [formFields, setFormFields] = useState<FormFieldConfig[]>(() =>
-    normalizeFormFields(initial?.form_fields ?? []),
+  const [formTitleAr, setFormTitleAr] = useState(initial?.form_title_ar ?? "");
+  const [formTitleFr, setFormTitleFr] = useState(initial?.form_title_fr ?? "");
+  const [formFieldsAr, setFormFieldsAr] = useState<FormFieldConfig[]>(() =>
+    normalizeFormFields(initial?.form_fields_ar ?? []),
+  );
+  const [formFieldsFr, setFormFieldsFr] = useState<FormFieldConfig[]>(() =>
+    alignFormFieldsFr(
+      normalizeFormFields(initial?.form_fields_ar ?? []),
+      normalizeFormFields(initial?.form_fields_fr ?? []),
+    ),
   );
   const [oldSlugs, setOldSlugs] = useState<string[]>(() =>
     initial?.old_slugs?.length ? [...initial.old_slugs] : [],
@@ -184,27 +229,56 @@ export function ProductForm({ mode, initial }: Props) {
     e164DigitsToMauritaniaLocalInput(initial?.whatsapp_e164),
   );
 
+  function onFormFieldsArChange(next: FormFieldConfig[]) {
+    setFormFieldsAr(next);
+    setFormFieldsFr((prev) => alignFormFieldsFr(next, prev));
+  }
+
   function buildPayload(): ProductPayload {
     const discountPrice =
       discount.trim() === "" ? null : Number.parseFloat(discount);
-    const cleanedTestimonials = testimonials
-      .map((t) => {
-        const name = t.name.trim();
-        const quote = t.quote.trim();
-        const role = t.role?.trim();
-        const base: Testimonial = { name, quote };
-        if (role) return { ...base, role };
-        return base;
-      })
-      .filter((t) => t.name.length > 0 && t.quote.length > 0);
 
-    const cleanedFaqs = faqs
-      .map((f) => ({ q: f.q.trim(), a: f.a.trim() }))
-      .filter((f) => f.q.length > 0 && f.a.length > 0);
+    const keptFeatures = featureRows.filter((r) => r.ar.trim());
+    const features_ar = keptFeatures.map((r) => r.ar.trim());
+    const features_fr = keptFeatures.map((r) => r.fr.trim());
+
+    const testimonialPairs = testimonials.filter(
+      (t) => t.name_ar.trim() && t.quote_ar.trim(),
+    );
+    const cleanedTestimonialsAr: Testimonial[] = testimonialPairs.map((t) => {
+      const base: Testimonial = {
+        name: t.name_ar.trim(),
+        quote: t.quote_ar.trim(),
+      };
+      const role = t.role_ar.trim();
+      if (role) return { ...base, role };
+      return base;
+    });
+    const cleanedTestimonialsFr: Testimonial[] = testimonialPairs.map((t) => {
+      const base: Testimonial = {
+        name: t.name_fr.trim(),
+        quote: t.quote_fr.trim(),
+      };
+      const role = t.role_fr.trim();
+      if (role) return { ...base, role };
+      return base;
+    });
+
+    const faqPairs = faqs.filter((f) => f.q_ar.trim() && f.a_ar.trim());
+    const cleanedFaqsAr: FAQ[] = faqPairs.map((f) => ({
+      q: f.q_ar.trim(),
+      a: f.a_ar.trim(),
+    }));
+    const cleanedFaqsFr: FAQ[] = faqPairs.map((f) => ({
+      q: f.q_fr.trim(),
+      a: f.a_fr.trim(),
+    }));
 
     return {
-      name,
-      description,
+      name_ar: nameAr,
+      name_fr: nameFr,
+      description_ar: descriptionAr,
+      description_fr: descriptionFr,
       price: Number.parseFloat(price),
       discount_price:
         discountPrice != null && !Number.isNaN(discountPrice)
@@ -212,14 +286,19 @@ export function ProductForm({ mode, initial }: Props) {
           : null,
       media_type: mediaType,
       media_url: mediaUrl,
-      features: features.map((s) => s.trim()).filter(Boolean),
+      features_ar,
+      features_fr,
       gallery: gallery.map((g) => g.url.trim()).filter(Boolean),
-      testimonials: cleanedTestimonials,
-      faqs: cleanedFaqs,
+      testimonials_ar: cleanedTestimonialsAr,
+      testimonials_fr: cleanedTestimonialsFr,
+      faqs_ar: cleanedFaqsAr,
+      faqs_fr: cleanedFaqsFr,
       meta_pixel_id: metaPixel.trim() || null,
       whatsapp_e164: mauritaniaWhatsappInputToE164Digits(whatsappLocal),
-      form_title: formTitle,
-      form_fields: formFields,
+      form_title_ar: formTitleAr,
+      form_title_fr: formTitleFr,
+      form_fields_ar: formFieldsAr,
+      form_fields_fr: formFieldsFr,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
     };
   }
@@ -276,22 +355,49 @@ export function ProductForm({ mode, initial }: Props) {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{a.productForm.name}</label>
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.name} — {a.productForm.langArabic}
+          </label>
           <input
             required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={nameAr}
+            onChange={(e) => setNameAr(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.name} — {a.productForm.langFrench}
+          </label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={nameFr}
+            onChange={(e) => setNameFr(e.target.value)}
+            dir="ltr"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{a.productForm.description}</label>
+          <label className="text-sm font-medium">
+            {a.productForm.description} — {a.productForm.langArabic}
+          </label>
           <textarea
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={descriptionAr}
+            onChange={(e) => setDescriptionAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            {a.productForm.description} — {a.productForm.langFrench}
+          </label>
+          <textarea
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={descriptionFr}
+            onChange={(e) => setDescriptionFr(e.target.value)}
+            dir="ltr"
           />
         </div>
         <div>
@@ -374,40 +480,64 @@ export function ProductForm({ mode, initial }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold">{a.productForm.features}</h3>
-              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.featuresHint}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.featuresHintBilingual}</p>
             </div>
             <button
               type="button"
-              onClick={() => setFeatures((f) => [...f, ""])}
+              onClick={() => setFeatureRows((f) => [...f, { ar: "", fr: "" }])}
               className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
             >
               {a.productForm.addFeature}
             </button>
           </div>
-          <div className="space-y-2">
-            {features.map((line, i) => (
+          <div className="space-y-3">
+            {featureRows.map((row, i) => (
               <div
-                key={`f-${i}`}
-                className="flex flex-col gap-2 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2 sm:flex-row sm:items-center"
+                key={`feat-${i}`}
+                className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-3"
               >
-                <input
-                  className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                  value={line}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setFeatures((prev) => {
-                      const next = [...prev];
-                      next[i] = v;
-                      return next;
-                    });
-                  }}
-                  placeholder={a.productForm.featurePlaceholder}
-                />
-                <div className="flex shrink-0 flex-wrap gap-1">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">{a.productForm.langArabic}</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                      value={row.ar}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFeatureRows((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, ar: v };
+                          return next;
+                        });
+                      }}
+                      placeholder={a.productForm.featurePlaceholder}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">{a.productForm.langFrench}</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                      value={row.fr}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFeatureRows((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, fr: v };
+                          return next;
+                        });
+                      }}
+                      placeholder={a.productForm.featurePlaceholderFr}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
                   <button
                     type="button"
                     className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-                    onClick={() => setFeatures((prev) => moveAt(prev, i, -1))}
+                    onClick={() => setFeatureRows((prev) => moveAt(prev, i, -1))}
                     disabled={i === 0}
                   >
                     {a.productForm.moveUp}
@@ -415,8 +545,8 @@ export function ProductForm({ mode, initial }: Props) {
                   <button
                     type="button"
                     className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-                    onClick={() => setFeatures((prev) => moveAt(prev, i, 1))}
-                    disabled={i === features.length - 1}
+                    onClick={() => setFeatureRows((prev) => moveAt(prev, i, 1))}
+                    disabled={i === featureRows.length - 1}
                   >
                     {a.productForm.moveDown}
                   </button>
@@ -424,7 +554,7 @@ export function ProductForm({ mode, initial }: Props) {
                     type="button"
                     className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 dark:border-red-800 dark:text-red-400"
                     onClick={() =>
-                      setFeatures((prev) => prev.filter((_, j) => j !== i))
+                      setFeatureRows((prev) => prev.filter((_, j) => j !== i))
                     }
                   >
                     {a.productForm.removeItem}
@@ -433,7 +563,7 @@ export function ProductForm({ mode, initial }: Props) {
               </div>
             ))}
           </div>
-          {features.length === 0 ? (
+          {featureRows.length === 0 ? (
             <p className="text-xs text-[var(--muted)]">—</p>
           ) : null}
         </section>
@@ -486,14 +616,22 @@ export function ProductForm({ mode, initial }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold">{a.productForm.testimonialsSection}</h3>
-              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.testimonialsHint}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.testimonialsHintBilingual}</p>
             </div>
             <button
               type="button"
               onClick={() =>
                 setTestimonials((t) => [
                   ...t,
-                  { id: newRowId(), name: "", quote: "", role: undefined },
+                  {
+                    id: newRowId(),
+                    name_ar: "",
+                    name_fr: "",
+                    quote_ar: "",
+                    quote_fr: "",
+                    role_ar: "",
+                    role_fr: "",
+                  },
                 ])
               }
               className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
@@ -501,24 +639,25 @@ export function ProductForm({ mode, initial }: Props) {
               {a.productForm.addTestimonial}
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {testimonials.map((t, i) => (
               <div
                 key={t.id}
-                className="space-y-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
+                className="space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
               >
+                <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langArabic}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div>
                     <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialName}</label>
                     <input
                       className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                      value={t.name}
+                      value={t.name_ar}
                       onChange={(e) => {
                         const v = e.target.value;
                         setTestimonials((prev) => {
                           const next = [...prev];
                           const cur = next[i];
-                          if (cur) next[i] = { ...cur, name: v };
+                          if (cur) next[i] = { ...cur, name_ar: v };
                           return next;
                         });
                       }}
@@ -528,13 +667,13 @@ export function ProductForm({ mode, initial }: Props) {
                     <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialRole}</label>
                     <input
                       className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                      value={t.role ?? ""}
+                      value={t.role_ar}
                       onChange={(e) => {
                         const v = e.target.value;
                         setTestimonials((prev) => {
                           const next = [...prev];
                           const cur = next[i];
-                          if (cur) next[i] = { ...cur, role: v || undefined };
+                          if (cur) next[i] = { ...cur, role_ar: v };
                           return next;
                         });
                       }}
@@ -546,16 +685,71 @@ export function ProductForm({ mode, initial }: Props) {
                   <textarea
                     rows={2}
                     className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                    value={t.quote}
+                    value={t.quote_ar}
                     onChange={(e) => {
                       const v = e.target.value;
                       setTestimonials((prev) => {
                         const next = [...prev];
                         const cur = next[i];
-                        if (cur) next[i] = { ...cur, quote: v };
+                        if (cur) next[i] = { ...cur, quote_ar: v };
                         return next;
                       });
                     }}
+                  />
+                </div>
+                <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langFrench}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialName}</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                      value={t.name_fr}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setTestimonials((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, name_fr: v };
+                          return next;
+                        });
+                      }}
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialRole}</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                      value={t.role_fr}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setTestimonials((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, role_fr: v };
+                          return next;
+                        });
+                      }}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialQuote}</label>
+                  <textarea
+                    rows={2}
+                    className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                    value={t.quote_fr}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setTestimonials((prev) => {
+                        const next = [...prev];
+                        const cur = next[i];
+                        if (cur) next[i] = { ...cur, quote_fr: v };
+                        return next;
+                      });
+                    }}
+                    dir="ltr"
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -601,35 +795,39 @@ export function ProductForm({ mode, initial }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold">{a.productForm.faqSection}</h3>
-              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.faqHint}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.faqHintBilingual}</p>
             </div>
             <button
               type="button"
               onClick={() =>
-                setFaqs((f) => [...f, { id: newRowId(), q: "", a: "" }])
+                setFaqs((f) => [
+                  ...f,
+                  { id: newRowId(), q_ar: "", q_fr: "", a_ar: "", a_fr: "" },
+                ])
               }
               className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
             >
               {a.productForm.addFaq}
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {faqs.map((item, i) => (
               <div
                 key={item.id}
-                className="space-y-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
+                className="space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
               >
+                <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langArabic}</p>
                 <div>
                   <label className="text-xs text-[var(--muted)]">{a.productForm.faqQuestion}</label>
                   <input
                     className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                    value={item.q}
+                    value={item.q_ar}
                     onChange={(e) => {
                       const v = e.target.value;
                       setFaqs((prev) => {
                         const next = [...prev];
                         const cur = next[i];
-                        if (cur) next[i] = { ...cur, q: v };
+                        if (cur) next[i] = { ...cur, q_ar: v };
                         return next;
                       });
                     }}
@@ -640,16 +838,52 @@ export function ProductForm({ mode, initial }: Props) {
                   <textarea
                     rows={2}
                     className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                    value={item.a}
+                    value={item.a_ar}
                     onChange={(e) => {
                       const v = e.target.value;
                       setFaqs((prev) => {
                         const next = [...prev];
                         const cur = next[i];
-                        if (cur) next[i] = { ...cur, a: v };
+                        if (cur) next[i] = { ...cur, a_ar: v };
                         return next;
                       });
                     }}
+                  />
+                </div>
+                <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langFrench}</p>
+                <div>
+                  <label className="text-xs text-[var(--muted)]">{a.productForm.faqQuestion}</label>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                    value={item.q_fr}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFaqs((prev) => {
+                        const next = [...prev];
+                        const cur = next[i];
+                        if (cur) next[i] = { ...cur, q_fr: v };
+                        return next;
+                      });
+                    }}
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--muted)]">{a.productForm.faqAnswer}</label>
+                  <textarea
+                    rows={2}
+                    className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                    value={item.a_fr}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFaqs((prev) => {
+                        const next = [...prev];
+                        const cur = next[i];
+                        if (cur) next[i] = { ...cur, a_fr: v };
+                        return next;
+                      });
+                    }}
+                    dir="ltr"
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -695,17 +929,61 @@ export function ProductForm({ mode, initial }: Props) {
             dir="ltr"
           />
         </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{a.productForm.formTitle}</label>
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.formTitle} — {a.productForm.langArabic}
+          </label>
           <input
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
+            value={formTitleAr}
+            onChange={(e) => setFormTitleAr(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.formTitle} — {a.productForm.langFrench}
+          </label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={formTitleFr}
+            onChange={(e) => setFormTitleFr(e.target.value)}
+            dir="ltr"
           />
         </div>
         <div className="sm:col-span-2">
-          <FormBuilder value={formFields} onChange={setFormFields} />
+          <FormBuilder value={formFieldsAr} onChange={onFormFieldsArChange} />
         </div>
+        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <h3 className="text-sm font-semibold">{a.productForm.formFieldLabelsFrench}</h3>
+          <p className="text-xs text-[var(--muted)]">{a.productForm.formFieldLabelsFrenchHint}</p>
+          <div className="space-y-3">
+            {formFieldsAr.map((f, i) => (
+              <div key={f.id} className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-3">
+                <p className="text-[10px] font-mono text-[var(--muted)]" dir="ltr">
+                  {f.id}
+                </p>
+                <label className="mt-1 block text-xs text-[var(--muted)]">{a.formBuilder.fieldLabel}</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                  value={formFieldsFr[i]?.label ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormFieldsFr((prev) => {
+                      const base = alignFormFieldsFr(formFieldsAr, prev);
+                      const row = base[i];
+                      if (row) base[i] = { ...row, label: v };
+                      return base;
+                    });
+                  }}
+                  dir="ltr"
+                />
+              </div>
+            ))}
+          </div>
+          {formFieldsAr.length === 0 ? (
+            <p className="text-xs text-[var(--muted)]">{a.formBuilder.emptyHint}</p>
+          ) : null}
+        </section>
 
         {mode === "edit" ? (
           <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">

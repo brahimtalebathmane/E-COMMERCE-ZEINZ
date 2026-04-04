@@ -1,12 +1,12 @@
 import type { OrderStatus } from "@/types";
 
 export type AdminOrderProduct = {
-  name: string;
+  name_ar: string;
   slug: string;
   whatsapp_e164: string | null;
   price: number;
   discount_price: number | null;
-  description: string;
+  description_ar: string;
   media_type: "image" | "video";
   media_url: string;
 } | null;

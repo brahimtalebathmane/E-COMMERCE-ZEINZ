@@ -49,6 +49,7 @@ function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
   );
 }
 import type { ProductRow } from "@/types";
+import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -92,6 +93,10 @@ type Props = {
 
 export function BuyModal({ product, open, onClose }: Props) {
   const { t, locale, dir } = useLanguage();
+  const copy = useMemo(
+    () => getLocalizedProductCopy(locale, product),
+    [locale, product],
+  );
   const total = useMemo(() => {
     return product.discount_price != null
       ? product.discount_price
@@ -247,7 +252,7 @@ export function BuyModal({ product, open, onClose }: Props) {
     const phoneE164 = resolveOrderWhatsAppE164Digits(product);
     const priceStr = formatPrice(Number(total));
     const text = t("buyModal.whatsappOrderText", {
-      name: product.name,
+      name: copy.name,
       price: priceStr,
     });
     const encoded = encodeURIComponent(text);
@@ -270,7 +275,7 @@ export function BuyModal({ product, open, onClose }: Props) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 text-start">
             <h2 className="text-lg font-semibold sm:text-xl">{t("buyModal.checkout")}</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">{product.name}</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">{copy.name}</p>
             <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
               {t("buyModal.amountDue", { price: formatPrice(total) })}
             </p>
