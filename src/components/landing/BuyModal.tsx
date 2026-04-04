@@ -33,6 +33,7 @@ import { PostPaymentForm } from "./PostPaymentForm";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
 import { formatPrice } from "@/lib/currency";
+import { resolveOrderWhatsAppE164Digits } from "@/lib/whatsapp";
 
 async function parseResponseJson(
   res: Response,
@@ -222,8 +223,7 @@ export function BuyModal({ product, open, onClose }: Props) {
   }
 
   function whatsappHref() {
-    const phoneE164 =
-      process.env.NEXT_PUBLIC_WHATSAPP_E164?.replace(/\D/g, "") ?? "";
+    const phoneE164 = resolveOrderWhatsAppE164Digits(product);
     const priceStr = formatPrice(Number(total));
     const text = t("buyModal.whatsappOrderText", {
       name: product.name,

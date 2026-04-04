@@ -23,6 +23,7 @@ function mapProduct(row: Record<string, unknown>): ProductRow {
     testimonials: (row.testimonials as ProductRow["testimonials"]) ?? [],
     faqs: (row.faqs as ProductRow["faqs"]) ?? [],
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
+    whatsapp_e164: (row.whatsapp_e164 as string | null) ?? null,
     form_title: (row.form_title as string) ?? "",
     form_fields: Array.isArray(row.form_fields)
       ? (row.form_fields as ProductRow["form_fields"])

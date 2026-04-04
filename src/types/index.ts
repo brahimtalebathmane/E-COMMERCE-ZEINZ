@@ -33,6 +33,8 @@ export type ProductRow = {
   testimonials: Testimonial[];
   faqs: FAQ[];
   meta_pixel_id: string | null;
+  /** E.164 digits (e.g. 222… for Mauritania). Null uses NEXT_PUBLIC_WHATSAPP_E164. */
+  whatsapp_e164: string | null;
   form_title: string;
   form_fields: FormFieldConfig[];
   created_at: string;

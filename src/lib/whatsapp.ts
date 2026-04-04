@@ -1,6 +1,15 @@
 import { formatPrice } from "@/lib/currency";
 import { getPublicSiteUrl } from "@/lib/site-url";
 
+/** Per-product WhatsApp for orders, else site-wide NEXT_PUBLIC_WHATSAPP_E164 (digits for wa.me). */
+export function resolveOrderWhatsAppE164Digits(product: {
+  whatsapp_e164: string | null;
+}): string {
+  const fromProduct = (product.whatsapp_e164 ?? "").replace(/\D/g, "");
+  if (fromProduct) return fromProduct;
+  return (process.env.NEXT_PUBLIC_WHATSAPP_E164 ?? "").replace(/\D/g, "");
+}
+
 export function buildCompletionWhatsAppUrl(
   orderId: string,
   completionToken: string,

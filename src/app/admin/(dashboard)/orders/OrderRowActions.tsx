@@ -2,7 +2,10 @@
 
 import type { OrderStatus } from "@/types";
 import { updateOrderStatusAction } from "@/app/admin/(dashboard)/orders/actions";
-import { buildCompletionWhatsAppUrl } from "@/lib/whatsapp";
+import {
+  buildCompletionWhatsAppUrl,
+  resolveOrderWhatsAppE164Digits,
+} from "@/lib/whatsapp";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +17,8 @@ type Props = {
   status: OrderStatus;
   formComplete: boolean;
   receiptPath: string | null;
+  /** Product-specific WhatsApp; combined with env fallback inside buildCompletionWhatsAppUrl. */
+  orderWhatsAppE164: string | null;
 };
 
 export function OrderRowActions({
@@ -23,6 +28,7 @@ export function OrderRowActions({
   status,
   formComplete,
   receiptPath,
+  orderWhatsAppE164,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -37,7 +43,15 @@ export function OrderRowActions({
     }
   }
 
-  const waUrl = buildCompletionWhatsAppUrl(orderId, completionToken, null, totalPrice);
+  const waDigits = resolveOrderWhatsAppE164Digits({
+    whatsapp_e164: orderWhatsAppE164,
+  });
+  const waUrl = buildCompletionWhatsAppUrl(
+    orderId,
+    completionToken,
+    waDigits || null,
+    totalPrice,
+  );
 
   return (
     <div className="flex flex-col gap-2">

@@ -18,6 +18,8 @@ export type ProductPayload = {
   testimonials: Testimonial[];
   faqs: FAQ[];
   meta_pixel_id: string | null;
+  /** E.164 digits only; null clears to env fallback on storefront. */
+  whatsapp_e164: string | null;
   form_title: string;
   form_fields: FormFieldConfig[];
   old_slugs: string[];
@@ -85,6 +87,7 @@ export async function createProductAction(payload: ProductPayload) {
     testimonials: payload.testimonials,
     faqs: payload.faqs,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+    whatsapp_e164: payload.whatsapp_e164,
     form_title: payload.form_title.trim(),
     form_fields: payload.form_fields,
   });
@@ -123,6 +126,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       testimonials: payload.testimonials,
       faqs: payload.faqs,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+      whatsapp_e164: payload.whatsapp_e164,
       form_title: payload.form_title.trim(),
       form_fields: payload.form_fields,
       old_slugs: payload.old_slugs.filter(Boolean),

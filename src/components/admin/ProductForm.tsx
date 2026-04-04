@@ -8,6 +8,10 @@ import {
   updateProductAction,
   type ProductPayload,
 } from "@/app/admin/(dashboard)/products/actions";
+import {
+  e164DigitsToMauritaniaLocalInput,
+  mauritaniaWhatsappInputToE164Digits,
+} from "@/lib/mauritania-whatsapp";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -175,6 +179,9 @@ export function ProductForm({ mode, initial }: Props) {
   const [oldSlugs, setOldSlugs] = useState<string[]>(() =>
     initial?.old_slugs?.length ? [...initial.old_slugs] : [],
   );
+  const [whatsappLocal, setWhatsappLocal] = useState(() =>
+    e164DigitsToMauritaniaLocalInput(initial?.whatsapp_e164),
+  );
 
   function buildPayload(): ProductPayload {
     const discountPrice =
@@ -209,6 +216,7 @@ export function ProductForm({ mode, initial }: Props) {
       testimonials: cleanedTestimonials,
       faqs: cleanedFaqs,
       meta_pixel_id: metaPixel.trim() || null,
+      whatsapp_e164: mauritaniaWhatsappInputToE164Digits(whatsappLocal),
       form_title: formTitle,
       form_fields: formFields,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
@@ -311,6 +319,32 @@ export function ProductForm({ mode, initial }: Props) {
             placeholder={a.productForm.discountPlaceholder}
             dir="ltr"
           />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.whatsappOrder}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.whatsappOrderHint}</p>
+          <div className="mt-2 flex flex-wrap items-stretch gap-2" dir="ltr">
+            <span className="inline-flex shrink-0 items-center rounded-lg border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 py-2 text-sm font-mono text-[var(--foreground)]">
+              +222
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="tel"
+              className="min-w-[12rem] flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              value={whatsappLocal}
+              onChange={(e) => {
+                const v = e.target.value;
+                const d = v.replace(/\D/g, "");
+                if (d.startsWith("222")) {
+                  setWhatsappLocal(d.slice(3).replace(/^0+/, ""));
+                } else {
+                  setWhatsappLocal(d.replace(/^0+/, ""));
+                }
+              }}
+              placeholder={a.productForm.whatsappLocalPlaceholder}
+            />
+          </div>
         </div>
         <div>
           <label className="text-sm font-medium">{a.productForm.mediaType}</label>

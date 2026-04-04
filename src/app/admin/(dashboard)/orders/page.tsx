@@ -83,7 +83,7 @@ type OrderListRow = {
   form_data: Record<string, unknown> | null;
   completion_token: string;
   created_at: string;
-  products: { name: string; slug: string } | null;
+  products: { name: string; slug: string; whatsapp_e164: string | null } | null;
 };
 
 export default async function AdminOrdersPage() {
@@ -105,7 +105,7 @@ export default async function AdminOrdersPage() {
       form_data,
       completion_token,
       created_at,
-      products ( name, slug )
+      products ( name, slug, whatsapp_e164 )
     `,
     )
     .order("created_at", { ascending: false });
@@ -177,6 +177,7 @@ export default async function AdminOrdersPage() {
                       status={o.status}
                       formComplete={formComplete}
                       receiptPath={o.receipt_image_url}
+                      orderWhatsAppE164={o.products?.whatsapp_e164 ?? null}
                     />
                   </td>
                 </tr>

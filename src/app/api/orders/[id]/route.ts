@@ -47,6 +47,7 @@ export async function GET(request: Request, context: Ctx) {
         gallery,
         testimonials,
         faqs,
+        whatsapp_e164,
         created_at
       )
     `,

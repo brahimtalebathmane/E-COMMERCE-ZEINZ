@@ -97,6 +97,10 @@ export const adminAr = {
     pricePlaceholder: "مثال: 1000",
     discount: "سعر التخفيض (MRU، اختياري)",
     discountPlaceholder: "اتركه فارغاً لاستخدام السعر العادي",
+    whatsappOrder: "واتساب لاستقبال الطلبات (+222)",
+    whatsappOrderHint:
+      "رقم واتساب موريتانيا للطلبات عبر «اطلب عبر واتساب». اتركه فارغاً لاستخدام الرقم الافتراضي من إعدادات الموقع إن وُجد.",
+    whatsappLocalPlaceholder: "الرقم بعد +222",
     mediaType: "نوع الوسائط",
     mediaImage: "صورة",
     mediaVideo: "فيديو (رابط Mux / Cloudflare Stream)",

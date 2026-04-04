@@ -78,6 +78,7 @@ export function CompleteOrderClient({ orderId }: Props) {
         testimonials: (pr.testimonials as ProductRow["testimonials"]) ?? [],
         faqs: (pr.faqs as ProductRow["faqs"]) ?? [],
         meta_pixel_id: (pr.meta_pixel_id as string | null) ?? null,
+        whatsapp_e164: (pr.whatsapp_e164 as string | null) ?? null,
         form_title: String(pr.form_title ?? ""),
         form_fields: Array.isArray(pr.form_fields)
           ? (pr.form_fields as ProductRow["form_fields"])
