@@ -951,39 +951,20 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
-          <FormBuilder value={formFieldsAr} onChange={onFormFieldsArChange} />
+          <FormBuilder
+            value={formFieldsAr}
+            onChange={onFormFieldsArChange}
+            frFields={formFieldsFr}
+            onFrLabelChange={(i, label) => {
+              setFormFieldsFr((prev) => {
+                const base = alignFormFieldsFr(formFieldsAr, prev);
+                const row = base[i];
+                if (row) base[i] = { ...row, label };
+                return base;
+              });
+            }}
+          />
         </div>
-        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-          <h3 className="text-sm font-semibold">{a.productForm.formFieldLabelsFrench}</h3>
-          <p className="text-xs text-[var(--muted)]">{a.productForm.formFieldLabelsFrenchHint}</p>
-          <div className="space-y-3">
-            {formFieldsAr.map((f, i) => (
-              <div key={f.id} className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-3">
-                <p className="text-[10px] font-mono text-[var(--muted)]" dir="ltr">
-                  {f.id}
-                </p>
-                <label className="mt-1 block text-xs text-[var(--muted)]">{a.formBuilder.fieldLabel}</label>
-                <input
-                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
-                  value={formFieldsFr[i]?.label ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setFormFieldsFr((prev) => {
-                      const base = alignFormFieldsFr(formFieldsAr, prev);
-                      const row = base[i];
-                      if (row) base[i] = { ...row, label: v };
-                      return base;
-                    });
-                  }}
-                  dir="ltr"
-                />
-              </div>
-            ))}
-          </div>
-          {formFieldsAr.length === 0 ? (
-            <p className="text-xs text-[var(--muted)]">{a.formBuilder.emptyHint}</p>
-          ) : null}
-        </section>
 
         {mode === "edit" ? (
           <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
