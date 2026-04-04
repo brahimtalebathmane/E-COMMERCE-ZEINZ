@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type SyntheticEvent,
+} from "react";
 import type MuxPlayerElement from "@mux/mux-player";
 import type { ProductRow } from "@/types";
 
@@ -12,7 +20,8 @@ const MuxPlayer = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="flex aspect-video w-full min-h-[12rem] items-center justify-center bg-black text-sm text-white/60"
+        className="landing-mux-shell flex min-h-[12rem] items-center justify-center text-sm text-white/60"
+        style={{ "--ar-w": 16, "--ar-h": 9 } as CSSProperties}
         aria-hidden
       >
         …
@@ -76,10 +85,17 @@ function cloudflareStreamIframeSrcWithAutoplay(url: string): string {
     u.searchParams.set("autoplay", "true");
     u.searchParams.set("muted", "true");
     u.searchParams.set("preload", "auto");
+    u.searchParams.set("playsinline", "true");
     return u.toString();
   } catch {
     return url;
   }
+}
+
+function parseAspectParts(aspectStr: string): { w: number; h: number } | null {
+  const parts = aspectStr.split("/").map((s) => Number(s.trim()));
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return { w: parts[0], h: parts[1] };
 }
 
 type Props = {
@@ -103,16 +119,53 @@ const muxPlayerLayoutClass =
 export function LandingMedia({ product, priority }: Props) {
   const url = product.media_url?.trim() ?? "";
   const [muxAspect, setMuxAspect] = useState("16 / 9");
+  const [nativeAspect, setNativeAspect] = useState("16 / 9");
+  const muxRef = useRef<MuxPlayerElement | null>(null);
   const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const muxParts = useMemo(
+    () => parseAspectParts(muxAspect) ?? { w: 16, h: 9 },
+    [muxAspect],
+  );
+  const nativeParts = useMemo(
+    () => parseAspectParts(nativeAspect) ?? { w: 16, h: 9 },
+    [nativeAspect],
+  );
 
   useEffect(() => {
     setMuxAspect("16 / 9");
+    setNativeAspect("16 / 9");
+  }, [url]);
+
+  useEffect(() => {
+    const el = muxRef.current;
+    if (!el) return;
+    const kick = () => {
+      try {
+        el.muted = true;
+        const p = el.play?.();
+        if (p && typeof (p as Promise<void>).catch === "function") {
+          (p as Promise<void>).catch(() => {});
+        }
+      } catch {
+        /* Autoplay blocked */
+      }
+    };
+    kick();
+    el.addEventListener("loadeddata", kick);
+    el.addEventListener("canplay", kick);
+    return () => {
+      el.removeEventListener("loadeddata", kick);
+      el.removeEventListener("canplay", kick);
+    };
   }, [url]);
 
   useEffect(() => {
     const v = nativeVideoRef.current;
     if (!v) return;
     v.muted = true;
+    v.defaultMuted = true;
+    v.setAttribute("playsinline", "");
     const attempt = v.play();
     if (attempt !== undefined) {
       attempt.catch(() => {
@@ -127,6 +180,19 @@ export function LandingMedia({ product, priority }: Props) {
       setMuxAspect(`${el.videoWidth} / ${el.videoHeight}`);
     }
   }, []);
+
+  const handleNativeLoadedMetadata = useCallback(
+    (e: SyntheticEvent<HTMLVideoElement>) => {
+      const v = e.currentTarget;
+      if (v.videoWidth > 0 && v.videoHeight > 0) {
+        setNativeAspect(`${v.videoWidth} / ${v.videoHeight}`);
+      }
+      v.muted = true;
+      v.defaultMuted = true;
+      void v.play().catch(() => {});
+    },
+    [],
+  );
 
   if (!url) {
     return (
@@ -159,7 +225,15 @@ export function LandingMedia({ product, priority }: Props) {
   if (isCloudflareStreamEmbedUrl(url)) {
     const iframeSrc = cloudflareStreamIframeSrcWithAutoplay(url);
     return (
-      <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
+      <div
+        className="landing-mux-shell relative min-h-0 min-w-0 bg-black"
+        style={
+          {
+            "--ar-w": 16,
+            "--ar-h": 9,
+          } as CSSProperties
+        }
+      >
         <iframe
           src={iframeSrc}
           title={product.name}
@@ -183,11 +257,18 @@ export function LandingMedia({ product, priority }: Props) {
     const placeholder = muxPlaybackId ? muxPosterUrl(muxPlaybackId) : undefined;
     return (
       <div
-        className="relative w-full min-h-0 min-w-0 overflow-hidden bg-black"
-        style={{ aspectRatio: muxAspect }}
+        className="landing-mux-shell relative min-h-0 min-w-0 overflow-hidden bg-black"
+        style={
+          {
+            "--ar-w": muxParts.w,
+            "--ar-h": muxParts.h,
+          } as CSSProperties
+        }
+        data-landing-portrait={muxParts.h > muxParts.w ? "" : undefined}
       >
         {muxPlaybackId ? (
           <MuxPlayer
+            ref={muxRef}
             playbackId={muxPlaybackId}
             {...muxPlayerCommon}
             placeholder={placeholder}
@@ -199,6 +280,7 @@ export function LandingMedia({ product, priority }: Props) {
           />
         ) : (
           <MuxPlayer
+            ref={muxRef}
             src={url}
             {...muxPlayerCommon}
             metadataVideoTitle={product.name}
@@ -213,17 +295,29 @@ export function LandingMedia({ product, priority }: Props) {
 
   return (
     <div className="w-full bg-black">
-      <video
-        ref={nativeVideoRef}
-        className="mx-auto block h-auto w-full max-h-[min(85vh,56rem)] max-w-full bg-black"
-        src={url}
-        controls
-        playsInline
-        muted
-        autoPlay
-        preload="auto"
-        {...(priority ? { fetchPriority: "high" as const } : {})}
-      />
+      <div
+        className="landing-native-shell w-full bg-black"
+        style={
+          {
+            "--ar-w": nativeParts.w,
+            "--ar-h": nativeParts.h,
+          } as CSSProperties
+        }
+        data-landing-portrait={nativeParts.h > nativeParts.w ? "" : undefined}
+      >
+        <video
+          ref={nativeVideoRef}
+          className="mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
+          src={url}
+          controls
+          playsInline
+          muted
+          autoPlay
+          preload="auto"
+          onLoadedMetadata={handleNativeLoadedMetadata}
+          {...(priority ? { fetchPriority: "high" as const } : {})}
+        />
+      </div>
     </div>
   );
 }
