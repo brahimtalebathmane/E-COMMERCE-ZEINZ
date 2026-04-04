@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type MuxPlayerElement from "@mux/mux-player";
 import type { ProductRow } from "@/types";
 
 const MuxPlayer = dynamic(
@@ -67,6 +69,19 @@ function isCloudflareStreamHlsUrl(url: string): boolean {
   return /cloudflarestream\.com/i.test(url) && /\.m3u8($|\?)/i.test(url);
 }
 
+/** Merge Stream iframe query params for muted autoplay (browser autoplay policies). */
+function cloudflareStreamIframeSrcWithAutoplay(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("autoplay", "true");
+    u.searchParams.set("muted", "true");
+    u.searchParams.set("preload", "auto");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 type Props = {
   product: ProductRow;
   priority?: boolean;
@@ -76,8 +91,10 @@ const muxPlayerCommon = {
   streamType: "on-demand" as const,
   accentColor: "#00ff00",
   playsInline: true,
-  preload: "metadata" as const,
+  preload: "auto" as const,
   capRenditionToPlayerSize: true,
+  autoPlay: true,
+  muted: true,
 };
 
 const muxPlayerLayoutClass =
@@ -85,6 +102,31 @@ const muxPlayerLayoutClass =
 
 export function LandingMedia({ product, priority }: Props) {
   const url = product.media_url?.trim() ?? "";
+  const [muxAspect, setMuxAspect] = useState("16 / 9");
+  const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    setMuxAspect("16 / 9");
+  }, [url]);
+
+  useEffect(() => {
+    const v = nativeVideoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const attempt = v.play();
+    if (attempt !== undefined) {
+      attempt.catch(() => {
+        /* Autoplay blocked; user can use controls */
+      });
+    }
+  }, [url]);
+
+  const handleMuxLoadedMetadata = useCallback((e: Event) => {
+    const el = e.currentTarget as MuxPlayerElement;
+    if (el.videoWidth > 0 && el.videoHeight > 0) {
+      setMuxAspect(`${el.videoWidth} / ${el.videoHeight}`);
+    }
+  }, []);
 
   if (!url) {
     return (
@@ -115,10 +157,11 @@ export function LandingMedia({ product, priority }: Props) {
   }
 
   if (isCloudflareStreamEmbedUrl(url)) {
+    const iframeSrc = cloudflareStreamIframeSrcWithAutoplay(url);
     return (
       <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
         <iframe
-          src={url}
+          src={iframeSrc}
           title={product.name}
           className="absolute inset-0 h-full w-full border-0"
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
@@ -139,7 +182,10 @@ export function LandingMedia({ product, priority }: Props) {
   ) {
     const placeholder = muxPlaybackId ? muxPosterUrl(muxPlaybackId) : undefined;
     return (
-      <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
+      <div
+        className="relative w-full min-h-0 min-w-0 overflow-hidden bg-black"
+        style={{ aspectRatio: muxAspect }}
+      >
         {muxPlaybackId ? (
           <MuxPlayer
             playbackId={muxPlaybackId}
@@ -149,6 +195,7 @@ export function LandingMedia({ product, priority }: Props) {
             metadataVideoTitle={product.name}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
+            onLoadedMetadata={handleMuxLoadedMetadata}
           />
         ) : (
           <MuxPlayer
@@ -157,6 +204,7 @@ export function LandingMedia({ product, priority }: Props) {
             metadataVideoTitle={product.name}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
+            onLoadedMetadata={handleMuxLoadedMetadata}
           />
         )}
       </div>
@@ -164,13 +212,18 @@ export function LandingMedia({ product, priority }: Props) {
   }
 
   return (
-    <video
-      className="aspect-video w-full min-h-0 min-w-0 max-h-[min(85vh,56rem)] max-w-full bg-black object-contain"
-      src={url}
-      controls
-      playsInline
-      preload="none"
-      {...(priority ? { fetchPriority: "high" as const } : {})}
-    />
+    <div className="w-full bg-black">
+      <video
+        ref={nativeVideoRef}
+        className="mx-auto block h-auto w-full max-h-[min(85vh,56rem)] max-w-full bg-black"
+        src={url}
+        controls
+        playsInline
+        muted
+        autoPlay
+        preload="auto"
+        {...(priority ? { fetchPriority: "high" as const } : {})}
+      />
+    </div>
   );
 }
