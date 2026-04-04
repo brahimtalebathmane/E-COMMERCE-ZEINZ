@@ -24,12 +24,36 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+@layer components {
+  /* Store / checkout: 16px+ text on inputs reduces iOS zoom; 48px min touch targets */
+  .store-input {
+    @apply w-full min-h-[48px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-normal text-start text-[var(--foreground)] outline-none ring-[var(--accent)] focus:ring-2;
+  }
+  .store-select {
+    @apply w-full min-h-[48px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-normal text-start text-[var(--foreground)];
+  }
+  .store-textarea {
+    @apply w-full min-h-[120px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-relaxed text-start text-[var(--foreground)] outline-none ring-[var(--accent)] focus:ring-2;
+  }
+  .store-btn-primary {
+    @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .store-file-input {
+    @apply w-full max-w-full touch-manipulation text-base file:mr-3 file:inline-flex file:min-h-[48px] file:cursor-pointer file:items-center file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--background)] file:px-4 file:py-3 file:text-sm file:font-medium file:text-[var(--foreground)];
+  }
 }
 
 /* Landing video: intrinsic aspect from --ar-w / --ar-h (set in LandingMedia). */

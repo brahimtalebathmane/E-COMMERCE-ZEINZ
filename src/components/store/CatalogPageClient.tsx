@@ -21,8 +21,11 @@ export function CatalogPageClient({ products, configured }: Props) {
 
   if (!configured) {
     return (
-      <div className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 py-16" dir={dir}>
-        <h1 className="text-3xl font-bold tracking-tight">{t("catalog.configureTitle")}</h1>
+      <div
+        className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] sm:py-16"
+        dir={dir}
+      >
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("catalog.configureTitle")}</h1>
         <p className="mt-4 text-sm text-[var(--muted)]">
           {t("catalog.configureHint")}{" "}
           <code className="rounded bg-[var(--accent-muted)]/50 px-1">
@@ -39,15 +42,18 @@ export function CatalogPageClient({ products, configured }: Props) {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 py-16" dir={dir}>
-      <h1 className="text-3xl font-bold tracking-tight">{t("catalog.title")}</h1>
+    <div
+      className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] sm:py-16"
+      dir={dir}
+    >
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("catalog.title")}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">{t("catalog.subtitle")}</p>
       <ul className="mt-10 space-y-3">
         {products.map((p) => (
           <li key={p.slug}>
             <Link
               href={`/${p.slug}`}
-              className="flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition hover:border-[var(--accent)] sm:px-5"
+              className="flex min-h-[52px] min-w-0 touch-manipulation items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition active:bg-[var(--accent-muted)]/30 hover:border-[var(--accent)] sm:min-h-0 sm:px-5"
             >
               <span className="min-w-0 flex-1 break-words font-medium">{p.name}</span>
               <span className="shrink-0 text-sm text-[var(--muted)]" dir="ltr">

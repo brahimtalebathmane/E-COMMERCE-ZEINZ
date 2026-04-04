@@ -14,6 +14,8 @@ type Props = {
   orderId: string;
   completionToken: string;
   onDone?: () => void;
+  /** When true, omit outer card chrome (e.g. inside a modal shell). */
+  embedded?: boolean;
 };
 
 export function PostPaymentForm({
@@ -21,6 +23,7 @@ export function PostPaymentForm({
   orderId,
   completionToken,
   onDone,
+  embedded = false,
 }: Props) {
   const { t, locale, dir } = useLanguage();
   const fields = useMemo(
@@ -144,7 +147,11 @@ export function PostPaymentForm({
   if (finished) {
     return (
       <div
-        className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-8 text-center shadow-sm"
+        className={
+          embedded
+            ? "rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 text-center shadow-sm sm:p-8"
+            : "rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 text-center shadow-sm sm:p-8"
+        }
         dir={dir}
       >
         <p className="text-lg font-semibold text-[var(--foreground)]">
@@ -162,14 +169,18 @@ export function PostPaymentForm({
 
   return (
     <div
-      className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 shadow-sm"
+      className={
+        embedded
+          ? "p-0"
+          : "rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-sm sm:p-6"
+      }
       dir={dir}
     >
-      <h3 className="text-start text-xl font-semibold text-[var(--foreground)]">
+      <h3 className="text-start text-lg font-semibold text-[var(--foreground)] sm:text-xl">
         {title}
       </h3>
       {fields.length > 0 ? (
-        <p className="mt-3 text-start text-xs text-[var(--muted)]">
+        <p className="mt-3 text-start text-xs text-[var(--muted)] sm:text-sm">
           {hasRequired && hasOptional
             ? t("postPayment.formLegend")
             : hasRequired
@@ -177,10 +188,10 @@ export function PostPaymentForm({
               : t("postPayment.formLegendOptionalOnly")}
         </p>
       ) : null}
-      <div className="mt-6 space-y-5">
+      <div className="mt-6 space-y-6">
         {fields.map((field) => (
           <div key={field.id}>
-            <label className="block text-start text-sm font-medium text-[var(--foreground)]">
+            <label className="block text-start text-sm font-medium text-[var(--foreground)] sm:text-base">
               <span>{field.label}</span>
               {field.required ? (
                 <>
@@ -196,10 +207,10 @@ export function PostPaymentForm({
                 </span>
               )}
             </label>
-            <div className="mt-1.5">
+            <div className="mt-2">
               {field.type === "text" && (
                 <input
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="store-input"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                   required={field.required}
@@ -209,7 +220,7 @@ export function PostPaymentForm({
               {field.type === "email" && (
                 <input
                   type="email"
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="store-input"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                   required={field.required}
@@ -219,7 +230,7 @@ export function PostPaymentForm({
               {field.type === "link" && (
                 <input
                   type="url"
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="store-input"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                   placeholder={t("postPayment.placeholderUrl")}
@@ -230,7 +241,7 @@ export function PostPaymentForm({
               {field.type === "textarea" && (
                 <textarea
                   rows={4}
-                  className="w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm outline-none ring-[var(--accent)] focus:ring-2"
+                  className="store-textarea"
                   value={values[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                   required={field.required}
@@ -248,7 +259,7 @@ export function PostPaymentForm({
                       const f = e.target.files?.[0];
                       if (f) void uploadFieldFile(field, f);
                     }}
-                    className="text-sm"
+                    className="store-file-input"
                   />
                   {uploading === field.id ? (
                     <p className="text-start text-xs text-[var(--muted)]">
@@ -270,7 +281,7 @@ export function PostPaymentForm({
         type="button"
         disabled={submitting || uploading !== null}
         onClick={() => void handleConfirm()}
-        className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="store-btn-primary mt-8 rounded-xl"
       >
         {submitting ? (
           <span className="inline-flex items-center gap-2">

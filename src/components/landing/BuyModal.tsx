@@ -1,6 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+
+const PostPaymentForm = dynamic(
+  () =>
+    import("./PostPaymentForm").then((m) => ({ default: m.PostPaymentForm })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="flex min-h-[140px] items-center justify-center py-6"
+        aria-busy
+      >
+        <span
+          className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+          aria-hidden
+        />
+      </div>
+    ),
+  },
+);
 
 function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
   const [failed, setFailed] = useState(false);
@@ -21,6 +41,8 @@ function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
     <img
       src={u}
       alt=""
+      loading="lazy"
+      decoding="async"
       className="h-14 w-14 shrink-0 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] object-contain p-1"
       onError={() => setFailed(true)}
     />
@@ -29,7 +51,6 @@ function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
 import type { ProductRow } from "@/types";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
 import { toast } from "sonner";
-import { PostPaymentForm } from "./PostPaymentForm";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
 import { formatPrice } from "@/lib/currency";
@@ -239,16 +260,16 @@ export function BuyModal({ product, open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-4">
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-[var(--card)] p-6 shadow-xl"
+        className="max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl bg-[var(--card)] p-4 shadow-xl sm:rounded-2xl sm:p-6"
         role="dialog"
         aria-modal="true"
         dir={dir}
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 text-start">
-            <h2 className="text-xl font-semibold">{t("buyModal.checkout")}</h2>
+            <h2 className="text-lg font-semibold sm:text-xl">{t("buyModal.checkout")}</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">{product.name}</p>
             <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
               {t("buyModal.amountDue", { price: formatPrice(total) })}
@@ -257,7 +278,7 @@ export function BuyModal({ product, open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--accent-muted)]"
+            className="touch-manipulation [-webkit-tap-highlight-color:transparent] shrink-0 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--accent-muted)] min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             {t("buyModal.close")}
           </button>
@@ -268,7 +289,7 @@ export function BuyModal({ product, open, onClose }: Props) {
             <button
               type="button"
               onClick={() => setPhase("direct")}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3.5 text-base font-semibold text-[var(--accent-foreground)] shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90"
+              className="store-btn-primary rounded-xl shadow-lg shadow-[var(--accent)]/25"
             >
               {t("buyModal.directPayment")}
             </button>
@@ -277,25 +298,25 @@ export function BuyModal({ product, open, onClose }: Props) {
               target="_blank"
               rel="noreferrer"
               onClick={() => onClose()}
-              className="inline-flex w-full items-center justify-center rounded-xl border-2 border-[var(--accent-muted)] bg-[var(--background)] px-4 py-3.5 text-base font-medium text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/40"
+              className="inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl border-2 border-[var(--accent-muted)] bg-[var(--background)] px-4 py-3.5 text-base font-medium text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/40 active:opacity-95"
             >
               {t("buyModal.orderViaWhatsApp")}
             </a>
           </div>
         ) : phase === "direct" ? (
-          <div className="mt-6 space-y-5">
+          <div className="mt-6 space-y-5 sm:space-y-6">
             <button
               type="button"
               onClick={() => setPhase("choose")}
-              className="text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+              className="touch-manipulation text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline min-h-[44px] py-1"
             >
               {t("buyModal.backToOptions")}
             </button>
 
             <div>
-              <label className="text-sm font-medium">{t("buyModal.paymentMethod")}</label>
+              <label className="text-sm font-medium sm:text-base">{t("buyModal.paymentMethod")}</label>
               <select
-                className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
+                className="store-select mt-2"
                 value={selectedId ?? ""}
                 onChange={(e) => setSelectedId(e.target.value)}
               >
@@ -315,7 +336,7 @@ export function BuyModal({ product, open, onClose }: Props) {
                     <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
                       {t("buyModal.sendPaymentTo")}
                     </p>
-                    <p className="mt-1 font-mono text-lg font-semibold tracking-tight" dir="ltr">
+                    <p className="mt-1 break-all font-mono text-base font-semibold tracking-tight sm:text-lg" dir="ltr">
                       {selected.account_number}
                     </p>
                   </div>
@@ -327,20 +348,21 @@ export function BuyModal({ product, open, onClose }: Props) {
               </p>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">{t("buyModal.phone")}</label>
+                <label className="text-sm font-medium sm:text-base">{t("buyModal.phone")}</label>
                 <input
-                  className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
+                  className="store-input mt-2"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   autoComplete="tel"
+                  inputMode="tel"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">{t("buyModal.address")}</label>
+                <label className="text-sm font-medium sm:text-base">{t("buyModal.address")}</label>
                 <input
-                  className="mt-1.5 w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-start text-sm"
+                  className="store-input mt-2"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   autoComplete="street-address"
@@ -349,22 +371,22 @@ export function BuyModal({ product, open, onClose }: Props) {
             </div>
 
             <div>
-              <label className="text-sm font-medium">{t("buyModal.receiptImage")}</label>
+              <label className="text-sm font-medium sm:text-base">{t("buyModal.receiptImage")}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 disabled={busy}
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="mt-1.5 w-full text-sm"
+                className="store-file-input mt-2"
               />
-              <p className="mt-1 text-xs text-[var(--muted)]">{t("buyModal.receiptHint")}</p>
+              <p className="mt-2 text-xs text-[var(--muted)] sm:text-sm">{t("buyModal.receiptHint")}</p>
             </div>
 
             <button
               type="button"
               disabled={busy || !selected}
               onClick={() => void handlePaySubmit()}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="store-btn-primary rounded-xl disabled:opacity-60"
             >
               {busy ? (
                 <span className="inline-flex items-center gap-2">
@@ -379,6 +401,7 @@ export function BuyModal({ product, open, onClose }: Props) {
         ) : orderId && completionToken ? (
           <div className="mt-6">
             <PostPaymentForm
+              embedded
               product={product}
               orderId={orderId}
               completionToken={completionToken}

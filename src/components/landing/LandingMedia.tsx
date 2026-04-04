@@ -54,7 +54,8 @@ function isMuxHostedUrl(url: string): boolean {
 }
 
 function muxPosterUrl(playbackId: string): string {
-  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&width=1280&fit_mode=preserve`;
+  /* Smaller default poster for faster LCP on mobile networks */
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&width=720&fit_mode=preserve`;
 }
 
 /** Cloudflare Stream embed (adaptive playback inside iframe). */
@@ -103,15 +104,17 @@ type Props = {
   priority?: boolean;
 };
 
-const muxPlayerCommon = {
-  streamType: "on-demand" as const,
-  accentColor: "#00ff00",
-  playsInline: true,
-  preload: "auto" as const,
-  capRenditionToPlayerSize: true,
-  autoPlay: true,
-  muted: true,
-};
+function muxPlayerOpts(priority: boolean | undefined) {
+  return {
+    streamType: "on-demand" as const,
+    accentColor: "#00ff00",
+    playsInline: true,
+    preload: (priority ? "auto" : "metadata") as "auto" | "metadata",
+    capRenditionToPlayerSize: true,
+    autoPlay: !!priority,
+    muted: true,
+  };
+}
 
 const muxPlayerLayoutClass =
   "absolute inset-0 block h-full w-full max-h-full max-w-full";
@@ -139,7 +142,7 @@ export function LandingMedia({ product, priority }: Props) {
 
   useEffect(() => {
     const el = muxRef.current;
-    if (!el) return;
+    if (!el || !priority) return;
     const kick = () => {
       try {
         el.muted = true;
@@ -158,7 +161,7 @@ export function LandingMedia({ product, priority }: Props) {
       el.removeEventListener("loadeddata", kick);
       el.removeEventListener("canplay", kick);
     };
-  }, [url]);
+  }, [url, priority]);
 
   useEffect(() => {
     const v = nativeVideoRef.current;
@@ -166,13 +169,14 @@ export function LandingMedia({ product, priority }: Props) {
     v.muted = true;
     v.defaultMuted = true;
     v.setAttribute("playsinline", "");
+    if (!priority) return;
     const attempt = v.play();
     if (attempt !== undefined) {
       attempt.catch(() => {
         /* Autoplay blocked; user can use controls */
       });
     }
-  }, [url]);
+  }, [url, priority]);
 
   const handleMuxLoadedMetadata = useCallback((e: Event) => {
     const el = e.currentTarget as MuxPlayerElement;
@@ -189,9 +193,9 @@ export function LandingMedia({ product, priority }: Props) {
       }
       v.muted = true;
       v.defaultMuted = true;
-      void v.play().catch(() => {});
+      if (priority) void v.play().catch(() => {});
     },
-    [],
+    [priority],
   );
 
   if (!url) {
@@ -214,9 +218,10 @@ export function LandingMedia({ product, priority }: Props) {
           alt={product.name}
           fill
           className="object-contain sm:object-cover"
-          sizes="100vw"
+          sizes="(max-width: 640px) 100vw, min(90vw, 1280px)"
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
+          quality={85}
         />
       </div>
     );
@@ -270,7 +275,7 @@ export function LandingMedia({ product, priority }: Props) {
           <MuxPlayer
             ref={muxRef}
             playbackId={muxPlaybackId}
-            {...muxPlayerCommon}
+            {...muxPlayerOpts(priority)}
             placeholder={placeholder}
             poster={placeholder}
             metadataVideoTitle={product.name}
@@ -282,7 +287,7 @@ export function LandingMedia({ product, priority }: Props) {
           <MuxPlayer
             ref={muxRef}
             src={url}
-            {...muxPlayerCommon}
+            {...muxPlayerOpts(priority)}
             metadataVideoTitle={product.name}
             className={muxPlayerLayoutClass}
             style={{ width: "100%", height: "100%" }}
@@ -312,8 +317,8 @@ export function LandingMedia({ product, priority }: Props) {
           controls
           playsInline
           muted
-          autoPlay
-          preload="auto"
+          autoPlay={!!priority}
+          preload={priority ? "auto" : "metadata"}
           onLoadedMetadata={handleNativeLoadedMetadata}
           {...(priority ? { fetchPriority: "high" as const } : {})}
         />

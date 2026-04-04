@@ -30,7 +30,7 @@ type Props = {
 };
 
 const primaryCtaClass =
-  "inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-base font-semibold text-[var(--accent-foreground)] shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90 active:opacity-95";
+  "store-btn-primary rounded-2xl px-6 py-3.5 shadow-lg shadow-[var(--accent)]/25";
 
 export function ProductLanding({ product }: Props) {
   const { t, dir } = useLanguage();
@@ -90,13 +90,13 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="mx-auto min-w-0 max-w-5xl overflow-x-clip px-3 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:px-8"
+      className="mx-auto min-w-0 max-w-5xl overflow-x-clip px-4 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:px-8"
       dir={dir}
     >
       <MetaPixel pixelId={product.meta_pixel_id} />
 
-      <header className="px-1 text-center sm:px-0">
-        <h1 className="text-balance break-words text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
+      <header className="px-0 text-center sm:px-0">
+        <h1 className="text-balance break-words text-[clamp(1.375rem,5vw,3rem)] font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
           {product.name}
         </h1>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-base sm:mt-4 sm:gap-3 sm:text-lg">
@@ -177,10 +177,11 @@ export function ProductLanding({ product }: Props) {
                   alt=""
                   fill
                   className="object-cover"
-                  sizes="(max-width: 399px) 100vw, (max-width: 639px) 50vw, 33vw"
+                  sizes="(max-width: 639px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   loading="lazy"
                   fetchPriority="low"
                   decoding="async"
+                  quality={80}
                 />
               </div>
             ))}
@@ -237,13 +238,14 @@ export function ProductLanding({ product }: Props) {
 
       {resume ? (
         <div
-          className="fixed inset-0 z-[45] flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[45] flex items-end justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={t("completeOrder.pageTitle")}
         >
-          <div className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl sm:p-6">
+          <div className="max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl sm:rounded-2xl sm:p-6">
             <PostPaymentForm
+              embedded
               product={product}
               orderId={resume.orderId}
               completionToken={resume.completionToken}

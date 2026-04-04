@@ -93,7 +93,7 @@ export function CompleteOrderClient({ orderId }: Props) {
   if (loading) {
     return (
       <div
-        className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]"
+        className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center text-sm text-[var(--muted)] sm:py-16"
         dir={dir}
       >
         {t("completeOrder.loading")}
@@ -103,7 +103,10 @@ export function CompleteOrderClient({ orderId }: Props) {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center" dir={dir}>
+      <div
+        className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center sm:py-16"
+        dir={dir}
+      >
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
@@ -111,7 +114,10 @@ export function CompleteOrderClient({ orderId }: Props) {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center" dir={dir}>
+      <div
+        className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center sm:py-16"
+        dir={dir}
+      >
         <p className="font-medium">{t("completeOrder.alreadyComplete")}</p>
       </div>
     );
@@ -120,9 +126,12 @@ export function CompleteOrderClient({ orderId }: Props) {
   if (!product) return null;
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10" dir={dir}>
+    <div
+      className="mx-auto min-w-0 max-w-xl overflow-x-clip px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6 sm:py-10"
+      dir={dir}
+    >
       <MetaPixel pixelId={product.meta_pixel_id} />
-      <h1 className="text-start text-2xl font-semibold">
+      <h1 className="text-start text-xl font-semibold sm:text-2xl">
         {t("completeOrder.pageTitle")}
       </h1>
       <p className="mt-2 text-start text-sm text-[var(--muted)]">{product.name}</p>
