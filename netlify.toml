@@ -1,4 +1,13 @@
 # Next.js: do not set publish — @netlify/plugin-nextjs handles output + runtime.
+#
+# Netlify → Site configuration → Environment variables: set these for Production
+# (and Preview if you use it). Values must match your Supabase project; copy
+# from a local .env.local — do not commit secrets to git.
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   SUPABASE_SERVICE_ROLE_KEY   (server-only; required for /api/orders, uploads, etc.)
+#   NEXT_PUBLIC_SITE_URL        (your live URL, e.g. https://yoursite.netlify.app)
+#
 [build]
   command = "npm run build"
 
