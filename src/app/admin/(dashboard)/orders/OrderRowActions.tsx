@@ -54,10 +54,10 @@ export function OrderRowActions({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <select
         disabled={busy}
-        className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-2 py-1 text-xs"
+        className="min-h-[44px] w-full max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm"
         value={status}
         onChange={(e) => void onStatus(e.target.value as OrderStatus)}
       >
@@ -71,18 +71,18 @@ export function OrderRowActions({
           href={waUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-center text-xs font-medium text-[var(--accent)] underline"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-3 text-center text-sm font-medium text-[var(--accent)] underline-offset-2 transition hover:bg-[var(--accent-muted)]/15"
         >
           {a.orderActions.sendFormLink}
         </a>
       ) : (
-        <span className="text-xs text-[var(--muted)]">{a.orderActions.formDone}</span>
+        <span className="text-sm text-[var(--muted)]">{a.orderActions.formDone}</span>
       )}
       {receiptPath ? (
         <button
           type="button"
           disabled={busy}
-          className="text-xs text-[var(--muted)] underline"
+          className="min-h-[44px] text-sm text-[var(--muted)] underline underline-offset-2"
           onClick={async () => {
             setBusy(true);
             try {
