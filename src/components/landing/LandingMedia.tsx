@@ -2,7 +2,14 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type MuxPlayerElement from "@mux/mux-player";
 import type { ProductRow } from "@/types";
 
@@ -20,6 +27,8 @@ const MuxPlayer = dynamic(
     ),
   },
 );
+
+const DEFAULT_ASPECT = { w: 16, h: 9 };
 
 function isHls(url: string) {
   return /\.m3u8($|\?)/i.test(url) || /stream\.mux\.com/i.test(url);
@@ -82,6 +91,47 @@ function cloudflareStreamIframeSrcWithAutoplay(url: string): string {
   }
 }
 
+/** Video UID for thumbnail / API paths (iframe or customer stream host). */
+function cloudflareStreamVideoUidFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "iframe.videodelivery.net") {
+      const first = u.pathname.split("/").filter(Boolean)[0];
+      return first ?? null;
+    }
+    if (/\.cloudflarestream\.com$/i.test(u.hostname)) {
+      const parts = u.pathname.split("/").filter(Boolean);
+      const iframeIdx = parts.findIndex((p) => p.toLowerCase() === "iframe");
+      if (iframeIdx > 0) return parts[iframeIdx - 1] ?? null;
+      if (parts.length >= 1) return parts[0] ?? null;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Responsive box that preserves source aspect ratio (no stretching).
+ * Portrait: prioritize full-height visibility within a tall cap; landscape: wide hero cap.
+ */
+function adaptiveVideoContainerStyle(aspect: { w: number; h: number }): CSSProperties {
+  const { w, h } = aspect;
+  if (w <= 0 || h <= 0) {
+    return { aspectRatio: `${DEFAULT_ASPECT.w} / ${DEFAULT_ASPECT.h}`, maxWidth: "100%" };
+  }
+  const portrait = h > w;
+  const maxMain = portrait ? "min(92vh, 56rem)" : "min(85vh, 56rem)";
+  return {
+    aspectRatio: `${w} / ${h}`,
+    maxHeight: maxMain,
+    maxWidth: "100%",
+    width: `min(100%, calc(${maxMain} * ${w} / ${h}))`,
+    marginLeft: "auto",
+    marginRight: "auto",
+  };
+}
+
 type Props = {
   product: ProductRow;
   priority?: boolean;
@@ -102,12 +152,20 @@ const muxPlayerLayoutClass =
 
 export function LandingMedia({ product, priority }: Props) {
   const url = product.media_url?.trim() ?? "";
-  const [muxAspect, setMuxAspect] = useState("16 / 9");
+  const [aspectDims, setAspectDims] = useState(DEFAULT_ASPECT);
+  const [nativeDims, setNativeDims] = useState<{ w: number; h: number } | null>(null);
+  const [cfDims, setCfDims] = useState<{ w: number; h: number } | null>(null);
   const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  const resetAspectState = useCallback(() => {
+    setAspectDims(DEFAULT_ASPECT);
+    setNativeDims(null);
+    setCfDims(null);
+  }, []);
+
   useEffect(() => {
-    setMuxAspect("16 / 9");
-  }, [url]);
+    resetAspectState();
+  }, [url, resetAspectState]);
 
   useEffect(() => {
     const v = nativeVideoRef.current;
@@ -121,12 +179,61 @@ export function LandingMedia({ product, priority }: Props) {
     }
   }, [url]);
 
+  /** Cloudflare iframe: derive aspect from public thumbnail (matches video frame). */
+  useEffect(() => {
+    if (!url || !isCloudflareStreamEmbedUrl(url)) {
+      return;
+    }
+    const uid = cloudflareStreamVideoUidFromUrl(url);
+    if (!uid) return;
+    let cancelled = false;
+    const img = new window.Image();
+    img.onload = () => {
+      if (cancelled) return;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setCfDims({ w: img.naturalWidth, h: img.naturalHeight });
+      }
+    };
+    img.onerror = () => {
+      /* keep default 16:9 */
+    };
+    img.src = `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?width=1280`;
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
   const handleMuxLoadedMetadata = useCallback((e: Event) => {
     const el = e.currentTarget as MuxPlayerElement;
     if (el.videoWidth > 0 && el.videoHeight > 0) {
-      setMuxAspect(`${el.videoWidth} / ${el.videoHeight}`);
+      setAspectDims({ w: el.videoWidth, h: el.videoHeight });
     }
   }, []);
+
+  const handleNativeLoadedMetadata = useCallback(
+    (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      const el = e.currentTarget;
+      if (el.videoWidth > 0 && el.videoHeight > 0) {
+        setNativeDims({ w: el.videoWidth, h: el.videoHeight });
+      }
+    },
+    [],
+  );
+
+  const muxBoxStyle = useMemo(
+    () => adaptiveVideoContainerStyle(aspectDims),
+    [aspectDims],
+  );
+
+  const cfBoxStyle = useMemo(
+    () => adaptiveVideoContainerStyle(cfDims ?? DEFAULT_ASPECT),
+    [cfDims],
+  );
+
+  const nativeBoxStyle = useMemo(
+    () => adaptiveVideoContainerStyle(nativeDims ?? DEFAULT_ASPECT),
+    [nativeDims],
+  );
 
   if (!url) {
     return (
@@ -159,7 +266,10 @@ export function LandingMedia({ product, priority }: Props) {
   if (isCloudflareStreamEmbedUrl(url)) {
     const iframeSrc = cloudflareStreamIframeSrcWithAutoplay(url);
     return (
-      <div className="relative aspect-video w-full min-h-0 min-w-0 overflow-hidden bg-black">
+      <div
+        className="relative min-h-0 min-w-0 overflow-hidden bg-black"
+        style={cfBoxStyle}
+      >
         <iframe
           src={iframeSrc}
           title={product.name}
@@ -183,8 +293,8 @@ export function LandingMedia({ product, priority }: Props) {
     const placeholder = muxPlaybackId ? muxPosterUrl(muxPlaybackId) : undefined;
     return (
       <div
-        className="relative w-full min-h-0 min-w-0 overflow-hidden bg-black"
-        style={{ aspectRatio: muxAspect }}
+        className="relative min-h-0 min-w-0 overflow-hidden bg-black"
+        style={muxBoxStyle}
       >
         {muxPlaybackId ? (
           <MuxPlayer
@@ -212,18 +322,24 @@ export function LandingMedia({ product, priority }: Props) {
   }
 
   return (
-    <div className="w-full bg-black">
-      <video
-        ref={nativeVideoRef}
-        className="mx-auto block h-auto w-full max-h-[min(85vh,56rem)] max-w-full bg-black"
-        src={url}
-        controls
-        playsInline
-        muted
-        autoPlay
-        preload="auto"
-        {...(priority ? { fetchPriority: "high" as const } : {})}
-      />
+    <div className="flex w-full justify-center bg-black">
+      <div
+        className="relative min-h-0 min-w-0 overflow-hidden bg-black"
+        style={nativeBoxStyle}
+      >
+        <video
+          ref={nativeVideoRef}
+          className="absolute inset-0 h-full w-full object-contain"
+          src={url}
+          controls
+          playsInline
+          muted
+          autoPlay
+          preload="auto"
+          onLoadedMetadata={handleNativeLoadedMetadata}
+          {...(priority ? { fetchPriority: "high" as const } : {})}
+        />
+      </div>
     </div>
   );
 }
