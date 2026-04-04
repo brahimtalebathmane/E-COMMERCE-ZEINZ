@@ -52,7 +52,7 @@ export function FormBuilder({ value, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir="rtl">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-sm font-semibold">{a.formBuilder.title}</h3>
         <button

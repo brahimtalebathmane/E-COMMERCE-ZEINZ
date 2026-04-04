@@ -5,6 +5,69 @@ import { adminAr as a } from "@/locales/admin-ar";
 
 export const dynamic = "force-dynamic";
 
+function formatFormFieldValue(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean"
+  ) {
+    return String(v);
+  }
+  if (Array.isArray(v)) {
+    return v.map((x) => formatFormFieldValue(x)).join(" · ");
+  }
+  if (typeof v === "object") {
+    return Object.entries(v as Record<string, unknown>)
+      .map(([k, val]) => `${k}: ${formatFormFieldValue(val)}`)
+      .join(" · ");
+  }
+  return String(v);
+}
+
+function OrderFormDataCell({
+  fd,
+  emptyLabel,
+}: {
+  fd: Record<string, unknown>;
+  emptyLabel: string;
+}) {
+  const user = Object.entries(fd).filter(([k]) => !k.startsWith("_"));
+  const system = Object.entries(fd).filter(([k]) => k.startsWith("_"));
+  if (user.length === 0 && system.length === 0) {
+    return <span className="text-[var(--muted)]">{emptyLabel}</span>;
+  }
+  return (
+    <div className="space-y-2 text-start text-xs">
+      {user.length > 0 ? (
+        <ul className="space-y-1.5">
+          {user.map(([k, v]) => (
+            <li key={k}>
+              <span className="font-semibold text-[var(--foreground)]">{k}</span>
+              <span className="mx-1 text-[var(--muted)]">:</span>
+              <span className="break-all text-[var(--muted)]">
+                {formatFormFieldValue(v)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {system.length > 0 ? (
+        <ul className="space-y-1 border-t border-[var(--accent-muted)]/40 pt-2 text-[10px] text-[var(--muted)]">
+          {system.map(([k, v]) => (
+            <li key={k} className="break-all">
+              <span className="font-mono" dir="ltr">
+                {k}
+              </span>{" "}
+              <span dir="auto">{formatFormFieldValue(v)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 type OrderListRow = {
   id: string;
   customer_name: string | null;
@@ -102,10 +165,8 @@ export default async function AdminOrdersPage() {
                   <td className="px-3 py-2 align-top" dir="ltr">
                     ${Number(o.total_price).toFixed(2)}
                   </td>
-                  <td className="max-w-[220px] px-3 py-2 align-top font-mono text-[10px] text-[var(--muted)]">
-                    <pre className="whitespace-pre-wrap break-all" dir="ltr">
-                      {JSON.stringify(fd, null, 0)}
-                    </pre>
+                  <td className="max-w-[260px] px-3 py-2 align-top text-[var(--muted)]">
+                    <OrderFormDataCell fd={fd} emptyLabel={a.orders.formDataEmpty} />
                   </td>
                   <td className="px-3 py-2 align-top">
                     <OrderRowActions
