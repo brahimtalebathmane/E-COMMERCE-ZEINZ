@@ -34,6 +34,26 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
 import { formatPrice } from "@/lib/currency";
 
+async function parseResponseJson(
+  res: Response,
+): Promise<Record<string, unknown>> {
+  try {
+    const text = await res.text();
+    if (!text.trim()) return {};
+    const parsed: unknown = JSON.parse(text);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+    ) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 type Method = {
   id: string;
   label: string;
@@ -113,58 +133,75 @@ export function BuyModal({ product, open, onClose }: Props) {
           address: address.trim() || undefined,
         }),
       });
-      const created = (await createRes.json()) as {
-        order_id?: string;
-        completion_token?: string;
-        error?: string;
-      };
+      const created = await parseResponseJson(createRes);
       if (!createRes.ok) {
-        const msg = created.error ?? "Could not create order";
-        throw new Error(translateErrorMessage(locale, msg));
-      }
-      if (!created.order_id || !created.completion_token) {
+        const raw =
+          typeof created.error === "string" ? created.error.trim() : "";
         throw new Error(
-          translateErrorMessage(locale, "Invalid server response"),
+          raw
+            ? translateErrorMessage(locale, raw)
+            : t("errors.orderSubmitFailed"),
         );
+      }
+      const orderId = created.order_id;
+      const completionTok = created.completion_token;
+      if (
+        typeof orderId !== "string" ||
+        typeof completionTok !== "string" ||
+        !orderId ||
+        !completionTok
+      ) {
+        throw new Error(t("errors.orderSubmitFailed"));
       }
 
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("order_id", created.order_id);
-      fd.append("completion_token", created.completion_token);
+      fd.append("order_id", orderId);
+      fd.append("completion_token", completionTok);
 
       const upRes = await fetch("/api/upload/receipt", {
         method: "POST",
         body: fd,
       });
-      const uploaded = (await upRes.json()) as {
-        storage_path?: string;
-        error?: string;
-      };
+      const uploaded = await parseResponseJson(upRes);
       if (!upRes.ok) {
-        const msg = uploaded.error ?? "Receipt upload failed";
-        throw new Error(translateErrorMessage(locale, msg));
+        const raw =
+          typeof uploaded.error === "string" ? uploaded.error.trim() : "";
+        throw new Error(
+          raw
+            ? translateErrorMessage(locale, raw)
+            : t("errors.orderSubmitFailed"),
+        );
+      }
+      const storagePath = uploaded.storage_path;
+      if (typeof storagePath !== "string" || !storagePath) {
+        throw new Error(t("errors.orderSubmitFailed"));
       }
 
-      const patchRes = await fetch(`/api/orders/${created.order_id}`, {
+      const patchRes = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          completion_token: created.completion_token,
-          receipt_image_url: uploaded.storage_path,
+          completion_token: completionTok,
+          receipt_image_url: storagePath,
         }),
       });
+      const patched = await parseResponseJson(patchRes);
       if (!patchRes.ok) {
-        const p = (await patchRes.json()) as { error?: string };
-        const msg = p.error ?? "Could not save receipt";
-        throw new Error(translateErrorMessage(locale, msg));
+        const raw =
+          typeof patched.error === "string" ? patched.error.trim() : "";
+        throw new Error(
+          raw
+            ? translateErrorMessage(locale, raw)
+            : t("errors.orderSubmitFailed"),
+        );
       }
 
       toast.success(t("buyModal.receiptUploaded"));
 
       const payload = {
-        orderId: created.order_id,
-        completionToken: created.completion_token,
+        orderId,
+        completionToken: completionTok,
         productSlug: product.slug,
       };
       try {
@@ -173,8 +210,8 @@ export function BuyModal({ product, open, onClose }: Props) {
         // ignore quota
       }
 
-      setOrderId(created.order_id);
-      setCompletionToken(created.completion_token);
+      setOrderId(orderId);
+      setCompletionToken(completionTok);
       setPhase("form");
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("errors.somethingWrong");

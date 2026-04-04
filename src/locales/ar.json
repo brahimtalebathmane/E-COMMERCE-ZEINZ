@@ -89,7 +89,9 @@
     "receiptUploadFailed": "فشل رفع الإيصال",
     "couldNotSaveReceipt": "تعذر حفظ الإيصال",
     "couldNotSaveOrder": "تعذر حفظ الطلب",
-    "somethingWrong": "حدث خطأ ما"
+    "somethingWrong": "حدث خطأ ما",
+    "orderSubmitFailed": "حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى",
+    "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول."
   },
   "lang": {
     "ar": "عربي",

@@ -74,5 +74,11 @@ export function mapApiErrorToKey(error: string): string | null {
     "Receipt upload failed": "errors.receiptUploadFailed",
   };
   if (extra[normalized]) return extra[normalized];
+  if (
+    normalized.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+    normalized.includes("SUPABASE_SERVICE_ROLE_KEY")
+  ) {
+    return "errors.supabaseEnvMissing";
+  }
   return null;
 }

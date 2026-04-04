@@ -89,7 +89,9 @@
     "receiptUploadFailed": "Échec du téléversement du reçu",
     "couldNotSaveReceipt": "Impossible d’enregistrer le reçu",
     "couldNotSaveOrder": "Impossible d’enregistrer la commande",
-    "somethingWrong": "Une erreur s’est produite"
+    "somethingWrong": "Une erreur s’est produite",
+    "orderSubmitFailed": "Une erreur s’est produite lors de l’envoi de la commande. Réessayez.",
+    "supabaseEnvMissing": "Configuration serveur incomplète. Contactez l’administrateur."
   },
   "lang": {
     "ar": "AR",
