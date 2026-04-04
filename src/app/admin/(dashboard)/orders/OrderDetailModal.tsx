@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId } from "react";
 import type { AdminOrderRow } from "./types";
+import { normalizeFormFields } from "@/lib/form-fields";
 import { OrderFormDataDisplay } from "@/components/admin/OrderFormDataDisplay";
 import { ReceiptThumbnail } from "./ReceiptThumbnail";
 import { OrderRowActions } from "./OrderRowActions";
@@ -187,8 +188,12 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {a.orders.sectionFormData}
               </h3>
-              <div className="mt-3 rounded-xl border border-[var(--accent-muted)]/60 bg-[var(--card)]/50 p-3">
-                <OrderFormDataDisplay fd={fd} emptyLabel={a.orders.formDataEmpty} />
+              <div className="mt-3 rounded-xl border border-[var(--accent-muted)]/60 bg-[var(--card)]/50 p-3 sm:p-4">
+                <OrderFormDataDisplay
+                  formData={fd}
+                  fieldDefinitions={normalizeFormFields(product?.form_fields_ar ?? [])}
+                  emptyLabel={a.orders.formDataEmpty}
+                />
               </div>
             </section>
 

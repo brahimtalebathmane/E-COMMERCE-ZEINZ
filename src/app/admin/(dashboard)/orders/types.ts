@@ -9,6 +9,8 @@ export type AdminOrderProduct = {
   description_ar: string;
   media_type: "image" | "video";
   media_url: string;
+  /** Post-payment field definitions (Arabic labels); JSON from DB. */
+  form_fields_ar?: unknown;
 } | null;
 
 export type AdminOrderRow = {

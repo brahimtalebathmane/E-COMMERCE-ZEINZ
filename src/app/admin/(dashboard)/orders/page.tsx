@@ -34,7 +34,8 @@ export default async function AdminOrdersPage() {
         discount_price,
         description_ar,
         media_type,
-        media_url
+        media_url,
+        form_fields_ar
       )
     `,
     )
