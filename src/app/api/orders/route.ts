@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         payment_number: data.payment_number ?? null,
         transaction_reference: data.transaction_reference ?? null,
         total_price: total,
+        currency: "MRU",
         status: "pending",
         form_data: {},
       })

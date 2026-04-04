@@ -12,7 +12,15 @@ export async function GET(request: Request, context: Ctx) {
     return NextResponse.json({ error: "token required" }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  let supabase;
+  try {
+    supabase = createServiceClient();
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error("[GET /api/orders/:id]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+
   const { data, error } = await supabase
     .from("orders")
     .select(
@@ -80,53 +88,54 @@ export async function PATCH(request: Request, context: Ctx) {
     return NextResponse.json({ error: "completion_token required" }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  try {
+    const supabase = createServiceClient();
 
-  const { data: existing, error: fetchErr } = await supabase
-    .from("orders")
-    .select(
-      "id, completion_token, form_data, product_id, total_price, receipt_image_url",
-    )
-    .eq("id", id)
-    .eq("completion_token", body.completion_token)
-    .maybeSingle();
+    const { data: existing, error: fetchErr } = await supabase
+      .from("orders")
+      .select(
+        "id, completion_token, form_data, product_id, total_price, receipt_image_url",
+      )
+      .eq("id", id)
+      .eq("completion_token", body.completion_token)
+      .maybeSingle();
 
-  if (fetchErr || !existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+    if (fetchErr || !existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-  const nextForm =
-    body.form_data !== undefined
-      ? { ...(existing.form_data as Record<string, unknown>), ...body.form_data }
-      : (existing.form_data as Record<string, unknown>);
+    const nextForm =
+      body.form_data !== undefined
+        ? { ...(existing.form_data as Record<string, unknown>), ...body.form_data }
+        : (existing.form_data as Record<string, unknown>);
 
-  const patch: Record<string, unknown> = {};
+    const patch: Record<string, unknown> = {};
 
-  if (body.customer_name !== undefined) patch.customer_name = body.customer_name;
-  if (body.phone !== undefined) patch.phone = body.phone;
-  if (body.address !== undefined) patch.address = body.address;
-  if (body.receipt_image_url !== undefined)
-    patch.receipt_image_url = body.receipt_image_url;
-  if (body.transaction_reference !== undefined)
-    patch.transaction_reference = body.transaction_reference;
-  if (body.payment_method !== undefined) patch.payment_method = body.payment_method;
-  if (body.payment_number !== undefined) patch.payment_number = body.payment_number;
-  if (body.form_data !== undefined) patch.form_data = nextForm;
+    if (body.customer_name !== undefined) patch.customer_name = body.customer_name;
+    if (body.phone !== undefined) patch.phone = body.phone;
+    if (body.address !== undefined) patch.address = body.address;
+    if (body.receipt_image_url !== undefined)
+      patch.receipt_image_url = body.receipt_image_url;
+    if (body.transaction_reference !== undefined)
+      patch.transaction_reference = body.transaction_reference;
+    if (body.payment_method !== undefined) patch.payment_method = body.payment_method;
+    if (body.payment_number !== undefined) patch.payment_number = body.payment_number;
+    if (body.form_data !== undefined) patch.form_data = nextForm;
 
-  if (body.confirm_purchase) {
-    patch.form_data = {
-      ...nextForm,
-      _purchase_confirmed_at: new Date().toISOString(),
-    };
-  }
+    if (body.confirm_purchase) {
+      patch.form_data = {
+        ...nextForm,
+        _purchase_confirmed_at: new Date().toISOString(),
+      };
+    }
 
-  const { data: updated, error } = await supabase
-    .from("orders")
-    .update(patch)
-    .eq("id", id)
-    .eq("completion_token", body.completion_token)
-    .select(
-      `
+    const { data: updated, error } = await supabase
+      .from("orders")
+      .update(patch)
+      .eq("id", id)
+      .eq("completion_token", body.completion_token)
+      .select(
+        `
       id,
       product_id,
       total_price,
@@ -138,12 +147,17 @@ export async function PATCH(request: Request, context: Ctx) {
         meta_pixel_id
       )
     `,
-    )
-    .single();
+      )
+      .single();
 
-  if (error || !updated) {
-    return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+    if (error || !updated) {
+      return NextResponse.json({ error: error?.message ?? "Update failed" }, { status: 500 });
+    }
+
+    return NextResponse.json({ order: updated, confirm_purchase: body.confirm_purchase });
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error("[PATCH /api/orders/:id]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  return NextResponse.json({ order: updated, confirm_purchase: body.confirm_purchase });
 }
