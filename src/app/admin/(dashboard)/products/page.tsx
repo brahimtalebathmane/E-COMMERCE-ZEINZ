@@ -20,7 +20,7 @@ export default async function AdminProductsPage() {
         <h1 className="text-2xl font-semibold">{a.products.title}</h1>
         <Link
           href="/admin/products/new"
-          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-foreground)]"
         >
           {a.products.newProduct}
         </Link>

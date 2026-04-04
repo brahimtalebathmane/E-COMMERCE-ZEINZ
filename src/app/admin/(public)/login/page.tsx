@@ -66,7 +66,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-60"
         >
           {loading ? a.login.signingIn : a.login.signIn}
         </button>

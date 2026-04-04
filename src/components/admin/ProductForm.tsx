@@ -786,7 +786,7 @@ export function ProductForm({ mode, initial }: Props) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-60"
         >
           {busy
             ? a.productForm.saving

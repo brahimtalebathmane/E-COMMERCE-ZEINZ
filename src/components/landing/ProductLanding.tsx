@@ -16,7 +16,7 @@ type Props = {
 };
 
 const primaryCtaClass =
-  "inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90 active:opacity-95";
+  "inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-base font-semibold text-[var(--accent-foreground)] shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90 active:opacity-95";
 
 export function ProductLanding({ product }: Props) {
   const { t, dir } = useLanguage();

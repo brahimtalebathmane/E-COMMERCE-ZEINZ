@@ -148,7 +148,7 @@ export function CreatePaymentMethodForm() {
       <button
         type="submit"
         disabled={busy}
-        className="mt-4 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-60"
       >
         {busy ? a.paymentMethods.saving : a.paymentMethods.add}
       </button>

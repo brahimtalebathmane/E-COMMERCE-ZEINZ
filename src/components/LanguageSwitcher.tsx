@@ -21,7 +21,7 @@ export function LanguageSwitcher() {
         onClick={() => select("ar")}
         className={`rounded-lg px-3 py-1.5 transition ${
           locale === "ar"
-            ? "bg-[var(--accent)] text-white"
+            ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
             : "text-[var(--muted)] hover:text-[var(--foreground)]"
         }`}
       >
@@ -32,7 +32,7 @@ export function LanguageSwitcher() {
         onClick={() => select("fr")}
         className={`rounded-lg px-3 py-1.5 transition ${
           locale === "fr"
-            ? "bg-[var(--accent)] text-white"
+            ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
             : "text-[var(--muted)] hover:text-[var(--foreground)]"
         }`}
       >

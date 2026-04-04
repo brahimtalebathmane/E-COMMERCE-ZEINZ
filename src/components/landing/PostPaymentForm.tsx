@@ -236,7 +236,7 @@ export function PostPaymentForm({
         type="button"
         disabled={submitting || uploading !== null}
         onClick={() => void handleConfirm()}
-        className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? (
           <span className="inline-flex items-center gap-2">
@@ -254,7 +254,7 @@ export function PostPaymentForm({
 function Spinner() {
   return (
     <span
-      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent-foreground)] border-t-transparent"
       aria-hidden
     />
   );

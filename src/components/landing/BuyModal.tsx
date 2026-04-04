@@ -268,7 +268,7 @@ export function BuyModal({ product, open, onClose }: Props) {
             <button
               type="button"
               onClick={() => setPhase("direct")}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3.5 text-base font-semibold text-white shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3.5 text-base font-semibold text-[var(--accent-foreground)] shadow-lg shadow-[var(--accent)]/25 transition hover:opacity-90"
             >
               {t("buyModal.directPayment")}
             </button>
@@ -364,11 +364,11 @@ export function BuyModal({ product, open, onClose }: Props) {
               type="button"
               disabled={busy || !selected}
               onClick={() => void handlePaySubmit()}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent-foreground)] border-t-transparent" />
                   {t("buyModal.processing")}
                 </span>
               ) : (

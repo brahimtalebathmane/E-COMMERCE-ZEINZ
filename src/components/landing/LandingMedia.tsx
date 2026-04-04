@@ -55,7 +55,7 @@ type Props = {
 
 const muxPlayerCommon = {
   streamType: "on-demand" as const,
-  accentColor: "#c45c26",
+  accentColor: "#00ff00",
   playsInline: true,
 };
 
