@@ -177,11 +177,12 @@ export function OrderFormDataDisplay({
     <div className="space-y-4 text-start">
       {entries.map((entry) => {
         const displayStr = stringifyFormValue(entry.raw);
+        const rawStr = typeof entry.raw === "string" ? entry.raw.trim() : "";
+        const isStoredFormFilePath = rawStr.length > 0 && rawStr.startsWith("form-files/");
         const isFile =
-          entry.type === "file" &&
-          typeof entry.raw === "string" &&
-          entry.raw.trim().length > 0;
-        const path = isFile ? (entry.raw as string) : "";
+          rawStr.length > 0 &&
+          (entry.type === "file" || isStoredFormFilePath);
+        const path = isFile ? rawStr : "";
         const copyStr = isFile ? path : displayStr;
         const copyDisabled = copyStr.length === 0;
 
