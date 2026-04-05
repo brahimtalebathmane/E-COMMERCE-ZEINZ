@@ -3,11 +3,9 @@
 import { useMemo, useState } from "react";
 import type { FormFieldConfig, ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { trackPurchase } from "@/components/MetaPixel";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateErrorMessage } from "@/lib/translate-error";
-import { CURRENCY_CODE } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
@@ -118,18 +116,6 @@ export function PostPaymentForm({
       if (!res.ok) {
         const msg = json.error ?? "Could not save order";
         throw new Error(translateErrorMessage(locale, msg));
-      }
-
-      const order = json.order;
-      const displayName = getLocalizedProductCopy(locale, product).name;
-      if (displayName) {
-        trackPurchase({
-          value: Number(order!.total_price),
-          currency: CURRENCY_CODE,
-          content_name: displayName,
-          content_ids: [order!.product_id],
-          content_type: "product",
-        });
       }
 
       toast.success(t("postPayment.orderConfirmed"));

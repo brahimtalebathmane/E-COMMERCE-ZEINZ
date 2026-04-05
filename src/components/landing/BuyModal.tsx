@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 const PostPaymentForm = dynamic(
   () =>
@@ -50,6 +50,8 @@ function DirectPaymentLogo({ url }: { url: string | null | undefined }) {
 }
 import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
+import { trackPurchase } from "@/components/MetaPixel";
+import { CURRENCY_CODE } from "@/lib/currency";
 import { ORDER_STORAGE_KEY } from "@/lib/constants";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -115,6 +117,11 @@ export function BuyModal({ product, open, onClose }: Props) {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [completionToken, setCompletionToken] = useState<string | null>(null);
   const [mobileDirectStep, setMobileDirectStep] = useState(1);
+  /** Prevents duplicate Purchase events from double-clicks (one event per button press). */
+  const purchaseClickAt = useRef<{ direct: number; whatsapp: number }>({
+    direct: 0,
+    whatsapp: 0,
+  });
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(max-width: 639px)").matches
@@ -157,6 +164,23 @@ export function BuyModal({ product, open, onClose }: Props) {
   }, [phase]);
 
   const selected = methods.find((m) => m.id === selectedId);
+
+  function trackPurchaseOnCheckoutAction(source: "direct" | "whatsapp") {
+    const now = Date.now();
+    if (now - purchaseClickAt.current[source] < 800) return;
+    purchaseClickAt.current[source] = now;
+
+    const displayName = copy.name?.trim();
+    if (!displayName) return;
+
+    trackPurchase({
+      value: Number(total),
+      currency: CURRENCY_CODE,
+      content_name: displayName,
+      content_ids: [product.id],
+      content_type: "product",
+    });
+  }
 
   async function handlePaySubmit() {
     if (!selected) {
@@ -336,7 +360,10 @@ export function BuyModal({ product, open, onClose }: Props) {
           <div className="mt-8 flex flex-col gap-4 sm:mt-10">
             <button
               type="button"
-              onClick={() => setPhase("direct")}
+              onClick={() => {
+                trackPurchaseOnCheckoutAction("direct");
+                setPhase("direct");
+              }}
               className="store-btn-primary min-h-[52px] rounded-xl text-base font-bold shadow-xl shadow-[var(--accent)]/35 ring-2 ring-[var(--accent)]/45 transition hover:opacity-[0.97] active:opacity-95"
             >
               {t("buyModal.directPayment")}
@@ -345,7 +372,10 @@ export function BuyModal({ product, open, onClose }: Props) {
               href={whatsappHref()}
               target="_blank"
               rel="noreferrer"
-              onClick={() => onClose()}
+              onClick={() => {
+                trackPurchaseOnCheckoutAction("whatsapp");
+                onClose();
+              }}
               className="store-btn-whatsapp shadow-xl shadow-[#128C7E]/35"
             >
               {t("buyModal.orderViaWhatsApp")}
