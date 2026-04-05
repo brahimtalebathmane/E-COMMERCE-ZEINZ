@@ -37,7 +37,10 @@
     "choosePayment": "اختر طريقة الدفع",
     "uploadReceiptRequired": "ارفع إيصال الدفع (صورة)",
     "receiptUploaded": "تم رفع الإيصال بنجاح",
-    "whatsappOrderText": "أريد الطلب: المنتج: {{name}}، السعر: {{price}}"
+    "whatsappOrderText": "أريد الطلب: المنتج: {{name}}، السعر: {{price}}",
+    "nextStep": "التالي",
+    "prevStep": "السابق",
+    "stepIndicator": "{{current}} / {{total}}"
   },
   "postPayment": {
     "defaultTitle": "بعض التفاصيل الإضافية لإتمام طلبك",

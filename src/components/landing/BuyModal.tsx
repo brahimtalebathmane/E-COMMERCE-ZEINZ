@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 const PostPaymentForm = dynamic(
   () =>
@@ -91,6 +91,8 @@ type Props = {
   onClose: () => void;
 };
 
+const MOBILE_DIRECT_STEPS = 4;
+
 export function BuyModal({ product, open, onClose }: Props) {
   const { t, locale, dir } = useLanguage();
   const copy = useMemo(
@@ -112,6 +114,20 @@ export function BuyModal({ product, open, onClose }: Props) {
   const [phase, setPhase] = useState<"choose" | "direct" | "form">("choose");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [completionToken, setCompletionToken] = useState<string | null>(null);
+  const [mobileDirectStep, setMobileDirectStep] = useState(1);
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 639px)").matches
+      : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -132,8 +148,13 @@ export function BuyModal({ product, open, onClose }: Props) {
       setOrderId(null);
       setCompletionToken(null);
       setBusy(false);
+      setMobileDirectStep(1);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (phase === "direct") setMobileDirectStep(1);
+  }, [phase]);
 
   const selected = methods.find((m) => m.id === selectedId);
 
@@ -262,12 +283,34 @@ export function BuyModal({ product, open, onClose }: Props) {
     return `https://wa.me/${phoneE164}?text=${encoded}`;
   }
 
+  function directSectionShell(step: number, children: ReactNode) {
+    const hiddenOnMobile = isNarrow && mobileDirectStep !== step;
+    const shellClass = hiddenOnMobile
+      ? "max-sm:hidden"
+      : isNarrow
+        ? "buy-modal-step-panel rounded-xl border border-[var(--accent-muted)] bg-[var(--background)]/95 p-4 shadow-md sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+        : "";
+    return (
+      <div key={step} className={shellClass}>
+        {children}
+      </div>
+    );
+  }
+
+  const showMobileDirectNext =
+    isNarrow &&
+    phase === "direct" &&
+    mobileDirectStep < MOBILE_DIRECT_STEPS;
+  const showDirectSubmit =
+    !isNarrow ||
+    (isNarrow && mobileDirectStep === MOBILE_DIRECT_STEPS);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4">
       <div
-        className="max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl bg-[var(--card)] p-4 shadow-xl sm:rounded-2xl sm:p-6"
+        className="max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl bg-[var(--card)] p-4 shadow-xl transition-[box-shadow,transform] duration-200 ease-out sm:p-6"
         role="dialog"
         aria-modal="true"
         dir={dir}
@@ -290,11 +333,11 @@ export function BuyModal({ product, open, onClose }: Props) {
         </div>
 
         {phase === "choose" ? (
-          <div className="mt-8 flex flex-col gap-3 sm:mt-10">
+          <div className="mt-8 flex flex-col gap-4 sm:mt-10">
             <button
               type="button"
               onClick={() => setPhase("direct")}
-              className="store-btn-primary rounded-xl shadow-lg shadow-[var(--accent)]/25"
+              className="store-btn-primary min-h-[52px] rounded-xl text-base font-bold shadow-xl shadow-[var(--accent)]/35 ring-2 ring-[var(--accent)]/45 transition hover:opacity-[0.97] active:opacity-95"
             >
               {t("buyModal.directPayment")}
             </button>
@@ -303,108 +346,184 @@ export function BuyModal({ product, open, onClose }: Props) {
               target="_blank"
               rel="noreferrer"
               onClick={() => onClose()}
-              className="inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl border-2 border-[var(--accent-muted)] bg-[var(--background)] px-4 py-3.5 text-base font-medium text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/40 active:opacity-95"
+              className="store-btn-whatsapp shadow-xl shadow-[#128C7E]/35"
             >
               {t("buyModal.orderViaWhatsApp")}
             </a>
           </div>
         ) : phase === "direct" ? (
           <div className="mt-6 space-y-5 sm:space-y-6">
-            <button
-              type="button"
-              onClick={() => setPhase("choose")}
-              className="touch-manipulation text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline min-h-[44px] py-1"
-            >
-              {t("buyModal.backToOptions")}
-            </button>
-
-            <div>
-              <label className="text-sm font-medium sm:text-base">{t("buyModal.paymentMethod")}</label>
-              <select
-                className="store-select mt-2"
-                value={selectedId ?? ""}
-                onChange={(e) => setSelectedId(e.target.value)}
-              >
-                {methods.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-start">
+              {isNarrow ? (
+                <>
+                  {mobileDirectStep === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setPhase("choose")}
+                      className="touch-manipulation min-h-[44px] py-1 text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+                    >
+                      {t("buyModal.backToOptions")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMobileDirectStep((s) => Math.max(1, s - 1))
+                      }
+                      className="touch-manipulation min-h-[44px] py-1 text-start text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                    >
+                      {t("buyModal.prevStep")}
+                    </button>
+                  )}
+                  <span
+                    className="ms-auto text-xs font-semibold tabular-nums text-[var(--muted)] sm:ms-0"
+                    aria-live="polite"
+                  >
+                    {t("buyModal.stepIndicator", {
+                      current: mobileDirectStep,
+                      total: MOBILE_DIRECT_STEPS,
+                    })}
+                  </span>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPhase("choose")}
+                  className="touch-manipulation min-h-[44px] py-1 text-start text-sm font-medium text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+                >
+                  {t("buyModal.backToOptions")}
+                </button>
+              )}
             </div>
 
-            {selected ? (
-              <div className="rounded-xl bg-[var(--accent-muted)]/40 p-4">
-                <div className="flex items-start gap-3">
-                  <DirectPaymentLogo url={selected.payment_logo_url} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                      {t("buyModal.sendPaymentTo")}
-                    </p>
-                    <p className="mt-1 break-all font-mono text-base font-semibold tracking-tight sm:text-lg" dir="ltr">
-                      {selected.account_number}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-start text-sm text-amber-700 dark:text-amber-300">
-                {t("buyModal.noPaymentMethods")}
-              </p>
+            {directSectionShell(
+              1,
+              <div>
+                <label className="text-sm font-medium sm:text-base">
+                  {t("buyModal.paymentMethod")}
+                </label>
+                <select
+                  className="store-select mt-2"
+                  value={selectedId ?? ""}
+                  onChange={(e) => setSelectedId(e.target.value)}
+                >
+                  {methods.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>,
             )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium sm:text-base">{t("buyModal.phone")}</label>
-                <input
-                  className="store-input mt-2"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  autoComplete="tel"
-                  inputMode="tel"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium sm:text-base">{t("buyModal.address")}</label>
-                <input
-                  className="store-input mt-2"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  autoComplete="street-address"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium sm:text-base">{t("buyModal.receiptImage")}</label>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                disabled={busy}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="store-file-input mt-2"
-              />
-              <p className="mt-2 text-xs text-[var(--muted)] sm:text-sm">{t("buyModal.receiptHint")}</p>
-            </div>
-
-            <button
-              type="button"
-              disabled={busy || !selected}
-              onClick={() => void handlePaySubmit()}
-              className="store-btn-primary rounded-xl disabled:opacity-60"
-            >
-              {busy ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent-foreground)] border-t-transparent" />
-                  {t("buyModal.processing")}
-                </span>
+            {directSectionShell(
+              2,
+              selected ? (
+                <div className="rounded-xl bg-[var(--accent-muted)]/40 p-4 sm:rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <DirectPaymentLogo url={selected.payment_logo_url} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
+                        {t("buyModal.sendPaymentTo")}
+                      </p>
+                      <p
+                        className="mt-1 break-all font-mono text-base font-semibold tracking-tight sm:text-lg"
+                        dir="ltr"
+                      >
+                        {selected.account_number}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               ) : (
-                t("buyModal.uploadReceipt")
-              )}
-            </button>
+                <p className="text-start text-sm text-amber-700 dark:text-amber-300">
+                  {t("buyModal.noPaymentMethods")}
+                </p>
+              ),
+            )}
+
+            {directSectionShell(
+              3,
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium sm:text-base">
+                    {t("buyModal.phone")}
+                  </label>
+                  <input
+                    className="store-input mt-2"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    autoComplete="tel"
+                    inputMode="tel"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium sm:text-base">
+                    {t("buyModal.address")}
+                  </label>
+                  <input
+                    className="store-input mt-2"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    autoComplete="street-address"
+                  />
+                </div>
+              </div>,
+            )}
+
+            {directSectionShell(
+              4,
+              <div>
+                <label className="text-sm font-medium sm:text-base">
+                  {t("buyModal.receiptImage")}
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  disabled={busy}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="store-file-input mt-2"
+                />
+                <p className="mt-2 text-xs text-[var(--muted)] sm:text-sm">
+                  {t("buyModal.receiptHint")}
+                </p>
+              </div>,
+            )}
+
+            {showMobileDirectNext ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileDirectStep((s) =>
+                    Math.min(MOBILE_DIRECT_STEPS, s + 1),
+                  )
+                }
+                className="store-btn-primary mt-2 min-h-[52px] rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30"
+              >
+                {t("buyModal.nextStep")}
+              </button>
+            ) : null}
+
+            {showDirectSubmit ? (
+              <button
+                type="button"
+                disabled={busy || !selected}
+                onClick={() => void handlePaySubmit()}
+                className="store-btn-primary mt-2 max-sm:mt-4 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/25 disabled:opacity-60 sm:mt-6"
+              >
+                {busy ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent-foreground)] border-t-transparent" />
+                    {t("buyModal.processing")}
+                  </span>
+                ) : (
+                  t("buyModal.uploadReceipt")
+                )}
+              </button>
+            ) : null}
           </div>
         ) : orderId && completionToken ? (
-          <div className="mt-6">
+          <div className="buy-modal-step-panel mt-6 max-sm:rounded-xl max-sm:border max-sm:border-[var(--accent-muted)] max-sm:bg-[var(--background)]/95 max-sm:p-4 max-sm:shadow-md">
             <PostPaymentForm
               embedded
               product={product}

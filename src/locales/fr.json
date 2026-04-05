@@ -37,7 +37,10 @@
     "choosePayment": "Choisissez un mode de paiement",
     "uploadReceiptRequired": "Téléversez votre reçu de paiement (image)",
     "receiptUploaded": "Reçu téléversé avec succès",
-    "whatsappOrderText": "Je souhaite commander : Produit : {{name}}, Prix : {{price}}"
+    "whatsappOrderText": "Je souhaite commander : Produit : {{name}}, Prix : {{price}}",
+    "nextStep": "Suivant",
+    "prevStep": "Précédent",
+    "stepIndicator": "{{current}} / {{total}}"
   },
   "postPayment": {
     "defaultTitle": "Quelques détails pour finaliser votre commande",

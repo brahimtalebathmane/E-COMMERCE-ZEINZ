@@ -37,6 +37,21 @@ body {
   overflow-x: clip;
 }
 
+@keyframes buy-modal-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.buy-modal-step-panel {
+  animation: buy-modal-step-in 0.28s ease-out;
+}
+
 @layer components {
   /* Store / checkout: 16px+ text on inputs reduces iOS zoom; 48px min touch targets */
   .store-input {
@@ -50,6 +65,9 @@ body {
   }
   .store-btn-primary {
     @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .store-btn-whatsapp {
+    @apply inline-flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-xl bg-[#25D366] px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-[#128C7E]/30 ring-2 ring-white/30 transition hover:brightness-[0.97] active:brightness-[0.93] [-webkit-tap-highlight-color:transparent];
   }
   .store-file-input {
     @apply w-full max-w-full touch-manipulation text-base file:mr-3 file:inline-flex file:min-h-[48px] file:cursor-pointer file:items-center file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--background)] file:px-4 file:py-3 file:text-sm file:font-medium file:text-[var(--foreground)];

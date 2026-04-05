@@ -243,12 +243,12 @@ export function ProductLanding({ product }: Props) {
 
       {resume ? (
         <div
-          className="fixed inset-0 z-[45] flex items-end justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
+          className="fixed inset-0 z-[45] flex items-center justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label={t("completeOrder.pageTitle")}
         >
-          <div className="max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl sm:rounded-2xl sm:p-6">
+          <div className="max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl transition-[box-shadow] duration-200 sm:p-6">
             <PostPaymentForm
               embedded
               product={product}
