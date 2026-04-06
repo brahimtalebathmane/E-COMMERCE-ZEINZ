@@ -118,8 +118,8 @@ export function BuyModal({ product, open, onClose }: Props) {
   const [completionToken, setCompletionToken] = useState<string | null>(null);
   const [mobileDirectStep, setMobileDirectStep] = useState(1);
   /** Prevents duplicate Purchase events from double-clicks (one event per button press). */
-  const purchaseClickAt = useRef<{ direct: number; whatsapp: number }>({
-    direct: 0,
+  const purchaseClickAt = useRef<{ uploadReceipt: number; whatsapp: number }>({
+    uploadReceipt: 0,
     whatsapp: 0,
   });
   const [isNarrow, setIsNarrow] = useState(() =>
@@ -165,7 +165,7 @@ export function BuyModal({ product, open, onClose }: Props) {
 
   const selected = methods.find((m) => m.id === selectedId);
 
-  function trackPurchaseOnCheckoutAction(source: "direct" | "whatsapp") {
+  function trackPurchaseOnCheckoutAction(source: "uploadReceipt" | "whatsapp") {
     const now = Date.now();
     if (now - purchaseClickAt.current[source] < 800) return;
     purchaseClickAt.current[source] = now;
@@ -191,6 +191,8 @@ export function BuyModal({ product, open, onClose }: Props) {
       toast.error(t("buyModal.uploadReceiptRequired"));
       return;
     }
+
+    trackPurchaseOnCheckoutAction("uploadReceipt");
 
     setBusy(true);
     try {
@@ -361,7 +363,6 @@ export function BuyModal({ product, open, onClose }: Props) {
             <button
               type="button"
               onClick={() => {
-                trackPurchaseOnCheckoutAction("direct");
                 setPhase("direct");
               }}
               className="store-btn-primary min-h-[52px] rounded-xl text-base font-bold shadow-xl shadow-[var(--accent)]/35 ring-2 ring-[var(--accent)]/45 transition hover:opacity-[0.97] active:opacity-95"
