@@ -33,7 +33,6 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     faqs_ar: (row.faqs_ar as ProductRow["faqs_ar"]) ?? [],
     faqs_fr: (row.faqs_fr as ProductRow["faqs_fr"]) ?? [],
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
-    whatsapp_e164: (row.whatsapp_e164 as string | null) ?? null,
     form_title_ar: (row.form_title_ar as string) ?? "",
     form_title_fr: (row.form_title_fr as string) ?? "",
     form_fields_ar: normalizeFormFields(row.form_fields_ar),

@@ -16,10 +16,6 @@ export default async function AdminOrdersPage() {
       customer_name,
       phone,
       address,
-      payment_method,
-      payment_number,
-      transaction_reference,
-      receipt_image_url,
       total_price,
       currency,
       status,
@@ -29,7 +25,6 @@ export default async function AdminOrdersPage() {
       products (
         name_ar,
         slug,
-        whatsapp_e164,
         price,
         discount_price,
         description_ar,

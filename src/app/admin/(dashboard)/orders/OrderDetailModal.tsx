@@ -5,7 +5,6 @@ import { useEffect, useId } from "react";
 import type { AdminOrderRow } from "./types";
 import { normalizeFormFields } from "@/lib/form-fields";
 import { OrderFormDataDisplay } from "@/components/admin/OrderFormDataDisplay";
-import { ReceiptThumbnail } from "./ReceiptThumbnail";
 import { OrderRowActions } from "./OrderRowActions";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
@@ -155,25 +154,9 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
 
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionPayment}
+                {a.orders.sectionTotal}
               </h3>
               <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.payment}</dt>
-                  <dd className="break-words">{order.payment_method ?? "—"}</dd>
-                </div>
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.paymentNumber}</dt>
-                  <dd className="break-all font-mono text-xs" dir="ltr">
-                    {order.payment_number ?? "—"}
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.ref}</dt>
-                  <dd className="break-all" dir="ltr">
-                    {order.transaction_reference ?? "—"}
-                  </dd>
-                </div>
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
                   <dt className="text-[var(--muted)]">{a.orders.total}</dt>
                   <dd dir="ltr">
@@ -197,15 +180,6 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
               </div>
             </section>
 
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionReceipt}
-              </h3>
-              <div className="mt-3">
-                <ReceiptThumbnail storagePath={order.receipt_image_url} variant="full" />
-              </div>
-            </section>
-
             <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {a.orders.sectionActions}
@@ -213,12 +187,8 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
               <div className="mt-3">
                 <OrderRowActions
                   orderId={order.id}
-                  completionToken={order.completion_token}
-                  totalPrice={Number(order.total_price)}
                   status={order.status}
                   formComplete={formComplete}
-                  receiptPath={order.receipt_image_url}
-                  orderWhatsAppE164={product?.whatsapp_e164 ?? null}
                 />
               </div>
             </section>

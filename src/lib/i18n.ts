@@ -67,12 +67,8 @@ export function mapApiErrorToKey(error: string): string | null {
   if (normalized.startsWith("Create failed") || normalized === "Create failed")
     return "errors.createFailed";
   const extra: Record<string, string> = {
-    "Could not create order": "errors.couldNotCreateOrder",
     "Could not save order": "errors.couldNotSaveOrder",
-    "Could not load order": "completeOrder.loadFailed",
     "Invalid server response": "errors.invalidServerResponse",
-    "Receipt upload failed": "errors.receiptUploadFailed",
-    "Post-payment form incomplete": "errors.postPaymentIncomplete",
   };
   if (extra[normalized]) return extra[normalized];
   if (

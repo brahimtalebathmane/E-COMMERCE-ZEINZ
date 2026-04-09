@@ -25,8 +25,6 @@ export type ProductPayload = {
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
   meta_pixel_id: string | null;
-  /** E.164 digits only; null clears to env fallback on storefront. */
-  whatsapp_e164: string | null;
   form_title_ar: string;
   form_title_fr: string;
   form_fields_ar: FormFieldConfig[];
@@ -102,7 +100,6 @@ export async function createProductAction(payload: ProductPayload) {
     faqs_ar: payload.faqs_ar,
     faqs_fr: payload.faqs_fr,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
-    whatsapp_e164: payload.whatsapp_e164,
     form_title_ar: payload.form_title_ar.trim(),
     form_title_fr: payload.form_title_fr.trim(),
     form_fields_ar: payload.form_fields_ar,
@@ -149,7 +146,6 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       faqs_ar: payload.faqs_ar,
       faqs_fr: payload.faqs_fr,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
-      whatsapp_e164: payload.whatsapp_e164,
       form_title_ar: payload.form_title_ar.trim(),
       form_title_fr: payload.form_title_fr.trim(),
       form_fields_ar: payload.form_fields_ar,

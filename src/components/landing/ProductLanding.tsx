@@ -1,26 +1,15 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { ProductRow } from "@/types";
-import { ORDER_STORAGE_KEY } from "@/lib/constants";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { OrderFormModal } from "@/components/landing/OrderFormModal";
 
-const BuyModal = dynamic(
-  () => import("./BuyModal").then((m) => ({ default: m.BuyModal })),
-  { ssr: false },
-);
-
-const PostPaymentForm = dynamic(
-  () => import("./PostPaymentForm").then((m) => ({ default: m.PostPaymentForm })),
-  { ssr: false },
-);
-
+import dynamic from "next/dynamic";
 const MetaPixel = dynamic(
-  () =>
-    import("@/components/MetaPixel").then((m) => ({ default: m.MetaPixel })),
+  () => import("@/components/MetaPixel").then((m) => ({ default: m.MetaPixel })),
   { ssr: false },
 );
 import { formatPrice } from "@/lib/currency";
@@ -40,10 +29,6 @@ export function ProductLanding({ product }: Props) {
     [locale, product],
   );
   const [open, setOpen] = useState(false);
-  const [resume, setResume] = useState<{
-    orderId: string;
-    completionToken: string;
-  } | null>(null);
 
   const price = useMemo(() => {
     const original = product.price;
@@ -57,47 +42,6 @@ export function ProductLanding({ product }: Props) {
     // Users can still manually switch using the global language switcher.
     setLocale(product.default_language ?? "ar");
   }, [product.default_language, setLocale]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ORDER_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        orderId?: string;
-        completionToken?: string;
-        productSlug?: string;
-      };
-      if (
-        parsed.orderId &&
-        parsed.completionToken &&
-        parsed.productSlug === product.slug
-      ) {
-        void (async () => {
-          const res = await fetch(
-            `/api/orders/${parsed.orderId}?token=${encodeURIComponent(parsed.completionToken ?? "")}`,
-          );
-          if (!res.ok) {
-            localStorage.removeItem(ORDER_STORAGE_KEY);
-            return;
-          }
-          const json = (await res.json()) as {
-            order?: { form_data?: Record<string, unknown> };
-          };
-          const fd = json.order?.form_data ?? {};
-          if (fd["_purchase_confirmed_at"]) {
-            localStorage.removeItem(ORDER_STORAGE_KEY);
-            return;
-          }
-          setResume({
-            orderId: parsed.orderId!,
-            completionToken: parsed.completionToken!,
-          });
-        })();
-      }
-    } catch {
-      // ignore
-    }
-  }, [product.slug]);
 
   return (
     <div
@@ -238,32 +182,6 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      {resume ? (
-        <div
-          className="fixed inset-0 z-[45] flex items-center justify-center bg-black/50 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("completeOrder.pageTitle")}
-        >
-          <div className="max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl transition-[box-shadow] duration-200 sm:p-6">
-            <PostPaymentForm
-              embedded
-              product={product}
-              orderId={resume.orderId}
-              completionToken={resume.completionToken}
-              onDone={() => {
-                try {
-                  localStorage.removeItem(ORDER_STORAGE_KEY);
-                } catch {
-                  // ignore
-                }
-                setResume(null);
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
-
       <div
         className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--accent-muted)] bg-[var(--card)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] backdrop-blur-md dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)] sm:static sm:mt-10 sm:border-0 sm:bg-transparent sm:pb-0 sm:pt-0 sm:shadow-none sm:backdrop-blur-0"
         style={{
@@ -282,7 +200,11 @@ export function ProductLanding({ product }: Props) {
         </div>
       </div>
 
-      <BuyModal product={product} open={open} onClose={() => setOpen(false)} />
+      <OrderFormModal
+        product={product}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </div>
   );
 }

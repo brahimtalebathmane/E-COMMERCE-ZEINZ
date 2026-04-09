@@ -21,9 +21,7 @@ Copy `.env.example` to `.env.local` and fill in values. For Netlify, set the sam
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from Supabase **Project Settings → API**.
 - `SUPABASE_SERVICE_ROLE_KEY` — **service_role** key (server-only). Used for order creation/updates and storage uploads from API routes.
-- `NEXT_PUBLIC_SITE_URL` — canonical public URL (used in WhatsApp completion links).
-- `NEXT_PUBLIC_WHATSAPP_E164` — optional; digits-only E.164 for `wa.me` links.
-- `PAYMENT_METHODS_JSON` — optional fallback JSON array if you have no rows in `payment_methods` yet.
+- `NEXT_PUBLIC_SITE_URL` — canonical public URL.
 
 ## Local development
 
@@ -39,11 +37,8 @@ Connect the repo and use the included `netlify.toml` (build `npm run build`, Nex
 ## Features (short)
 
 - **`/[slug]`** — Product landing (ISR `revalidate = 60`, `generateStaticParams`). Slug is fixed after create; optional `old_slugs` redirects.
-- **Checkout** — Direct payment (receipt image → private storage) or WhatsApp prefilled message.
-- **Post-payment form** — Configurable per product (admin form builder); **Purchase** pixel fires only after successful DB save on **Confirm order**.
-- **`/complete-order/[order_id]?token=...`** — Resume form; admins can share the link via WhatsApp.
+- **Checkout** — Simple order form (name + phone + optional address) saved to Supabase, then redirects to `/order-success`.
 
 ## Security notes
 
 - Orders are written only through API routes using the **service role**; RLS restricts direct client access.
-- Receipt and form images are validated (image types, 5MB). Admin preview uses **signed URLs** (`/api/admin/signed-url`).

@@ -40,8 +40,6 @@ export type ProductRow = {
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
   meta_pixel_id: string | null;
-  /** E.164 digits (e.g. 222… for Mauritania). Null uses NEXT_PUBLIC_WHATSAPP_E164. */
-  whatsapp_e164: string | null;
   form_title_ar: string;
   form_title_fr: string;
   form_fields_ar: FormFieldConfig[];
@@ -68,10 +66,6 @@ export type OrderRow = {
   customer_name: string | null;
   phone: string | null;
   address: string | null;
-  payment_method: string | null;
-  payment_number: string | null;
-  transaction_reference: string | null;
-  receipt_image_url: string | null;
   total_price: number;
   status: OrderStatus;
   form_data: Record<string, unknown>;

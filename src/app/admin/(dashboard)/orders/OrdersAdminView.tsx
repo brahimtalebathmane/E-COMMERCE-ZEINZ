@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
-import { ReceiptThumbnail } from "./ReceiptThumbnail";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
 
@@ -50,7 +49,6 @@ export function OrdersAdminView({ orders }: Props) {
             className="w-full rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-start shadow-sm transition hover:border-[var(--accent-muted)]/80 hover:bg-[var(--background)]"
           >
             <div className="flex gap-4">
-              <ReceiptThumbnail storagePath={o.receipt_image_url} variant="list" />
               <div className="min-w-0 flex-1 space-y-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -86,8 +84,7 @@ export function OrdersAdminView({ orders }: Props) {
             <tr>
               <th className="w-[22%] px-4 py-3 text-start">{a.orders.phone}</th>
               <th className="w-[38%] px-4 py-3 text-start">{a.orders.address}</th>
-              <th className="w-[14%] px-4 py-3 text-center">{a.orders.receiptThumb}</th>
-              <th className="w-[26%] px-4 py-3 text-start">{a.orders.status}</th>
+              <th className="w-[40%] px-4 py-3 text-start">{a.orders.status}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--accent-muted)]">
@@ -113,11 +110,6 @@ export function OrdersAdminView({ orders }: Props) {
                   <p className="line-clamp-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">
                     {o.address ?? "—"}
                   </p>
-                </td>
-                <td className="px-4 py-4 align-middle">
-                  <div className="flex justify-center">
-                    <ReceiptThumbnail storagePath={o.receipt_image_url} variant="list" />
-                  </div>
                 </td>
                 <td className="px-4 py-4 align-middle">
                   <div className="flex flex-wrap items-center gap-2">

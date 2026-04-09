@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import type { FormFieldConfig, FormFieldType } from "@/types";
-import { ReceiptThumbnail } from "@/app/admin/(dashboard)/orders/ReceiptThumbnail";
 import { adminAr as a } from "@/locales/admin-ar";
 
 async function copyTextToClipboard(text: string): Promise<void> {
@@ -177,13 +176,7 @@ export function OrderFormDataDisplay({
     <div className="space-y-4 text-start">
       {entries.map((entry) => {
         const displayStr = stringifyFormValue(entry.raw);
-        const rawStr = typeof entry.raw === "string" ? entry.raw.trim() : "";
-        const isStoredFormFilePath = rawStr.length > 0 && rawStr.startsWith("form-files/");
-        const isFile =
-          rawStr.length > 0 &&
-          (entry.type === "file" || isStoredFormFilePath);
-        const path = isFile ? rawStr : "";
-        const copyStr = isFile ? path : displayStr;
+        const copyStr = displayStr;
         const copyDisabled = copyStr.length === 0;
 
         return (
@@ -195,35 +188,14 @@ export function OrderFormDataDisplay({
               {entry.label}
             </h4>
 
-            {isFile ? (
-              <div className="mt-3 space-y-3">
-                <div className="overflow-hidden rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40">
-                  <ReceiptThumbnail
-                    storagePath={path}
-                    variant="full"
-                    className="!max-h-[min(40vh,360px)] !rounded-xl"
-                  />
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <p
-                    className="min-w-0 flex-1 break-all font-mono text-xs leading-relaxed text-[var(--muted)]"
-                    dir="ltr"
-                  >
-                    {path}
-                  </p>
-                  <CopyValueButton text={copyStr} disabled={copyDisabled} />
-                </div>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <NonFileValue entry={entry} />
               </div>
-            ) : (
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <div className="min-w-0 flex-1">
-                  <NonFileValue entry={entry} />
-                </div>
-                <div className="flex shrink-0 justify-end sm:pt-0.5">
-                  <CopyValueButton text={copyStr} disabled={copyDisabled} />
-                </div>
+              <div className="flex shrink-0 justify-end sm:pt-0.5">
+                <CopyValueButton text={copyStr} disabled={copyDisabled} />
               </div>
-            )}
+            </div>
           </div>
         );
       })}

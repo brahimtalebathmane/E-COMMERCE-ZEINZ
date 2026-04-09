@@ -9,7 +9,7 @@ export function LoadingFallback() {
       className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center text-sm text-[var(--muted)] sm:py-16"
       dir={dir}
     >
-      {t("completeOrder.loading")}
+      {t("catalog.title")}
     </div>
   );
 }

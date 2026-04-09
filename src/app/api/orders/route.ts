@@ -3,12 +3,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 
 type Body = {
   product_id: string;
-  customer_name?: string;
-  phone?: string;
+  customer_name: string;
+  phone: string;
   address?: string;
-  payment_method?: string;
-  payment_number?: string;
-  transaction_reference?: string;
 };
 
 export async function POST(request: Request) {
@@ -22,6 +19,12 @@ export async function POST(request: Request) {
   try {
     if (!data.product_id || typeof data.product_id !== "string") {
       return NextResponse.json({ error: "product_id required" }, { status: 400 });
+    }
+    if (!data.customer_name || typeof data.customer_name !== "string" || !data.customer_name.trim()) {
+      return NextResponse.json({ error: "customer_name required" }, { status: 400 });
+    }
+    if (!data.phone || typeof data.phone !== "string" || !data.phone.trim()) {
+      return NextResponse.json({ error: "phone required" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
@@ -48,18 +51,19 @@ export async function POST(request: Request) {
       .from("orders")
       .insert({
         product_id: data.product_id,
-        customer_name: data.customer_name ?? null,
-        phone: data.phone ?? null,
-        address: data.address ?? null,
-        payment_method: data.payment_method ?? null,
-        payment_number: data.payment_number ?? null,
-        transaction_reference: data.transaction_reference ?? null,
+        customer_name: data.customer_name.trim(),
+        phone: data.phone.trim(),
+        address: data.address?.trim() || null,
+        payment_method: null,
+        payment_number: null,
+        transaction_reference: null,
+        receipt_image_url: null,
         total_price: total,
         currency: "MRU",
         status: "pending",
         form_data: {},
       })
-      .select("id, completion_token, total_price")
+      .select("id, total_price")
       .single();
 
     if (orderErr) {
@@ -72,7 +76,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       order_id: order.id,
-      completion_token: order.completion_token,
       total_price: order.total_price,
     });
   } catch (e) {
