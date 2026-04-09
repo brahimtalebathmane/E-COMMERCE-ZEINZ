@@ -23,6 +23,26 @@ Copy `.env.example` to `.env.local` and fill in values. For Netlify, set the sam
 - `SUPABASE_SERVICE_ROLE_KEY` — **service_role** key (server-only). Used for order creation/updates and storage uploads from API routes.
 - `NEXT_PUBLIC_SITE_URL` — canonical public URL.
 
+### WhatsApp (Baileys) + OTP (production note)
+
+Netlify’s Next.js runtime is **serverless** and does **not** support a reliable long-lived WhatsApp Web session.
+To deliver OTP messages via WhatsApp in production, you must run the WhatsApp client in an **always-on Node.js service**.
+
+This repo includes that service via `server.js` (Express + Next handler) and `whatsapp.js` (Baileys). Deploy it to a Node host
+that supports persistent processes and storage (Render/Fly/Railway/VPS).
+
+Required env vars for the WhatsApp service:
+
+- `WHATSAPP_AUTH_DIR` — path to store Baileys auth state (default `./baileys_auth`). Must be on **persistent disk**.
+- `OTP_HASH_SECRET` — secret used to hash OTP codes before storing in Supabase.
+- `OTP_TTL_SECONDS` — OTP expiration (default 300).
+- `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — used by the OTP endpoints to store/verify codes.
+
+Netlify frontend/proxy:
+
+- Set `WHATSAPP_SERVICE_URL` on Netlify to the public base URL of the WhatsApp service.
+- The frontend can call `POST /api/send-otp` and `POST /api/verify-otp` on Netlify; those routes proxy to the WhatsApp service.
+
 ## Local development
 
 ```bash

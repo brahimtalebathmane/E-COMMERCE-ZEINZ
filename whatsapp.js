@@ -19,9 +19,18 @@ let sock = null;
 /** @type {Promise<void> | null} */
 let connectPromise = null;
 
+function authDir() {
+  return process.env.WHATSAPP_AUTH_DIR || "./baileys_auth";
+}
+
 function pushLog(message) {
   const line = `${new Date().toISOString()} — ${message}`;
   logs = [...logs, line].slice(-10);
+}
+
+function logOtpGenerated(phoneE164, expiresAtIso) {
+  const safePhone = normalizeE164(phoneE164) || String(phoneE164 || "");
+  pushLog(`OTP generated for ${safePhone} (expires ${expiresAtIso})`);
 }
 
 function normalizeE164(phone) {
@@ -44,7 +53,7 @@ async function connectWhatsApp() {
   if (connectPromise) return connectPromise;
   connectPromise = (async () => {
     try {
-      const { state, saveCreds } = await useMultiFileAuthState("./baileys_auth");
+      const { state, saveCreds } = await useMultiFileAuthState(authDir());
       const { version } = await fetchLatestBaileysVersion();
 
       sock = makeWASocket({
@@ -164,6 +173,11 @@ async function sendWhatsAppMessage(phone, message) {
   pushLog(`Message sent to ${normalizeE164(phone)}`);
 }
 
+async function assertConnected() {
+  await connectWhatsApp();
+  return Boolean(sock && connectionStatus === "connected");
+}
+
 // Start on first require (server boot).
 void connectWhatsApp();
 
@@ -174,5 +188,7 @@ module.exports = {
   getQrDataUrl,
   reconnectWhatsApp,
   sendWhatsAppMessage,
+  assertConnected,
+  logOtpGenerated,
 };
 
