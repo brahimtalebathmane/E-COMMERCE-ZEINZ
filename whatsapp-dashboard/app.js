@@ -14,18 +14,21 @@ function setStatus(status) {
     qrBox.classList.add("hidden");
     connectedBox.classList.remove("hidden");
     reconnectBtn.disabled = true;
+    reconnectBtn.classList.add("hidden");
   } else if (status === "qr") {
     statusDot.classList.add("qr");
     statusText.textContent = "Waiting for scan";
     qrBox.classList.remove("hidden");
     connectedBox.classList.add("hidden");
     reconnectBtn.disabled = true;
+    reconnectBtn.classList.add("hidden");
   } else {
     statusDot.classList.add("disconnected");
     statusText.textContent = "Disconnected";
     qrBox.classList.add("hidden");
     connectedBox.classList.add("hidden");
     reconnectBtn.disabled = false;
+    reconnectBtn.classList.remove("hidden");
   }
 }
 
