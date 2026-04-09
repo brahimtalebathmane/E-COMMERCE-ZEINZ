@@ -17,21 +17,19 @@ import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const MuxPlayer = dynamic(
-  () => import("@mux/mux-player-react/lazy").then((mod) => mod.default),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="landing-mux-shell flex min-h-[12rem] items-center justify-center text-sm text-white/60"
-        style={{ "--ar-w": 16, "--ar-h": 9 } as CSSProperties}
-        aria-hidden
-      >
-        …
-      </div>
-    ),
-  },
-);
+/** Non-lazy bundle: `lazy` mounts a bare `<mux-player>` placeholder that triggers Media Chrome “no stylesheet” warnings. */
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react").then((mod) => mod.default), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="landing-mux-shell flex min-h-[12rem] items-center justify-center text-sm text-white/60"
+      style={{ "--ar-w": 16, "--ar-h": 9 } as CSSProperties}
+      aria-hidden
+    >
+      …
+    </div>
+  ),
+});
 
 function isHls(url: string) {
   return /\.m3u8($|\?)/i.test(url) || /stream\.mux\.com/i.test(url);
@@ -109,6 +107,7 @@ type Props = {
 
 function muxPlayerOpts(priority: boolean | undefined) {
   return {
+    theme: "classic" as const,
     streamType: "on-demand" as const,
     accentColor: "#00ff00",
     playsInline: true,

@@ -56,13 +56,11 @@ export async function POST(request: Request) {
 
     const base = (process.env.WHATSAPP_SERVICE_URL || "").trim();
     if (!base) {
-      return NextResponse.json(
-        {
-          error:
-            "WHATSAPP_SERVICE_URL not configured. Order WhatsApp notifications require the always-on WhatsApp service.",
-        },
-        { status: 503 },
-      );
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "whatsapp_service_unconfigured",
+      });
     }
 
     const res = await fetch(`${base.replace(/\/$/, "")}/api/send-whatsapp`, {
