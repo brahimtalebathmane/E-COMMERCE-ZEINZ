@@ -78,13 +78,13 @@ Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify canno
 5. Environment variables (Web Service):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth`
+   - `WHATSAPP_AUTH_DIR=./baileys_auth`
    - `OTP_HASH_SECRET` (any long random string)
    - `OTP_TTL_SECONDS=300` (optional)
 
 After deploy:
 - Visit the Render service URL. It serves the WhatsApp dashboard at `/`.
-- Scan the QR once; auth will persist on the disk.
+- On the free plan, the service can sleep and storage is not guaranteed. You may need to re-scan QR after restarts.
 
 ### Connect Netlify → Render
 
