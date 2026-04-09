@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: zeinz-whatsapp-service
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      # Persist Baileys auth state on Render disk:
+      - key: WHATSAPP_AUTH_DIR
+        value: /var/data/baileys_auth
+      # OTP settings:
+      - key: OTP_TTL_SECONDS
+        value: "300"
+    disk:
+      name: whatsapp-auth
+      mountPath: /var/data
+      sizeGB: 1
+

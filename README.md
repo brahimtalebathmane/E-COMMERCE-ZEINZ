@@ -54,6 +54,43 @@ npm run dev
 
 Connect the repo and use the included `netlify.toml` (build `npm run build`, Next.js plugin). Do **not** set **Publish directory** to `.next` in the Netlify UI (clear it if Netlify shows `publish: .../.next` under “Resolved config”) — `@netlify/plugin-nextjs` controls the output. Use a **patched** Next.js version (see [Netlify advisory](https://ntl.fyi/cve-2025-55182)); this repo pins **Next ≥ 15.2.6** (e.g. 15.2.9). Set all environment variables in the Netlify UI.
 
+## Render deployment (WhatsApp + OTP service)
+
+Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify cannot reliably host Baileys.
+
+### Option A: Blueprint (recommended)
+
+1. Push this repo to GitHub (already done).
+2. In Render: **New → Blueprint** and select this repo.
+3. Render will detect `render.yaml` and create a Web Service with a **persistent disk**.
+
+### Option B: Render UI (manual)
+
+1. Render: **New → Web Service**
+2. Connect the repo
+3. Settings:
+   - **Runtime**: Node
+   - **Build Command**: `npm ci && npm run build`
+   - **Start Command**: `npm run start`
+4. Add a **Disk**:
+   - **Mount Path**: `/var/data`
+   - **Size**: 1GB
+5. Environment variables (Web Service):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth`
+   - `OTP_HASH_SECRET` (any long random string)
+   - `OTP_TTL_SECONDS=300` (optional)
+
+After deploy:
+- Visit the Render service URL. It serves the WhatsApp dashboard at `/`.
+- Scan the QR once; auth will persist on the disk.
+
+### Connect Netlify → Render
+
+In Netlify environment variables set:
+- `WHATSAPP_SERVICE_URL` = the Render service base URL (example: `https://zeinz-whatsapp-service.onrender.com`)
+
 ## Features (short)
 
 - **`/[slug]`** — Product landing (ISR `revalidate = 60`, `generateStaticParams`). Slug is fixed after create; optional `old_slugs` redirects.
