@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Dashboard</title>
+    <link rel="stylesheet" href="/whatsapp-dashboard/styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <header class="header">
+          <div>
+            <h1>WhatsApp Connection</h1>
+            <p class="sub">Baileys (WhatsApp Web) — no official API</p>
+          </div>
+          <div class="status">
+            <span class="dot" id="statusDot" aria-hidden="true"></span>
+            <span id="statusText">Loading…</span>
+          </div>
+        </header>
+
+        <div class="content">
+          <div class="qr" id="qrBox">
+            <div class="qrInner">
+              <img id="qrImg" alt="WhatsApp QR code" />
+            </div>
+            <p class="hint" id="qrHint">Scan this QR code with WhatsApp to connect.</p>
+          </div>
+
+          <div class="connected" id="connectedBox">
+            <div class="badge ok">Connected</div>
+            <p class="hint">WhatsApp session is active. QR is hidden.</p>
+          </div>
+
+          <div class="actions">
+            <button id="reconnectBtn" class="btn">Reconnect WhatsApp</button>
+          </div>
+
+          <div class="logs">
+            <h2>Logs (last 10)</h2>
+            <ul id="logsList" class="logList"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/whatsapp-dashboard/app.js"></script>
+  </body>
+</html>
+

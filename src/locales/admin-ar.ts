@@ -126,6 +126,9 @@ export const adminAr = {
     faqAnswer: "الجواب",
     metaPixel: "معرّف Meta Pixel",
     metaPlaceholder: "أرقام فقط",
+    whatsappTemplate: "قالب رسالة واتساب (اختياري)",
+    whatsappTemplateHint:
+      "سيُرسل هذا النص تلقائياً للعميل عبر واتساب بعد نجاح الطلب. اتركه فارغاً لتعطيل الإرسال لهذا المنتج.",
     legacySlugs: "مسارات قديمة لإعادة التوجيه",
     legacySlugsHint:
       "إذا غيّر المنتج مساره، أضف المسارات القديمة هنا حتى تبقى الروابط تعمل.",

@@ -24,6 +24,10 @@ function firedKey(orderId: string) {
   return `pixel_purchase_fired:${orderId}`;
 }
 
+function waFiredKey(orderId: string) {
+  return `whatsapp_sent:${orderId}`;
+}
+
 export function OrderSuccessClient({
   orderId,
   productId,
@@ -69,6 +73,41 @@ export function OrderSuccessClient({
       cancelled = true;
     };
   }, [orderId, productId, productName, totalPrice, currency]);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    try {
+      if (localStorage.getItem(waFiredKey(orderId)) === "1") return;
+    } catch {
+      // ignore
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/whatsapp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId }),
+        });
+        if (!res.ok) return;
+        if (cancelled) return;
+        try {
+          localStorage.setItem(waFiredKey(orderId), "1");
+        } catch {
+          // ignore
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId]);
 
   return null;
 }

@@ -40,3 +40,6 @@ next-env.d.ts
 
 # netlify
 .netlify
+
+# whatsapp (baileys auth state)
+/baileys_auth/

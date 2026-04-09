@@ -15,6 +15,8 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     name_fr: (row.name_fr as string) ?? "",
     description_ar: (row.description_ar as string) ?? "",
     description_fr: (row.description_fr as string) ?? "",
+    whatsapp_message_template:
+      (row.whatsapp_message_template as string | null | undefined) ?? null,
     slug: row.slug as string,
     old_slugs: (row.old_slugs as string[]) ?? [],
     price: Number(row.price),

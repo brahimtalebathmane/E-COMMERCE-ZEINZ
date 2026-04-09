@@ -13,6 +13,7 @@ export type ProductPayload = {
   name_fr: string;
   description_ar: string;
   description_fr: string;
+  whatsapp_message_template: string | null;
   price: number;
   discount_price: number | null;
   media_type: "image" | "video";
@@ -82,6 +83,7 @@ export async function createProductAction(payload: ProductPayload) {
     name_fr: payload.name_fr.trim(),
     description_ar: payload.description_ar,
     description_fr: payload.description_fr,
+    whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
     slug: candidate,
     old_slugs: payload.old_slugs.filter(Boolean),
     price: payload.price,
@@ -126,6 +128,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       name_fr: payload.name_fr.trim(),
       description_ar: payload.description_ar,
       description_fr: payload.description_fr,
+      whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
       price: payload.price,
       discount_price: payload.discount_price,
       media_type: payload.media_type,

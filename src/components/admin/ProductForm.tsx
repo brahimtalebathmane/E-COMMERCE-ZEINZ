@@ -164,6 +164,9 @@ export function ProductForm({ mode, initial }: Props) {
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
+  const [whatsAppTemplate, setWhatsAppTemplate] = useState(
+    initial?.whatsapp_message_template ?? "",
+  );
   const [price, setPrice] = useState(String(initial?.price ?? "0"));
   const [discount, setDiscount] = useState(
     initial?.discount_price != null ? String(initial.discount_price) : "",
@@ -255,6 +258,7 @@ export function ProductForm({ mode, initial }: Props) {
       name_fr: nameFr,
       description_ar: descriptionAr,
       description_fr: descriptionFr,
+      whatsapp_message_template: whatsAppTemplate.trim() || null,
       price: Number.parseFloat(price),
       discount_price:
         discountPrice != null && !Number.isNaN(discountPrice)
@@ -884,6 +888,18 @@ export function ProductForm({ mode, initial }: Props) {
             onChange={(e) => setMetaPixel(e.target.value)}
             placeholder={a.productForm.metaPlaceholder}
             dir="ltr"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.whatsappTemplate}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.whatsappTemplateHint}</p>
+          <textarea
+            rows={4}
+            className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={whatsAppTemplate}
+            onChange={(e) => setWhatsAppTemplate(e.target.value)}
+            placeholder="مثال: شكراً لطلبكم! سيتم التواصل معكم قريباً."
           />
         </div>
 

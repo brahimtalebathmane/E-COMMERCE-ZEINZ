@@ -17,6 +17,7 @@ export type ProductRow = {
   name_fr: string;
   description_ar: string;
   description_fr: string;
+  whatsapp_message_template: string | null;
   slug: string;
   old_slugs: string[];
   price: number;
