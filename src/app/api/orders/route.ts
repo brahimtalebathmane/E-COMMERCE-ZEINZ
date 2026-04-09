@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 
 type Body = {
   product_id: string;
@@ -71,6 +72,14 @@ export async function POST(request: Request) {
     if (!order) {
       throw new Error("Create failed: no order returned");
     }
+
+    console.log("[POST /api/orders] Order created", {
+      order_id: order.id,
+      product_id: data.product_id,
+      phone: data.phone.trim(),
+    });
+
+    await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
     return NextResponse.json({
       success: true,

@@ -173,9 +173,39 @@ async function sendWhatsAppMessage(phone, message) {
   pushLog(`Message sent to ${normalizeE164(phone)}`);
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function assertConnected() {
   await connectWhatsApp();
   return Boolean(sock && connectionStatus === "connected");
+}
+
+/**
+ * Waits until Baileys reports "connected" or timeout. Use before send so cold starts
+ * don't immediately return 503 while the socket is still opening.
+ */
+async function waitForConnected(timeoutMs = 45000) {
+  const started = Date.now();
+  await connectWhatsApp();
+
+  while (Date.now() - started < timeoutMs) {
+    if (sock && connectionStatus === "connected") {
+      return true;
+    }
+    if (connectionStatus === "qr") {
+      pushLog("waitForConnected: QR required — session not active");
+      return false;
+    }
+    await sleep(300);
+  }
+
+  const ok = Boolean(sock && connectionStatus === "connected");
+  if (!ok) {
+    pushLog(`waitForConnected: timeout after ${timeoutMs}ms (status=${connectionStatus})`);
+  }
+  return ok;
 }
 
 // Start on first require (server boot).
@@ -189,6 +219,7 @@ module.exports = {
   reconnectWhatsApp,
   sendWhatsAppMessage,
   assertConnected,
+  waitForConnected,
   logOtpGenerated,
 };
 

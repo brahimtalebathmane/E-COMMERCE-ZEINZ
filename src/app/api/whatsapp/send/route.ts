@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 
 type Body = {
   order_id: string;
 };
+
+const DOWNSTREAM_TIMEOUT_MS = 60_000;
 
 export async function POST(request: Request) {
   let data: Body;
@@ -18,6 +21,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }
 
+  console.log("[POST /api/whatsapp/send] WhatsApp message trigger", { orderId });
+
   try {
     const supabase = createServiceClient();
 
@@ -28,13 +33,27 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (oErr) throw new Error(oErr.message);
     if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      console.error("[POST /api/whatsapp/send] Order not found", { orderId });
+      return NextResponse.json({
+        handled: true,
+        sent: false,
+        skipReason: "order_not_found",
+      });
     }
+
+    await logOrderCommunicationEvent(supabase, orderId, "whatsapp_triggered", null);
 
     const phone = (order.phone as string | null | undefined) ?? null;
     const productId = (order.product_id as string | null | undefined) ?? null;
     if (!phone || !productId) {
-      return NextResponse.json({ success: true, skipped: true });
+      const detail = !phone ? "missing_phone" : "missing_product_id";
+      console.warn("[POST /api/whatsapp/send] Skipped —", detail, { orderId });
+      await logOrderCommunicationEvent(supabase, orderId, "whatsapp_skipped", detail);
+      return NextResponse.json({
+        handled: true,
+        sent: false,
+        skipReason: detail,
+      });
     }
 
     const { data: product, error: pErr } = await supabase
@@ -44,43 +63,109 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (pErr) throw new Error(pErr.message);
     if (!product) {
-      return NextResponse.json({ success: true, skipped: true });
+      console.warn("[POST /api/whatsapp/send] Skipped — product_not_found", { orderId, productId });
+      await logOrderCommunicationEvent(supabase, orderId, "whatsapp_skipped", "product_not_found");
+      return NextResponse.json({
+        handled: true,
+        sent: false,
+        skipReason: "product_not_found",
+      });
     }
 
     const template =
       (product.whatsapp_message_template as string | null | undefined) ?? null;
     const text = template?.trim() || "";
     if (!text) {
-      return NextResponse.json({ success: true, skipped: true });
+      console.warn("[POST /api/whatsapp/send] Skipped — no_whatsapp_template", { orderId, productId });
+      await logOrderCommunicationEvent(
+        supabase,
+        orderId,
+        "whatsapp_skipped",
+        "no_whatsapp_template",
+      );
+      return NextResponse.json({
+        handled: true,
+        sent: false,
+        skipReason: "no_whatsapp_template",
+      });
     }
 
     const base = (process.env.WHATSAPP_SERVICE_URL || "").trim();
     if (!base) {
+      console.warn("[POST /api/whatsapp/send] Skipped — WHATSAPP_SERVICE_URL not set");
+      await logOrderCommunicationEvent(
+        supabase,
+        orderId,
+        "whatsapp_skipped",
+        "whatsapp_service_unconfigured",
+      );
       return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: "whatsapp_service_unconfigured",
+        handled: true,
+        sent: false,
+        skipReason: "whatsapp_service_unconfigured",
       });
     }
 
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/send-whatsapp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, message: text }),
-    });
+    const url = `${base.replace(/\/$/, "")}/api/send-whatsapp`;
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), DOWNSTREAM_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, message: text }),
+        signal: ac.signal,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[POST /api/whatsapp/send] Downstream fetch failed", { orderId, msg });
+      await logOrderCommunicationEvent(supabase, orderId, "whatsapp_failed", `fetch: ${msg}`);
+      return NextResponse.json(
+        { handled: false, sent: false, error: msg, retryable: true },
+        { status: 503 },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+
     const json = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
+      const errText = json.error || `WhatsApp service returned ${res.status}`;
+      console.error("[POST /api/whatsapp/send] Downstream error", {
+        orderId,
+        status: res.status,
+        errText,
+      });
+      await logOrderCommunicationEvent(
+        supabase,
+        orderId,
+        "whatsapp_failed",
+        `${res.status}: ${errText}`,
+      );
+      const retryable =
+        res.status === 503 ||
+        res.status === 502 ||
+        res.status === 504 ||
+        res.status >= 500;
       return NextResponse.json(
-        { error: json.error || `WhatsApp service returned ${res.status}` },
-        { status: res.status },
+        { handled: false, sent: false, error: errText, retryable },
+        { status: retryable ? 503 : res.status },
       );
     }
 
-    return NextResponse.json({ success: true });
+    console.log("[POST /api/whatsapp/send] Message sent successfully", { orderId });
+    await logOrderCommunicationEvent(supabase, orderId, "whatsapp_sent", null);
+    return NextResponse.json({ handled: true, sent: true });
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    console.error("[POST /api/whatsapp/send]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[POST /api/whatsapp/send] Unexpected error", err);
+    try {
+      const supabase = createServiceClient();
+      await logOrderCommunicationEvent(supabase, orderId, "whatsapp_failed", err.message);
+    } catch {
+      // ignore secondary log failures
+    }
+    return NextResponse.json({ error: err.message, handled: false, retryable: true }, { status: 500 });
   }
 }
-

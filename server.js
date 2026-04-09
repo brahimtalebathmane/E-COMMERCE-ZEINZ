@@ -8,7 +8,7 @@ const {
   getQrDataUrl,
   reconnectWhatsApp,
   sendWhatsAppMessage,
-  assertConnected,
+  waitForConnected,
   logOtpGenerated,
 } = require("./whatsapp");
 
@@ -66,7 +66,7 @@ async function main() {
       const phoneE164 = normalizeE164(phone);
       if (!phoneE164) return res.status(400).json({ error: "phone required" });
 
-      const connected = await assertConnected();
+      const connected = await waitForConnected(45000);
       if (!connected) {
         return res.status(503).json({ error: "WhatsApp not connected" });
       }
@@ -113,17 +113,28 @@ async function main() {
         return res.status(400).json({ error: "message required" });
       }
 
-      const connected = await assertConnected();
+      // eslint-disable-next-line no-console
+      console.log("[POST /api/send-whatsapp] WhatsApp message trigger", {
+        phone: phoneE164,
+        previewLen: message.trim().length,
+      });
+
+      const connected = await waitForConnected(45000);
       if (!connected) {
+        const st = getStatus();
+        // eslint-disable-next-line no-console
+        console.error("[POST /api/send-whatsapp] Baileys not connected", { status: st });
         return res.status(503).json({ error: "WhatsApp not connected" });
       }
 
       await sendWhatsAppMessage(phoneE164, message.trim());
+      // eslint-disable-next-line no-console
+      console.log("[POST /api/send-whatsapp] Message sent successfully", { phone: phoneE164 });
       return res.json({ success: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // eslint-disable-next-line no-console
-      console.error("[POST /api/send-whatsapp]", msg);
+      console.error("[POST /api/send-whatsapp] send failed", msg);
       return res.status(500).json({ error: msg });
     }
   });
