@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await fetch(`${base.replace(/\\/$/, "")}/api/verify-otp`, {
+    const res = await fetch(`${base.replace(/\/$/, "")}/api/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: body.phone, code: body.code }),
