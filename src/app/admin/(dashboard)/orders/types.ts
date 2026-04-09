@@ -5,11 +5,8 @@ export type AdminOrderProduct = {
   slug: string;
   price: number;
   discount_price: number | null;
-  description_ar: string;
   media_type: "image" | "video";
   media_url: string;
-  /** Post-payment field definitions (Arabic labels); JSON from DB. */
-  form_fields_ar?: unknown;
 } | null;
 
 export type AdminOrderRow = {
@@ -21,7 +18,6 @@ export type AdminOrderRow = {
   total_price: number;
   currency: string;
   status: OrderStatus;
-  form_data: Record<string, unknown> | null;
   completion_token: string;
   created_at: string;
   products: AdminOrderProduct;

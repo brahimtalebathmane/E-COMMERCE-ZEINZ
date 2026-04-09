@@ -1,6 +1,5 @@
 import type {
   FAQ,
-  FormFieldConfig,
   LocalizedProductCopy,
   ProductRow,
   Testimonial,
@@ -58,21 +57,6 @@ function pickFaqs(locale: Locale, ar: FAQ[], fr: FAQ[]): FAQ[] {
   });
 }
 
-function pickFormFields(
-  locale: Locale,
-  ar: FormFieldConfig[],
-  fr: FormFieldConfig[],
-): FormFieldConfig[] {
-  if (locale !== "fr") return ar;
-  if (!fr.length) return ar;
-  const frById = new Map(fr.map((x) => [x.id, x]));
-  return ar.map((a) => {
-    const f = frById.get(a.id);
-    const label = f?.label != null ? pickStr(locale, a.label, f.label) : a.label;
-    return { ...a, label };
-  });
-}
-
 export function getLocalizedProductCopy(
   locale: Locale,
   p: ProductRow,
@@ -87,7 +71,5 @@ export function getLocalizedProductCopy(
       p.testimonials_fr,
     ),
     faqs: pickFaqs(locale, p.faqs_ar, p.faqs_fr),
-    form_title: pickStr(locale, p.form_title_ar, p.form_title_fr),
-    form_fields: pickFormFields(locale, p.form_fields_ar, p.form_fields_fr),
   };
 }

@@ -1,11 +1,6 @@
 "use client";
 
-import type { FormFieldConfig, ProductRow, Testimonial, FAQ } from "@/types";
-import {
-  alignFormFieldsFr,
-  normalizeFormFields,
-} from "@/lib/form-fields";
-import { FormBuilder } from "@/components/admin/FormBuilder";
+import type { ProductRow, Testimonial, FAQ } from "@/types";
 import {
   createProductAction,
   deleteProductAction,
@@ -210,25 +205,9 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
-  const [formTitleAr, setFormTitleAr] = useState(initial?.form_title_ar ?? "");
-  const [formTitleFr, setFormTitleFr] = useState(initial?.form_title_fr ?? "");
-  const [formFieldsAr, setFormFieldsAr] = useState<FormFieldConfig[]>(() =>
-    normalizeFormFields(initial?.form_fields_ar ?? []),
-  );
-  const [formFieldsFr, setFormFieldsFr] = useState<FormFieldConfig[]>(() =>
-    alignFormFieldsFr(
-      normalizeFormFields(initial?.form_fields_ar ?? []),
-      normalizeFormFields(initial?.form_fields_fr ?? []),
-    ),
-  );
   const [oldSlugs, setOldSlugs] = useState<string[]>(() =>
     initial?.old_slugs?.length ? [...initial.old_slugs] : [],
   );
-
-  function onFormFieldsArChange(next: FormFieldConfig[]) {
-    setFormFieldsAr(next);
-    setFormFieldsFr((prev) => alignFormFieldsFr(next, prev));
-  }
 
   function buildPayload(): ProductPayload {
     const discountPrice =
@@ -291,10 +270,6 @@ export function ProductForm({ mode, initial }: Props) {
       faqs_ar: cleanedFaqsAr,
       faqs_fr: cleanedFaqsFr,
       meta_pixel_id: metaPixel.trim() || null,
-      form_title_ar: formTitleAr,
-      form_title_fr: formTitleFr,
-      form_fields_ar: formFieldsAr,
-      form_fields_fr: formFieldsFr,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
     };
   }
@@ -909,42 +884,6 @@ export function ProductForm({ mode, initial }: Props) {
             onChange={(e) => setMetaPixel(e.target.value)}
             placeholder={a.productForm.metaPlaceholder}
             dir="ltr"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">
-            {a.productForm.formTitle} — {a.productForm.langArabic}
-          </label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={formTitleAr}
-            onChange={(e) => setFormTitleAr(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">
-            {a.productForm.formTitle} — {a.productForm.langFrench}
-          </label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={formTitleFr}
-            onChange={(e) => setFormTitleFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <FormBuilder
-            value={formFieldsAr}
-            onChange={onFormFieldsArChange}
-            frFields={formFieldsFr}
-            onFrLabelChange={(i, label) => {
-              setFormFieldsFr((prev) => {
-                const base = alignFormFieldsFr(formFieldsAr, prev);
-                const row = base[i];
-                if (row) base[i] = { ...row, label };
-                return base;
-              });
-            }}
           />
         </div>
 

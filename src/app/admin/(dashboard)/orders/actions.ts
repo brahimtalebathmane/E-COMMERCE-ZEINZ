@@ -27,3 +27,10 @@ export async function updateOrderStatusAction(id: string, status: OrderStatus) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/orders");
 }
+
+export async function deleteOrderAction(id: string) {
+  const supabase = await assertAdmin();
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/orders");
+}

@@ -5,6 +5,7 @@ import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
+import { deleteOrderAction } from "./actions";
 
 function statusBadgeClass(status: OrderStatus): string {
   switch (status) {
@@ -36,12 +37,31 @@ type Props = {
 };
 
 export function OrdersAdminView({ orders }: Props) {
+  const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function onDelete(orderId: string) {
+    if (deletingId) return;
+    if (!confirm(a.orders.deleteConfirm)) return;
+    setDeletingId(orderId);
+    const prev = rows;
+    setRows((r) => r.filter((x) => x.id !== orderId));
+    setActive((cur) => (cur?.id === orderId ? null : cur));
+    try {
+      await deleteOrderAction(orderId);
+    } catch (e) {
+      setRows(prev);
+      throw e;
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <>
       <div className="mt-8 space-y-3 md:hidden">
-        {orders.map((o) => (
+        {rows.map((o) => (
           <button
             key={o.id}
             type="button"
@@ -68,9 +88,23 @@ export function OrdersAdminView({ orders }: Props) {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <OrderStatusBadge status={o.status} />
-                  <span className="text-xs font-medium text-[var(--accent)]">
-                    {a.orders.tapForDetails}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-[var(--accent)]">
+                      {a.orders.tapForDetails}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={deletingId === o.id}
+                      className="min-h-[40px] rounded-lg border border-red-300 bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void onDelete(o.id).catch(() => {});
+                      }}
+                    >
+                      {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -84,11 +118,12 @@ export function OrdersAdminView({ orders }: Props) {
             <tr>
               <th className="w-[22%] px-4 py-3 text-start">{a.orders.phone}</th>
               <th className="w-[38%] px-4 py-3 text-start">{a.orders.address}</th>
-              <th className="w-[40%] px-4 py-3 text-start">{a.orders.status}</th>
+              <th className="w-[28%] px-4 py-3 text-start">{a.orders.status}</th>
+              <th className="w-[12%] px-4 py-3 text-start">{a.orders.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--accent-muted)]">
-            {orders.map((o) => (
+            {rows.map((o) => (
               <tr
                 key={o.id}
                 tabIndex={0}
@@ -117,6 +152,20 @@ export function OrdersAdminView({ orders }: Props) {
                     <span className="text-xs text-[var(--muted)]">{a.orders.openDetailHint}</span>
                   </div>
                 </td>
+                <td className="px-4 py-4 align-middle">
+                  <button
+                    type="button"
+                    disabled={deletingId === o.id}
+                    className="min-h-[40px] rounded-xl border border-red-300 bg-[var(--card)] px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50/40 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void onDelete(o.id).catch(() => {});
+                    }}
+                  >
+                    {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -127,6 +176,7 @@ export function OrdersAdminView({ orders }: Props) {
         order={active}
         open={active !== null}
         onClose={() => setActive(null)}
+        onDeleted={(orderId) => void onDelete(orderId).catch(() => {})}
       />
     </>
   );

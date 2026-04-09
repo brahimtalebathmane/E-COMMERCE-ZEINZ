@@ -1,5 +1,4 @@
 import type { ProductRow } from "@/types";
-import { normalizeFormFields } from "@/lib/form-fields";
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -33,10 +32,6 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     faqs_ar: (row.faqs_ar as ProductRow["faqs_ar"]) ?? [],
     faqs_fr: (row.faqs_fr as ProductRow["faqs_fr"]) ?? [],
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
-    form_title_ar: (row.form_title_ar as string) ?? "",
-    form_title_fr: (row.form_title_fr as string) ?? "",
-    form_fields_ar: normalizeFormFields(row.form_fields_ar),
-    form_fields_fr: normalizeFormFields(row.form_fields_fr),
     created_at: row.created_at as string,
   };
 }

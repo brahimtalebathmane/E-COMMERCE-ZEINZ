@@ -3,17 +3,18 @@ import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
 
 type Props = {
-  searchParams?: {
+  searchParams?: Promise<{
     order_id?: string;
     product_id?: string;
     total_price?: string;
-  };
+  }>;
 };
 
 export default async function OrderSuccessPage({ searchParams }: Props) {
-  const orderId = searchParams?.order_id?.trim() || null;
-  const productId = searchParams?.product_id?.trim() || null;
-  const totalPriceRaw = searchParams?.total_price?.trim() || "";
+  const sp = searchParams ? await searchParams : undefined;
+  const orderId = sp?.order_id?.trim() || null;
+  const productId = sp?.product_id?.trim() || null;
+  const totalPriceRaw = sp?.total_price?.trim() || "";
   const totalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
 
   const product = productId ? await getProductById(productId) : null;

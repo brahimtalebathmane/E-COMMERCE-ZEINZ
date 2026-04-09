@@ -82,11 +82,11 @@ function isCloudflareStreamHlsUrl(url: string): boolean {
 }
 
 /** Merge Stream iframe query params for muted autoplay (browser autoplay policies). */
-function cloudflareStreamIframeSrcWithAutoplay(url: string): string {
+function cloudflareStreamIframeSrcWithAutoplay(url: string, muted: boolean): string {
   try {
     const u = new URL(url);
     u.searchParams.set("autoplay", "true");
-    u.searchParams.set("muted", "true");
+    u.searchParams.set("muted", muted ? "true" : "false");
     u.searchParams.set("preload", "auto");
     u.searchParams.set("playsinline", "true");
     return u.toString();
@@ -114,7 +114,7 @@ function muxPlayerOpts(priority: boolean | undefined) {
     preload: (priority ? "auto" : "metadata") as "auto" | "metadata",
     capRenditionToPlayerSize: true,
     autoPlay: !!priority,
-    muted: true,
+    muted: false,
   };
 }
 
@@ -132,6 +132,8 @@ export function LandingMedia({ product, priority }: Props) {
   const [nativeAspect, setNativeAspect] = useState("16 / 9");
   const muxRef = useRef<MuxPlayerElement | null>(null);
   const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [needsTapForSound, setNeedsTapForSound] = useState(false);
+  const [cloudflareSound, setCloudflareSound] = useState(false);
 
   const muxParts = useMemo(
     () => parseAspectParts(muxAspect) ?? { w: 16, h: 9 },
@@ -152,13 +154,21 @@ export function LandingMedia({ product, priority }: Props) {
     if (!el || !priority) return;
     const kick = () => {
       try {
-        el.muted = true;
+        el.muted = false;
         const p = el.play?.();
         if (p && typeof (p as Promise<void>).catch === "function") {
-          (p as Promise<void>).catch(() => {});
+          (p as Promise<void>).catch(() => {
+            try {
+              el.muted = true;
+              setNeedsTapForSound(true);
+              void el.play?.().catch(() => {});
+            } catch {
+              setNeedsTapForSound(true);
+            }
+          });
         }
       } catch {
-        /* Autoplay blocked */
+        setNeedsTapForSound(true);
       }
     };
     kick();
@@ -173,14 +183,21 @@ export function LandingMedia({ product, priority }: Props) {
   useEffect(() => {
     const v = nativeVideoRef.current;
     if (!v) return;
-    v.muted = true;
-    v.defaultMuted = true;
+    v.muted = false;
+    v.defaultMuted = false;
     v.setAttribute("playsinline", "");
     if (!priority) return;
     const attempt = v.play();
     if (attempt !== undefined) {
       attempt.catch(() => {
-        /* Autoplay blocked; user can use controls */
+        try {
+          v.muted = true;
+          v.defaultMuted = true;
+          setNeedsTapForSound(true);
+          void v.play().catch(() => {});
+        } catch {
+          setNeedsTapForSound(true);
+        }
       });
     }
   }, [url, priority]);
@@ -198,9 +215,16 @@ export function LandingMedia({ product, priority }: Props) {
       if (v.videoWidth > 0 && v.videoHeight > 0) {
         setNativeAspect(`${v.videoWidth} / ${v.videoHeight}`);
       }
-      v.muted = true;
-      v.defaultMuted = true;
-      if (priority) void v.play().catch(() => {});
+      v.muted = false;
+      v.defaultMuted = false;
+      if (priority) {
+        void v.play().catch(() => {
+          v.muted = true;
+          v.defaultMuted = true;
+          setNeedsTapForSound(true);
+          void v.play().catch(() => {});
+        });
+      }
     },
     [priority],
   );
@@ -235,7 +259,7 @@ export function LandingMedia({ product, priority }: Props) {
   }
 
   if (isCloudflareStreamEmbedUrl(url)) {
-    const iframeSrc = cloudflareStreamIframeSrcWithAutoplay(url);
+    const iframeSrc = cloudflareStreamIframeSrcWithAutoplay(url, !cloudflareSound);
     return (
       <div
         className="landing-mux-shell relative min-h-0 min-w-0 bg-black"
@@ -255,6 +279,17 @@ export function LandingMedia({ product, priority }: Props) {
           loading={priority ? "eager" : "lazy"}
           referrerPolicy="strict-origin-when-cross-origin"
         />
+        {!cloudflareSound ? (
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-3 sm:p-4">
+            <button
+              type="button"
+              className="pointer-events-auto rounded-xl bg-black/60 px-4 py-2 text-sm font-semibold text-white backdrop-blur"
+              onClick={() => setCloudflareSound(true)}
+            >
+              {locale === "fr" ? "Activer le son" : "تشغيل الصوت"}
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -301,12 +336,33 @@ export function LandingMedia({ product, priority }: Props) {
             onLoadedMetadata={handleMuxLoadedMetadata}
           />
         )}
+        {needsTapForSound ? (
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-3 sm:p-4">
+            <button
+              type="button"
+              className="pointer-events-auto rounded-xl bg-black/60 px-4 py-2 text-sm font-semibold text-white backdrop-blur"
+              onClick={() => {
+                const el = muxRef.current;
+                if (!el) return;
+                setNeedsTapForSound(false);
+                try {
+                  el.muted = false;
+                  void el.play?.().catch(() => {});
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              {locale === "fr" ? "Appuyez pour activer le son" : "اضغط لتشغيل الصوت"}
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-black">
+    <div className="relative w-full bg-black">
       <div
         className="landing-native-shell w-full bg-black"
         style={
@@ -323,13 +379,30 @@ export function LandingMedia({ product, priority }: Props) {
           src={url}
           controls
           playsInline
-          muted
           autoPlay={!!priority}
           preload={priority ? "auto" : "metadata"}
           onLoadedMetadata={handleNativeLoadedMetadata}
           {...(priority ? { fetchPriority: "high" as const } : {})}
         />
       </div>
+      {needsTapForSound ? (
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-3 sm:p-4">
+          <button
+            type="button"
+            className="pointer-events-auto rounded-xl bg-black/60 px-4 py-2 text-sm font-semibold text-white backdrop-blur"
+            onClick={() => {
+              const v = nativeVideoRef.current;
+              if (!v) return;
+              setNeedsTapForSound(false);
+              v.muted = false;
+              v.defaultMuted = false;
+              void v.play().catch(() => {});
+            }}
+          >
+            {locale === "fr" ? "Appuyez pour activer le son" : "اضغط لتشغيل الصوت"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

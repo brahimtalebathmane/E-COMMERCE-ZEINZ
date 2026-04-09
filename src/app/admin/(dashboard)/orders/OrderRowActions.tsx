@@ -9,13 +9,11 @@ import { useState } from "react";
 type Props = {
   orderId: string;
   status: OrderStatus;
-  formComplete: boolean;
 };
 
 export function OrderRowActions({
   orderId,
   status,
-  formComplete,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -43,9 +41,6 @@ export function OrderRowActions({
         <option value="shipped">{a.orderStatus.shipped}</option>
         <option value="cancelled">{a.orderStatus.cancelled}</option>
       </select>
-      <span className="text-sm text-[var(--muted)]">
-        {formComplete ? a.orderActions.formDone : a.orderActions.formPending}
-      </span>
     </div>
   );
 }

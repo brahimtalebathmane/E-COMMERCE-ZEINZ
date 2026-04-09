@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useId } from "react";
 import type { AdminOrderRow } from "./types";
-import { normalizeFormFields } from "@/lib/form-fields";
-import { OrderFormDataDisplay } from "@/components/admin/OrderFormDataDisplay";
 import { OrderRowActions } from "./OrderRowActions";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
@@ -13,9 +11,10 @@ type Props = {
   order: AdminOrderRow | null;
   open: boolean;
   onClose: () => void;
+  onDeleted: (orderId: string) => void;
 };
 
-export function OrderDetailModal({ order, open, onClose }: Props) {
+export function OrderDetailModal({ order, open, onClose, onDeleted }: Props) {
   const titleId = useId();
 
   useEffect(() => {
@@ -38,8 +37,6 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
 
   if (!open || !order) return null;
 
-  const fd = (order.form_data ?? {}) as Record<string, unknown>;
-  const formComplete = Boolean(fd["_purchase_confirmed_at"]);
   const product = order.products;
   const created = new Date(order.created_at);
   const dateStr = new Intl.DateTimeFormat("ar", {
@@ -133,9 +130,6 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
                         <dd dir="ltr">{formatPrice(Number(product.discount_price))}</dd>
                       </div>
                     ) : null}
-                    <div className="pt-1 text-[var(--muted)]">
-                      <p className="text-xs leading-relaxed">{product.description_ar || "—"}</p>
-                    </div>
                     <div className="text-xs text-[var(--muted)]">
                       {product.media_type === "video"
                         ? a.orders.mediaVideo
@@ -167,19 +161,6 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
               </dl>
             </section>
 
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionFormData}
-              </h3>
-              <div className="mt-3 rounded-xl border border-[var(--accent-muted)]/60 bg-[var(--card)]/50 p-3 sm:p-4">
-                <OrderFormDataDisplay
-                  formData={fd}
-                  fieldDefinitions={normalizeFormFields(product?.form_fields_ar ?? [])}
-                  emptyLabel={a.orders.formDataEmpty}
-                />
-              </div>
-            </section>
-
             <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {a.orders.sectionActions}
@@ -188,8 +169,16 @@ export function OrderDetailModal({ order, open, onClose }: Props) {
                 <OrderRowActions
                   orderId={order.id}
                   status={order.status}
-                  formComplete={formComplete}
                 />
+              </div>
+              <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
+                <button
+                  type="button"
+                  className="min-h-[44px] w-full rounded-xl border border-red-300 bg-[var(--card)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50/40 dark:border-red-800 dark:text-red-400"
+                  onClick={() => onDeleted(order.id)}
+                >
+                  {a.orders.delete}
+                </button>
               </div>
             </section>
           </div>

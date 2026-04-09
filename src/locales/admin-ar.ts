@@ -57,11 +57,11 @@ export const adminAr = {
     sectionMeta: "البيانات العامة",
     sectionProduct: "المنتج",
     sectionTotal: "الإجمالي",
-    sectionFormData: "بيانات النموذج",
-    formFieldCopy: "نسخ",
-    formFieldCopied: "تم النسخ",
-    formFieldOpenLink: "فتح الرابط",
     sectionActions: "إجراءات الطلب",
+    delete: "حذف الطلب",
+    deleteConfirm: "هل تريد حذف هذا الطلب نهائياً؟ لا يمكن التراجع.",
+    deleting: "جاري الحذف…",
+    deleteFailed: "فشل حذف الطلب",
     orderDate: "تاريخ الطلب",
     viewStoreProduct: "عرض في المتجر",
     productPrice: "السعر الأساسي",
@@ -76,8 +76,7 @@ export const adminAr = {
     cancelled: "ملغى",
   },
   orderActions: {
-    formDone: "اكتمل النموذج",
-    formPending: "لم يتم إدخال بيانات إضافية بعد",
+    delete: "حذف",
   },
   productForm: {
     langArabic: "عربي",
@@ -127,7 +126,6 @@ export const adminAr = {
     faqAnswer: "الجواب",
     metaPixel: "معرّف Meta Pixel",
     metaPlaceholder: "أرقام فقط",
-    formTitle: "عنوان النموذج بعد الدفع",
     legacySlugs: "مسارات قديمة لإعادة التوجيه",
     legacySlugsHint:
       "إذا غيّر المنتج مساره، أضف المسارات القديمة هنا حتى تبقى الروابط تعمل.",
@@ -144,29 +142,5 @@ export const adminAr = {
       "حذف هذا المنتج؟ تبقى الطلبات محفوظة، لكن الصفحة ستعيد 404.",
     failedSave: "فشل الحفظ",
     failedDelete: "فشل الحذف",
-  },
-  formBuilder: {
-    title: "حقول النموذج بعد الدفع",
-    bilingualHint:
-      "لكل حقل أدخل التسمية بالعربية والفرنسية في نفس الصندوق. النوع والإلزام يطبّقان على اللغتين. إذا تركت الفرنسية فارغة يمكن أن يُعرض النص العربي في واجهة الفرنسية حسب إعدادات العرض.",
-    newFieldDefault: "حقل جديد",
-    addField: "إضافة حقل",
-    fieldLabel: "التسمية",
-    type: "النوع",
-    requirement: "التزام الحقل",
-    requiredOption: "إلزامي",
-    optionalOption: "اختياري",
-    up: "أعلى",
-    down: "أسفل",
-    remove: "إزالة",
-    emptyHint:
-      "لا توجد حقول بعد. يمكن للعملاء التأكيد بعد الدفع دون حقول (غير موصى به).",
-  },
-  fieldTypes: {
-    text: "نص",
-    textarea: "نص طويل",
-    file: "ملف",
-    email: "بريد",
-    link: "رابط",
   },
 } as const;

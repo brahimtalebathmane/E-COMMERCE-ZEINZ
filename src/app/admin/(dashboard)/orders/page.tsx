@@ -19,7 +19,6 @@ export default async function AdminOrdersPage() {
       total_price,
       currency,
       status,
-      form_data,
       completion_token,
       created_at,
       products (
@@ -27,10 +26,8 @@ export default async function AdminOrdersPage() {
         slug,
         price,
         discount_price,
-        description_ar,
         media_type,
-        media_url,
-        form_fields_ar
+        media_url
       )
     `,
     )

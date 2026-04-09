@@ -1,12 +1,3 @@
-export type FormFieldType = "text" | "textarea" | "file" | "email" | "link";
-
-export type FormFieldConfig = {
-  id: string;
-  label: string;
-  type: FormFieldType;
-  required: boolean;
-};
-
 export type Testimonial = {
   name: string;
   quote: string;
@@ -40,10 +31,6 @@ export type ProductRow = {
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
   meta_pixel_id: string | null;
-  form_title_ar: string;
-  form_title_fr: string;
-  form_fields_ar: FormFieldConfig[];
-  form_fields_fr: FormFieldConfig[];
   created_at: string;
 };
 
@@ -54,8 +41,6 @@ export type LocalizedProductCopy = {
   features: string[];
   testimonials: Testimonial[];
   faqs: FAQ[];
-  form_title: string;
-  form_fields: FormFieldConfig[];
 };
 
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";
@@ -68,7 +53,6 @@ export type OrderRow = {
   address: string | null;
   total_price: number;
   status: OrderStatus;
-  form_data: Record<string, unknown>;
   completion_token: string;
   created_at: string;
 };

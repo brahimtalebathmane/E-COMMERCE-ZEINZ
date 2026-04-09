@@ -61,7 +61,6 @@ export async function POST(request: Request) {
         total_price: total,
         currency: "MRU",
         status: "pending",
-        form_data: {},
       })
       .select("id, total_price")
       .single();

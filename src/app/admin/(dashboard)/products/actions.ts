@@ -3,7 +3,7 @@
 import { RESERVED_SLUGS } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/server";
-import type { FormFieldConfig, Testimonial, FAQ } from "@/types";
+import type { Testimonial, FAQ } from "@/types";
 import { revalidatePath } from "next/cache";
 
 export type ProductPayload = {
@@ -25,10 +25,6 @@ export type ProductPayload = {
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
   meta_pixel_id: string | null;
-  form_title_ar: string;
-  form_title_fr: string;
-  form_fields_ar: FormFieldConfig[];
-  form_fields_fr: FormFieldConfig[];
   old_slugs: string[];
 };
 
@@ -100,10 +96,6 @@ export async function createProductAction(payload: ProductPayload) {
     faqs_ar: payload.faqs_ar,
     faqs_fr: payload.faqs_fr,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
-    form_title_ar: payload.form_title_ar.trim(),
-    form_title_fr: payload.form_title_fr.trim(),
-    form_fields_ar: payload.form_fields_ar,
-    form_fields_fr: payload.form_fields_fr,
   });
 
   if (error) throw new Error(error.message);
@@ -146,10 +138,6 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       faqs_ar: payload.faqs_ar,
       faqs_fr: payload.faqs_fr,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
-      form_title_ar: payload.form_title_ar.trim(),
-      form_title_fr: payload.form_title_fr.trim(),
-      form_fields_ar: payload.form_fields_ar,
-      form_fields_fr: payload.form_fields_fr,
       old_slugs: payload.old_slugs.filter(Boolean),
     })
     .eq("id", id);
