@@ -1,5 +1,6 @@
 "use client";
 
+import "@mux/mux-player/themes/classic";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {

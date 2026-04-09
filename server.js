@@ -102,6 +102,32 @@ async function main() {
     }
   });
 
+  /** Order confirmation template messages (Netlify resolves template; this host sends via Baileys). */
+  server.post("/api/send-whatsapp", async (req, res) => {
+    try {
+      const phone = req.body?.phone;
+      const message = req.body?.message;
+      const phoneE164 = normalizeE164(phone);
+      if (!phoneE164) return res.status(400).json({ error: "phone required" });
+      if (typeof message !== "string" || !message.trim()) {
+        return res.status(400).json({ error: "message required" });
+      }
+
+      const connected = await assertConnected();
+      if (!connected) {
+        return res.status(503).json({ error: "WhatsApp not connected" });
+      }
+
+      await sendWhatsAppMessage(phoneE164, message.trim());
+      return res.json({ success: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // eslint-disable-next-line no-console
+      console.error("[POST /api/send-whatsapp]", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // Delegate all other routes (including existing Next.js APIs) to Next.
   server.all(/.*/, (req, res) => handle(req, res));
 

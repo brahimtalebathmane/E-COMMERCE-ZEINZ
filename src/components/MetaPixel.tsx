@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 
 declare global {
   interface Window {
@@ -62,9 +63,10 @@ export function trackPurchase(params: {
   content_type: string;
 }) {
   if (typeof window === "undefined" || !window.fbq) return;
+  const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
   window.fbq("track", "Purchase", {
-    value: params.value,
-    currency: params.currency,
+    value,
+    currency,
     content_name: params.content_name,
     content_ids: params.content_ids,
     content_type: params.content_type,

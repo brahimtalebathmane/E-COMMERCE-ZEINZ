@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { createRequire } from "module";
 
 type Body = {
   order_id: string;
@@ -55,10 +54,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, skipped: true });
     }
 
-    const require = createRequire(import.meta.url);
-    const whatsapp: { sendWhatsAppMessage: (phone: string, message: string) => Promise<void> } =
-      require("../../../../../whatsapp");
-    await whatsapp.sendWhatsAppMessage(phone, text);
+    const base = (process.env.WHATSAPP_SERVICE_URL || "").trim();
+    if (!base) {
+      return NextResponse.json(
+        {
+          error:
+            "WHATSAPP_SERVICE_URL not configured. Order WhatsApp notifications require the always-on WhatsApp service.",
+        },
+        { status: 503 },
+      );
+    }
+
+    const res = await fetch(`${base.replace(/\/$/, "")}/api/send-whatsapp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, message: text }),
+    });
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: json.error || `WhatsApp service returned ${res.status}` },
+        { status: res.status },
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
