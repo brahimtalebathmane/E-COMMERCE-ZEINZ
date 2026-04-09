@@ -6,8 +6,12 @@ import {
 } from "@/lib/supabase/public";
 
 export function mapProductRow(row: Record<string, unknown>): ProductRow {
+  const dlRaw = row.default_language;
+  const default_language: ProductRow["default_language"] =
+    dlRaw === "fr" ? "fr" : "ar";
   return {
     id: row.id as string,
+    default_language,
     name_ar: row.name_ar as string,
     name_fr: (row.name_fr as string) ?? "",
     description_ar: (row.description_ar as string) ?? "",

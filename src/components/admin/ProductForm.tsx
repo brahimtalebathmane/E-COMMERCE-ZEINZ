@@ -166,6 +166,9 @@ export function ProductForm({ mode, initial }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [defaultLanguage, setDefaultLanguage] = useState<"ar" | "fr">(
+    initial?.default_language ?? "ar",
+  );
   const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
@@ -275,6 +278,7 @@ export function ProductForm({ mode, initial }: Props) {
     }));
 
     return {
+      default_language: defaultLanguage,
       name_ar: nameAr,
       name_fr: nameFr,
       description_ar: descriptionAr,
@@ -355,6 +359,18 @@ export function ProductForm({ mode, initial }: Props) {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.defaultLanguage}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.defaultLanguageHint}</p>
+          <select
+            className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={defaultLanguage}
+            onChange={(e) => setDefaultLanguage(e.target.value as "ar" | "fr")}
+          >
+            <option value="ar">{a.productForm.defaultLanguageArabic}</option>
+            <option value="fr">{a.productForm.defaultLanguageFrench}</option>
+          </select>
+        </div>
         <div>
           <label className="text-sm font-medium">
             {a.productForm.name} — {a.productForm.langArabic}

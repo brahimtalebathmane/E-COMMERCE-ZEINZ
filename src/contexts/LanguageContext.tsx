@@ -24,12 +24,6 @@ type Ctx = {
 
 const LanguageContext = createContext<Ctx | null>(null);
 
-function detectBrowserLocale(): Locale {
-  if (typeof navigator === "undefined") return "ar";
-  const lang = navigator.language || (navigator as { userLanguage?: string }).userLanguage || "ar";
-  return lang.toLowerCase().startsWith("fr") ? "fr" : "ar";
-}
-
 function readStoredLocale(): Locale | null {
   try {
     const raw = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -45,7 +39,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = readStoredLocale();
-    setLocaleState(stored ?? detectBrowserLocale());
+    setLocaleState(stored ?? "ar");
   }, []);
 
   useEffect(() => {

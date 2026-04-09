@@ -116,6 +116,11 @@ export const adminAr = {
   productForm: {
     langArabic: "عربي",
     langFrench: "Français",
+    defaultLanguage: "اللغة الافتراضية للصفحة",
+    defaultLanguageHint:
+      "تُفتح صفحة المنتج دائماً بهذه اللغة افتراضياً (بدون كشف تلقائي من الجهاز). يمكن للعميل تغيير اللغة يدوياً.",
+    defaultLanguageArabic: "عربي (AR)",
+    defaultLanguageFrench: "Français (FR)",
     slugFixed: "المسار (ثابت):",
     name: "الاسم",
     description: "الوصف",

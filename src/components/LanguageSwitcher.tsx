@@ -3,11 +3,24 @@
 import type { Locale } from "@/lib/i18n";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({
+  storageKey,
+}: {
+  /** Optional: persist selection to a custom localStorage key (e.g. per-landing-page). */
+  storageKey?: string;
+}) {
   const { locale, setLocale, t } = useLanguage();
 
   function select(next: Locale) {
-    if (next !== locale) setLocale(next);
+    if (next === locale) return;
+    setLocale(next);
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, next);
+      } catch {
+        // ignore
+      }
+    }
   }
 
   return (

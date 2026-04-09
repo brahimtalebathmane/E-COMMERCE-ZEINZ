@@ -7,6 +7,8 @@ import type { FormFieldConfig, Testimonial, FAQ } from "@/types";
 import { revalidatePath } from "next/cache";
 
 export type ProductPayload = {
+  /** Default storefront language for this landing page. */
+  default_language: "ar" | "fr";
   name_ar: string;
   name_fr: string;
   description_ar: string;
@@ -81,6 +83,7 @@ export async function createProductAction(payload: ProductPayload) {
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
   const { error } = await supabase.from("products").insert({
+    default_language: payload.default_language,
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
     description_ar: payload.description_ar,
@@ -129,6 +132,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
   const { error } = await supabase
     .from("products")
     .update({
+      default_language: payload.default_language,
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
       description_ar: payload.description_ar,

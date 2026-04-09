@@ -20,6 +20,8 @@ export type FAQ = {
 
 export type ProductRow = {
   id: string;
+  /** Default storefront language for this landing page. */
+  default_language: "ar" | "fr";
   name_ar: string;
   name_fr: string;
   description_ar: string;

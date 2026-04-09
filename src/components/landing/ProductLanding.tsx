@@ -34,7 +34,7 @@ const primaryCtaClass =
   "store-btn-primary rounded-2xl px-6 py-3.5 shadow-lg shadow-[var(--accent)]/25";
 
 export function ProductLanding({ product }: Props) {
-  const { t, dir, locale } = useLanguage();
+  const { t, dir, locale, setLocale } = useLanguage();
   const copy = useMemo(
     () => getLocalizedProductCopy(locale, product),
     [locale, product],
@@ -51,6 +51,12 @@ export function ProductLanding({ product }: Props) {
       product.discount_price != null ? product.discount_price : null;
     return { original, discounted };
   }, [product]);
+
+  useEffect(() => {
+    // Landing pages must always start from the admin-selected default language.
+    // Users can still manually switch using the global language switcher.
+    setLocale(product.default_language ?? "ar");
+  }, [product.default_language, setLocale]);
 
   useEffect(() => {
     try {
@@ -125,15 +131,6 @@ export function ProductLanding({ product }: Props) {
       <section className="mt-8 min-w-0 sm:mt-10">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-sm sm:rounded-3xl">
           <LandingMedia product={product} priority />
-        </div>
-        <div className="mt-4 flex justify-center px-1 sm:mt-6">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className={`${primaryCtaClass} max-w-md sm:max-w-lg`}
-          >
-            {t("product.buyNow")}
-          </button>
         </div>
       </section>
 
@@ -268,16 +265,19 @@ export function ProductLanding({ product }: Props) {
       ) : null}
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--accent-muted)] bg-[var(--card)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] backdrop-blur-md dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)]"
-        style={{ paddingLeft: "max(1rem, env(safe-area-inset-left))", paddingRight: "max(1rem, env(safe-area-inset-right))" }}
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--accent-muted)] bg-[var(--card)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] backdrop-blur-md dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)] sm:static sm:mt-10 sm:border-0 sm:bg-transparent sm:pb-0 sm:pt-0 sm:shadow-none sm:backdrop-blur-0"
+        style={{
+          paddingLeft: "max(1rem, env(safe-area-inset-left))",
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
+        }}
       >
-        <div className="mx-auto max-w-5xl px-4">
+        <div className="mx-auto max-w-5xl px-4 sm:px-0">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className={primaryCtaClass}
+            className={`${primaryCtaClass} w-full max-w-md sm:max-w-lg`}
           >
-            {t("product.buyNow")}
+            شراء الآن
           </button>
         </div>
       </div>
