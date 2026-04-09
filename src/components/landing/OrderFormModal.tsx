@@ -84,14 +84,24 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         }),
       });
 
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as
+        | { success: true; order_id: string; total_price: number }
+        | { error?: string };
       if (!res.ok) {
-        throw new Error(json.error ?? "تعذر إرسال الطلب");
+        throw new Error("error" in json ? json.error ?? "تعذر إرسال الطلب" : "تعذر إرسال الطلب");
       }
 
       reset();
       onClose();
-      router.push("/order-success");
+      if (!("success" in json) || !json.order_id) {
+        throw new Error("تعذر إرسال الطلب");
+      }
+      const qs = new URLSearchParams({
+        order_id: json.order_id,
+        product_id: product.id,
+        total_price: String(json.total_price ?? ""),
+      });
+      router.push(`/order-success?${qs.toString()}`);
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");

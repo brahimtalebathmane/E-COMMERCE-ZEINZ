@@ -71,6 +71,14 @@ export async function getProductByOldSlug(
   return mapProductRow(data as Record<string, unknown>);
 }
 
+export async function getProductById(id: string): Promise<ProductRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  return mapProductRow(data as Record<string, unknown>);
+}
+
 export async function getAllProductSlugs(): Promise<{ slug: string }[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createPublicClient();
