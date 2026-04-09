@@ -35,6 +35,7 @@ type WaResponse = {
   handled?: boolean;
   sent?: boolean;
   skipReason?: string;
+  hint?: string;
   retryable?: boolean;
   error?: string;
 };
@@ -80,7 +81,13 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
         console.warn("[order-success] WhatsApp skipped (terminal)", {
           orderId,
           skipReason: body.skipReason,
+          hint: body.hint,
         });
+        if (body.skipReason === "whatsapp_service_unconfigured") {
+          console.info(
+            "[order-success] Fix: Netlify → Site configuration → Environment variables → add WHATSAPP_SERVICE_URL = your Render (or other) WhatsApp service URL, e.g. https://your-service.onrender.com — then redeploy.",
+          );
+        }
       }
       return true;
     }

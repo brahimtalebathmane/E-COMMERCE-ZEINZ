@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import { resolveWhatsAppServiceBase } from "@/lib/whatsapp-service-url";
 
 type Body = {
   order_id: string;
@@ -90,9 +91,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const base = (process.env.WHATSAPP_SERVICE_URL || "").trim();
+    const base = resolveWhatsAppServiceBase();
     if (!base) {
-      console.warn("[POST /api/whatsapp/send] Skipped — WHATSAPP_SERVICE_URL not set");
+      console.warn(
+        "[POST /api/whatsapp/send] Skipped — WHATSAPP_SERVICE_URL not set. " +
+          "On Netlify: Site settings → Environment variables → WHATSAPP_SERVICE_URL = https://your-render-service.onrender.com (no trailing slash).",
+      );
       await logOrderCommunicationEvent(
         supabase,
         orderId,
@@ -103,10 +107,12 @@ export async function POST(request: Request) {
         handled: true,
         sent: false,
         skipReason: "whatsapp_service_unconfigured",
+        hint:
+          "Set WHATSAPP_SERVICE_URL on the Next.js host to your always-on WhatsApp service base URL.",
       });
     }
 
-    const url = `${base.replace(/\/$/, "")}/api/send-whatsapp`;
+    const url = `${base}/api/send-whatsapp`;
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), DOWNSTREAM_TIMEOUT_MS);
     let res: Response;

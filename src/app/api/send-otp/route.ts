@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveWhatsAppServiceBase } from "@/lib/whatsapp-service-url";
 
 type Body = { phone?: string };
 
@@ -10,19 +11,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const base = (process.env.WHATSAPP_SERVICE_URL || "").trim();
+  const base = resolveWhatsAppServiceBase();
   if (!base) {
     return NextResponse.json(
       {
         error:
-          "WHATSAPP_SERVICE_URL not configured. OTP sending requires the always-on WhatsApp service.",
+          "WHATSAPP_SERVICE_URL not configured. OTP sending requires the always-on WhatsApp service. On Netlify, add WHATSAPP_SERVICE_URL in Site settings → Environment variables.",
       },
       { status: 503 },
     );
   }
 
   try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/send-otp`, {
+    const res = await fetch(`${base}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: body.phone }),

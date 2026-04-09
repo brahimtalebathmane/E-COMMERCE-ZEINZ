@@ -40,8 +40,8 @@ Required env vars for the WhatsApp service:
 
 Netlify frontend/proxy:
 
-- Set `WHATSAPP_SERVICE_URL` on Netlify to the public base URL of the WhatsApp service.
-- The frontend can call `POST /api/send-otp` and `POST /api/verify-otp` on Netlify; those routes proxy to the WhatsApp service.
+- Set `WHATSAPP_SERVICE_URL` on Netlify to the **HTTPS base URL** of the always-on WhatsApp service (no trailing slash). **Required** for post-order WhatsApp messages (`/api/whatsapp/send` → `/api/send-whatsapp`) and for OTP proxy routes.
+- The site can call `POST /api/send-otp` and `POST /api/verify-otp` on Netlify; those routes forward to the WhatsApp service.
 
 ## Local development
 
