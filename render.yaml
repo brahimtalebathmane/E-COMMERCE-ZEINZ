@@ -2,12 +2,18 @@ services:
   - type: web
     name: zeinz-whatsapp-service
     runtime: node
-    plan: free
+    # Persistent disk (below) requires a paid instance type on Render.
+    plan: starter
     region: frankfurt
     # Install devDependencies too (Tailwind/PostCSS/TypeScript). Plain `npm ci` skips them when NODE_ENV=production.
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
     healthCheckPath: /api/status
+    # Baileys session files must live on this mount — the rest of the filesystem is ephemeral on deploy.
+    disk:
+      name: whatsapp-baileys-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20"
@@ -16,8 +22,6 @@ services:
       # OTP settings:
       - key: OTP_TTL_SECONDS
         value: "300"
-      # On free plan, Baileys auth may not persist across restarts.
-      # You may need to re-scan QR after sleep/redeploy.
       - key: WHATSAPP_AUTH_DIR
-        value: ./baileys_auth
+        value: /var/data/baileys_auth
 

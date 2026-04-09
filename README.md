@@ -70,21 +70,22 @@ Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify canno
 2. Connect the repo
 3. Settings:
    - **Runtime**: Node
+   - **Instance type**: at least **Starter** if you use a **persistent disk** (required for Baileys session files across deploys).
    - **Build Command**: `npm ci --include=dev && npm run build`
    - **Start Command**: `npm run start`
-4. Add a **Disk**:
+4. Add a **Disk** (paid instances only):
    - **Mount Path**: `/var/data`
    - **Size**: 1GB
 5. Environment variables (Web Service):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `WHATSAPP_AUTH_DIR=./baileys_auth`
+   - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth` (must be **under** the disk mount path)
    - `OTP_HASH_SECRET` (any long random string)
    - `OTP_TTL_SECONDS=300` (optional)
 
 After deploy:
 - Visit the Render service URL. It serves the WhatsApp dashboard at `/`.
-- On the free plan, the service can sleep and storage is not guaranteed. You may need to re-scan QR after restarts.
+- The Blueprint `render.yaml` attaches a 1GB disk and sets `WHATSAPP_AUTH_DIR` so the WhatsApp session survives redeploys without scanning QR again (unless the session is logged out or invalid).
 
 ### Connect Netlify → Render
 

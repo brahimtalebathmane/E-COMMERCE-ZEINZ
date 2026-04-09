@@ -10,6 +10,7 @@ const {
   sendWhatsAppMessage,
   waitForConnected,
   logOtpGenerated,
+  getConnectionInfo,
 } = require("./whatsapp");
 
 const { createOtpForPhone, verifyOtp, normalizeE164 } = require("./otp-service");
@@ -35,7 +36,7 @@ async function main() {
 
   server.get("/api/status", (_req, res) => {
     const status = getStatus();
-    res.json({ status });
+    res.json({ status, ...getConnectionInfo() });
   });
 
   server.get("/api/qr", async (_req, res) => {
@@ -51,7 +52,7 @@ async function main() {
   });
 
   server.post("/api/reconnect", async (_req, res) => {
-    await reconnectWhatsApp();
+    await reconnectWhatsApp({ manual: true });
     res.json({ ok: true });
   });
 

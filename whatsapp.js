@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const pino = require("pino");
 const qrcode = require("qrcode");
 const {
@@ -6,6 +8,8 @@ const {
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } = require("@whiskeysockets/baileys");
+
+const MAX_LOG_LINES = 200;
 
 /** @type {"connected" | "disconnected" | "qr"} */
 let connectionStatus = "disconnected";
@@ -19,18 +23,51 @@ let sock = null;
 /** @type {Promise<void> | null} */
 let connectPromise = null;
 
+/** True if the current connection cycle showed a QR (new pairing). */
+let sawQrThisCycle = false;
+/** Incrementing counter for automatic reconnects after disconnect (reset on open or manual reconnect). */
+let autoReconnectAttempt = 0;
+/** Last disconnect reason string for /api/status. */
+let lastDisconnectReason = "";
+
 function authDir() {
-  return process.env.WHATSAPP_AUTH_DIR || "./baileys_auth";
+  const raw = process.env.WHATSAPP_AUTH_DIR || "./baileys_auth";
+  return path.resolve(raw);
+}
+
+function ensureAuthDir() {
+  const dir = authDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/**
+ * Baileys `useMultiFileAuthState` persists `creds.json` plus key files under this directory.
+ */
+function hasSavedSessionOnDisk() {
+  try {
+    const dir = authDir();
+    const creds = path.join(dir, "creds.json");
+    return fs.existsSync(creds);
+  } catch {
+    return false;
+  }
 }
 
 function pushLog(message) {
   const line = `${new Date().toISOString()} — ${message}`;
-  logs = [...logs, line].slice(-10);
+  logs = [...logs, line].slice(-MAX_LOG_LINES);
+}
+
+function logEvent(message) {
+  pushLog(message);
+  // eslint-disable-next-line no-console
+  console.log(`[WhatsApp] ${message}`);
 }
 
 function logOtpGenerated(phoneE164, expiresAtIso) {
   const safePhone = normalizeE164(phoneE164) || String(phoneE164 || "");
-  pushLog(`OTP generated for ${safePhone} (expires ${expiresAtIso})`);
+  logEvent(`OTP generated for ${safePhone} (expires ${expiresAtIso})`);
 }
 
 function normalizeE164(phone) {
@@ -49,11 +86,40 @@ function jidFromPhone(phone) {
   return `${digits}@s.whatsapp.net`;
 }
 
+function getNextReconnectDelayMs() {
+  const base = 1200;
+  const cap = 60_000;
+  const exp = Math.min(cap, base * Math.pow(2, Math.max(0, autoReconnectAttempt - 1)));
+  return exp;
+}
+
+function describeDisconnect(lastDisconnect) {
+  const statusCode =
+    lastDisconnect?.error?.output?.statusCode ??
+    lastDisconnect?.error?.statusCode ??
+    null;
+  const msg = lastDisconnect?.error?.message || lastDisconnect?.error?.toString?.() || "";
+  if (typeof statusCode === "number") {
+    return `statusCode=${statusCode}${msg ? ` (${msg})` : ""}`;
+  }
+  return msg || "unknown";
+}
+
 async function connectWhatsApp() {
   if (connectPromise) return connectPromise;
   connectPromise = (async () => {
     try {
-      const { state, saveCreds } = await useMultiFileAuthState(authDir());
+      const dir = ensureAuthDir();
+      const hadSession = hasSavedSessionOnDisk();
+      sawQrThisCycle = false;
+
+      logEvent(
+        hadSession
+          ? `Startup: found saved session on disk — restoring (${dir})`
+          : `Startup: no session file yet — QR will be required (${dir})`,
+      );
+
+      const { state, saveCreds } = await useMultiFileAuthState(dir);
       const { version } = await fetchLatestBaileysVersion();
 
       sock = makeWASocket({
@@ -63,7 +129,15 @@ async function connectWhatsApp() {
         logger: pino({ level: "silent" }),
       });
 
-      sock.ev.on("creds.update", saveCreds);
+      sock.ev.on("creds.update", async () => {
+        try {
+          await saveCreds();
+          logEvent("Session credentials updated — persisted to disk");
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          logEvent(`Failed to persist session credentials: ${msg}`);
+        }
+      });
 
       sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -71,19 +145,28 @@ async function connectWhatsApp() {
         if (qr) {
           connectionStatus = "qr";
           latestQr = qr;
-          pushLog("QR generated");
+          sawQrThisCycle = true;
+          logEvent("QR generated — scan with WhatsApp to pair");
         }
 
         if (connection === "open") {
           connectionStatus = "connected";
           latestQr = null;
-          pushLog("WhatsApp connected");
+          autoReconnectAttempt = 0;
+          lastDisconnectReason = "";
+
+          if (sawQrThisCycle) {
+            logEvent("Connected — paired after QR scan");
+          } else if (hadSession) {
+            logEvent("Session restored — connected");
+          } else {
+            logEvent("Connected");
+          }
         }
 
         if (connection === "close") {
           connectionStatus = "disconnected";
           latestQr = null;
-          pushLog("WhatsApp disconnected");
 
           const statusCode =
             lastDisconnect?.error?.output?.statusCode ??
@@ -98,20 +181,31 @@ async function connectWhatsApp() {
             reason === DisconnectReason.loggedOut ||
             reason === DisconnectReason.badSession;
 
+          lastDisconnectReason = describeDisconnect(lastDisconnect);
+          logEvent(`Disconnected (${lastDisconnectReason})${loggedOut ? " — session invalid; scan QR again" : ""}`);
+
           sock = null;
           connectPromise = null;
 
           if (!loggedOut) {
+            autoReconnectAttempt += 1;
+            const delayMs = getNextReconnectDelayMs();
+            logEvent(
+              `Reconnection attempt ${autoReconnectAttempt} scheduled in ${delayMs}ms`,
+            );
             setTimeout(() => {
-              void reconnectWhatsApp();
-            }, 1200);
+              void reconnectWhatsApp({ manual: false });
+            }, delayMs);
+          } else {
+            autoReconnectAttempt = 0;
           }
         }
       });
     } catch (e) {
       connectionStatus = "disconnected";
       latestQr = null;
-      pushLog(`WhatsApp error: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      logEvent(`WhatsApp error: ${msg}`);
       sock = null;
       connectPromise = null;
     }
@@ -119,7 +213,12 @@ async function connectWhatsApp() {
   return connectPromise;
 }
 
-async function reconnectWhatsApp() {
+/**
+ * @param {{ manual?: boolean }} [options]
+ * - manual: user clicked Reconnect — reset auto-retry counter.
+ */
+async function reconnectWhatsApp(options = {}) {
+  const manual = options.manual === true;
   try {
     if (sock) {
       try {
@@ -133,7 +232,10 @@ async function reconnectWhatsApp() {
     connectPromise = null;
     connectionStatus = "disconnected";
     latestQr = null;
-    pushLog("Reconnect requested");
+    if (manual) {
+      autoReconnectAttempt = 0;
+      logEvent("Manual reconnect requested");
+    }
     await connectWhatsApp();
   }
 }
@@ -148,6 +250,16 @@ function getStatus() {
 
 function getLogs() {
   return logs;
+}
+
+function getConnectionInfo() {
+  const dir = authDir();
+  return {
+    authDir: dir,
+    hasSavedSession: hasSavedSessionOnDisk(),
+    autoReconnectAttempt,
+    lastDisconnectReason: lastDisconnectReason || null,
+  };
 }
 
 async function getQrDataUrl() {
@@ -170,7 +282,7 @@ async function sendWhatsAppMessage(phone, message) {
   if (!text) throw new Error("Empty message");
 
   await sock.sendMessage(jid, { text });
-  pushLog(`Message sent to ${normalizeE164(phone)}`);
+  logEvent(`Message sent to ${normalizeE164(phone)}`);
 }
 
 function sleep(ms) {
@@ -195,7 +307,7 @@ async function waitForConnected(timeoutMs = 45000) {
       return true;
     }
     if (connectionStatus === "qr") {
-      pushLog("waitForConnected: QR required — session not active");
+      logEvent("waitForConnected: QR required — session not active");
       return false;
     }
     await sleep(300);
@@ -203,12 +315,12 @@ async function waitForConnected(timeoutMs = 45000) {
 
   const ok = Boolean(sock && connectionStatus === "connected");
   if (!ok) {
-    pushLog(`waitForConnected: timeout after ${timeoutMs}ms (status=${connectionStatus})`);
+    logEvent(`waitForConnected: timeout after ${timeoutMs}ms (status=${connectionStatus})`);
   }
   return ok;
 }
 
-// Start on first require (server boot).
+// Start on first require (server boot) — restores session from disk when available.
 void connectWhatsApp();
 
 module.exports = {
@@ -221,5 +333,5 @@ module.exports = {
   assertConnected,
   waitForConnected,
   logOtpGenerated,
+  getConnectionInfo,
 };
-
