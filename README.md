@@ -62,7 +62,7 @@ Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify canno
 
 1. Push this repo to GitHub (already done).
 2. In Render: **New → Blueprint** and select this repo.
-3. Render will detect `render.yaml` and create a Web Service with a **persistent disk**.
+3. Render will detect `render.yaml` and create a Web Service. The blueprint uses **`npm ci --include=dev && npm run build`** so Tailwind/PostCSS (devDependencies) are installed; plain `npm ci` under `NODE_ENV=production` would skip them and break the Next.js build.
 
 ### Option B: Render UI (manual)
 
@@ -70,7 +70,7 @@ Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify canno
 2. Connect the repo
 3. Settings:
    - **Runtime**: Node
-   - **Build Command**: `npm ci && npm run build`
+   - **Build Command**: `npm ci --include=dev && npm run build`
    - **Start Command**: `npm run start`
 4. Add a **Disk**:
    - **Mount Path**: `/var/data`
