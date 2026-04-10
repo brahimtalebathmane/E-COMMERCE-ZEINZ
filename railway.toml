@@ -1,0 +1,9 @@
+# Railway config-as-code: https://docs.railway.app/reference/config-as-code
+# Add a Volume in the Railway dashboard (e.g. mount at /var/data) and set WHATSAPP_AUTH_DIR=/var/data/baileys_auth
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm ci --include=dev && npm run build"
+
+[deploy]
+startCommand = "npm run start"

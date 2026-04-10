@@ -29,7 +29,7 @@ Netlify’s Next.js runtime is **serverless** and does **not** support a reliabl
 To deliver OTP messages via WhatsApp in production, you must run the WhatsApp client in an **always-on Node.js service**.
 
 This repo includes that service via `server.js` (Express + Next handler) and `whatsapp.js` (Baileys). Deploy it to a Node host
-that supports persistent processes and storage (Render/Fly/Railway/VPS).
+that supports persistent processes and storage (Railway/Fly/VPS).
 
 Required env vars for the WhatsApp service:
 
@@ -54,43 +54,31 @@ npm run dev
 
 Connect the repo and use the included `netlify.toml` (build `npm run build`, Next.js plugin). Do **not** set **Publish directory** to `.next` in the Netlify UI (clear it if Netlify shows `publish: .../.next` under “Resolved config”) — `@netlify/plugin-nextjs` controls the output. Use a **patched** Next.js version (see [Netlify advisory](https://ntl.fyi/cve-2025-55182)); this repo pins **Next ≥ 15.2.6** (e.g. 15.2.9). Set all environment variables in the Netlify UI.
 
-## Render deployment (WhatsApp + OTP service)
+## Railway deployment (WhatsApp + OTP service)
 
-Use Render for the **always-on** WhatsApp (Baileys) + OTP service. Netlify cannot reliably host Baileys.
+Use [Railway](https://railway.app) for the **always-on** WhatsApp (Baileys) + OTP service. Netlify cannot reliably host Baileys.
 
-### Option A: Blueprint (recommended)
-
-1. Push this repo to GitHub (already done).
-2. In Render: **New → Blueprint** and select this repo.
-3. Render will detect `render.yaml` and create a Web Service. The blueprint uses **`npm ci --include=dev && npm run build`** so Tailwind/PostCSS (devDependencies) are installed; plain `npm ci` under `NODE_ENV=production` would skip them and break the Next.js build.
-
-### Option B: Render UI (manual)
-
-1. Render: **New → Web Service**
-2. Connect the repo
-3. Settings:
-   - **Runtime**: Node
-   - **Instance type**: at least **Starter** if you use a **persistent disk** (required for Baileys session files across deploys).
-   - **Build Command**: `npm ci --include=dev && npm run build`
-   - **Start Command**: `npm run start`
-4. Add a **Disk** (paid instances only):
-   - **Mount Path**: `/var/data`
-   - **Size**: 1GB
-5. Environment variables (Web Service):
+1. **New project** → **Deploy from GitHub** → select this repo (or **Empty project** → **GitHub repo**).
+2. Railway will pick up `railway.toml` for **build** (`npm ci --include=dev && npm run build`) and **start** (`npm run start`). That install pattern is required so Tailwind/PostCSS (devDependencies) are present; a plain `npm ci` under `NODE_ENV=production` alone can skip them and break the Next.js build.
+3. **Volumes** (recommended): open the service → **Settings** → **Volumes** → add a volume (e.g. **Mount path** `/var/data`). Baileys auth must live on persistent storage.
+4. **Variables** (service):
+   - `NODE_ENV` = `production` (if not already set)
    - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (if your build or runtime needs it)
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth` (must be **under** the disk mount path)
+   - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth` (must be **under** the volume mount)
    - `OTP_HASH_SECRET` (any long random string)
    - `OTP_TTL_SECONDS=300` (optional)
 
-After deploy:
-- Visit the Render service URL. It serves the WhatsApp dashboard at `/`.
-- The Blueprint `render.yaml` attaches a 1GB disk and sets `WHATSAPP_AUTH_DIR` so the WhatsApp session survives redeploys without scanning QR again (unless the session is logged out or invalid).
+After deploy, open the **public URL** Railway assigns to the service. The WhatsApp dashboard is at `/`. With a volume + `WHATSAPP_AUTH_DIR` under that mount, the session can survive redeploys (until logout or invalid session).
 
-### Connect Netlify → Render
+### Connect Netlify → Railway
 
-In Netlify environment variables set:
-- `WHATSAPP_SERVICE_URL` = the Render service base URL (example: `https://zeinz-whatsapp-service.onrender.com`)
+In Netlify **Environment variables** set:
+
+- `WHATSAPP_SERVICE_URL` = the Railway service **HTTPS** base URL (example: `https://your-service.up.railway.app` — copy from Railway **Settings → Networking → Public networking**), no trailing slash.
+
+If the Next.js API and Baileys run **in the same Railway service** (`server.js`), you can omit `WHATSAPP_SERVICE_URL`; the app resolves the internal `/api/send-whatsapp` via loopback when Railway’s environment is detected.
 
 ## Features (short)
 

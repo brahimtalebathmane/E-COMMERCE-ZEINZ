@@ -85,7 +85,7 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
         });
         if (body.skipReason === "whatsapp_service_unconfigured") {
           console.info(
-            "[order-success] Fix: Netlify → Site configuration → Environment variables → add WHATSAPP_SERVICE_URL = your Render (or other) WhatsApp service URL, e.g. https://your-service.onrender.com — then redeploy.",
+            "[order-success] Fix: Netlify → Site configuration → Environment variables → add WHATSAPP_SERVICE_URL = your Railway WhatsApp service URL, e.g. https://your-service.up.railway.app — then redeploy.",
           );
         }
       }

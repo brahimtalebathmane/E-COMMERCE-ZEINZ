@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     if (!base) {
       console.warn(
         "[POST /api/whatsapp/send] Skipped — WHATSAPP_SERVICE_URL not set. " +
-          "On Netlify: Site settings → Environment variables → WHATSAPP_SERVICE_URL = https://your-render-service.onrender.com (no trailing slash).",
+          "On Netlify: Site settings → Environment variables → WHATSAPP_SERVICE_URL = https://your-service.up.railway.app (no trailing slash).",
       );
       await logOrderCommunicationEvent(
         supabase,
