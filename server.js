@@ -143,9 +143,10 @@ async function main() {
   // Delegate all other routes (including existing Next.js APIs) to Next.
   server.all(/.*/, (req, res) => handle(req, res));
 
-  server.listen(port, () => {
+  const host = process.env.HOST || "0.0.0.0";
+  server.listen(port, host, () => {
     // eslint-disable-next-line no-console
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on http://${host}:${port}`);
   });
 }
 

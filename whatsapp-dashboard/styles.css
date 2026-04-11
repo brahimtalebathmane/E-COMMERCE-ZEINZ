@@ -95,6 +95,11 @@ h1 {
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
 }
 
+.dot.error {
+  background: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+}
+
 .content {
   padding: 18px;
   display: grid;
