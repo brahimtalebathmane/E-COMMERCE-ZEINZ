@@ -45,6 +45,9 @@
     "orderSubmitFailed": "Une erreur s’est produite lors de l’envoi de la commande. Réessayez.",
     "supabaseEnvMissing": "Configuration serveur incomplète. Contactez l’administrateur."
   },
+  "orderForm": {
+    "whatsappNumber": "Numéro WhatsApp"
+  },
   "lang": {
     "ar": "AR",
     "fr": "FR"

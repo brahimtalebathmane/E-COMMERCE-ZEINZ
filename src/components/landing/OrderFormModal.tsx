@@ -28,9 +28,8 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
 }
 
 export function OrderFormModal({ product, open, onClose }: Props) {
-  const { dir } = useLanguage();
+  const { dir, locale, t } = useLanguage();
   const router = useRouter();
-  const { locale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
 
   const [name, setName] = useState("");
@@ -166,7 +165,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
           <div>
             <label className="block text-sm font-medium">
-              رقم الهاتف <span className="text-red-500">*</span>
+              {t("orderForm.whatsappNumber")}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <div className="mt-2 flex items-stretch gap-2" dir="ltr">
               <span className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 text-sm font-mono text-[var(--foreground)]">

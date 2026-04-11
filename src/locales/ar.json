@@ -45,6 +45,9 @@
     "orderSubmitFailed": "حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى",
     "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول."
   },
+  "orderForm": {
+    "whatsappNumber": "رقم واتساب"
+  },
   "lang": {
     "ar": "عربي",
     "fr": "فرنسي"
