@@ -1,0 +1,4 @@
+# Nixpacks: https://nixpacks.com/docs/configuration/file
+# Node 22.13+ satisfies eslint-visitor-keys engine range; avoids EBADENGINE warnings on Railway.
+[variables]
+NIXPACKS_NODE_VERSION = "22.13.1"

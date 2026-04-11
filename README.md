@@ -59,7 +59,7 @@ Connect the repo and use the included `netlify.toml` (build `npm run build`, Nex
 Use [Railway](https://railway.app) for the **always-on** WhatsApp (Baileys) + OTP service. Netlify cannot reliably host Baileys.
 
 1. **New project** → **Deploy from GitHub** → select this repo (or **Empty project** → **GitHub repo**).
-2. Railway will pick up `railway.toml` for **build** (`npm ci --include=dev && npm run build`) and **start** (`npm run start`). That install pattern is required so Tailwind/PostCSS (devDependencies) are present; a plain `npm ci` under `NODE_ENV=production` alone can skip them and break the Next.js build.
+2. Railway will pick up `railway.toml` for **build** (`npm install --include=dev && npm run build`) and **start** (`npm run start`). Dev dependencies must install for Tailwind/PostCSS; the build uses `npm install` (not `npm ci`) because Nixpacks’ Docker cache mount on `node_modules/.cache` conflicts with `npm ci` (EBUSY). `nixpacks.toml` pins a compatible Node version.
 3. **Volumes** (recommended): open the service → **Settings** → **Volumes** → add a volume (e.g. **Mount path** `/var/data`). Baileys auth must live on persistent storage.
 4. **Variables** (service):
    - `NODE_ENV` = `production` (if not already set)
