@@ -1,4 +1,5 @@
 # Nixpacks: https://nixpacks.com/docs/configuration/file
-# Node 22.13+ satisfies eslint-visitor-keys engine range; avoids EBADENGINE warnings on Railway.
+# Railway uses Dockerfile (see railway.toml) to avoid Nixpacks cache + npm ci EBUSY.
+# These variables apply only if you build with Nixpacks elsewhere.
 [variables]
 NIXPACKS_NODE_VERSION = "22.13.1"

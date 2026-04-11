@@ -1,12 +1,12 @@
 # Railway config-as-code: https://docs.railway.app/reference/config-as-code
 # Add a Volume in the Railway dashboard (e.g. mount at /var/data) and set WHATSAPP_AUTH_DIR=/var/data/baileys_auth
 #
-# Build uses `npm install` (not `npm ci`) because Nixpacks mounts a cache at node_modules/.cache;
-# `npm ci` deletes node_modules and hits EBUSY on that mount. See nixpacks.toml for Node version.
+# Use Dockerfile (not Nixpacks) so the Docker build does not mount a cache on node_modules/.cache
+# (Nixpacks + `npm ci` caused EBUSY / exit 240).
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm install --include=dev && npm run build"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "npm run start"
