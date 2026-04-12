@@ -195,7 +195,7 @@ export function ProductLanding({ product }: Props) {
             onClick={() => setOpen(true)}
             className={`${primaryCtaClass} w-full max-w-md sm:max-w-lg`}
           >
-            شراء الآن
+            {t("product.buyNow")}
           </button>
         </div>
       </div>
