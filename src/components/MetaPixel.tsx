@@ -2,6 +2,10 @@
 
 import Script from "next/script";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
+import {
+  META_PURCHASE_TRACKING_CURRENCY,
+  META_PURCHASE_TRACKING_VALUE,
+} from "@/lib/meta-purchase-tracking";
 
 declare global {
   interface Window {
@@ -59,6 +63,20 @@ export function MetaPixel({ pixelId }: Props) {
 export function trackInitiateCheckout(eventId: string) {
   if (typeof window === "undefined" || !window.fbq) return;
   window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
+}
+
+/** Purchase Pixel payload matches CAPI: fixed 25 USD (not real MRU order total). */
+export function trackPurchase(params: { eventId: string }) {
+  if (typeof window === "undefined" || !window.fbq) return;
+  window.fbq(
+    "track",
+    "Purchase",
+    {
+      value: META_PURCHASE_TRACKING_VALUE,
+      currency: META_PURCHASE_TRACKING_CURRENCY,
+    },
+    { eventID: params.eventId },
+  );
 }
 
 export function trackLead(params: {

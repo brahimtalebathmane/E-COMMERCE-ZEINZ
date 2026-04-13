@@ -1,5 +1,9 @@
 import "server-only";
 import crypto from "crypto";
+import {
+  META_PURCHASE_TRACKING_CURRENCY,
+  META_PURCHASE_TRACKING_VALUE,
+} from "@/lib/meta-purchase-tracking";
 
 type MetaUserDataInput = {
   name?: string | null;
@@ -248,12 +252,21 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
     headers: params.requestHeaders ?? undefined,
   });
 
+  const customDataForCapi =
+    params.eventName === "Purchase"
+      ? {
+          ...(params.customData ?? {}),
+          value: META_PURCHASE_TRACKING_VALUE,
+          currency: META_PURCHASE_TRACKING_CURRENCY,
+        }
+      : params.customData || undefined;
+
   const dataRowBase: Record<string, unknown> = {
     event_name: params.eventName,
     event_id: params.eventId,
     action_source: "website",
     user_data: buildUserData(params.userData),
-    custom_data: params.customData || undefined,
+    custom_data: customDataForCapi,
   };
   if (resolvedSourceUrl) {
     dataRowBase.event_source_url = resolvedSourceUrl;

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { OrderStatus } from "@/types";
+import {
+  META_PURCHASE_TRACKING_CURRENCY,
+  META_PURCHASE_TRACKING_VALUE,
+} from "@/lib/meta-purchase-tracking";
 import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
@@ -59,8 +63,8 @@ async function processMetaByStatus(
         clientUserAgent: client.clientUserAgent,
       },
       customData: {
-        value: Number(order.total_price),
-        currency: order.currency ?? "MRU",
+        value: META_PURCHASE_TRACKING_VALUE,
+        currency: META_PURCHASE_TRACKING_CURRENCY,
       },
     });
     if (sent) {
