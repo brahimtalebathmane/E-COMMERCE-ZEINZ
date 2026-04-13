@@ -67,11 +67,18 @@ export function OrdersAdminView({ orders }: Props) {
     <>
       <div className="mt-8 space-y-3 md:hidden">
         {rows.map((o) => (
-          <button
+          <div
             key={o.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setActive(o)}
-            className="w-full rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-start shadow-sm transition hover:border-[var(--accent-muted)]/80 hover:bg-[var(--background)]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setActive(o);
+              }
+            }}
+            className="w-full cursor-pointer rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-start shadow-sm transition hover:border-[var(--accent-muted)]/80 hover:bg-[var(--background)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <div className="flex gap-4">
               <div className="min-w-0 flex-1 space-y-3">
@@ -113,7 +120,7 @@ export function OrdersAdminView({ orders }: Props) {
                 </div>
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
