@@ -1,9 +1,7 @@
 "use client";
 
 import type { OrderStatus } from "@/types";
-import { updateOrderStatusAction } from "@/app/admin/(dashboard)/orders/actions";
 import { adminAr as a } from "@/locales/admin-ar";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
@@ -15,14 +13,23 @@ export function OrderRowActions({
   orderId,
   status,
 }: Props) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function onStatus(next: OrderStatus) {
     setBusy(true);
     try {
-      await updateOrderStatusAction(orderId, next);
-      router.refresh();
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ status: next }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Update failed");
+      }
+    } catch (e) {
+      console.error("[OrderRowActions] status update failed", e);
     } finally {
       setBusy(false);
     }

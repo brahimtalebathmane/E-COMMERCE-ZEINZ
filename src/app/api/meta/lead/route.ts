@@ -54,7 +54,11 @@ export async function POST(request: Request) {
     });
 
     if (sent) {
-      await supabase.from("orders").update({ meta_lead_sent: true }).eq("id", order.id);
+      await supabase
+        .from("orders")
+        .update({ meta_lead_sent: true })
+        .eq("id", order.id)
+        .eq("meta_lead_sent", false);
     }
     return NextResponse.json({ sent });
   } catch (e) {

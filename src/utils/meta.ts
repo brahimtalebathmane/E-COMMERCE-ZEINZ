@@ -87,6 +87,14 @@ export function createMetaEventId(): string {
   return `${Date.now()}_${crypto.randomUUID()}`;
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableMetaHttpStatus(status: number): boolean {
+  return status >= 500 || status === 429;
+}
+
 async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -103,6 +111,7 @@ async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
   }
 }
 
+/** Timeout-safe CAPI POST with up to 2 retries on transient failures. Same event_time across attempts. */
 export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolean> {
   const accessToken = normalizeEnv(process.env.META_CAPI_ACCESS_TOKEN);
   const pixelId = params.pixelId?.trim();
@@ -129,23 +138,31 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
 
   if (testEventCode) payload.test_event_code = testEventCode;
 
-  try {
-    const res = await safeMetaFetch(endpoint, payload);
-    if (!res.ok) {
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await sleep(300 * attempt);
+    }
+    try {
+      const res = await safeMetaFetch(endpoint, payload);
+      if (res.ok) return true;
       const body = await res.text().catch(() => "");
+      const retryable = isRetryableMetaHttpStatus(res.status);
       console.error("[meta] CAPI request failed", {
         eventName: params.eventName,
+        attempt: attempt + 1,
         status: res.status,
-        body,
+        body: body.slice(0, 500),
       });
-      return false;
+      if (!retryable || attempt === maxAttempts - 1) return false;
+    } catch (error) {
+      console.error("[meta] CAPI request error", {
+        eventName: params.eventName,
+        attempt: attempt + 1,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      if (attempt === maxAttempts - 1) return false;
     }
-    return true;
-  } catch (error) {
-    console.error("[meta] CAPI request error", {
-      eventName: params.eventName,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return false;
   }
+  return false;
 }

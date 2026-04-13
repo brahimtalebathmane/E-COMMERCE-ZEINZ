@@ -1,6 +1,7 @@
 import { MetaPixel } from "@/components/MetaPixel";
 import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
+import { OrderSuccessContinueLink } from "./OrderSuccessContinueLink";
 
 type Props = {
   searchParams?: Promise<{
@@ -37,6 +38,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         <p className="text-lg font-semibold text-[var(--foreground)] sm:text-xl">
           تم إرسال طلبكم بنجاح، سيتواصل معكم فريقنا الآن لإتمام الطلب
         </p>
+        <OrderSuccessContinueLink />
       </div>
     </div>
   );

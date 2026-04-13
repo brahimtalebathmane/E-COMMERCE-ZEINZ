@@ -122,7 +122,11 @@ export async function POST(request: Request) {
         : false;
 
       if (leadSent) {
-        await supabase.from("orders").update({ meta_lead_sent: true }).eq("id", order.id);
+        await supabase
+          .from("orders")
+          .update({ meta_lead_sent: true })
+          .eq("id", order.id)
+          .eq("meta_lead_sent", false);
       }
     } catch (error) {
       console.error("[POST /api/orders] Lead CAPI send skipped", {

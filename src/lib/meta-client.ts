@@ -6,3 +6,13 @@ export function createClientMetaEventId(): string {
   }
   return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
+
+/** Clears the funnel session id so the next visit can start a new attribution session. */
+export function clearMetaSessionEventId(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(META_EVENT_ID_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}

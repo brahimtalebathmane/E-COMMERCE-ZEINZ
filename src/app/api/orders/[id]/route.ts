@@ -1,9 +1,9 @@
-import { after } from "next/server";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { OrderStatus } from "@/types";
-import { sendMetaEvent } from "@/utils/meta";
+import { getFirstForwardedIp, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   status?: OrderStatus;
@@ -25,7 +25,12 @@ async function assertAdmin() {
   if (!profile || profile.role !== "admin") throw new Error("Forbidden");
 }
 
-async function processMetaByStatus(orderId: string) {
+type MetaClientContext = {
+  clientIpAddress: string | null;
+  clientUserAgent: string | null;
+};
+
+async function processMetaByStatus(orderId: string, client: MetaClientContext) {
   const supabase = createServiceClient();
   const { data: order, error } = await supabase
     .from("orders")
@@ -46,6 +51,8 @@ async function processMetaByStatus(orderId: string) {
       userData: {
         name: order.customer_name,
         phone: order.phone,
+        clientIpAddress: client.clientIpAddress,
+        clientUserAgent: client.clientUserAgent,
       },
       customData: {
         value: Number(order.total_price),
@@ -53,7 +60,11 @@ async function processMetaByStatus(orderId: string) {
       },
     });
     if (sent) {
-      await supabase.from("orders").update({ meta_purchase_sent: true }).eq("id", order.id);
+      await supabase
+        .from("orders")
+        .update({ meta_purchase_sent: true })
+        .eq("id", order.id)
+        .eq("meta_purchase_sent", false);
     }
     return;
   }
@@ -67,6 +78,8 @@ async function processMetaByStatus(orderId: string) {
       userData: {
         name: order.customer_name,
         phone: order.phone,
+        clientIpAddress: client.clientIpAddress,
+        clientUserAgent: client.clientUserAgent,
       },
       customData: {
         value: 0,
@@ -75,7 +88,11 @@ async function processMetaByStatus(orderId: string) {
       },
     });
     if (sent) {
-      await supabase.from("orders").update({ meta_cancel_sent: true }).eq("id", order.id);
+      await supabase
+        .from("orders")
+        .update({ meta_cancel_sent: true })
+        .eq("id", order.id)
+        .eq("meta_cancel_sent", false);
     }
   }
 }
@@ -124,16 +141,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    after(async () => {
-      try {
-        await processMetaByStatus(orderId);
-      } catch (error) {
-        console.error("[PATCH /api/orders/[id]] Meta side effect failed", {
-          orderId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+    const h = await headers();
+    const clientIpAddress = getFirstForwardedIp(h.get("x-forwarded-for"));
+    const clientUserAgent = h.get("user-agent");
+
+    try {
+      await processMetaByStatus(orderId, { clientIpAddress, clientUserAgent });
+    } catch (error) {
+      console.error("[PATCH /api/orders/[id]] Meta processing failed", {
+        orderId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return NextResponse.json({ success: true, order: updated });
   } catch (error) {

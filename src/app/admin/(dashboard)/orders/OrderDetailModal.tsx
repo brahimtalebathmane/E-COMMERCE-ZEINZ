@@ -66,6 +66,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       const res = await fetch(`/api/orders/${currentOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ status: draftStatus }),
       });
       const json = (await res.json().catch(() => ({}))) as {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
-import { sendMetaEvent } from "@/utils/meta";
+import { getFirstForwardedIp, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   order_id: string;
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ sent: false, reason: "missing_meta_data" }, { status: 200 });
     }
 
+    const h = await headers();
     const sent = await sendMetaEvent({
       pixelId: order.meta_pixel_id,
       eventName: "CancelledLead",
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
       userData: {
         name: order.customer_name,
         phone: order.phone,
+        clientIpAddress: getFirstForwardedIp(h.get("x-forwarded-for")),
+        clientUserAgent: h.get("user-agent"),
       },
       customData: {
         value: 0,
@@ -57,7 +61,11 @@ export async function POST(request: Request) {
     });
 
     if (sent) {
-      await supabase.from("orders").update({ meta_cancel_sent: true }).eq("id", order.id);
+      await supabase
+        .from("orders")
+        .update({ meta_cancel_sent: true })
+        .eq("id", order.id)
+        .eq("meta_cancel_sent", false);
     }
     return NextResponse.json({ sent });
   } catch (e) {

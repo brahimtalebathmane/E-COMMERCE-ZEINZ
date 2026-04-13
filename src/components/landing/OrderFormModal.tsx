@@ -128,7 +128,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         total_price: String(json.total_price ?? ""),
       });
       router.push(`/order-success?${qs.toString()}`);
-      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");
     } finally {

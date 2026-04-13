@@ -47,7 +47,8 @@ export function ProductLanding({ product }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      // Always rotate on page load to keep attribution isolated per page session.
+      const existing = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
+      if (existing) return;
       localStorage.setItem(META_EVENT_ID_STORAGE_KEY, createClientMetaEventId());
     } catch {
       // ignore storage errors
