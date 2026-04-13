@@ -6,13 +6,7 @@ import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
-
-import dynamic from "next/dynamic";
-const MetaPixel = dynamic(
-  () => import("@/components/MetaPixel").then((m) => ({ default: m.MetaPixel })),
-  { ssr: false },
-);
-import { trackInitiateCheckout } from "@/components/MetaPixel";
+import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
 import {
