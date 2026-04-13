@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Script from "next/script";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 import {
@@ -24,7 +25,12 @@ type Props = {
 };
 
 export function MetaPixel({ pixelId }: Props) {
-  if (!pixelId) return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!pixelId || !mounted) return null;
 
   return (
     <>
