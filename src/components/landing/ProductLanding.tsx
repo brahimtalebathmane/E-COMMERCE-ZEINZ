@@ -15,7 +15,11 @@ const MetaPixel = dynamic(
 import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
-import { ensureMetaFunnelSession, touchMetaFunnelActivity } from "@/lib/meta-client";
+import {
+  ensureMetaFunnelSession,
+  touchMetaFunnelActivity,
+  touchMetaFunnelActivityThrottled,
+} from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
@@ -51,6 +55,20 @@ export function ProductLanding({ product }: Props) {
     } catch {
       // ignore storage errors
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => touchMetaFunnelActivityThrottled();
+    const onVis = () => {
+      if (document.visibilityState === "visible") touchMetaFunnelActivityThrottled();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   return (

@@ -2,12 +2,16 @@
 
 import type { ProductRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { trackLead } from "@/components/MetaPixel";
-import { clearMetaSessionEventId, ensureMetaFunnelSession } from "@/lib/meta-client";
+import {
+  clearMetaSessionEventId,
+  ensureMetaFunnelSession,
+  touchMetaFunnelActivityThrottled,
+} from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
@@ -42,6 +46,20 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     name: false,
     phone: false,
   });
+
+  useEffect(() => {
+    if (!open) return;
+    const onScroll = () => touchMetaFunnelActivityThrottled();
+    const onVis = () => {
+      if (document.visibilityState === "visible") touchMetaFunnelActivityThrottled();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [open]);
 
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
@@ -172,6 +190,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               className="store-input mt-2"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onFocus={() => touchMetaFunnelActivityThrottled()}
               onBlur={() => setTouched((p) => ({ ...p, name: true }))}
               autoComplete="name"
               aria-invalid={Boolean(nameError)}
@@ -197,6 +216,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                   const next = onlyDigits(e.target.value);
                   setPhoneLocal(next.slice(0, 8));
                 }}
+                onFocus={() => touchMetaFunnelActivityThrottled()}
                 onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                 inputMode="numeric"
                 autoComplete="tel"
@@ -219,6 +239,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               className="store-input mt-2"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              onFocus={() => touchMetaFunnelActivityThrottled()}
               autoComplete="street-address"
             />
           </div>

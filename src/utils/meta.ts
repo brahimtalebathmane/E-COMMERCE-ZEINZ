@@ -86,13 +86,35 @@ export function getFirstForwardedIp(forwardedFor: string | null): string | null 
   return first || null;
 }
 
+function isPlausibleClientIp(value: string): boolean {
+  const t = value.trim();
+  if (!t || t.toLowerCase() === "unknown") return false;
+  if (/^[\d.]+$/.test(t)) {
+    const parts = t.split(".").map((p) => Number(p));
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n > 255)) return false;
+    return true;
+  }
+  if (t.includes(":")) return t.length >= 3;
+  return false;
+}
+
+function firstPlausibleIpFromHeader(headerValue: string | null): string | null {
+  const first = getFirstForwardedIp(headerValue);
+  if (!first || !isPlausibleClientIp(first)) return null;
+  return first;
+}
+
 /**
  * Resolves client IP for CAPI: x-forwarded-for (first hop), then x-real-ip, then cf-connecting-ip.
- * Next.js Route Handlers do not expose `socket.remoteAddress`; rely on proxy headers.
+ * Next.js Route Handlers do not expose `socket.remoteAddress`; rely on proxy headers only.
  */
 export function resolveClientIpAddress(h: Headers): string | null {
-  const from = (name: string) => getFirstForwardedIp(h.get(name));
-  return from("x-forwarded-for") ?? from("x-real-ip") ?? from("cf-connecting-ip") ?? null;
+  return (
+    firstPlausibleIpFromHeader(h.get("x-forwarded-for")) ??
+    firstPlausibleIpFromHeader(h.get("x-real-ip")) ??
+    firstPlausibleIpFromHeader(h.get("cf-connecting-ip")) ??
+    null
+  );
 }
 
 function trimUrl(value: string | null | undefined): string | null {
@@ -100,52 +122,84 @@ function trimUrl(value: string | null | undefined): string | null {
   return t || null;
 }
 
-function siteUrlFallback(): string {
+function isLocalOrInvalidHostname(host: string): boolean {
+  const h = host.toLowerCase();
+  return (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "0.0.0.0" ||
+    h.endsWith(".local") ||
+    h.endsWith(".localhost")
+  );
+}
+
+function isAcceptableEventSourceUrl(raw: string | null | undefined): boolean {
+  const t = trimUrl(raw ?? null);
+  if (!t) return false;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    if (isLocalOrInvalidHostname(u.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function envBaseUrlCandidates(): string[] {
+  const out: string[] = [];
   const site = normalizeEnv(process.env.NEXT_PUBLIC_SITE_URL);
   if (site) {
     const u = site.startsWith("http://") || site.startsWith("https://") ? site : `https://${site}`;
-    return u.replace(/\/$/, "");
+    out.push(u.replace(/\/$/, ""));
   }
   const vercel = normalizeEnv(process.env.VERCEL_URL);
   if (vercel) {
-    const host = vercel.replace(/^https?:\/\//, "");
-    return `https://${host.replace(/\/$/, "")}`;
+    const host = vercel.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    out.push(`https://${host}`);
   }
-  return "https://localhost";
+  return out;
 }
 
-/** Always returns an absolute URL string for Meta `event_source_url`. */
+/**
+ * Absolute production URL for CAPI fallback, or null if env would yield localhost / invalid.
+ */
+function resolveProductionBaseUrlFromEnv(): string | null {
+  for (const candidate of envBaseUrlCandidates()) {
+    if (isAcceptableEventSourceUrl(candidate)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Meta `event_source_url`: valid absolute https/http URL only, never localhost.
+ * Returns null if nothing trustworthy is available (caller omits the field).
+ */
 export function resolveEventSourceUrl(input: {
   stored?: string | null;
   headers?: Headers | null;
-}): string {
-  const fromStored = trimUrl(input.stored ?? null);
-  if (
-    fromStored &&
-    (fromStored.startsWith("http://") || fromStored.startsWith("https://"))
-  ) {
-    return fromStored;
-  }
+}): string | null {
+  const stored = trimUrl(input.stored ?? null);
+  if (stored && isAcceptableEventSourceUrl(stored)) return stored;
   const h = input.headers;
   if (h) {
     const referer = trimUrl(h.get("referer"));
-    if (referer && (referer.startsWith("http://") || referer.startsWith("https://"))) {
-      return referer;
-    }
+    if (referer && isAcceptableEventSourceUrl(referer)) return referer;
     const xUrl = trimUrl(h.get("x-url") ?? h.get("x-forwarded-url"));
-    if (xUrl && (xUrl.startsWith("http://") || xUrl.startsWith("https://"))) {
-      return xUrl;
-    }
+    if (xUrl && isAcceptableEventSourceUrl(xUrl)) return xUrl;
     const proto = trimUrl(h.get("x-forwarded-proto")) ?? "https";
     const hostRaw = trimUrl(h.get("x-forwarded-host") ?? h.get("host"));
     if (hostRaw) {
       const host = hostRaw.split(",")[0]?.trim() ?? hostRaw;
-      const pathRaw = trimUrl(h.get("x-invoke-path") ?? h.get("x-original-uri")) ?? "/";
-      const path = pathRaw.startsWith("/") ? pathRaw : `/${pathRaw}`;
-      return `${proto}://${host}${path}`;
+      if (!isLocalOrInvalidHostname(host.split(":")[0] ?? host)) {
+        const pathRaw = trimUrl(h.get("x-invoke-path") ?? h.get("x-original-uri")) ?? "/";
+        const path = pathRaw.startsWith("/") ? pathRaw : `/${pathRaw}`;
+        const built = `${proto}://${host}${path}`;
+        if (isAcceptableEventSourceUrl(built)) return built;
+      }
     }
   }
-  return siteUrlFallback();
+  return resolveProductionBaseUrlFromEnv();
 }
 
 export function createMetaEventId(): string {
@@ -194,14 +248,16 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
     headers: params.requestHeaders ?? undefined,
   });
 
-  const dataRowBase = {
+  const dataRowBase: Record<string, unknown> = {
     event_name: params.eventName,
     event_id: params.eventId,
     action_source: "website",
-    event_source_url: resolvedSourceUrl,
     user_data: buildUserData(params.userData),
     custom_data: params.customData || undefined,
   };
+  if (resolvedSourceUrl) {
+    dataRowBase.event_source_url = resolvedSourceUrl;
+  }
 
   let lockedEventTimeSec: number | undefined;
   const maxAttempts = 3;
