@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AdminOrderRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
@@ -20,6 +20,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
   const titleId = useId();
   const [draftStatus, setDraftStatus] = useState<OrderStatus>("pending");
   const [saving, setSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +57,8 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
   const hasChanges = draftStatus !== order.status;
 
   async function onSaveChanges() {
-    if (saving || !hasChanges) return;
+    if (saveLockRef.current || saving || !hasChanges) return;
+    saveLockRef.current = true;
     const prevStatus = currentOrder.status;
 
     onOrderUpdated(currentOrder.id, { status: draftStatus });
@@ -86,6 +88,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       setDraftStatus(prevStatus);
       toast.error(error instanceof Error ? error.message : a.orders.saveFailed);
     } finally {
+      saveLockRef.current = false;
       setSaving(false);
     }
   }

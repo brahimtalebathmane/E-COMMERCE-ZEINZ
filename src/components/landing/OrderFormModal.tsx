@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { trackLead } from "@/components/MetaPixel";
-import { META_EVENT_ID_STORAGE_KEY, createClientMetaEventId } from "@/lib/meta-client";
+import { clearMetaSessionEventId, ensureMetaFunnelSession } from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
@@ -27,14 +27,6 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
     return "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4";
   }
   return null;
-}
-
-function readOrCreateMetaEventId(): string {
-  const existing = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
-  if (existing) return existing;
-  const generated = createClientMetaEventId();
-  localStorage.setItem(META_EVENT_ID_STORAGE_KEY, generated);
-  return generated;
 }
 
 export function OrderFormModal({ product, open, onClose }: Props) {
@@ -82,7 +74,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
     setBusy(true);
     try {
-      const eventId = readOrCreateMetaEventId();
+      const eventId = ensureMetaFunnelSession();
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -117,7 +109,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       });
 
       try {
-        localStorage.removeItem(META_EVENT_ID_STORAGE_KEY);
+        clearMetaSessionEventId();
       } catch {
         // ignore
       }

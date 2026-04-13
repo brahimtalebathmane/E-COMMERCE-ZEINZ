@@ -19,6 +19,8 @@ type SendMetaEventParams = {
   eventName: "Lead" | "Purchase" | "CancelledLead";
   eventId: string;
   eventSourceUrl?: string | null;
+  /** Used with `eventSourceUrl` to guarantee a non-empty absolute URL when stored URL is missing. */
+  requestHeaders?: Headers | null;
   userData?: MetaUserDataInput;
   customData?: MetaCustomData;
 };
@@ -77,10 +79,73 @@ function buildUserData(input?: MetaUserDataInput) {
   return data;
 }
 
+/** First client IP from a comma-separated forwarded chain (or single value). */
 export function getFirstForwardedIp(forwardedFor: string | null): string | null {
   if (!forwardedFor) return null;
   const first = forwardedFor.split(",")[0]?.trim();
   return first || null;
+}
+
+/**
+ * Resolves client IP for CAPI: x-forwarded-for (first hop), then x-real-ip, then cf-connecting-ip.
+ * Next.js Route Handlers do not expose `socket.remoteAddress`; rely on proxy headers.
+ */
+export function resolveClientIpAddress(h: Headers): string | null {
+  const from = (name: string) => getFirstForwardedIp(h.get(name));
+  return from("x-forwarded-for") ?? from("x-real-ip") ?? from("cf-connecting-ip") ?? null;
+}
+
+function trimUrl(value: string | null | undefined): string | null {
+  const t = value?.trim();
+  return t || null;
+}
+
+function siteUrlFallback(): string {
+  const site = normalizeEnv(process.env.NEXT_PUBLIC_SITE_URL);
+  if (site) {
+    const u = site.startsWith("http://") || site.startsWith("https://") ? site : `https://${site}`;
+    return u.replace(/\/$/, "");
+  }
+  const vercel = normalizeEnv(process.env.VERCEL_URL);
+  if (vercel) {
+    const host = vercel.replace(/^https?:\/\//, "");
+    return `https://${host.replace(/\/$/, "")}`;
+  }
+  return "https://localhost";
+}
+
+/** Always returns an absolute URL string for Meta `event_source_url`. */
+export function resolveEventSourceUrl(input: {
+  stored?: string | null;
+  headers?: Headers | null;
+}): string {
+  const fromStored = trimUrl(input.stored ?? null);
+  if (
+    fromStored &&
+    (fromStored.startsWith("http://") || fromStored.startsWith("https://"))
+  ) {
+    return fromStored;
+  }
+  const h = input.headers;
+  if (h) {
+    const referer = trimUrl(h.get("referer"));
+    if (referer && (referer.startsWith("http://") || referer.startsWith("https://"))) {
+      return referer;
+    }
+    const xUrl = trimUrl(h.get("x-url") ?? h.get("x-forwarded-url"));
+    if (xUrl && (xUrl.startsWith("http://") || xUrl.startsWith("https://"))) {
+      return xUrl;
+    }
+    const proto = trimUrl(h.get("x-forwarded-proto")) ?? "https";
+    const hostRaw = trimUrl(h.get("x-forwarded-host") ?? h.get("host"));
+    if (hostRaw) {
+      const host = hostRaw.split(",")[0]?.trim() ?? hostRaw;
+      const pathRaw = trimUrl(h.get("x-invoke-path") ?? h.get("x-original-uri")) ?? "/";
+      const path = pathRaw.startsWith("/") ? pathRaw : `/${pathRaw}`;
+      return `${proto}://${host}${path}`;
+    }
+  }
+  return siteUrlFallback();
 }
 
 export function createMetaEventId(): string {
@@ -111,7 +176,10 @@ async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
   }
 }
 
-/** Timeout-safe CAPI POST with up to 2 retries on transient failures. Same event_time across attempts. */
+/**
+ * Timeout-safe CAPI POST with up to 2 retries on transient failures.
+ * `event_time` is locked on the first HTTP attempt (not before), then reused for retries only.
+ */
 export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolean> {
   const accessToken = normalizeEnv(process.env.META_CAPI_ACCESS_TOKEN);
   const pixelId = params.pixelId?.trim();
@@ -121,28 +189,35 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
   const testEventCode = normalizeEnv(process.env.META_TEST_EVENT_CODE);
   const endpoint = `https://graph.facebook.com/${apiVersion}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
 
-  const eventTime = Math.floor(Date.now() / 1000);
-  const payload: Record<string, unknown> = {
-    data: [
-      {
-        event_name: params.eventName,
-        event_time: eventTime,
-        event_id: params.eventId,
-        action_source: "website",
-        event_source_url: params.eventSourceUrl || undefined,
-        user_data: buildUserData(params.userData),
-        custom_data: params.customData || undefined,
-      },
-    ],
+  const resolvedSourceUrl = resolveEventSourceUrl({
+    stored: params.eventSourceUrl,
+    headers: params.requestHeaders ?? undefined,
+  });
+
+  const dataRowBase = {
+    event_name: params.eventName,
+    event_id: params.eventId,
+    action_source: "website",
+    event_source_url: resolvedSourceUrl,
+    user_data: buildUserData(params.userData),
+    custom_data: params.customData || undefined,
   };
 
-  if (testEventCode) payload.test_event_code = testEventCode;
-
+  let lockedEventTimeSec: number | undefined;
   const maxAttempts = 3;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
       await sleep(300 * attempt);
     }
+    if (lockedEventTimeSec === undefined) {
+      lockedEventTimeSec = Math.floor(Date.now() / 1000);
+    }
+    const payload: Record<string, unknown> = {
+      data: [{ ...dataRowBase, event_time: lockedEventTimeSec }],
+    };
+
+    if (testEventCode) payload.test_event_code = testEventCode;
+
     try {
       const res = await safeMetaFetch(endpoint, payload);
       if (res.ok) return true;

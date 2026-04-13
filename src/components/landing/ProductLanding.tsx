@@ -15,7 +15,7 @@ const MetaPixel = dynamic(
 import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
-import { META_EVENT_ID_STORAGE_KEY, createClientMetaEventId } from "@/lib/meta-client";
+import { ensureMetaFunnelSession, touchMetaFunnelActivity } from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
@@ -47,9 +47,7 @@ export function ProductLanding({ product }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const existing = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
-      if (existing) return;
-      localStorage.setItem(META_EVENT_ID_STORAGE_KEY, createClientMetaEventId());
+      ensureMetaFunnelSession();
     } catch {
       // ignore storage errors
     }
@@ -206,8 +204,8 @@ export function ProductLanding({ product }: Props) {
             type="button"
             onClick={() => {
               try {
-                const eventId = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
-                if (eventId) trackInitiateCheckout(eventId);
+                touchMetaFunnelActivity();
+                trackInitiateCheckout(ensureMetaFunnelSession());
               } catch {
                 // ignore
               }

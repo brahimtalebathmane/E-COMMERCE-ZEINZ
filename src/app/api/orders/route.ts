@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
-import { getFirstForwardedIp, sendMetaEvent } from "@/utils/meta";
+import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   product_id: string;
@@ -98,9 +97,8 @@ export async function POST(request: Request) {
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
     try {
-      const h = await headers();
-      const clientIpAddress = getFirstForwardedIp(h.get("x-forwarded-for"));
-      const clientUserAgent = h.get("user-agent");
+      const clientIpAddress = resolveClientIpAddress(request.headers);
+      const clientUserAgent = request.headers.get("user-agent");
 
       const leadSent = order.meta_event_id
         ? await sendMetaEvent({
@@ -108,6 +106,7 @@ export async function POST(request: Request) {
             eventName: "Lead",
             eventId: order.meta_event_id,
             eventSourceUrl: order.meta_event_source_url,
+            requestHeaders: request.headers,
             userData: {
               name: data.customer_name,
               phone: data.phone,
