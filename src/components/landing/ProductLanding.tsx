@@ -12,6 +12,7 @@ const MetaPixel = dynamic(
   () => import("@/components/MetaPixel").then((m) => ({ default: m.MetaPixel })),
   { ssr: false },
 );
+import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
 
@@ -29,6 +30,7 @@ export function ProductLanding({ product }: Props) {
     [locale, product],
   );
   const [open, setOpen] = useState(false);
+  const metaEventStorageKey = useMemo(() => `meta_event_id:${product.id}`, [product.id]);
 
   const price = useMemo(() => {
     const original = product.price;
@@ -42,6 +44,21 @@ export function ProductLanding({ product }: Props) {
     // Users can still manually switch using the global language switcher.
     setLocale(product.default_language ?? "ar");
   }, [product.default_language, setLocale]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const existing = localStorage.getItem(metaEventStorageKey)?.trim();
+      if (existing) return;
+      const generated =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? `${Date.now()}_${crypto.randomUUID()}`
+          : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(metaEventStorageKey, generated);
+    } catch {
+      // ignore storage errors
+    }
+  }, [metaEventStorageKey]);
 
   return (
     <div
@@ -192,7 +209,15 @@ export function ProductLanding({ product }: Props) {
         <div className="mx-auto max-w-5xl px-4 sm:px-0">
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              try {
+                const eventId = localStorage.getItem(metaEventStorageKey)?.trim();
+                if (eventId) trackInitiateCheckout(eventId);
+              } catch {
+                // ignore
+              }
+              setOpen(true);
+            }}
             className={`${primaryCtaClass} w-full max-w-md sm:max-w-lg`}
           >
             {t("product.buyNow")}
@@ -204,6 +229,7 @@ export function ProductLanding({ product }: Props) {
         product={product}
         open={open}
         onClose={() => setOpen(false)}
+        metaEventStorageKey={metaEventStorageKey}
       />
     </div>
   );

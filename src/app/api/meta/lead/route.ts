@@ -1,0 +1,65 @@
+import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { createServiceClient } from "@/lib/supabase/service";
+import { getFirstForwardedIp, sendMetaEvent } from "@/utils/meta";
+
+type Body = {
+  order_id: string;
+};
+
+export async function POST(request: Request) {
+  let data: Body;
+  try {
+    data = (await request.json()) as Body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!data.order_id || typeof data.order_id !== "string") {
+    return NextResponse.json({ error: "order_id required" }, { status: 400 });
+  }
+
+  try {
+    const supabase = createServiceClient();
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select(
+        "id, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id",
+      )
+      .eq("id", data.order_id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!order.meta_event_id || !order.meta_pixel_id) {
+      return NextResponse.json({ sent: false, reason: "missing_meta_data" }, { status: 200 });
+    }
+
+    const h = await headers();
+    const sent = await sendMetaEvent({
+      pixelId: order.meta_pixel_id,
+      eventName: "Lead",
+      eventId: order.meta_event_id,
+      eventSourceUrl: order.meta_event_source_url,
+      userData: {
+        name: order.customer_name,
+        phone: order.phone,
+        clientIpAddress: getFirstForwardedIp(h.get("x-forwarded-for")),
+        clientUserAgent: h.get("user-agent"),
+      },
+      customData: {
+        value: Number(order.total_price),
+        currency: order.currency ?? "MRU",
+      },
+    });
+
+    if (sent) {
+      await supabase.from("orders").update({ meta_lead_sent: true }).eq("id", order.id);
+    }
+    return NextResponse.json({ sent });
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error("[POST /api/meta/lead]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

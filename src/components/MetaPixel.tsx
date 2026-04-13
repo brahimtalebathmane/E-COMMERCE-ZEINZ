@@ -9,6 +9,7 @@ declare global {
       action: string,
       event: string,
       params?: Record<string, unknown>,
+      options?: Record<string, unknown>,
     ) => void;
     _fbq?: unknown;
   }
@@ -55,20 +56,25 @@ export function MetaPixel({ pixelId }: Props) {
   );
 }
 
-export function trackPurchase(params: {
+export function trackInitiateCheckout(eventId: string) {
+  if (typeof window === "undefined" || !window.fbq) return;
+  window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
+}
+
+export function trackLead(params: {
   value: number;
   currency: string;
-  content_name: string;
-  content_ids: string[];
-  content_type: string;
+  eventId: string;
 }) {
   if (typeof window === "undefined" || !window.fbq) return;
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  window.fbq("track", "Purchase", {
+  window.fbq(
+    "track",
+    "Lead",
+    {
     value,
     currency,
-    content_name: params.content_name,
-    content_ids: params.content_ids,
-    content_type: params.content_type,
-  });
+    },
+    { eventID: params.eventId },
+  );
 }

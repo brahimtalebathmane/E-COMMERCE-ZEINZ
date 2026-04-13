@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import { getFirstForwardedIp, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   product_id: string;
   customer_name: string;
   phone: string;
   address?: string;
+  meta_event_id?: string;
+  event_source_url?: string;
 };
 
 export async function POST(request: Request) {
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, discount_price, price")
+      .select("id, discount_price, price, meta_pixel_id")
       .eq("id", data.product_id)
       .maybeSingle();
 
@@ -48,6 +52,15 @@ export async function POST(request: Request) {
         ? Number(product.discount_price)
         : Number(product.price);
 
+    const orderEventId =
+      typeof data.meta_event_id === "string" && data.meta_event_id.trim()
+        ? data.meta_event_id.trim()
+        : null;
+    const eventSourceUrl =
+      typeof data.event_source_url === "string" && data.event_source_url.trim()
+        ? data.event_source_url.trim()
+        : null;
+
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert({
@@ -62,8 +75,11 @@ export async function POST(request: Request) {
         total_price: total,
         currency: "MRU",
         status: "pending",
+        meta_event_id: orderEventId,
+        meta_event_source_url: eventSourceUrl,
+        meta_pixel_id: product.meta_pixel_id ?? null,
       })
-      .select("id, total_price")
+      .select("id, total_price, meta_event_id, meta_event_source_url, meta_pixel_id")
       .single();
 
     if (orderErr) {
@@ -80,6 +96,40 @@ export async function POST(request: Request) {
     });
 
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
+
+    try {
+      const h = await headers();
+      const clientIpAddress = getFirstForwardedIp(h.get("x-forwarded-for"));
+      const clientUserAgent = h.get("user-agent");
+
+      const leadSent = order.meta_event_id
+        ? await sendMetaEvent({
+            pixelId: order.meta_pixel_id,
+            eventName: "Lead",
+            eventId: order.meta_event_id,
+            eventSourceUrl: order.meta_event_source_url,
+            userData: {
+              name: data.customer_name,
+              phone: data.phone,
+              clientIpAddress,
+              clientUserAgent,
+            },
+            customData: {
+              value: Number(order.total_price),
+              currency: "MRU",
+            },
+          })
+        : false;
+
+      if (leadSent) {
+        await supabase.from("orders").update({ meta_lead_sent: true }).eq("id", order.id);
+      }
+    } catch (error) {
+      console.error("[POST /api/orders] Lead CAPI send skipped", {
+        order_id: order.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return NextResponse.json({
       success: true,

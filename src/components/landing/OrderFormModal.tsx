@@ -6,11 +6,13 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
+import { trackLead } from "@/components/MetaPixel";
 
 type Props = {
   product: ProductRow;
   open: boolean;
   onClose: () => void;
+  metaEventStorageKey: string;
 };
 
 function onlyDigits(s: string) {
@@ -27,7 +29,18 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
   return null;
 }
 
-export function OrderFormModal({ product, open, onClose }: Props) {
+function readOrCreateMetaEventId(storageKey: string): string {
+  const existing = localStorage.getItem(storageKey)?.trim();
+  if (existing) return existing;
+  const generated =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? `${Date.now()}_${crypto.randomUUID()}`
+      : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(storageKey, generated);
+  return generated;
+}
+
+export function OrderFormModal({ product, open, onClose, metaEventStorageKey }: Props) {
   const { dir, locale, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -72,6 +85,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
     setBusy(true);
     try {
+      const eventId = readOrCreateMetaEventId(metaEventStorageKey);
+      const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +95,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           customer_name: n,
           phone: `+222${local}`,
           address: address.trim() || undefined,
+          meta_event_id: eventId,
+          event_source_url: eventSourceUrl,
         }),
       });
 
@@ -95,6 +112,19 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       if (!("success" in json) || !json.order_id) {
         throw new Error("تعذر إرسال الطلب");
       }
+
+      trackLead({
+        value: Number(json.total_price ?? product.discount_price ?? product.price),
+        currency: "MRU",
+        eventId,
+      });
+
+      try {
+        localStorage.removeItem(metaEventStorageKey);
+      } catch {
+        // ignore
+      }
+
       const qs = new URLSearchParams({
         order_id: json.order_id,
         product_id: product.id,
