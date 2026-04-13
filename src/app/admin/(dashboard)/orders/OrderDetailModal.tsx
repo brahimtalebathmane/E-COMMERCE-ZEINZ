@@ -52,17 +52,18 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
     dateStyle: "full",
     timeStyle: "short",
   }).format(created);
+  const currentOrder = order;
   const hasChanges = draftStatus !== order.status;
 
   async function onSaveChanges() {
     if (saving || !hasChanges) return;
-    const prevStatus = order.status;
+    const prevStatus = currentOrder.status;
 
-    onOrderUpdated(order.id, { status: draftStatus });
+    onOrderUpdated(currentOrder.id, { status: draftStatus });
     setSaving(true);
 
     try {
-      const res = await fetch(`/api/orders/${order.id}`, {
+      const res = await fetch(`/api/orders/${currentOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: draftStatus }),
@@ -77,10 +78,10 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       }
       if (json.order?.status) {
         setDraftStatus(json.order.status);
-        onOrderUpdated(order.id, { status: json.order.status });
+        onOrderUpdated(currentOrder.id, { status: json.order.status });
       }
     } catch (error) {
-      onOrderUpdated(order.id, { status: prevStatus });
+      onOrderUpdated(currentOrder.id, { status: prevStatus });
       setDraftStatus(prevStatus);
       toast.error(error instanceof Error ? error.message : a.orders.saveFailed);
     } finally {
