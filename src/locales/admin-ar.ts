@@ -68,6 +68,9 @@ export const adminAr = {
     productDiscount: "سعر التخفيض",
     mediaVideo: "رابط الفيديو",
     mediaImage: "رابط الصورة",
+    saveChanges: "حفظ التغييرات",
+    savingChanges: "جاري الحفظ…",
+    saveFailed: "فشل حفظ التغييرات",
   },
   orderStatus: {
     pending: "قيد الانتظار",

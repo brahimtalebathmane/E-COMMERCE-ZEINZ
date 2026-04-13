@@ -73,7 +73,7 @@ export async function updateOrderStatusAction(id: string, status: OrderStatus) {
       const cancelSent = await sendMetaEvent({
         pixelId: currentOrder.meta_pixel_id,
         eventName: "CancelledLead",
-        eventId: `${currentOrder.meta_event_id}_cancel`,
+        eventId: currentOrder.meta_event_id,
         eventSourceUrl: currentOrder.meta_event_source_url,
         userData: {
           name: currentOrder.customer_name,

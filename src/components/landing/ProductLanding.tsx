@@ -15,6 +15,7 @@ const MetaPixel = dynamic(
 import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
 import Image from "next/image";
+import { META_EVENT_ID_STORAGE_KEY, createClientMetaEventId } from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
@@ -30,8 +31,6 @@ export function ProductLanding({ product }: Props) {
     [locale, product],
   );
   const [open, setOpen] = useState(false);
-  const metaEventStorageKey = useMemo(() => `meta_event_id:${product.id}`, [product.id]);
-
   const price = useMemo(() => {
     const original = product.price;
     const discounted =
@@ -48,17 +47,12 @@ export function ProductLanding({ product }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const existing = localStorage.getItem(metaEventStorageKey)?.trim();
-      if (existing) return;
-      const generated =
-        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-          ? `${Date.now()}_${crypto.randomUUID()}`
-          : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem(metaEventStorageKey, generated);
+      // Always rotate on page load to keep attribution isolated per page session.
+      localStorage.setItem(META_EVENT_ID_STORAGE_KEY, createClientMetaEventId());
     } catch {
       // ignore storage errors
     }
-  }, [metaEventStorageKey]);
+  }, []);
 
   return (
     <div
@@ -211,7 +205,7 @@ export function ProductLanding({ product }: Props) {
             type="button"
             onClick={() => {
               try {
-                const eventId = localStorage.getItem(metaEventStorageKey)?.trim();
+                const eventId = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
                 if (eventId) trackInitiateCheckout(eventId);
               } catch {
                 // ignore
@@ -229,7 +223,6 @@ export function ProductLanding({ product }: Props) {
         product={product}
         open={open}
         onClose={() => setOpen(false)}
-        metaEventStorageKey={metaEventStorageKey}
       />
     </div>
   );

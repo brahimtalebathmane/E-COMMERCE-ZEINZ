@@ -79,11 +79,8 @@ function buildUserData(input?: MetaUserDataInput) {
 
 export function getFirstForwardedIp(forwardedFor: string | null): string | null {
   if (!forwardedFor) return null;
-  const first = forwardedFor
-    .split(",")
-    .map((part) => part.trim())
-    .find(Boolean);
-  return first ?? null;
+  const first = forwardedFor.split(",")[0]?.trim();
+  return first || null;
 }
 
 export function createMetaEventId(): string {

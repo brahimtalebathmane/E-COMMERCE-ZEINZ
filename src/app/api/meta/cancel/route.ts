@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const sent = await sendMetaEvent({
       pixelId: order.meta_pixel_id,
       eventName: "CancelledLead",
-      eventId: `${order.meta_event_id}_cancel`,
+      eventId: order.meta_event_id,
       eventSourceUrl: order.meta_event_source_url,
       userData: {
         name: order.customer_name,

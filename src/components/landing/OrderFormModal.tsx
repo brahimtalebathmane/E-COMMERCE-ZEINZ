@@ -7,12 +7,12 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { trackLead } from "@/components/MetaPixel";
+import { META_EVENT_ID_STORAGE_KEY, createClientMetaEventId } from "@/lib/meta-client";
 
 type Props = {
   product: ProductRow;
   open: boolean;
   onClose: () => void;
-  metaEventStorageKey: string;
 };
 
 function onlyDigits(s: string) {
@@ -29,18 +29,15 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
   return null;
 }
 
-function readOrCreateMetaEventId(storageKey: string): string {
-  const existing = localStorage.getItem(storageKey)?.trim();
+function readOrCreateMetaEventId(): string {
+  const existing = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
   if (existing) return existing;
-  const generated =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? `${Date.now()}_${crypto.randomUUID()}`
-      : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  localStorage.setItem(storageKey, generated);
+  const generated = createClientMetaEventId();
+  localStorage.setItem(META_EVENT_ID_STORAGE_KEY, generated);
   return generated;
 }
 
-export function OrderFormModal({ product, open, onClose, metaEventStorageKey }: Props) {
+export function OrderFormModal({ product, open, onClose }: Props) {
   const { dir, locale, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -85,7 +82,7 @@ export function OrderFormModal({ product, open, onClose, metaEventStorageKey }: 
 
     setBusy(true);
     try {
-      const eventId = readOrCreateMetaEventId(metaEventStorageKey);
+      const eventId = readOrCreateMetaEventId();
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -120,7 +117,7 @@ export function OrderFormModal({ product, open, onClose, metaEventStorageKey }: 
       });
 
       try {
-        localStorage.removeItem(metaEventStorageKey);
+        localStorage.removeItem(META_EVENT_ID_STORAGE_KEY);
       } catch {
         // ignore
       }

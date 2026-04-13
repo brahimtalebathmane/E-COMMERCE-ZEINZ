@@ -41,6 +41,11 @@ export function OrdersAdminView({ orders }: Props) {
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  function patchOrder(orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) {
+    setRows((prev) => prev.map((row) => (row.id === orderId ? { ...row, ...patch } : row)));
+    setActive((prev) => (prev && prev.id === orderId ? { ...prev, ...patch } : prev));
+  }
+
   async function onDelete(orderId: string) {
     if (deletingId) return;
     if (!confirm(a.orders.deleteConfirm)) return;
@@ -177,6 +182,7 @@ export function OrdersAdminView({ orders }: Props) {
         open={active !== null}
         onClose={() => setActive(null)}
         onDeleted={(orderId) => void onDelete(orderId).catch(() => {})}
+        onOrderUpdated={patchOrder}
       />
     </>
   );

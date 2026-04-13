@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useState } from "react";
 import type { AdminOrderRow } from "./types";
-import { OrderRowActions } from "./OrderRowActions";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
+import type { OrderStatus } from "@/types";
+import { toast } from "sonner";
 
 type Props = {
   order: AdminOrderRow | null;
   open: boolean;
   onClose: () => void;
   onDeleted: (orderId: string) => void;
+  onOrderUpdated: (orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) => void;
 };
 
-export function OrderDetailModal({ order, open, onClose, onDeleted }: Props) {
+export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdated }: Props) {
   const titleId = useId();
+  const [draftStatus, setDraftStatus] = useState<OrderStatus>("pending");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,14 +39,54 @@ export function OrderDetailModal({ order, open, onClose, onDeleted }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open || !order) return null;
+  useEffect(() => {
+    if (!order) return;
+    setDraftStatus(order.status);
+    setSaving(false);
+  }, [order]);
 
+  if (!open || !order) return null;
   const product = order.products;
   const created = new Date(order.created_at);
   const dateStr = new Intl.DateTimeFormat("ar", {
     dateStyle: "full",
     timeStyle: "short",
   }).format(created);
+  const hasChanges = draftStatus !== order.status;
+
+  async function onSaveChanges() {
+    if (saving || !hasChanges) return;
+    const prevStatus = order.status;
+
+    onOrderUpdated(order.id, { status: draftStatus });
+    setSaving(true);
+
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: draftStatus }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        order?: { status?: OrderStatus };
+        error?: string;
+      };
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || a.orders.saveFailed);
+      }
+      if (json.order?.status) {
+        setDraftStatus(json.order.status);
+        onOrderUpdated(order.id, { status: json.order.status });
+      }
+    } catch (error) {
+      onOrderUpdated(order.id, { status: prevStatus });
+      setDraftStatus(prevStatus);
+      toast.error(error instanceof Error ? error.message : a.orders.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
@@ -165,15 +209,31 @@ export function OrderDetailModal({ order, open, onClose, onDeleted }: Props) {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {a.orders.sectionActions}
               </h3>
-              <div className="mt-3">
-                <OrderRowActions
-                  orderId={order.id}
-                  status={order.status}
-                />
+              <div className="mt-3 flex flex-col gap-3">
+                <select
+                  disabled={saving}
+                  className="min-h-[44px] w-full max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm disabled:opacity-60"
+                  value={draftStatus}
+                  onChange={(e) => setDraftStatus(e.target.value as OrderStatus)}
+                >
+                  <option value="pending">{a.orderStatus.pending}</option>
+                  <option value="confirmed">{a.orderStatus.confirmed}</option>
+                  <option value="shipped">{a.orderStatus.shipped}</option>
+                  <option value="cancelled">{a.orderStatus.cancelled}</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={saving || !hasChanges}
+                  onClick={() => void onSaveChanges()}
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? a.orders.savingChanges : a.orders.saveChanges}
+                </button>
               </div>
               <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
                 <button
                   type="button"
+                  disabled={saving}
                   className="min-h-[44px] w-full rounded-xl border border-red-300 bg-[var(--card)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50/40 dark:border-red-800 dark:text-red-400"
                   onClick={() => onDeleted(order.id)}
                 >
