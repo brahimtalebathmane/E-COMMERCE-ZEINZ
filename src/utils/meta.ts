@@ -239,7 +239,12 @@ export type SendMetaEventResult =
   | { ok: true }
   | {
       ok: false;
-      reason: "missing_access_token" | "missing_pixel_id" | "http_error" | "network_error";
+      reason:
+        | "missing_access_token"
+        | "missing_pixel_id"
+        | "http_error"
+        | "network_error"
+        | "rejected";
     };
 
 /**
@@ -306,14 +311,43 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
 
     try {
       const res = await safeMetaFetch(endpoint, payload);
+      const body = await res.text().catch(() => "");
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = body ? (JSON.parse(body) as Record<string, unknown>) : null;
+      } catch {
+        parsed = null;
+      }
+
       if (res.ok) {
-        console.info("[meta] CAPI event accepted", {
+        const eventsReceivedRaw = parsed?.events_received;
+        const eventsReceived =
+          typeof eventsReceivedRaw === "number"
+            ? eventsReceivedRaw
+            : Number.isFinite(Number(eventsReceivedRaw))
+              ? Number(eventsReceivedRaw)
+              : 0;
+
+        if (eventsReceived > 0) {
+          console.info("[meta] CAPI event accepted", {
+            eventName: params.eventName,
+            eventIdPrefix: params.eventId?.slice(0, 12),
+            eventsReceived,
+            fbtrace_id:
+              typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined,
+          });
+          return { ok: true };
+        }
+
+        console.error("[meta] CAPI event rejected by Meta", {
           eventName: params.eventName,
           eventIdPrefix: params.eventId?.slice(0, 12),
+          status: res.status,
+          body: body.slice(0, 500),
         });
-        return { ok: true };
+        return { ok: false, reason: "rejected" };
       }
-      const body = await res.text().catch(() => "");
+
       const retryable = isRetryableMetaHttpStatus(res.status);
       console.error("[meta] CAPI request failed", {
         eventName: params.eventName,

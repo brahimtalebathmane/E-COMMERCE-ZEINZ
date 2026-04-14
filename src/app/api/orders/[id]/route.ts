@@ -43,7 +43,12 @@ type MetaPurchaseCapiPayload =
   | { state: "skipped"; reason: "already_sent" | "missing_order_meta" }
   | {
       state: "failed";
-      reason: "missing_access_token" | "missing_pixel_id" | "http_error" | "network_error";
+      reason:
+        | "missing_access_token"
+        | "missing_pixel_id"
+        | "http_error"
+        | "network_error"
+        | "rejected";
     };
 
 async function processMetaByStatus(
