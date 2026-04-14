@@ -6,7 +6,7 @@ import {
   META_PURCHASE_TRACKING_CURRENCY,
   META_PURCHASE_TRACKING_VALUE,
 } from "@/lib/meta-purchase-tracking";
-import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   status?: OrderStatus;
@@ -32,6 +32,10 @@ type MetaClientContext = {
   clientIpAddress: string | null;
   clientUserAgent: string | null;
 };
+
+function resolveFallbackPixelId(): string | null {
+  return process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
+}
 
 /** Returned on PATCH when status becomes `confirmed` so the admin UI can confirm CAPI delivery. */
 type MetaPurchaseCapiPayload =
@@ -59,16 +63,27 @@ async function processMetaByStatus(
   if (error || !order) return {};
 
   if (order.status === "confirmed" && !order.meta_purchase_sent) {
-    if (!order.meta_event_id || !order.meta_pixel_id) {
+    let eventId = order.meta_event_id?.trim() || "";
+    const pixelId = order.meta_pixel_id?.trim() || resolveFallbackPixelId() || "";
+
+    if (!eventId) {
+      eventId = createMetaEventId();
+      await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
+    }
+    if (!order.meta_pixel_id && pixelId) {
+      await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
+    }
+
+    if (!eventId || !pixelId) {
       console.warn("[meta] Purchase CAPI skipped: order missing meta_event_id or meta_pixel_id", {
         orderId,
       });
       return { purchase: { state: "skipped", reason: "missing_order_meta" } };
     }
     const capi = await sendMetaEvent({
-      pixelId: order.meta_pixel_id,
+      pixelId,
       eventName: "Purchase",
-      eventId: order.meta_event_id,
+      eventId,
       eventSourceUrl: order.meta_event_source_url,
       requestHeaders: request.headers,
       userData: {
@@ -98,11 +113,19 @@ async function processMetaByStatus(
   }
 
   if (order.status === "cancelled" && !order.meta_cancel_sent) {
-    if (!order.meta_event_id || !order.meta_pixel_id) return {};
+    const eventId = order.meta_event_id?.trim() || createMetaEventId();
+    const pixelId = order.meta_pixel_id?.trim() || resolveFallbackPixelId();
+    if (!order.meta_event_id) {
+      await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
+    }
+    if (!order.meta_pixel_id && pixelId) {
+      await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
+    }
+    if (!pixelId) return {};
     const capi = await sendMetaEvent({
-      pixelId: order.meta_pixel_id,
+      pixelId,
       eventName: "CancelledLead",
-      eventId: order.meta_event_id,
+      eventId,
       eventSourceUrl: order.meta_event_source_url,
       requestHeaders: request.headers,
       userData: {

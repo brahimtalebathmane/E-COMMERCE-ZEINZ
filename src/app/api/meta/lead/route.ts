@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   order_id: string;
@@ -30,14 +30,26 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    if (!order.meta_event_id || !order.meta_pixel_id) {
+    const eventId = order.meta_event_id?.trim() || createMetaEventId();
+    const pixelId =
+      order.meta_pixel_id?.trim() ||
+      process.env.META_PIXEL_ID?.trim() ||
+      process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() ||
+      null;
+    if (!order.meta_event_id) {
+      await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
+    }
+    if (!order.meta_pixel_id && pixelId) {
+      await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
+    }
+    if (!pixelId) {
       return NextResponse.json({ sent: false, reason: "missing_meta_data" }, { status: 200 });
     }
 
     const capi = await sendMetaEvent({
-      pixelId: order.meta_pixel_id,
+      pixelId,
       eventName: "Lead",
-      eventId: order.meta_event_id,
+      eventId,
       eventSourceUrl: order.meta_event_source_url,
       requestHeaders: request.headers,
       userData: {

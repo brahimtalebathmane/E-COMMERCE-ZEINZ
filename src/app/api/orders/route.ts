@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
-import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 type Body = {
   product_id: string;
@@ -54,7 +54,10 @@ export async function POST(request: Request) {
     const orderEventId =
       typeof data.meta_event_id === "string" && data.meta_event_id.trim()
         ? data.meta_event_id.trim()
-        : null;
+        : createMetaEventId();
+    const fallbackPixelId =
+      process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
+    const orderPixelId = product.meta_pixel_id?.trim() || fallbackPixelId;
     const eventSourceUrl =
       typeof data.event_source_url === "string" && data.event_source_url.trim()
         ? data.event_source_url.trim()
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
         status: "pending",
         meta_event_id: orderEventId,
         meta_event_source_url: eventSourceUrl,
-        meta_pixel_id: product.meta_pixel_id ?? null,
+        meta_pixel_id: orderPixelId,
       })
       .select("id, total_price, meta_event_id, meta_event_source_url, meta_pixel_id")
       .single();
