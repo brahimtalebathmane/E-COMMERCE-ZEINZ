@@ -33,11 +33,20 @@ type MetaClientContext = {
   clientUserAgent: string | null;
 };
 
+/** Returned on PATCH when status becomes `confirmed` so the admin UI can confirm CAPI delivery. */
+type MetaPurchaseCapiPayload =
+  | { state: "sent" }
+  | { state: "skipped"; reason: "already_sent" | "missing_order_meta" }
+  | {
+      state: "failed";
+      reason: "missing_access_token" | "missing_pixel_id" | "http_error" | "network_error";
+    };
+
 async function processMetaByStatus(
   orderId: string,
   client: MetaClientContext,
   request: Request,
-) {
+): Promise<{ purchase?: MetaPurchaseCapiPayload }> {
   const supabase = createServiceClient();
   const { data: order, error } = await supabase
     .from("orders")
@@ -47,10 +56,16 @@ async function processMetaByStatus(
     .eq("id", orderId)
     .maybeSingle();
 
-  if (error || !order || !order.meta_event_id || !order.meta_pixel_id) return;
+  if (error || !order) return {};
 
   if (order.status === "confirmed" && !order.meta_purchase_sent) {
-    const sent = await sendMetaEvent({
+    if (!order.meta_event_id || !order.meta_pixel_id) {
+      console.warn("[meta] Purchase CAPI skipped: order missing meta_event_id or meta_pixel_id", {
+        orderId,
+      });
+      return { purchase: { state: "skipped", reason: "missing_order_meta" } };
+    }
+    const capi = await sendMetaEvent({
       pixelId: order.meta_pixel_id,
       eventName: "Purchase",
       eventId: order.meta_event_id,
@@ -67,18 +82,24 @@ async function processMetaByStatus(
         currency: META_PURCHASE_TRACKING_CURRENCY,
       },
     });
-    if (sent) {
+    if (capi.ok) {
       await supabase
         .from("orders")
         .update({ meta_purchase_sent: true })
         .eq("id", order.id)
         .eq("meta_purchase_sent", false);
+      return { purchase: { state: "sent" } };
     }
-    return;
+    return { purchase: { state: "failed", reason: capi.reason } };
+  }
+
+  if (order.status === "confirmed" && order.meta_purchase_sent) {
+    return { purchase: { state: "skipped", reason: "already_sent" } };
   }
 
   if (order.status === "cancelled" && !order.meta_cancel_sent) {
-    const sent = await sendMetaEvent({
+    if (!order.meta_event_id || !order.meta_pixel_id) return {};
+    const capi = await sendMetaEvent({
       pixelId: order.meta_pixel_id,
       eventName: "CancelledLead",
       eventId: order.meta_event_id,
@@ -96,7 +117,7 @@ async function processMetaByStatus(
         status: "cancelled",
       },
     });
-    if (sent) {
+    if (capi.ok) {
       await supabase
         .from("orders")
         .update({ meta_cancel_sent: true })
@@ -104,6 +125,8 @@ async function processMetaByStatus(
         .eq("meta_cancel_sent", false);
     }
   }
+
+  return {};
 }
 
 export async function PATCH(
@@ -153,8 +176,9 @@ export async function PATCH(
     const clientIpAddress = resolveClientIpAddress(request.headers);
     const clientUserAgent = request.headers.get("user-agent");
 
+    let meta: { purchase?: MetaPurchaseCapiPayload } = {};
     try {
-      await processMetaByStatus(orderId, { clientIpAddress, clientUserAgent }, request);
+      meta = await processMetaByStatus(orderId, { clientIpAddress, clientUserAgent }, request);
     } catch (error) {
       console.error("[PATCH /api/orders/[id]] Meta processing failed", {
         orderId,
@@ -162,7 +186,16 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ success: true, order: updated });
+    const responsePayload: {
+      success: true;
+      order: typeof updated;
+      meta?: { purchase?: MetaPurchaseCapiPayload };
+    } = { success: true, order: updated };
+    if (updated.status === "confirmed" && meta.purchase) {
+      responsePayload.meta = { purchase: meta.purchase };
+    }
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     const status = message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;

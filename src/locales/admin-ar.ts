@@ -71,6 +71,11 @@ export const adminAr = {
     saveChanges: "حفظ التغييرات",
     savingChanges: "جاري الحفظ…",
     saveFailed: "فشل حفظ التغييرات",
+    metaPurchaseCapiOk: "تم إرسال حدث الشراء (Purchase) إلى Meta بنجاح.",
+    metaPurchaseCapiFailed:
+      "تعذر إرسال حدث الشراء إلى Meta. تحقق من META_CAPI_ACCESS_TOKEN في Netlify وسجلات الدالة.",
+    metaPurchaseCapiMissingMeta:
+      "لم يُرسل حدث الشراء: الطلب يفتقد بيانات التتبع (معرّف الحدث أو البكسل).",
   },
   orderStatus: {
     pending: "قيد الانتظار",

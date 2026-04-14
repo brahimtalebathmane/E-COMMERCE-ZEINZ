@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ sent: false, reason: "missing_meta_data" }, { status: 200 });
     }
 
-    const sent = await sendMetaEvent({
+    const capi = await sendMetaEvent({
       pixelId: order.meta_pixel_id,
       eventName: "CancelledLead",
       eventId: order.meta_event_id,
@@ -59,14 +59,14 @@ export async function POST(request: Request) {
       },
     });
 
-    if (sent) {
+    if (capi.ok) {
       await supabase
         .from("orders")
         .update({ meta_cancel_sent: true })
         .eq("id", order.id)
         .eq("meta_cancel_sent", false);
     }
-    return NextResponse.json({ sent });
+    return NextResponse.json({ sent: capi.ok });
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error("[POST /api/meta/cancel]", err);

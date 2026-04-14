@@ -100,25 +100,27 @@ export async function POST(request: Request) {
       const clientIpAddress = resolveClientIpAddress(request.headers);
       const clientUserAgent = request.headers.get("user-agent");
 
-      const leadSent = order.meta_event_id
-        ? await sendMetaEvent({
-            pixelId: order.meta_pixel_id,
-            eventName: "Lead",
-            eventId: order.meta_event_id,
-            eventSourceUrl: order.meta_event_source_url,
-            requestHeaders: request.headers,
-            userData: {
-              name: data.customer_name,
-              phone: data.phone,
-              clientIpAddress,
-              clientUserAgent,
-            },
-            customData: {
-              value: Number(order.total_price),
-              currency: "MRU",
-            },
-          })
-        : false;
+      let leadSent = false;
+      if (order.meta_event_id) {
+        const leadCapi = await sendMetaEvent({
+          pixelId: order.meta_pixel_id,
+          eventName: "Lead",
+          eventId: order.meta_event_id,
+          eventSourceUrl: order.meta_event_source_url,
+          requestHeaders: request.headers,
+          userData: {
+            name: data.customer_name,
+            phone: data.phone,
+            clientIpAddress,
+            clientUserAgent,
+          },
+          customData: {
+            value: Number(order.total_price),
+            currency: "MRU",
+          },
+        });
+        leadSent = leadCapi.ok;
+      }
 
       if (leadSent) {
         await supabase

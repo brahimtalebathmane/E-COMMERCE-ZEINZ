@@ -234,14 +234,31 @@ async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
   }
 }
 
+/** Outcome of a Meta Conversions API (CAPI) request. */
+export type SendMetaEventResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "missing_access_token" | "missing_pixel_id" | "http_error" | "network_error";
+    };
+
 /**
  * Timeout-safe CAPI POST with up to 2 retries on transient failures.
  * `event_time` is locked on the first HTTP attempt (not before), then reused for retries only.
  */
-export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolean> {
+export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMetaEventResult> {
   const accessToken = normalizeEnv(process.env.META_CAPI_ACCESS_TOKEN);
   const pixelId = params.pixelId?.trim();
-  if (!accessToken || !pixelId) return false;
+  if (!accessToken) {
+    console.warn("[meta] CAPI skipped: META_CAPI_ACCESS_TOKEN is not set", {
+      eventName: params.eventName,
+    });
+    return { ok: false, reason: "missing_access_token" };
+  }
+  if (!pixelId) {
+    console.warn("[meta] CAPI skipped: pixel id missing", { eventName: params.eventName });
+    return { ok: false, reason: "missing_pixel_id" };
+  }
 
   const apiVersion = normalizeEnv(process.env.META_CAPI_VERSION) || "v22.0";
   const testEventCode = normalizeEnv(process.env.META_TEST_EVENT_CODE);
@@ -289,7 +306,13 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
 
     try {
       const res = await safeMetaFetch(endpoint, payload);
-      if (res.ok) return true;
+      if (res.ok) {
+        console.info("[meta] CAPI event accepted", {
+          eventName: params.eventName,
+          eventIdPrefix: params.eventId?.slice(0, 12),
+        });
+        return { ok: true };
+      }
       const body = await res.text().catch(() => "");
       const retryable = isRetryableMetaHttpStatus(res.status);
       console.error("[meta] CAPI request failed", {
@@ -298,15 +321,19 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<boolea
         status: res.status,
         body: body.slice(0, 500),
       });
-      if (!retryable || attempt === maxAttempts - 1) return false;
+      if (!retryable || attempt === maxAttempts - 1) {
+        return { ok: false, reason: "http_error" };
+      }
     } catch (error) {
       console.error("[meta] CAPI request error", {
         eventName: params.eventName,
         attempt: attempt + 1,
         error: error instanceof Error ? error.message : String(error),
       });
-      if (attempt === maxAttempts - 1) return false;
+      if (attempt === maxAttempts - 1) {
+        return { ok: false, reason: "network_error" };
+      }
     }
   }
-  return false;
+  return { ok: false, reason: "http_error" };
 }

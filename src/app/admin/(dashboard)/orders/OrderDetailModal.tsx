@@ -75,6 +75,12 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         success?: boolean;
         order?: { status?: OrderStatus };
         error?: string;
+        meta?: {
+          purchase?: {
+            state: "sent" | "skipped" | "failed";
+            reason?: string;
+          };
+        };
       };
       if (!res.ok || !json.success) {
         throw new Error(json.error || a.orders.saveFailed);
@@ -82,6 +88,17 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       if (json.order?.status) {
         setDraftStatus(json.order.status);
         onOrderUpdated(currentOrder.id, { status: json.order.status });
+      }
+      const purchaseMeta = json.meta?.purchase;
+      if (purchaseMeta?.state === "sent") {
+        toast.success(a.orders.metaPurchaseCapiOk);
+      } else if (purchaseMeta?.state === "failed") {
+        toast.error(a.orders.metaPurchaseCapiFailed);
+      } else if (
+        purchaseMeta?.state === "skipped" &&
+        purchaseMeta.reason === "missing_order_meta"
+      ) {
+        toast.warning(a.orders.metaPurchaseCapiMissingMeta);
       }
     } catch (error) {
       onOrderUpdated(currentOrder.id, { status: prevStatus });
