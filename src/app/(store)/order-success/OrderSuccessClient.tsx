@@ -111,6 +111,7 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
 
 export function OrderSuccessClient(props: Props) {
   const { orderId } = props;
+
   useEffect(() => {
     if (!orderId) return;
 

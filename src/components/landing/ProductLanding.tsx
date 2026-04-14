@@ -217,6 +217,7 @@ export function ProductLanding({ product }: Props) {
             onClick={() => {
               try {
                 touchMetaFunnelActivity();
+                // Browser + server dedup relies on a shared funnel event id.
                 trackInitiateCheckout(ensureMetaFunnelSession());
               } catch {
                 // ignore

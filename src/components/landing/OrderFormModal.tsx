@@ -120,6 +120,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         throw new Error("تعذر إرسال الطلب");
       }
 
+      // Keep browser Lead for marketing robustness; server sends Lead too with same event id.
       trackLead({
         value: Number(json.total_price ?? product.discount_price ?? product.price),
         currency: "MRU",
