@@ -266,7 +266,6 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
   }
 
   const apiVersion = normalizeEnv(process.env.META_CAPI_VERSION) || "v22.0";
-  const testEventCode = normalizeEnv(process.env.META_TEST_EVENT_CODE);
   const endpoint = `https://graph.facebook.com/${apiVersion}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
 
   const resolvedSourceUrl = resolveEventSourceUrl({
@@ -306,8 +305,6 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
     const payload: Record<string, unknown> = {
       data: [{ ...dataRowBase, event_time: lockedEventTimeSec }],
     };
-
-    if (testEventCode) payload.test_event_code = testEventCode;
 
     try {
       const res = await safeMetaFetch(endpoint, payload);
