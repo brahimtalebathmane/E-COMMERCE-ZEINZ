@@ -40,7 +40,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   const [name, setName] = useState("");
   const [phoneLocal, setPhoneLocal] = useState("");
-  const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState<{ name: boolean; phone: boolean }>({
     name: false,
@@ -76,7 +75,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
   function reset() {
     setName("");
     setPhoneLocal("");
-    setAddress("");
     setBusy(false);
     setTouched({ name: false, phone: false });
   }
@@ -101,7 +99,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           product_id: product.id,
           customer_name: n,
           phone: `+222${local}`,
-          address: address.trim() || undefined,
           meta_event_id: eventId,
           event_source_url: eventSourceUrl,
         }),
@@ -232,17 +229,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                 أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">العنوان</label>
-            <input
-              className="store-input mt-2"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              onFocus={() => touchMetaFunnelActivityThrottled()}
-              autoComplete="street-address"
-            />
           </div>
 
           <button

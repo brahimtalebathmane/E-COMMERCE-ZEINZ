@@ -51,7 +51,6 @@ export type OrderRow = {
   product_id: string;
   customer_name: string | null;
   phone: string | null;
-  address: string | null;
   total_price: number;
   status: OrderStatus;
   completion_token: string;

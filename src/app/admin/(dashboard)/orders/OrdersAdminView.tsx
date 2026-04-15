@@ -90,14 +90,6 @@ export function OrdersAdminView({ orders }: Props) {
                     {o.phone ?? "—"}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    {a.orders.address}
-                  </p>
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                    {o.address ?? "—"}
-                  </p>
-                </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <OrderStatusBadge status={o.status} />
                   <div className="flex items-center gap-3">
@@ -128,9 +120,8 @@ export function OrdersAdminView({ orders }: Props) {
         <table className="w-full table-fixed border-collapse text-sm">
           <thead className="bg-[var(--card)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
             <tr>
-              <th className="w-[22%] px-4 py-3 text-start">{a.orders.phone}</th>
-              <th className="w-[38%] px-4 py-3 text-start">{a.orders.address}</th>
-              <th className="w-[28%] px-4 py-3 text-start">{a.orders.status}</th>
+              <th className="w-[32%] px-4 py-3 text-start">{a.orders.phone}</th>
+              <th className="w-[56%] px-4 py-3 text-start">{a.orders.status}</th>
               <th className="w-[12%] px-4 py-3 text-start">{a.orders.actions}</th>
             </tr>
           </thead>
@@ -152,11 +143,6 @@ export function OrdersAdminView({ orders }: Props) {
                   <span className="break-all font-mono text-sm" dir="ltr">
                     {o.phone ?? "—"}
                   </span>
-                </td>
-                <td className="px-4 py-4 align-middle">
-                  <p className="line-clamp-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">
-                    {o.address ?? "—"}
-                  </p>
                 </td>
                 <td className="px-4 py-4 align-middle">
                   <div className="flex flex-wrap items-center gap-2">

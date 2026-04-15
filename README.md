@@ -83,7 +83,7 @@ If the Next.js API and Baileys run **in the same Railway service** (`server.js`)
 ## Features (short)
 
 - **`/[slug]`** — Product landing (ISR `revalidate = 60`, `generateStaticParams`). Slug is fixed after create; optional `old_slugs` redirects.
-- **Checkout** — Simple order form (name + phone + optional address) saved to Supabase, then redirects to `/order-success`.
+- **Checkout** — Simple order form (name + WhatsApp number) saved to Supabase, then redirects to `/order-success`.
 
 ## Security notes
 

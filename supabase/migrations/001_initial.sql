@@ -79,7 +79,6 @@ create table if not exists public.orders (
   product_id uuid not null references public.products (id) on delete restrict,
   customer_name text,
   phone text,
-  address text,
   payment_method text,
   payment_number text,
   transaction_reference text,

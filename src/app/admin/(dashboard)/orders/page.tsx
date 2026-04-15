@@ -15,7 +15,6 @@ export default async function AdminOrdersPage() {
       product_id,
       customer_name,
       phone,
-      address,
       total_price,
       currency,
       status,

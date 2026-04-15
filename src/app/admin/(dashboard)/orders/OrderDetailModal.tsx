@@ -163,10 +163,6 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
                     {order.phone ?? "—"}
                   </dd>
                 </div>
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.address}</dt>
-                  <dd className="whitespace-pre-wrap break-words">{order.address ?? "—"}</dd>
-                </div>
               </dl>
             </section>
 

@@ -14,7 +14,6 @@ export type AdminOrderRow = {
   product_id: string;
   customer_name: string | null;
   phone: string | null;
-  address: string | null;
   total_price: number;
   currency: string;
   status: OrderStatus;

@@ -7,7 +7,6 @@ type Body = {
   product_id: string;
   customer_name: string;
   phone: string;
-  address?: string;
   meta_event_id?: string;
   event_source_url?: string;
 };
@@ -69,7 +68,6 @@ export async function POST(request: Request) {
         product_id: data.product_id,
         customer_name: data.customer_name.trim(),
         phone: data.phone.trim(),
-        address: data.address?.trim() || null,
         payment_method: null,
         payment_number: null,
         transaction_reference: null,
