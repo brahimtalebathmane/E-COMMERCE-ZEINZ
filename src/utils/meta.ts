@@ -22,7 +22,7 @@ type MetaCustomData = {
 
 type SendMetaEventParams = {
   pixelId: string | null | undefined;
-  eventName: "Lead" | "Purchase" | "CancelledLead";
+  eventName: "Lead" | "InitiateCheckout" | "Purchase" | "CancelledLead";
   eventId: string;
   eventSourceUrl?: string | null;
   /** Used with `eventSourceUrl` to guarantee a non-empty absolute URL when stored URL is missing. */
