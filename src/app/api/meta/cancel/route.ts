@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const { data: order, error } = await supabase
       .from("orders")
       .select(
-        "id, status, customer_name, phone, meta_event_id, meta_event_source_url, meta_pixel_id, meta_cancel_sent",
+        "id, status, customer_name, phone, meta_event_id, meta_event_source_url, meta_pixel_id, meta_cancel_sent, meta_fbp, meta_fbc",
       )
       .eq("id", data.order_id)
       .maybeSingle();
@@ -61,6 +61,8 @@ export async function POST(request: Request) {
       userData: {
         name: order.customer_name,
         phone: order.phone,
+        fbp: order.meta_fbp,
+        fbc: order.meta_fbc,
         clientIpAddress: resolveClientIpAddress(request.headers),
         clientUserAgent: request.headers.get("user-agent"),
       },

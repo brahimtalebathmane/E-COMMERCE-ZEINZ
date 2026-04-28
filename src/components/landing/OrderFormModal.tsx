@@ -19,6 +19,7 @@ import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { getMetaBrowserCookies } from "@/utils/cookies-client";
 
 type Props = {
   product: ProductRow;
@@ -99,6 +100,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     try {
       const eventId = ensureMetaFunnelSession();
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
+      const metaCookies = getMetaBrowserCookies();
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,6 +110,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           phone: `+222${local}`,
           meta_event_id: eventId,
           event_source_url: eventSourceUrl,
+          meta_fbp: metaCookies.fbp,
+          meta_fbc: metaCookies.fbc,
         }),
       });
 

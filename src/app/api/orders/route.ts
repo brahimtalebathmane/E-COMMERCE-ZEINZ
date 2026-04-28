@@ -9,6 +9,8 @@ type Body = {
   phone: string;
   meta_event_id?: string;
   event_source_url?: string;
+  meta_fbp?: string;
+  meta_fbc?: string;
 };
 
 export async function POST(request: Request) {
@@ -61,6 +63,8 @@ export async function POST(request: Request) {
       typeof data.event_source_url === "string" && data.event_source_url.trim()
         ? data.event_source_url.trim()
         : null;
+    const metaFbp = typeof data.meta_fbp === "string" && data.meta_fbp.trim() ? data.meta_fbp.trim() : null;
+    const metaFbc = typeof data.meta_fbc === "string" && data.meta_fbc.trim() ? data.meta_fbc.trim() : null;
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")
@@ -78,6 +82,8 @@ export async function POST(request: Request) {
         meta_event_id: orderEventId,
         meta_event_source_url: eventSourceUrl,
         meta_pixel_id: orderPixelId,
+        meta_fbp: metaFbp,
+        meta_fbc: metaFbc,
       })
       .select("id, total_price, meta_event_id, meta_event_source_url, meta_pixel_id")
       .single();
@@ -112,6 +118,8 @@ export async function POST(request: Request) {
           userData: {
             name: data.customer_name,
             phone: data.phone,
+            fbp: metaFbp,
+            fbc: metaFbc,
             clientIpAddress,
             clientUserAgent,
           },

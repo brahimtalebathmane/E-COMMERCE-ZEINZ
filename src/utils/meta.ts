@@ -8,6 +8,8 @@ import {
 type MetaUserDataInput = {
   name?: string | null;
   phone?: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
 };
@@ -63,6 +65,11 @@ function splitNameParts(name: string): { firstName: string; lastName: string | n
 function buildUserData(input?: MetaUserDataInput) {
   const data: Record<string, unknown> = {};
   if (!input) return data;
+
+  const fbp = input.fbp?.trim();
+  if (fbp) data.fbp = fbp;
+  const fbc = input.fbc?.trim();
+  if (fbc) data.fbc = fbc;
 
   if (input.clientIpAddress) data.client_ip_address = input.clientIpAddress;
   if (input.clientUserAgent) data.client_user_agent = input.clientUserAgent;
