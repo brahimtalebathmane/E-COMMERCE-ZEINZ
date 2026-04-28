@@ -153,18 +153,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         eventId,
       });
 
-      // Server-side InitiateCheckout should reuse stored meta_fbp/meta_fbc + same event id.
-      // Fire-and-forget to avoid impacting UX; dedup is handled by event_id lifecycle.
-      try {
-        void fetch("/api/meta/initiate-checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order_id: json.order_id }),
-        });
-      } catch {
-        // ignore
-      }
-
       try {
         clearMetaSessionEventId();
       } catch {
