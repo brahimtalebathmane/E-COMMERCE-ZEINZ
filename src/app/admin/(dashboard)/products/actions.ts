@@ -54,6 +54,64 @@ export type ProductPayload = {
   old_slugs: string[];
 };
 
+function trimText(v: string): string {
+  return v.trim();
+}
+
+function trimList(items: string[]): string[] {
+  return items.map((item) => item.trim()).filter(Boolean);
+}
+
+function validateProductPayload(payload: ProductPayload) {
+  const requiredText = [
+    payload.name_ar,
+    payload.hero_subtitle_ar,
+    payload.hero_badge_ar,
+    payload.cta_text_ar,
+    payload.features_title_ar,
+    payload.testimonials_title_ar,
+    payload.media_caption_ar,
+    payload.faq_title_ar,
+    payload.contact_title_ar,
+    payload.description_ar,
+  ].map(trimText);
+
+  if (requiredText.some((field) => field.length === 0)) {
+    throw new Error("Please fill all required Arabic landing section fields.");
+  }
+
+  if (!trimText(payload.media_url)) {
+    throw new Error("Primary media URL is required.");
+  }
+
+  if (!Number.isFinite(payload.price) || payload.price <= 0) {
+    throw new Error("Price must be greater than zero.");
+  }
+
+  if (
+    payload.discount_price != null &&
+    (!Number.isFinite(payload.discount_price) || payload.discount_price <= 0)
+  ) {
+    throw new Error("Discount price must be a valid positive number.");
+  }
+
+  if (trimList(payload.features_ar).length < 4) {
+    throw new Error("Please provide at least 4 Arabic feature items.");
+  }
+  if (trimList(payload.testimonials_ar.map((t) => `${t.name} ${t.quote}`)).length < 4) {
+    throw new Error("Please provide at least 4 Arabic testimonials.");
+  }
+  if (trimList(payload.faqs_ar.map((f) => `${f.q} ${f.a}`)).length < 4) {
+    throw new Error("Please provide at least 4 Arabic FAQ items.");
+  }
+  if (trimList(payload.stats_ar).length < 3) {
+    throw new Error("Please provide at least 3 Arabic stats items.");
+  }
+  if (trimList(payload.contact_lines_ar).length < 3) {
+    throw new Error("Please provide at least 3 Arabic contact lines.");
+  }
+}
+
 async function assertAdmin() {
   const supabase = await createClient();
   const {
@@ -98,6 +156,7 @@ async function allocateUniqueSlug(
 }
 
 export async function createProductAction(payload: ProductPayload) {
+  validateProductPayload(payload);
   const supabase = await assertAdmin();
 
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
@@ -159,6 +218,7 @@ export async function createProductAction(payload: ProductPayload) {
 }
 
 export async function updateProductAction(id: string, payload: ProductPayload) {
+  validateProductPayload(payload);
   const supabase = await assertAdmin();
 
   const { data: existing, error: fetchErr } = await supabase

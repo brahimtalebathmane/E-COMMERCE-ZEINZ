@@ -63,8 +63,8 @@ export function getLocalizedProductCopy(
   p: ProductRow,
 ): LocalizedProductCopy {
   return {
-    brandColor: BRAND_COLOR,
-    logoUrl: SITE_LOGO_URL,
+    brandColor: p.brand_color?.trim() || BRAND_COLOR,
+    logoUrl: p.logo_url?.trim() || SITE_LOGO_URL,
     name: pickStr(locale, p.name_ar, p.name_fr),
     heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
     heroBadge: pickStr(locale, p.hero_badge_ar, p.hero_badge_fr),

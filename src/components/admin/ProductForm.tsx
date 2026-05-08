@@ -152,6 +152,18 @@ function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
   }));
 }
 
+const LANDING_SECTION_MAP = [
+  { id: "hero", title: "Hero", fields: "name_* + hero_subtitle_* + hero_badge_* + media_* + price/discount + cta_text_*" },
+  { id: "features", title: "Features", fields: "features_title_* + features_ar/fr[]" },
+  { id: "media-secondary", title: "Secondary Media", fields: "secondary_media_type + secondary_media_url" },
+  { id: "testimonials", title: "Testimonials", fields: "testimonials_title_* + testimonials_ar/fr[]" },
+  { id: "stats", title: "Stats Bar", fields: "stats_ar/fr[]" },
+  { id: "media-caption", title: "Caption Block", fields: "media_caption_* + description_* (extra lines)" },
+  { id: "media-tertiary", title: "Tertiary Media", fields: "tertiary_media_type + tertiary_media_url" },
+  { id: "faq", title: "FAQ", fields: "faq_title_* + faqs_ar/fr[]" },
+  { id: "contact", title: "Contact", fields: "contact_title_* + contact_lines_ar/fr[]" },
+] as const;
+
 export function ProductForm({ mode, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -290,25 +302,25 @@ export function ProductForm({ mode, initial }: Props) {
 
     return {
       default_language: defaultLanguage,
-      name_ar: nameAr,
+      name_ar: nameAr.trim(),
       name_fr: nameFr,
-      hero_subtitle_ar: heroSubtitleAr,
+      hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
-      hero_badge_ar: heroBadgeAr,
+      hero_badge_ar: heroBadgeAr.trim(),
       hero_badge_fr: heroBadgeFr,
-      description_ar: descriptionAr,
+      description_ar: descriptionAr.trim(),
       description_fr: descriptionFr,
-      cta_text_ar: ctaTextAr,
+      cta_text_ar: ctaTextAr.trim(),
       cta_text_fr: ctaTextFr,
-      features_title_ar: featuresTitleAr,
+      features_title_ar: featuresTitleAr.trim(),
       features_title_fr: featuresTitleFr,
-      testimonials_title_ar: testimonialsTitleAr,
+      testimonials_title_ar: testimonialsTitleAr.trim(),
       testimonials_title_fr: testimonialsTitleFr,
-      media_caption_ar: mediaCaptionAr,
+      media_caption_ar: mediaCaptionAr.trim(),
       media_caption_fr: mediaCaptionFr,
-      faq_title_ar: faqTitleAr,
+      faq_title_ar: faqTitleAr.trim(),
       faq_title_fr: faqTitleFr,
-      contact_title_ar: contactTitleAr,
+      contact_title_ar: contactTitleAr.trim(),
       contact_title_fr: contactTitleFr,
       whatsapp_message_template: whatsAppTemplate.trim() || null,
       price: Number.parseFloat(price),
@@ -356,6 +368,21 @@ export function ProductForm({ mode, initial }: Props) {
     setError(null);
     try {
       const payload = buildPayload();
+      if (payload.features_ar.length < 4) {
+        throw new Error("الرجاء إدخال 4 مميزات عربية على الأقل.");
+      }
+      if (payload.testimonials_ar.length < 4) {
+        throw new Error("الرجاء إدخال 4 شهادات عربية على الأقل.");
+      }
+      if (payload.faqs_ar.length < 4) {
+        throw new Error("الرجاء إدخال 4 أسئلة شائعة عربية على الأقل.");
+      }
+      if (payload.stats_ar.length < 3) {
+        throw new Error("الرجاء إدخال 3 أسطر على الأقل في إحصائيات الشريط.");
+      }
+      if (payload.contact_lines_ar.length < 3) {
+        throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
+      }
       if (mode === "create") {
         await createProductAction(payload);
       } else if (initial) {
@@ -390,6 +417,25 @@ export function ProductForm({ mode, initial }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start" dir="rtl">
+      <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+        <h3 className="text-sm font-semibold">خريطة ربط أقسام الهبوط (Admin → Landing)</h3>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          ترتيب العرض ثابت كما هو في الصفحة، وكل سطر يوضح الحقول التي تتحكم مباشرة في القسم المقابل.
+        </p>
+        <div className="mt-3 space-y-2 text-xs">
+          {LANDING_SECTION_MAP.map((s, i) => (
+            <div key={s.id} className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2">
+              <p className="font-semibold">
+                {i + 1}. {s.title}
+              </p>
+              <p className="mt-1 font-mono text-[var(--muted)]" dir="ltr">
+                {s.fields}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {mode === "edit" && initial ? (
         <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
           <p>
@@ -440,7 +486,9 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             {a.productForm.description} — {a.productForm.langArabic}
           </label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي: السطر الأول يُستخدم كوصف أساسي في الهبوط.</p>
           <textarea
+            required
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={descriptionAr}
@@ -463,7 +511,9 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             العنوان الفرعي أعلى الصفحة — {a.productForm.langArabic}
           </label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={heroSubtitleAr}
             onChange={(e) => setHeroSubtitleAr(e.target.value)}
@@ -482,7 +532,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">شارة أعلى الصفحة — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={heroBadgeAr}
             onChange={(e) => setHeroBadgeAr(e.target.value)}
@@ -499,7 +551,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">نص زر الشراء — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={ctaTextAr}
             onChange={(e) => setCtaTextAr(e.target.value)}
@@ -516,7 +570,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم المميزات — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={featuresTitleAr}
             onChange={(e) => setFeaturesTitleAr(e.target.value)}
@@ -535,7 +591,9 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             إحصائيات الشريط الأخضر (سطر لكل عنصر) — {a.productForm.langArabic}
           </label>
+          <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
           <textarea
+            required
             rows={3}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={statsArText}
@@ -558,7 +616,9 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             وسائل التواصل (سطر لكل عنصر) — {a.productForm.langArabic}
           </label>
+          <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
           <textarea
+            required
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={contactArText}
@@ -670,7 +730,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التقييمات — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={testimonialsTitleAr}
             onChange={(e) => setTestimonialsTitleAr(e.target.value)}
@@ -687,7 +749,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم الوسائط — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={mediaCaptionAr}
             onChange={(e) => setMediaCaptionAr(e.target.value)}
@@ -704,7 +768,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان الأسئلة الشائعة — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={faqTitleAr}
             onChange={(e) => setFaqTitleAr(e.target.value)}
@@ -721,7 +787,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التواصل — {a.productForm.langArabic}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
           <input
+            required
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={contactTitleAr}
             onChange={(e) => setContactTitleAr(e.target.value)}
