@@ -93,6 +93,10 @@ export function ProductLanding({ product }: Props) {
   const contacts = copy.contactLines.length
     ? copy.contactLines
     : ["+222 00 00 00 00", "@zeina.store"];
+  const descLines = copy.description
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   const price = useMemo(() => {
     const original = product.price;
@@ -167,13 +171,13 @@ export function ProductLanding({ product }: Props) {
       </header>
 
       <section className="px-3 pb-2 pt-4">
-        <div className="overflow-hidden rounded-xl border border-[#8dae8b] bg-[#08751f]">
+        <div className="overflow-hidden rounded-2xl border border-[#7ca67b] bg-white shadow-[0_4px_18px_rgba(13,63,18,0.12)]">
           <LandingMedia product={product} priority />
         </div>
-        <div className="mx-2 mt-2 rounded-full bg-[#d2ddd0] px-4 py-1 text-xs font-semibold">
-          <div className="flex items-center justify-between">
+        <div className="mx-2 mt-3 rounded-2xl border border-[#b9cdb9] bg-[#edf5eb] px-4 py-2 text-sm font-bold shadow-sm">
+          <div className="flex items-center justify-between text-[#1b3f1f]">
             <span>{price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}</span>
-            <span className={price.discounted != null ? "opacity-70 line-through" : "opacity-0"}>
+            <span className={price.discounted != null ? "opacity-60 line-through" : "opacity-0"}>
               {formatPrice(price.original)}
             </span>
           </div>
@@ -181,27 +185,30 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className="px-4 pt-2 text-center">
-        <h2 className="text-4xl font-black leading-none">{copy.name}</h2>
+        <h2 className="text-4xl font-black leading-none text-[#114114]">{copy.name}</h2>
+        {descLines.length ? (
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#2a4c2f]">{descLines[0]}</p>
+        ) : null}
         {copy.testimonials[0] ? (
-          <div className="mx-auto mt-2 max-w-xs rounded-2xl border border-[#b8cab5] bg-[#e3ece0] p-3 shadow-sm">
+          <div className="mx-auto mt-3 max-w-xs rounded-2xl border border-[#b8cab5] bg-[#e3ece0] p-3 shadow-sm">
             <p className="text-[10px] text-yellow-600">★★★★★</p>
             <p className="mt-1 text-sm font-bold">{copy.testimonials[0].quote}</p>
             <p className="text-xs text-[#466246]">{copy.testimonials[0].name}</p>
           </div>
         ) : null}
-        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 bg-[#1b8f37]`}>
+        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-4 bg-[#11802f]`}>
           {copy.ctaText || (locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن")}
         </button>
       </section>
 
       {copy.features.length ? (
         <section className="px-3 pt-4">
-          <h3 className="text-center text-3xl font-black text-[#294529]">
+          <h3 className="text-center text-3xl font-black text-[#1f4a26]">
             {copy.featuresTitle || (locale === "fr" ? "Pourquoi nous ?" : "لماذا نحن")}
           </h3>
-          <div className="mt-2 grid grid-cols-4 gap-2 rounded-2xl border border-[#c8d6c5] bg-[#eef3eb] p-3">
+          <div className="mt-3 grid grid-cols-4 gap-2 rounded-2xl border border-[#c8d6c5] bg-[#eef3eb] p-3">
             {copy.features.slice(0, 4).map((f) => (
-              <div key={f} className="text-center">
+              <div key={f} className="rounded-xl bg-white/90 px-1 py-2 text-center shadow-sm">
                 <FeatureIcon feature={f} />
                 <p className="mt-1 text-[10px] leading-tight text-[#3d5a3d]">{f}</p>
               </div>
@@ -211,7 +218,7 @@ export function ProductLanding({ product }: Props) {
       ) : null}
 
       <section className="mt-4 bg-[#08751f] px-3 py-8 text-white">
-        <div className="overflow-hidden rounded-xl border border-white/25">
+        <div className="overflow-hidden rounded-2xl border border-white/25">
           <LandingMedia
             mediaType={product.secondary_media_type}
             mediaUrl={product.secondary_media_url || product.media_url}
@@ -222,15 +229,15 @@ export function ProductLanding({ product }: Props) {
 
       {copy.testimonials.length ? (
         <section className="px-3 pt-4">
-          <h3 className="text-center text-lg font-black">
+          <h3 className="text-center text-xl font-black text-[#143d1a]">
             {copy.testimonialsTitle || (locale === "fr" ? "Noté 4.8+ par 5000 utilisateurs" : "+4.8 تقييم من اكثر 5000 مستخدم")}
           </h3>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             {copy.testimonials.slice(0, 4).map((tItem, i) => (
-              <div key={`${tItem.name}-${i}`} className="rounded-lg bg-[#0f7b24] p-2 text-white">
+              <div key={`${tItem.name}-${i}`} className="rounded-xl bg-[#0f7b24] p-2 text-white shadow-md shadow-[#0f7b24]/30">
                 <p className="text-[10px] text-yellow-300">★★★★★</p>
                 <p className="mt-1 line-clamp-2 text-xs font-semibold">{tItem.quote}</p>
-                <p className="mt-2 text-[10px]">{tItem.name}</p>
+                <p className="mt-2 text-[10px] opacity-90">{tItem.name}</p>
               </div>
             ))}
           </div>
@@ -253,14 +260,21 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className="px-4 py-4 text-center">
-        <h3 className="text-2xl font-black">
-          {copy.mediaCaption || (locale === "fr" ? "Titre de l'image ou vidéo" : "عنوان الصورة أو فيديو")}
+      <section className="bg-[#f5f7f4] px-4 py-4 text-center">
+        <h3 className="text-2xl font-black text-[#123c17]">
+          {copy.mediaCaption || (locale === "fr" ? "Titre de l'image ou vidéo" : "أسئلة شائعة")}
         </h3>
+        {descLines.length > 1 ? (
+          <div className="mx-auto mt-2 max-w-xs space-y-1 text-right text-xs leading-relaxed text-[#3a5c3f]">
+            {descLines.slice(1, 4).map((line, idx) => (
+              <p key={`${line}-${idx}`}>• {line}</p>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-[#08751f] px-3 py-8 text-white">
-        <div className="overflow-hidden rounded-xl border border-white/25">
+        <div className="overflow-hidden rounded-2xl border border-white/25">
           <LandingMedia
             mediaType={product.tertiary_media_type}
             mediaUrl={product.tertiary_media_url || product.media_url}
@@ -276,7 +290,7 @@ export function ProductLanding({ product }: Props) {
           </h3>
           <div className="mx-auto mt-3 max-w-xs space-y-2 text-sm">
             {copy.faqs.slice(0, 4).map((faq, i) => (
-              <details key={`${faq.q}-${i}`} className="border-b border-[#999] pb-1">
+              <details key={`${faq.q}-${i}`} className="rounded-lg border-b border-[#999] bg-white/80 px-2 pb-1 pt-1 shadow-sm">
                 <summary className="cursor-pointer list-none font-semibold">{faq.q}</summary>
                 <p className="mt-1 text-xs text-[#5d5d5d]">{faq.a}</p>
               </details>
@@ -295,7 +309,7 @@ export function ProductLanding({ product }: Props) {
         <h3 className="text-lg font-black">{copy.contactTitle || (locale === "fr" ? "Contact" : "جهات الاتصال")}</h3>
         <div className="mt-2 space-y-1 text-sm text-[#272727]">
           {contacts.map((line) => (
-            <p key={line} dir="ltr">
+            <p key={line} dir="ltr" className="font-medium">
               {line}
             </p>
           ))}
