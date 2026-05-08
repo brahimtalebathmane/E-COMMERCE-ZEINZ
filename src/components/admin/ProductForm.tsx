@@ -40,6 +40,10 @@ type TestimonialDraft = {
   quote_fr: string;
   role_ar: string;
   role_fr: string;
+  image: string;
+  rating: string;
+  location_ar: string;
+  location_fr: string;
 };
 
 type FaqDraft = {
@@ -241,9 +245,14 @@ export function ProductForm({ mode, initial }: Props) {
           quote_fr: initial.testimonials_fr[i]?.quote ?? "",
           role_ar: t.role ?? "",
           role_fr: initial.testimonials_fr[i]?.role ?? "",
+          image: t.image ?? "",
+          rating: t.rating != null ? String(t.rating) : "",
+          location_ar: t.location ?? "",
+          location_fr: initial.testimonials_fr[i]?.location ?? "",
         }))
       : [],
   );
+  const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
     initial?.faqs_ar?.length
       ? initial.faqs_ar.map((f, i) => ({
@@ -277,8 +286,17 @@ export function ProductForm({ mode, initial }: Props) {
         quote: t.quote_ar.trim(),
       };
       const role = t.role_ar.trim();
-      if (role) return { ...base, role };
-      return base;
+      const image = t.image.trim();
+      const location = t.location_ar.trim();
+      const ratingNum = Number.parseFloat(t.rating);
+      const merged: Testimonial = {
+        ...base,
+        ...(role ? { role } : {}),
+        ...(image ? { image } : {}),
+        ...(location ? { location } : {}),
+        ...(!Number.isNaN(ratingNum) && ratingNum > 0 ? { rating: Math.min(5, Number(ratingNum.toFixed(1))) } : {}),
+      };
+      return merged;
     });
     const cleanedTestimonialsFr: Testimonial[] = testimonialPairs.map((t) => {
       const base: Testimonial = {
@@ -286,8 +304,17 @@ export function ProductForm({ mode, initial }: Props) {
         quote: t.quote_fr.trim(),
       };
       const role = t.role_fr.trim();
-      if (role) return { ...base, role };
-      return base;
+      const image = t.image.trim();
+      const location = t.location_fr.trim();
+      const ratingNum = Number.parseFloat(t.rating);
+      const merged: Testimonial = {
+        ...base,
+        ...(role ? { role } : {}),
+        ...(image ? { image } : {}),
+        ...(location ? { location } : {}),
+        ...(!Number.isNaN(ratingNum) && ratingNum > 0 ? { rating: Math.min(5, Number(ratingNum.toFixed(1))) } : {}),
+      };
+      return merged;
     });
 
     const faqPairs = faqs.filter((f) => f.q_ar.trim() && f.a_ar.trim());
@@ -360,6 +387,32 @@ export function ProductForm({ mode, initial }: Props) {
       meta_pixel_id: metaPixel.trim() || null,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
     };
+  }
+
+  async function uploadTestimonialImage(testimonialId: string, file: File) {
+    setUploadingTestimonialId(testimonialId);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "testimonials");
+      const response = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const payload = (await response.json()) as { signedUrl?: string; error?: string };
+      if (!response.ok || !payload.signedUrl) {
+        throw new Error(payload.error || "فشل رفع الصورة.");
+      }
+      setTestimonials((prev) =>
+        prev.map((item) =>
+          item.id === testimonialId ? { ...item, image: payload.signedUrl as string } : item,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل رفع الصورة.");
+    } finally {
+      setUploadingTestimonialId(null);
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -960,6 +1013,10 @@ export function ProductForm({ mode, initial }: Props) {
                     quote_fr: "",
                     role_ar: "",
                     role_fr: "",
+                    image: "",
+                    rating: "",
+                    location_ar: "",
+                    location_fr: "",
                   },
                 ])
               }
@@ -974,6 +1031,90 @@ export function ProductForm({ mode, initial }: Props) {
                 key={t.id}
                 className="space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
               >
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">صورة العميل (رابط مباشر)</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                      value={t.image}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setTestimonials((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, image: v };
+                          return next;
+                        });
+                      }}
+                      placeholder="https://..."
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">أو رفع صورة</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="store-file-input mt-1"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        void uploadTestimonialImage(t.id, file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+                {uploadingTestimonialId === t.id ? (
+                  <p className="text-xs text-[var(--muted)]">جار رفع الصورة...</p>
+                ) : null}
+                {t.image.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
+                  <img
+                    src={t.image.trim()}
+                    alt=""
+                    className="h-16 w-16 rounded-full border border-[var(--accent-muted)] object-cover"
+                  />
+                ) : null}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">التقييم (اختياري 1-5)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="0.1"
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                      value={t.rating}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setTestimonials((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, rating: v };
+                          return next;
+                        });
+                      }}
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--muted)]">الموقع — {a.productForm.langArabic}</label>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                      value={t.location_ar}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setTestimonials((prev) => {
+                          const next = [...prev];
+                          const cur = next[i];
+                          if (cur) next[i] = { ...cur, location_ar: v };
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
                 <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langArabic}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div>
@@ -1027,6 +1168,23 @@ export function ProductForm({ mode, initial }: Props) {
                   />
                 </div>
                 <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langFrench}</p>
+                <div>
+                  <label className="text-xs text-[var(--muted)]">Location — {a.productForm.langFrench}</label>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                    value={t.location_fr}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setTestimonials((prev) => {
+                        const next = [...prev];
+                        const cur = next[i];
+                        if (cur) next[i] = { ...cur, location_fr: v };
+                        return next;
+                      });
+                    }}
+                    dir="ltr"
+                  />
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div>
                     <label className="text-xs text-[var(--muted)]">{a.productForm.testimonialName}</label>

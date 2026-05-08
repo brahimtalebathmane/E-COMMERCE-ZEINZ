@@ -2,6 +2,9 @@ export type Testimonial = {
   name: string;
   quote: string;
   role?: string;
+  image?: string;
+  rating?: number;
+  location?: string;
 };
 
 export type FAQ = {

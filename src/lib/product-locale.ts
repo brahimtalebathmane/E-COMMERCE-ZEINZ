@@ -39,7 +39,21 @@ function pickTestimonials(
     const name = f.name.trim() || a.name;
     const quote = f.quote.trim() || a.quote;
     const roleMerged = pickStr(locale, a.role ?? "", f.role ?? "").trim();
-    const base: Testimonial = { name, quote };
+    const locationMerged = pickStr(locale, a.location ?? "", f.location ?? "").trim();
+    const base: Testimonial = {
+      name,
+      quote,
+      image: a.image ?? f.image,
+      rating:
+        typeof a.rating === "number"
+          ? a.rating
+          : typeof f.rating === "number"
+            ? f.rating
+            : undefined,
+    };
+    if (locationMerged) {
+      base.location = locationMerged;
+    }
     if (roleMerged) return { ...base, role: roleMerged };
     return base;
   });
