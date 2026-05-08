@@ -97,6 +97,8 @@ export function ProductLanding({ product }: Props) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+  const heroTestimonial = copy.testimonials[0];
+  const testimonialGridItems = copy.testimonials.length > 1 ? copy.testimonials.slice(1, 5) : copy.testimonials.slice(0, 4);
 
   const price = useMemo(() => {
     const original = product.price;
@@ -143,7 +145,7 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="mx-auto max-w-md overflow-hidden bg-[#e9f0e7] text-[#0f230f]"
+      className="mx-auto max-w-[390px] overflow-hidden bg-[#e9f0e7] text-[#0f230f]"
       dir={dir}
       style={
         {
@@ -189,16 +191,18 @@ export function ProductLanding({ product }: Props) {
         {descLines.length ? (
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#2a4c2f]">{descLines[0]}</p>
         ) : null}
-        {copy.testimonials[0] ? (
+        {heroTestimonial ? (
           <div className="mx-auto mt-3 max-w-xs rounded-2xl border border-[#b8cab5] bg-[#e3ece0] p-3 shadow-sm">
             <p className="text-[10px] text-yellow-600">★★★★★</p>
-            <p className="mt-1 text-sm font-bold">{copy.testimonials[0].quote}</p>
-            <p className="text-xs text-[#466246]">{copy.testimonials[0].name}</p>
+            <p className="mt-1 text-sm font-bold">{heroTestimonial.quote}</p>
+            <p className="text-xs text-[#466246]">{heroTestimonial.name}</p>
+            {heroTestimonial.role ? <p className="text-[10px] text-[#5d755d]">{heroTestimonial.role}</p> : null}
           </div>
         ) : null}
         <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-4 bg-[#11802f]`}>
           {copy.ctaText || (locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن")}
         </button>
+        <p className="mt-1 text-[10px] text-[#4d664f]">{locale === "fr" ? "Quantite limitee" : "الكمية محدودة"}</p>
       </section>
 
       {copy.features.length ? (
@@ -227,17 +231,20 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      {copy.testimonials.length ? (
+      {testimonialGridItems.length ? (
         <section className="px-3 pt-4">
           <h3 className="text-center text-xl font-black text-[#143d1a]">
             {copy.testimonialsTitle || (locale === "fr" ? "Noté 4.8+ par 5000 utilisateurs" : "+4.8 تقييم من اكثر 5000 مستخدم")}
           </h3>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {copy.testimonials.slice(0, 4).map((tItem, i) => (
-              <div key={`${tItem.name}-${i}`} className="rounded-xl bg-[#0f7b24] p-2 text-white shadow-md shadow-[#0f7b24]/30">
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {testimonialGridItems.map((tItem, i) => (
+              <div
+                key={`${tItem.name}-${i}`}
+                className="rounded-xl bg-[#0f7b24] p-2 text-center text-white shadow-md shadow-[#0f7b24]/30"
+              >
                 <p className="text-[10px] text-yellow-300">★★★★★</p>
-                <p className="mt-1 line-clamp-2 text-xs font-semibold">{tItem.quote}</p>
-                <p className="mt-2 text-[10px] opacity-90">{tItem.name}</p>
+                <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-tight">{tItem.quote}</p>
+                <p className="mt-2 line-clamp-1 text-[9px] opacity-90">{tItem.name}</p>
               </div>
             ))}
           </div>
@@ -288,12 +295,12 @@ export function ProductLanding({ product }: Props) {
           <h3 className="text-2xl font-black text-[#1d3b1f]">
             {copy.faqTitle || (locale === "fr" ? "Questions fréquentes" : "أسئلة شائعة")}
           </h3>
-          <div className="mx-auto mt-3 max-w-xs space-y-2 text-sm">
+          <div className="mx-auto mt-3 max-w-xs space-y-1 text-sm">
             {copy.faqs.slice(0, 4).map((faq, i) => (
-              <details key={`${faq.q}-${i}`} className="rounded-lg border-b border-[#999] bg-white/80 px-2 pb-1 pt-1 shadow-sm">
-                <summary className="cursor-pointer list-none font-semibold">{faq.q}</summary>
-                <p className="mt-1 text-xs text-[#5d5d5d]">{faq.a}</p>
-              </details>
+              <div key={`${faq.q}-${i}`} className="border-b border-[#afafaf] pb-2 pt-1 text-right">
+                <p className="text-sm font-semibold text-[#1f2f1f]">{faq.q}</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#5d5d5d]">{faq.a}</p>
+              </div>
             ))}
           </div>
         </section>
