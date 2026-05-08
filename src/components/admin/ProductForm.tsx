@@ -160,12 +160,32 @@ export function ProductForm({ mode, initial }: Props) {
   const [defaultLanguage, setDefaultLanguage] = useState<"ar" | "fr">(
     initial?.default_language ?? "ar",
   );
+  const [brandColor, setBrandColor] = useState(initial?.brand_color ?? "#006B0C");
+  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
   const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
   const [heroSubtitleAr, setHeroSubtitleAr] = useState(initial?.hero_subtitle_ar ?? "");
   const [heroSubtitleFr, setHeroSubtitleFr] = useState(initial?.hero_subtitle_fr ?? "");
+  const [heroBadgeAr, setHeroBadgeAr] = useState(initial?.hero_badge_ar ?? "");
+  const [heroBadgeFr, setHeroBadgeFr] = useState(initial?.hero_badge_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
+  const [ctaTextAr, setCtaTextAr] = useState(initial?.cta_text_ar ?? "");
+  const [ctaTextFr, setCtaTextFr] = useState(initial?.cta_text_fr ?? "");
+  const [featuresTitleAr, setFeaturesTitleAr] = useState(initial?.features_title_ar ?? "");
+  const [featuresTitleFr, setFeaturesTitleFr] = useState(initial?.features_title_fr ?? "");
+  const [testimonialsTitleAr, setTestimonialsTitleAr] = useState(
+    initial?.testimonials_title_ar ?? "",
+  );
+  const [testimonialsTitleFr, setTestimonialsTitleFr] = useState(
+    initial?.testimonials_title_fr ?? "",
+  );
+  const [mediaCaptionAr, setMediaCaptionAr] = useState(initial?.media_caption_ar ?? "");
+  const [mediaCaptionFr, setMediaCaptionFr] = useState(initial?.media_caption_fr ?? "");
+  const [faqTitleAr, setFaqTitleAr] = useState(initial?.faq_title_ar ?? "");
+  const [faqTitleFr, setFaqTitleFr] = useState(initial?.faq_title_fr ?? "");
+  const [contactTitleAr, setContactTitleAr] = useState(initial?.contact_title_ar ?? "");
+  const [contactTitleFr, setContactTitleFr] = useState(initial?.contact_title_fr ?? "");
   const [statsArText, setStatsArText] = useState((initial?.stats_ar ?? []).join("\n"));
   const [statsFrText, setStatsFrText] = useState((initial?.stats_fr ?? []).join("\n"));
   const [contactArText, setContactArText] = useState(
@@ -185,6 +205,14 @@ export function ProductForm({ mode, initial }: Props) {
     initial?.media_type ?? "image",
   );
   const [mediaUrl, setMediaUrl] = useState(initial?.media_url ?? "");
+  const [secondaryMediaType, setSecondaryMediaType] = useState<"image" | "video">(
+    initial?.secondary_media_type ?? "image",
+  );
+  const [secondaryMediaUrl, setSecondaryMediaUrl] = useState(initial?.secondary_media_url ?? "");
+  const [tertiaryMediaType, setTertiaryMediaType] = useState<"image" | "video">(
+    initial?.tertiary_media_type ?? "image",
+  );
+  const [tertiaryMediaUrl, setTertiaryMediaUrl] = useState(initial?.tertiary_media_url ?? "");
   const [featureRows, setFeatureRows] = useState<FeatureRow[]>(() =>
     buildInitialFeatures(initial),
   );
@@ -264,12 +292,28 @@ export function ProductForm({ mode, initial }: Props) {
 
     return {
       default_language: defaultLanguage,
+      brand_color: brandColor.trim() || "#006B0C",
+      logo_url: logoUrl.trim(),
       name_ar: nameAr,
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr,
       hero_subtitle_fr: heroSubtitleFr,
+      hero_badge_ar: heroBadgeAr,
+      hero_badge_fr: heroBadgeFr,
       description_ar: descriptionAr,
       description_fr: descriptionFr,
+      cta_text_ar: ctaTextAr,
+      cta_text_fr: ctaTextFr,
+      features_title_ar: featuresTitleAr,
+      features_title_fr: featuresTitleFr,
+      testimonials_title_ar: testimonialsTitleAr,
+      testimonials_title_fr: testimonialsTitleFr,
+      media_caption_ar: mediaCaptionAr,
+      media_caption_fr: mediaCaptionFr,
+      faq_title_ar: faqTitleAr,
+      faq_title_fr: faqTitleFr,
+      contact_title_ar: contactTitleAr,
+      contact_title_fr: contactTitleFr,
       whatsapp_message_template: whatsAppTemplate.trim() || null,
       price: Number.parseFloat(price),
       discount_price:
@@ -278,6 +322,10 @@ export function ProductForm({ mode, initial }: Props) {
           : null,
       media_type: mediaType,
       media_url: mediaUrl,
+      secondary_media_type: secondaryMediaType,
+      secondary_media_url: secondaryMediaUrl,
+      tertiary_media_type: tertiaryMediaType,
+      tertiary_media_url: tertiaryMediaUrl,
       features_ar,
       features_fr,
       gallery: gallery.map((g) => g.url.trim()).filter(Boolean),
@@ -371,6 +419,26 @@ export function ProductForm({ mode, initial }: Props) {
           </select>
         </div>
         <div>
+          <label className="text-sm font-medium">اللون الأساسي (HEX)</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={brandColor}
+            onChange={(e) => setBrandColor(e.target.value)}
+            placeholder="#006B0C"
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">رابط الشعار</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            placeholder="https://"
+            dir="ltr"
+          />
+        </div>
+        <div>
           <label className="text-sm font-medium">
             {a.productForm.name} — {a.productForm.langArabic}
           </label>
@@ -433,6 +501,57 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={heroSubtitleFr}
             onChange={(e) => setHeroSubtitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">شارة أعلى الصفحة — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={heroBadgeAr}
+            onChange={(e) => setHeroBadgeAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Hero badge — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={heroBadgeFr}
+            onChange={(e) => setHeroBadgeFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">نص زر الشراء — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={ctaTextAr}
+            onChange={(e) => setCtaTextAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">CTA text — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={ctaTextFr}
+            onChange={(e) => setCtaTextFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان قسم المميزات — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={featuresTitleAr}
+            onChange={(e) => setFeaturesTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Features title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={featuresTitleFr}
+            onChange={(e) => setFeaturesTitleFr(e.target.value)}
             dir="ltr"
           />
         </div>
@@ -528,6 +647,116 @@ export function ProductForm({ mode, initial }: Props) {
             value={mediaUrl}
             onChange={(e) => setMediaUrl(e.target.value)}
             placeholder="https://"
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">الوسيط الثاني: النوع</label>
+          <select
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={secondaryMediaType}
+            onChange={(e) => setSecondaryMediaType(e.target.value as "image" | "video")}
+          >
+            <option value="image">{a.productForm.mediaImage}</option>
+            <option value="video">{a.productForm.mediaVideo}</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">الوسيط الثاني: الرابط</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={secondaryMediaUrl}
+            onChange={(e) => setSecondaryMediaUrl(e.target.value)}
+            placeholder="https://"
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">الوسيط الثالث: النوع</label>
+          <select
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={tertiaryMediaType}
+            onChange={(e) => setTertiaryMediaType(e.target.value as "image" | "video")}
+          >
+            <option value="image">{a.productForm.mediaImage}</option>
+            <option value="video">{a.productForm.mediaVideo}</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">الوسيط الثالث: الرابط</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={tertiaryMediaUrl}
+            onChange={(e) => setTertiaryMediaUrl(e.target.value)}
+            placeholder="https://"
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان قسم التقييمات — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={testimonialsTitleAr}
+            onChange={(e) => setTestimonialsTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Testimonials title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={testimonialsTitleFr}
+            onChange={(e) => setTestimonialsTitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان قسم الوسائط — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={mediaCaptionAr}
+            onChange={(e) => setMediaCaptionAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Media section title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={mediaCaptionFr}
+            onChange={(e) => setMediaCaptionFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان الأسئلة الشائعة — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={faqTitleAr}
+            onChange={(e) => setFaqTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">FAQ title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={faqTitleFr}
+            onChange={(e) => setFaqTitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان قسم التواصل — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={contactTitleAr}
+            onChange={(e) => setContactTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Contact title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={contactTitleFr}
+            onChange={(e) => setContactTitleFr(e.target.value)}
             dir="ltr"
           />
         </div>

@@ -101,7 +101,10 @@ function parseAspectParts(aspectStr: string): { w: number; h: number } | null {
 }
 
 type Props = {
-  product: ProductRow;
+  product?: ProductRow;
+  mediaType?: "image" | "video";
+  mediaUrl?: string;
+  mediaName?: string;
   priority?: boolean;
 };
 
@@ -121,13 +124,17 @@ function muxPlayerOpts(priority: boolean | undefined) {
 const muxPlayerLayoutClass =
   "absolute inset-0 block h-full w-full max-h-full max-w-full";
 
-export function LandingMedia({ product, priority }: Props) {
+export function LandingMedia({ product, mediaType, mediaUrl, mediaName, priority }: Props) {
   const { locale } = useLanguage();
   const displayName = useMemo(
-    () => getLocalizedProductCopy(locale, product).name,
-    [locale, product],
+    () => {
+      if (mediaName) return mediaName;
+      if (product) return getLocalizedProductCopy(locale, product).name;
+      return "";
+    },
+    [locale, mediaName, product],
   );
-  const url = product.media_url?.trim() ?? "";
+  const url = (mediaUrl ?? product?.media_url ?? "").trim();
   const [muxAspect, setMuxAspect] = useState("16 / 9");
   const [nativeAspect, setNativeAspect] = useState("16 / 9");
   const muxRef = useRef<MuxPlayerElement | null>(null);
@@ -239,7 +246,9 @@ export function LandingMedia({ product, priority }: Props) {
 
   const muxPlaybackId = muxPlaybackIdFromUrl(url);
   const treatAsImage =
-    product.media_type === "image" && !isHls(url) && !muxPlaybackId;
+    (mediaType ?? product?.media_type ?? "image") === "image" &&
+    !isHls(url) &&
+    !muxPlaybackId;
 
   if (treatAsImage) {
     return (

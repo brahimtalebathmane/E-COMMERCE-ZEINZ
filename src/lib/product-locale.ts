@@ -62,8 +62,21 @@ export function getLocalizedProductCopy(
   p: ProductRow,
 ): LocalizedProductCopy {
   return {
+    brandColor: p.brand_color?.trim() || "#006B0C",
+    logoUrl: p.logo_url?.trim() || "",
     name: pickStr(locale, p.name_ar, p.name_fr),
     heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
+    heroBadge: pickStr(locale, p.hero_badge_ar, p.hero_badge_fr),
+    ctaText: pickStr(locale, p.cta_text_ar, p.cta_text_fr),
+    featuresTitle: pickStr(locale, p.features_title_ar, p.features_title_fr),
+    testimonialsTitle: pickStr(
+      locale,
+      p.testimonials_title_ar,
+      p.testimonials_title_fr,
+    ),
+    mediaCaption: pickStr(locale, p.media_caption_ar, p.media_caption_fr),
+    faqTitle: pickStr(locale, p.faq_title_ar, p.faq_title_fr),
+    contactTitle: pickStr(locale, p.contact_title_ar, p.contact_title_fr),
     description: pickStr(locale, p.description_ar, p.description_fr),
     features: pickFeatures(locale, p.features_ar, p.features_fr),
     testimonials: pickTestimonials(

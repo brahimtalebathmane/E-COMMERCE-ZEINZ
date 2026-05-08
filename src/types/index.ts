@@ -13,12 +13,28 @@ export type ProductRow = {
   id: string;
   /** Default storefront language for this landing page. */
   default_language: "ar" | "fr";
+  brand_color: string;
+  logo_url: string;
   name_ar: string;
   name_fr: string;
   hero_subtitle_ar: string;
   hero_subtitle_fr: string;
+  hero_badge_ar: string;
+  hero_badge_fr: string;
   description_ar: string;
   description_fr: string;
+  cta_text_ar: string;
+  cta_text_fr: string;
+  features_title_ar: string;
+  features_title_fr: string;
+  testimonials_title_ar: string;
+  testimonials_title_fr: string;
+  media_caption_ar: string;
+  media_caption_fr: string;
+  faq_title_ar: string;
+  faq_title_fr: string;
+  contact_title_ar: string;
+  contact_title_fr: string;
   whatsapp_message_template: string | null;
   slug: string;
   old_slugs: string[];
@@ -26,6 +42,10 @@ export type ProductRow = {
   discount_price: number | null;
   media_type: "image" | "video";
   media_url: string;
+  secondary_media_type: "image" | "video";
+  secondary_media_url: string;
+  tertiary_media_type: "image" | "video";
+  tertiary_media_url: string;
   features_ar: string[];
   features_fr: string[];
   gallery: string[];
@@ -43,8 +63,17 @@ export type ProductRow = {
 
 /** Resolved strings for the current storefront locale (Arabic or French with Arabic fallback). */
 export type LocalizedProductCopy = {
+  brandColor: string;
+  logoUrl: string;
   name: string;
   heroSubtitle: string;
+  heroBadge: string;
+  ctaText: string;
+  featuresTitle: string;
+  testimonialsTitle: string;
+  mediaCaption: string;
+  faqTitle: string;
+  contactTitle: string;
   description: string;
   features: string[];
   testimonials: Testimonial[];

@@ -9,17 +9,37 @@ import { revalidatePath } from "next/cache";
 export type ProductPayload = {
   /** Default storefront language for this landing page. */
   default_language: "ar" | "fr";
+  brand_color: string;
+  logo_url: string;
   name_ar: string;
   name_fr: string;
   hero_subtitle_ar: string;
   hero_subtitle_fr: string;
+  hero_badge_ar: string;
+  hero_badge_fr: string;
   description_ar: string;
   description_fr: string;
+  cta_text_ar: string;
+  cta_text_fr: string;
+  features_title_ar: string;
+  features_title_fr: string;
+  testimonials_title_ar: string;
+  testimonials_title_fr: string;
+  media_caption_ar: string;
+  media_caption_fr: string;
+  faq_title_ar: string;
+  faq_title_fr: string;
+  contact_title_ar: string;
+  contact_title_fr: string;
   whatsapp_message_template: string | null;
   price: number;
   discount_price: number | null;
   media_type: "image" | "video";
   media_url: string;
+  secondary_media_type: "image" | "video";
+  secondary_media_url: string;
+  tertiary_media_type: "image" | "video";
+  tertiary_media_url: string;
   features_ar: string[];
   features_fr: string[];
   gallery: string[];
@@ -85,12 +105,28 @@ export async function createProductAction(payload: ProductPayload) {
 
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
+    brand_color: payload.brand_color,
+    logo_url: payload.logo_url,
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
     hero_subtitle_ar: payload.hero_subtitle_ar,
     hero_subtitle_fr: payload.hero_subtitle_fr,
+    hero_badge_ar: payload.hero_badge_ar,
+    hero_badge_fr: payload.hero_badge_fr,
     description_ar: payload.description_ar,
     description_fr: payload.description_fr,
+    cta_text_ar: payload.cta_text_ar,
+    cta_text_fr: payload.cta_text_fr,
+    features_title_ar: payload.features_title_ar,
+    features_title_fr: payload.features_title_fr,
+    testimonials_title_ar: payload.testimonials_title_ar,
+    testimonials_title_fr: payload.testimonials_title_fr,
+    media_caption_ar: payload.media_caption_ar,
+    media_caption_fr: payload.media_caption_fr,
+    faq_title_ar: payload.faq_title_ar,
+    faq_title_fr: payload.faq_title_fr,
+    contact_title_ar: payload.contact_title_ar,
+    contact_title_fr: payload.contact_title_fr,
     whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
     slug: candidate,
     old_slugs: payload.old_slugs.filter(Boolean),
@@ -98,6 +134,10 @@ export async function createProductAction(payload: ProductPayload) {
     discount_price: payload.discount_price,
     media_type: payload.media_type,
     media_url: payload.media_url.trim(),
+    secondary_media_type: payload.secondary_media_type,
+    secondary_media_url: payload.secondary_media_url.trim(),
+    tertiary_media_type: payload.tertiary_media_type,
+    tertiary_media_url: payload.tertiary_media_url.trim(),
     features_ar: payload.features_ar,
     features_fr: payload.features_fr,
     gallery: payload.gallery,
@@ -136,17 +176,37 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     .from("products")
     .update({
       default_language: payload.default_language,
+      brand_color: payload.brand_color,
+      logo_url: payload.logo_url,
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
       hero_subtitle_ar: payload.hero_subtitle_ar,
       hero_subtitle_fr: payload.hero_subtitle_fr,
+      hero_badge_ar: payload.hero_badge_ar,
+      hero_badge_fr: payload.hero_badge_fr,
       description_ar: payload.description_ar,
       description_fr: payload.description_fr,
+      cta_text_ar: payload.cta_text_ar,
+      cta_text_fr: payload.cta_text_fr,
+      features_title_ar: payload.features_title_ar,
+      features_title_fr: payload.features_title_fr,
+      testimonials_title_ar: payload.testimonials_title_ar,
+      testimonials_title_fr: payload.testimonials_title_fr,
+      media_caption_ar: payload.media_caption_ar,
+      media_caption_fr: payload.media_caption_fr,
+      faq_title_ar: payload.faq_title_ar,
+      faq_title_fr: payload.faq_title_fr,
+      contact_title_ar: payload.contact_title_ar,
+      contact_title_fr: payload.contact_title_fr,
       whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
       price: payload.price,
       discount_price: payload.discount_price,
       media_type: payload.media_type,
       media_url: payload.media_url.trim(),
+      secondary_media_type: payload.secondary_media_type,
+      secondary_media_url: payload.secondary_media_url.trim(),
+      tertiary_media_type: payload.tertiary_media_type,
+      tertiary_media_url: payload.tertiary_media_url.trim(),
       features_ar: payload.features_ar,
       features_fr: payload.features_fr,
       gallery: payload.gallery,

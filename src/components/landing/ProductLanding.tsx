@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
@@ -21,11 +22,73 @@ type Props = {
 const primaryCtaClass =
   "store-btn-primary rounded-xl px-6 py-2 text-lg font-bold shadow-lg";
 
+function statNumber(raw: string): number {
+  const m = raw.replace(/,/g, "").match(/\d+/);
+  return m ? Number(m[0]) : 0;
+}
+
+function statSuffix(raw: string): string {
+  const m = raw.match(/\+\s*/);
+  return m ? "+" : "";
+}
+
+function AnimatedCounter({ value }: { value: string }) {
+  const target = statNumber(value);
+  const suffix = statSuffix(value);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    let frame = 0;
+    const duration = 1300;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCurrent(Math.round(target * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  return (
+    <span>
+      {current}
+      {suffix}
+    </span>
+  );
+}
+
+function FeatureIcon({ feature }: { feature: string }) {
+  const keyword = feature.toLowerCase();
+  const color = "#006B0C";
+  let path =
+    "M12 4v16M4 12h16"; // plus
+  if (keyword.includes("شحن") || keyword.includes("delivery")) {
+    path = "M3 7h10v7H3zM13 10h4l2 3v1h-6zM7 18a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z";
+  } else if (keyword.includes("ضمان") || keyword.includes("safe") || keyword.includes("security")) {
+    path = "M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3zM9 12l2 2 4-4";
+  } else if (keyword.includes("طبيعي") || keyword.includes("organic") || keyword.includes("quality")) {
+    path = "M12 4c4 0 6 3 6 6 0 5-3 8-6 10-3-2-6-5-6-10 0-3 2-6 6-6zM9 12c2-1 4-3 6-6";
+  } else if (keyword.includes("مستخدم") || keyword.includes("client") || keyword.includes("customer")) {
+    path = "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0";
+  }
+
+  return (
+    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#9bb89a] bg-white">
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={path} />
+      </svg>
+    </span>
+  );
+}
+
 export function ProductLanding({ product }: Props) {
   const { dir, locale, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
 
+  const brandColor = copy.brandColor || "#006B0C";
   const stats = copy.stats.length ? copy.stats : ["19240+ طلب", "18691+ عميل", "47+ نقطة"];
   const contacts = copy.contactLines.length
     ? copy.contactLines
@@ -80,7 +143,7 @@ export function ProductLanding({ product }: Props) {
       dir={dir}
       style={
         {
-          "--accent": "#167f2d",
+          "--accent": brandColor,
           "--accent-foreground": "#efffed",
           "--accent-muted": "#c2d3bf",
           "--card": "#edf3ea",
@@ -92,8 +155,14 @@ export function ProductLanding({ product }: Props) {
 
       <header className="rounded-b-2xl bg-[#dbe8d9] px-4 pb-4 pt-2 text-center shadow-sm">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#2d4a2d]">
-          <span>زينة</span>
-          <span>{locale === "fr" ? "Offre du jour" : "العرض اليومي"}</span>
+          <span className="rounded-full bg-white px-2 py-1">
+            {copy.logoUrl ? (
+              <Image src={copy.logoUrl} alt="logo" width={56} height={24} className="h-5 w-auto object-contain" />
+            ) : (
+              "زينة"
+            )}
+          </span>
+          <span>{copy.heroBadge || (locale === "fr" ? "Offre du jour" : "العرض اليومي")}</span>
         </div>
         <h1 className="text-3xl font-black leading-tight">{copy.name}</h1>
         <p className="mt-1 text-sm text-[#3f5d3f]">
@@ -125,21 +194,19 @@ export function ProductLanding({ product }: Props) {
           </div>
         ) : null}
         <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 bg-[#1b8f37]`}>
-          {locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن"}
+          {copy.ctaText || (locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن")}
         </button>
       </section>
 
       {copy.features.length ? (
         <section className="px-3 pt-4">
           <h3 className="text-center text-3xl font-black text-[#294529]">
-            {locale === "fr" ? "Pourquoi nous ?" : "لماذا نحن"}
+            {copy.featuresTitle || (locale === "fr" ? "Pourquoi nous ?" : "لماذا نحن")}
           </h3>
           <div className="mt-2 grid grid-cols-4 gap-2 rounded-2xl border border-[#c8d6c5] bg-[#eef3eb] p-3">
-            {copy.features.slice(0, 4).map((f, idx) => (
+            {copy.features.slice(0, 4).map((f) => (
               <div key={f} className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#9cb59a] bg-white text-lg">
-                  {["🍃", "✅", "⭐", "🛡️"][idx] ?? "✓"}
-                </div>
+                <FeatureIcon feature={f} />
                 <p className="mt-1 text-[10px] leading-tight text-[#3d5a3d]">{f}</p>
               </div>
             ))}
@@ -149,14 +216,18 @@ export function ProductLanding({ product }: Props) {
 
       <section className="mt-4 bg-[#08751f] px-3 py-8 text-white">
         <div className="overflow-hidden rounded-xl border border-white/25">
-          <LandingMedia product={product} />
+          <LandingMedia
+            mediaType={product.secondary_media_type}
+            mediaUrl={product.secondary_media_url || product.media_url}
+            mediaName={copy.name}
+          />
         </div>
       </section>
 
       {copy.testimonials.length ? (
         <section className="px-3 pt-4">
           <h3 className="text-center text-lg font-black">
-            {locale === "fr" ? "Noté 4.8+ par 5000 utilisateurs" : "+4.8 تقييم من اكثر 5000 مستخدم"}
+            {copy.testimonialsTitle || (locale === "fr" ? "Noté 4.8+ par 5000 utilisateurs" : "+4.8 تقييم من اكثر 5000 مستخدم")}
           </h3>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {copy.testimonials.slice(0, 4).map((tItem, i) => (
@@ -176,7 +247,9 @@ export function ProductLanding({ product }: Props) {
             const [num, ...rest] = item.split(" ");
             return (
               <div key={item}>
-                <p className="text-3xl font-black leading-none">{num}</p>
+                <p className="text-3xl font-black leading-none">
+                  <AnimatedCounter value={num} />
+                </p>
                 <p className="text-[10px]">{rest.join(" ")}</p>
               </div>
             );
@@ -186,20 +259,24 @@ export function ProductLanding({ product }: Props) {
 
       <section className="px-4 py-4 text-center">
         <h3 className="text-2xl font-black">
-          {locale === "fr" ? "Titre de l'image ou vidéo" : "عنوان الصورة أو فيديو"}
+          {copy.mediaCaption || (locale === "fr" ? "Titre de l'image ou vidéo" : "عنوان الصورة أو فيديو")}
         </h3>
       </section>
 
       <section className="bg-[#08751f] px-3 py-8 text-white">
         <div className="overflow-hidden rounded-xl border border-white/25">
-          <LandingMedia product={product} />
+          <LandingMedia
+            mediaType={product.tertiary_media_type}
+            mediaUrl={product.tertiary_media_url || product.media_url}
+            mediaName={copy.name}
+          />
         </div>
       </section>
 
       {copy.faqs.length ? (
         <section className="bg-[#ededed] px-4 py-5 text-center">
           <h3 className="text-2xl font-black text-[#1d3b1f]">
-            {locale === "fr" ? "Questions fréquentes" : "أسئلة شائعة"}
+            {copy.faqTitle || (locale === "fr" ? "Questions fréquentes" : "أسئلة شائعة")}
           </h3>
           <div className="mx-auto mt-3 max-w-xs space-y-2 text-sm">
             {copy.faqs.slice(0, 4).map((faq, i) => (
@@ -214,12 +291,12 @@ export function ProductLanding({ product }: Props) {
 
       <section className="bg-[#0b7520] px-4 py-5 text-center text-white">
         <button type="button" onClick={openCheckout} className={`${primaryCtaClass} bg-[#2e8441]`}>
-          {locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن"}
+          {copy.ctaText || (locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن")}
         </button>
       </section>
 
       <section className="bg-[#f4f4f4] px-4 py-5 text-center">
-        <h3 className="text-lg font-black">{locale === "fr" ? "Contact" : "جهات الاتصال"}</h3>
+        <h3 className="text-lg font-black">{copy.contactTitle || (locale === "fr" ? "Contact" : "جهات الاتصال")}</h3>
         <div className="mt-2 space-y-1 text-sm text-[#272727]">
           {contacts.map((line) => (
             <p key={line} dir="ltr">
