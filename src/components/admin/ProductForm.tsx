@@ -162,8 +162,18 @@ export function ProductForm({ mode, initial }: Props) {
   );
   const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
+  const [heroSubtitleAr, setHeroSubtitleAr] = useState(initial?.hero_subtitle_ar ?? "");
+  const [heroSubtitleFr, setHeroSubtitleFr] = useState(initial?.hero_subtitle_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
+  const [statsArText, setStatsArText] = useState((initial?.stats_ar ?? []).join("\n"));
+  const [statsFrText, setStatsFrText] = useState((initial?.stats_fr ?? []).join("\n"));
+  const [contactArText, setContactArText] = useState(
+    (initial?.contact_lines_ar ?? []).join("\n"),
+  );
+  const [contactFrText, setContactFrText] = useState(
+    (initial?.contact_lines_fr ?? []).join("\n"),
+  );
   const [whatsAppTemplate, setWhatsAppTemplate] = useState(
     initial?.whatsapp_message_template ?? "",
   );
@@ -256,6 +266,8 @@ export function ProductForm({ mode, initial }: Props) {
       default_language: defaultLanguage,
       name_ar: nameAr,
       name_fr: nameFr,
+      hero_subtitle_ar: heroSubtitleAr,
+      hero_subtitle_fr: heroSubtitleFr,
       description_ar: descriptionAr,
       description_fr: descriptionFr,
       whatsapp_message_template: whatsAppTemplate.trim() || null,
@@ -273,6 +285,22 @@ export function ProductForm({ mode, initial }: Props) {
       testimonials_fr: cleanedTestimonialsFr,
       faqs_ar: cleanedFaqsAr,
       faqs_fr: cleanedFaqsFr,
+      stats_ar: statsArText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      stats_fr: statsFrText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      contact_lines_ar: contactArText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      contact_lines_fr: contactFrText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
       meta_pixel_id: metaPixel.trim() || null,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
     };
@@ -384,6 +412,73 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={descriptionFr}
             onChange={(e) => setDescriptionFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            العنوان الفرعي أعلى الصفحة — {a.productForm.langArabic}
+          </label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={heroSubtitleAr}
+            onChange={(e) => setHeroSubtitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            Hero subtitle — {a.productForm.langFrench}
+          </label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={heroSubtitleFr}
+            onChange={(e) => setHeroSubtitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            إحصائيات الشريط الأخضر (سطر لكل عنصر) — {a.productForm.langArabic}
+          </label>
+          <textarea
+            rows={3}
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={statsArText}
+            onChange={(e) => setStatsArText(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            Green stats bar (one line per item) — {a.productForm.langFrench}
+          </label>
+          <textarea
+            rows={3}
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={statsFrText}
+            onChange={(e) => setStatsFrText(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            وسائل التواصل (سطر لكل عنصر) — {a.productForm.langArabic}
+          </label>
+          <textarea
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={contactArText}
+            onChange={(e) => setContactArText(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">
+            Contact lines (one line per item) — {a.productForm.langFrench}
+          </label>
+          <textarea
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={contactFrText}
+            onChange={(e) => setContactFrText(e.target.value)}
             dir="ltr"
           />
         </div>

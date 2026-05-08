@@ -13,6 +13,8 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     default_language,
     name_ar: row.name_ar as string,
     name_fr: (row.name_fr as string) ?? "",
+    hero_subtitle_ar: (row.hero_subtitle_ar as string) ?? "",
+    hero_subtitle_fr: (row.hero_subtitle_fr as string) ?? "",
     description_ar: (row.description_ar as string) ?? "",
     description_fr: (row.description_fr as string) ?? "",
     whatsapp_message_template:
@@ -33,6 +35,10 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     testimonials_fr: (row.testimonials_fr as ProductRow["testimonials_fr"]) ?? [],
     faqs_ar: (row.faqs_ar as ProductRow["faqs_ar"]) ?? [],
     faqs_fr: (row.faqs_fr as ProductRow["faqs_fr"]) ?? [],
+    stats_ar: (row.stats_ar as string[]) ?? [],
+    stats_fr: (row.stats_fr as string[]) ?? [],
+    contact_lines_ar: (row.contact_lines_ar as string[]) ?? [],
+    contact_lines_fr: (row.contact_lines_fr as string[]) ?? [],
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
     created_at: row.created_at as string,
   };

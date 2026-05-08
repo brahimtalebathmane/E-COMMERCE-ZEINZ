@@ -63,6 +63,7 @@ export function getLocalizedProductCopy(
 ): LocalizedProductCopy {
   return {
     name: pickStr(locale, p.name_ar, p.name_fr),
+    heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
     description: pickStr(locale, p.description_ar, p.description_fr),
     features: pickFeatures(locale, p.features_ar, p.features_fr),
     testimonials: pickTestimonials(
@@ -71,5 +72,11 @@ export function getLocalizedProductCopy(
       p.testimonials_fr,
     ),
     faqs: pickFaqs(locale, p.faqs_ar, p.faqs_fr),
+    stats: pickFeatures(locale, p.stats_ar, p.stats_fr),
+    contactLines: pickFeatures(
+      locale,
+      p.contact_lines_ar,
+      p.contact_lines_fr,
+    ),
   };
 }

@@ -15,6 +15,8 @@ export type ProductRow = {
   default_language: "ar" | "fr";
   name_ar: string;
   name_fr: string;
+  hero_subtitle_ar: string;
+  hero_subtitle_fr: string;
   description_ar: string;
   description_fr: string;
   whatsapp_message_template: string | null;
@@ -31,6 +33,10 @@ export type ProductRow = {
   testimonials_fr: Testimonial[];
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
+  stats_ar: string[];
+  stats_fr: string[];
+  contact_lines_ar: string[];
+  contact_lines_fr: string[];
   meta_pixel_id: string | null;
   created_at: string;
 };
@@ -38,10 +44,13 @@ export type ProductRow = {
 /** Resolved strings for the current storefront locale (Arabic or French with Arabic fallback). */
 export type LocalizedProductCopy = {
   name: string;
+  heroSubtitle: string;
   description: string;
   features: string[];
   testimonials: Testimonial[];
   faqs: FAQ[];
+  stats: string[];
+  contactLines: string[];
 };
 
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";

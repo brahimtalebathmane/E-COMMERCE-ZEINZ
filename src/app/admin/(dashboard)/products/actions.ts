@@ -11,6 +11,8 @@ export type ProductPayload = {
   default_language: "ar" | "fr";
   name_ar: string;
   name_fr: string;
+  hero_subtitle_ar: string;
+  hero_subtitle_fr: string;
   description_ar: string;
   description_fr: string;
   whatsapp_message_template: string | null;
@@ -25,6 +27,10 @@ export type ProductPayload = {
   testimonials_fr: Testimonial[];
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
+  stats_ar: string[];
+  stats_fr: string[];
+  contact_lines_ar: string[];
+  contact_lines_fr: string[];
   meta_pixel_id: string | null;
   old_slugs: string[];
 };
@@ -81,6 +87,8 @@ export async function createProductAction(payload: ProductPayload) {
     default_language: payload.default_language,
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
+    hero_subtitle_ar: payload.hero_subtitle_ar,
+    hero_subtitle_fr: payload.hero_subtitle_fr,
     description_ar: payload.description_ar,
     description_fr: payload.description_fr,
     whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
@@ -97,6 +105,10 @@ export async function createProductAction(payload: ProductPayload) {
     testimonials_fr: payload.testimonials_fr,
     faqs_ar: payload.faqs_ar,
     faqs_fr: payload.faqs_fr,
+    stats_ar: payload.stats_ar,
+    stats_fr: payload.stats_fr,
+    contact_lines_ar: payload.contact_lines_ar,
+    contact_lines_fr: payload.contact_lines_fr,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
   });
 
@@ -126,6 +138,8 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       default_language: payload.default_language,
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
+      hero_subtitle_ar: payload.hero_subtitle_ar,
+      hero_subtitle_fr: payload.hero_subtitle_fr,
       description_ar: payload.description_ar,
       description_fr: payload.description_fr,
       whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
@@ -140,6 +154,10 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       testimonials_fr: payload.testimonials_fr,
       faqs_ar: payload.faqs_ar,
       faqs_fr: payload.faqs_fr,
+      stats_ar: payload.stats_ar,
+      stats_fr: payload.stats_fr,
+      contact_lines_ar: payload.contact_lines_ar,
+      contact_lines_fr: payload.contact_lines_fr,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
       old_slugs: payload.old_slugs.filter(Boolean),
     })

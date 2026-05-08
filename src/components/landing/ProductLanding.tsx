@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
@@ -8,7 +8,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
-import Image from "next/image";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
@@ -20,25 +19,25 @@ type Props = {
 };
 
 const primaryCtaClass =
-  "store-btn-primary rounded-2xl px-6 py-3.5 shadow-lg shadow-[var(--accent)]/25";
+  "store-btn-primary rounded-xl px-6 py-2 text-lg font-bold shadow-lg";
 
 export function ProductLanding({ product }: Props) {
-  const { t, dir, locale, setLocale } = useLanguage();
-  const copy = useMemo(
-    () => getLocalizedProductCopy(locale, product),
-    [locale, product],
-  );
+  const { dir, locale, setLocale } = useLanguage();
+  const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
+
+  const stats = copy.stats.length ? copy.stats : ["19240+ طلب", "18691+ عميل", "47+ نقطة"];
+  const contacts = copy.contactLines.length
+    ? copy.contactLines
+    : ["+222 00 00 00 00", "@zeina.store"];
+
   const price = useMemo(() => {
     const original = product.price;
-    const discounted =
-      product.discount_price != null ? product.discount_price : null;
+    const discounted = product.discount_price != null ? product.discount_price : null;
     return { original, discounted };
   }, [product]);
 
   useEffect(() => {
-    // Landing pages must always start from the admin-selected default language.
-    // Users can still manually switch using the global language switcher.
     setLocale(product.default_language ?? "ar");
   }, [product.default_language, setLocale]);
 
@@ -65,177 +64,177 @@ export function ProductLanding({ product }: Props) {
     };
   }, []);
 
+  const openCheckout = () => {
+    try {
+      touchMetaFunnelActivity();
+      trackInitiateCheckout(ensureMetaFunnelSession());
+    } catch {
+      // ignore
+    }
+    setOpen(true);
+  };
+
   return (
     <div
-      className="mx-auto min-w-0 max-w-5xl overflow-x-clip px-4 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:px-8"
+      className="mx-auto max-w-md overflow-hidden bg-[#e9f0e7] text-[#0f230f]"
       dir={dir}
+      style={
+        {
+          "--accent": "#167f2d",
+          "--accent-foreground": "#efffed",
+          "--accent-muted": "#c2d3bf",
+          "--card": "#edf3ea",
+          "--muted": "#446143",
+        } as CSSProperties
+      }
     >
       <MetaPixel pixelId={product.meta_pixel_id} />
 
-      <header className="px-0 text-center sm:px-0">
-        <h1 className="text-balance break-words text-[clamp(1.375rem,5vw,3rem)] font-bold leading-tight tracking-tight sm:text-4xl md:text-5xl">
-          {copy.name}
-        </h1>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-base sm:mt-4 sm:gap-3 sm:text-lg">
-          {price.discounted != null ? (
-            <>
-              <span className="text-[var(--muted)] line-through">
-                {formatPrice(price.original)}
-              </span>
-              <span className="text-xl font-semibold text-[var(--accent)] sm:text-2xl">
-                {formatPrice(price.discounted)}
-              </span>
-            </>
-          ) : (
-            <span className="text-xl font-semibold sm:text-2xl">
-              {formatPrice(price.original)}
-            </span>
-          )}
+      <header className="rounded-b-2xl bg-[#dbe8d9] px-4 pb-4 pt-2 text-center shadow-sm">
+        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#2d4a2d]">
+          <span>زينة</span>
+          <span>{locale === "fr" ? "Offre du jour" : "العرض اليومي"}</span>
         </div>
+        <h1 className="text-3xl font-black leading-tight">{copy.name}</h1>
+        <p className="mt-1 text-sm text-[#3f5d3f]">
+          {copy.heroSubtitle || copy.description.split("\n")[0]}
+        </p>
       </header>
 
-      <section className="mt-8 min-w-0 sm:mt-10">
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-sm sm:rounded-3xl">
+      <section className="px-3 pb-2 pt-4">
+        <div className="overflow-hidden rounded-xl border border-[#8dae8b] bg-[#08751f]">
           <LandingMedia product={product} priority />
+        </div>
+        <div className="mx-2 mt-2 rounded-full bg-[#d2ddd0] px-4 py-1 text-xs font-semibold">
+          <div className="flex items-center justify-between">
+            <span>{price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}</span>
+            <span className={price.discounted != null ? "opacity-70 line-through" : "opacity-0"}>
+              {formatPrice(price.original)}
+            </span>
+          </div>
         </div>
       </section>
 
-      {copy.features?.length ? (
-        <section className="mt-12 sm:mt-16">
-          <h2 className="text-balance text-xl font-semibold sm:text-2xl">
-            {t("product.features")}
-          </h2>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3">
-            {copy.features.map((f) => (
-              <li
-                key={f}
-                className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-3 py-3 text-start text-sm leading-relaxed sm:px-4"
-              >
-                {f}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <section className="px-4 pt-2 text-center">
+        <h2 className="text-4xl font-black leading-none">{copy.name}</h2>
+        {copy.testimonials[0] ? (
+          <div className="mx-auto mt-2 max-w-xs rounded-2xl border border-[#b8cab5] bg-[#e3ece0] p-3 shadow-sm">
+            <p className="text-[10px] text-yellow-600">★★★★★</p>
+            <p className="mt-1 text-sm font-bold">{copy.testimonials[0].quote}</p>
+            <p className="text-xs text-[#466246]">{copy.testimonials[0].name}</p>
+          </div>
+        ) : null}
+        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 bg-[#1b8f37]`}>
+          {locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن"}
+        </button>
+      </section>
 
-      {copy.description?.trim() ? (
-        <section className="mt-12 sm:mt-16">
-          <h2 className="text-balance text-xl font-semibold sm:text-2xl">
-            {t("product.description")}
-          </h2>
-          <p className="mt-3 whitespace-pre-wrap break-words text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-4 sm:text-base">
-            {copy.description}
-          </p>
-        </section>
-      ) : null}
-
-      {product.gallery?.length ? (
-        <section className="mt-12 sm:mt-16">
-          <h2 className="text-balance text-xl font-semibold sm:text-2xl">
-            {t("product.gallery")}
-          </h2>
-          <div className="mt-4 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:mt-6 sm:grid-cols-3 sm:gap-4">
-            {product.gallery.map((url) => (
-              <div
-                key={url}
-                className="relative aspect-square min-w-0 overflow-hidden rounded-xl border border-[var(--accent-muted)] sm:rounded-2xl"
-              >
-                <Image
-                  src={url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 639px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  loading="lazy"
-                  fetchPriority="low"
-                  decoding="async"
-                  quality={80}
-                />
+      {copy.features.length ? (
+        <section className="px-3 pt-4">
+          <h3 className="text-center text-3xl font-black text-[#294529]">
+            {locale === "fr" ? "Pourquoi nous ?" : "لماذا نحن"}
+          </h3>
+          <div className="mt-2 grid grid-cols-4 gap-2 rounded-2xl border border-[#c8d6c5] bg-[#eef3eb] p-3">
+            {copy.features.slice(0, 4).map((f, idx) => (
+              <div key={f} className="text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#9cb59a] bg-white text-lg">
+                  {["🍃", "✅", "⭐", "🛡️"][idx] ?? "✓"}
+                </div>
+                <p className="mt-1 text-[10px] leading-tight text-[#3d5a3d]">{f}</p>
               </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      {copy.testimonials?.length ? (
-        <section className="mt-12 sm:mt-16">
-          <h2 className="text-balance text-xl font-semibold sm:text-2xl">
-            {t("product.testimonials")}
-          </h2>
-          <div className="mt-4 grid gap-3 sm:mt-6 md:grid-cols-2 md:gap-4">
-            {copy.testimonials.map((tItem, i) => (
-              <figure
-                key={`${tItem.name}-${i}`}
-                className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 sm:rounded-2xl sm:p-6"
-              >
-                <blockquote className="break-words text-start text-sm leading-relaxed text-[var(--foreground)]">
-                  &ldquo;{tItem.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-3 text-start text-xs font-medium text-[var(--muted)]">
-                  {tItem.name}
-                  {tItem.role ? ` · ${tItem.role}` : ""}
-                </figcaption>
-              </figure>
+      <section className="mt-4 bg-[#08751f] px-3 py-8 text-white">
+        <div className="overflow-hidden rounded-xl border border-white/25">
+          <LandingMedia product={product} />
+        </div>
+      </section>
+
+      {copy.testimonials.length ? (
+        <section className="px-3 pt-4">
+          <h3 className="text-center text-lg font-black">
+            {locale === "fr" ? "Noté 4.8+ par 5000 utilisateurs" : "+4.8 تقييم من اكثر 5000 مستخدم"}
+          </h3>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {copy.testimonials.slice(0, 4).map((tItem, i) => (
+              <div key={`${tItem.name}-${i}`} className="rounded-lg bg-[#0f7b24] p-2 text-white">
+                <p className="text-[10px] text-yellow-300">★★★★★</p>
+                <p className="mt-1 line-clamp-2 text-xs font-semibold">{tItem.quote}</p>
+                <p className="mt-2 text-[10px]">{tItem.name}</p>
+              </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      {copy.faqs?.length ? (
-        <section className="mt-12 sm:mt-16">
-          <h2 className="text-balance text-xl font-semibold sm:text-2xl">
-            {t("product.faq")}
-          </h2>
-          <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-3">
-            {copy.faqs.map((faq, i) => (
-              <details
-                key={`${faq.q}-${i}`}
-                className="group rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-3 sm:rounded-2xl sm:px-5 sm:py-4"
-              >
-                <summary className="cursor-pointer break-words text-start text-sm font-medium leading-snug">
-                  {faq.q}
-                </summary>
-                <p className="mt-2 break-words text-start text-sm leading-relaxed text-[var(--muted)] sm:mt-3">
-                  {faq.a}
-                </p>
+      <section className="mt-3 bg-[#136c24] px-2 py-2 text-white">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {stats.slice(0, 3).map((item) => {
+            const [num, ...rest] = item.split(" ");
+            return (
+              <div key={item}>
+                <p className="text-3xl font-black leading-none">{num}</p>
+                <p className="text-[10px]">{rest.join(" ")}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="px-4 py-4 text-center">
+        <h3 className="text-2xl font-black">
+          {locale === "fr" ? "Titre de l'image ou vidéo" : "عنوان الصورة أو فيديو"}
+        </h3>
+      </section>
+
+      <section className="bg-[#08751f] px-3 py-8 text-white">
+        <div className="overflow-hidden rounded-xl border border-white/25">
+          <LandingMedia product={product} />
+        </div>
+      </section>
+
+      {copy.faqs.length ? (
+        <section className="bg-[#ededed] px-4 py-5 text-center">
+          <h3 className="text-2xl font-black text-[#1d3b1f]">
+            {locale === "fr" ? "Questions fréquentes" : "أسئلة شائعة"}
+          </h3>
+          <div className="mx-auto mt-3 max-w-xs space-y-2 text-sm">
+            {copy.faqs.slice(0, 4).map((faq, i) => (
+              <details key={`${faq.q}-${i}`} className="border-b border-[#999] pb-1">
+                <summary className="cursor-pointer list-none font-semibold">{faq.q}</summary>
+                <p className="mt-1 text-xs text-[#5d5d5d]">{faq.a}</p>
               </details>
             ))}
           </div>
         </section>
       ) : null}
 
-      <div
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--accent-muted)] bg-[var(--card)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] backdrop-blur-md dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)] sm:static sm:mt-10 sm:border-0 sm:bg-transparent sm:pb-0 sm:pt-0 sm:shadow-none sm:backdrop-blur-0"
-        style={{
-          paddingLeft: "max(1rem, env(safe-area-inset-left))",
-          paddingRight: "max(1rem, env(safe-area-inset-right))",
-        }}
-      >
-        <div className="mx-auto max-w-5xl px-4 sm:px-0">
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                touchMetaFunnelActivity();
-                // InitiateCheckout is intentionally browser-only; keep shared funnel event id.
-                trackInitiateCheckout(ensureMetaFunnelSession());
-              } catch {
-                // ignore
-              }
-              setOpen(true);
-            }}
-            className={`${primaryCtaClass} w-full max-w-md sm:max-w-lg`}
-          >
-            {t("product.buyNow")}
-          </button>
-        </div>
-      </div>
+      <section className="bg-[#0b7520] px-4 py-5 text-center text-white">
+        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} bg-[#2e8441]`}>
+          {locale === "fr" ? "Choisir l'offre maintenant" : "اغتنم العرض الآن"}
+        </button>
+      </section>
 
-      <OrderFormModal
-        product={product}
-        open={open}
-        onClose={() => setOpen(false)}
-      />
+      <section className="bg-[#f4f4f4] px-4 py-5 text-center">
+        <h3 className="text-lg font-black">{locale === "fr" ? "Contact" : "جهات الاتصال"}</h3>
+        <div className="mt-2 space-y-1 text-sm text-[#272727]">
+          {contacts.map((line) => (
+            <p key={line} dir="ltr">
+              {line}
+            </p>
+          ))}
+        </div>
+      </section>
+
+      <footer className="bg-[#09741f] px-4 py-3 text-center text-white">
+        <p className="text-2xl font-black">زينة</p>
+        <p className="text-xs opacity-80">{locale === "fr" ? "Tous droits réservés" : "جميع الحقوق محفوظة"}</p>
+      </footer>
+
+      <OrderFormModal product={product} open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }
