@@ -5,7 +5,7 @@
 :root {
   --background: #f0fff0;
   --foreground: #0f1a0f;
-  --accent: #00ff00;
+  --accent: #006B0C;
   --accent-foreground: #0a0f0a;
   --accent-muted: #c5e8c5;
   --card: #f0fff0;
@@ -16,7 +16,7 @@
   :root {
     --background: #0c120c;
     --foreground: #e8f5e8;
-    --accent: #00ff00;
+    --accent: #006B0C;
     --accent-foreground: #0a0f0a;
     --accent-muted: #1e331e;
     --card: #111811;

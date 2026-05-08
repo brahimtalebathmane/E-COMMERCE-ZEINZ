@@ -5,6 +5,7 @@ import type {
   Testimonial,
 } from "@/types";
 import type { Locale } from "@/lib/i18n";
+import { BRAND_COLOR, SITE_LOGO_URL } from "@/lib/site-branding";
 
 function pickStr(locale: Locale, ar: string, fr: string): string {
   if (locale !== "fr") return ar;
@@ -62,8 +63,8 @@ export function getLocalizedProductCopy(
   p: ProductRow,
 ): LocalizedProductCopy {
   return {
-    brandColor: p.brand_color?.trim() || "#006B0C",
-    logoUrl: p.logo_url?.trim() || "",
+    brandColor: BRAND_COLOR,
+    logoUrl: SITE_LOGO_URL,
     name: pickStr(locale, p.name_ar, p.name_fr),
     heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
     heroBadge: pickStr(locale, p.hero_badge_ar, p.hero_badge_fr),

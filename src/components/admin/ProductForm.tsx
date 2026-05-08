@@ -160,8 +160,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [defaultLanguage, setDefaultLanguage] = useState<"ar" | "fr">(
     initial?.default_language ?? "ar",
   );
-  const [brandColor, setBrandColor] = useState(initial?.brand_color ?? "#006B0C");
-  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
   const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
   const [heroSubtitleAr, setHeroSubtitleAr] = useState(initial?.hero_subtitle_ar ?? "");
@@ -292,8 +290,6 @@ export function ProductForm({ mode, initial }: Props) {
 
     return {
       default_language: defaultLanguage,
-      brand_color: brandColor.trim() || "#006B0C",
-      logo_url: logoUrl.trim(),
       name_ar: nameAr,
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr,
@@ -417,26 +413,6 @@ export function ProductForm({ mode, initial }: Props) {
             <option value="ar">{a.productForm.defaultLanguageArabic}</option>
             <option value="fr">{a.productForm.defaultLanguageFrench}</option>
           </select>
-        </div>
-        <div>
-          <label className="text-sm font-medium">اللون الأساسي (HEX)</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={brandColor}
-            onChange={(e) => setBrandColor(e.target.value)}
-            placeholder="#006B0C"
-            dir="ltr"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">رابط الشعار</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://"
-            dir="ltr"
-          />
         </div>
         <div>
           <label className="text-sm font-medium">

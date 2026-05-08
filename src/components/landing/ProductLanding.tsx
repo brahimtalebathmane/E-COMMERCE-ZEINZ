@@ -9,6 +9,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
 import { formatPrice } from "@/lib/currency";
+import { BRAND_COLOR, SITE_LOGO_URL } from "@/lib/site-branding";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
@@ -61,7 +62,7 @@ function AnimatedCounter({ value }: { value: string }) {
 
 function FeatureIcon({ feature }: { feature: string }) {
   const keyword = feature.toLowerCase();
-  const color = "#006B0C";
+  const color = BRAND_COLOR;
   let path =
     "M12 4v16M4 12h16"; // plus
   if (keyword.includes("شحن") || keyword.includes("delivery")) {
@@ -88,7 +89,6 @@ export function ProductLanding({ product }: Props) {
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
 
-  const brandColor = copy.brandColor || "#006B0C";
   const stats = copy.stats.length ? copy.stats : ["19240+ طلب", "18691+ عميل", "47+ نقطة"];
   const contacts = copy.contactLines.length
     ? copy.contactLines
@@ -143,7 +143,7 @@ export function ProductLanding({ product }: Props) {
       dir={dir}
       style={
         {
-          "--accent": brandColor,
+          "--accent": BRAND_COLOR,
           "--accent-foreground": "#efffed",
           "--accent-muted": "#c2d3bf",
           "--card": "#edf3ea",
@@ -156,11 +156,7 @@ export function ProductLanding({ product }: Props) {
       <header className="rounded-b-2xl bg-[#dbe8d9] px-4 pb-4 pt-2 text-center shadow-sm">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#2d4a2d]">
           <span className="rounded-full bg-white px-2 py-1">
-            {copy.logoUrl ? (
-              <Image src={copy.logoUrl} alt="logo" width={56} height={24} className="h-5 w-auto object-contain" />
-            ) : (
-              "زينة"
-            )}
+            <Image src={SITE_LOGO_URL} alt="logo" width={56} height={24} className="h-5 w-auto object-contain" />
           </span>
           <span>{copy.heroBadge || (locale === "fr" ? "Offre du jour" : "العرض اليومي")}</span>
         </div>

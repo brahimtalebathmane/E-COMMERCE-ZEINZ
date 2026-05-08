@@ -2,6 +2,7 @@
 
 import { RESERVED_SLUGS } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
+import { BRAND_COLOR, SITE_LOGO_URL } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
 import type { Testimonial, FAQ } from "@/types";
 import { revalidatePath } from "next/cache";
@@ -9,8 +10,6 @@ import { revalidatePath } from "next/cache";
 export type ProductPayload = {
   /** Default storefront language for this landing page. */
   default_language: "ar" | "fr";
-  brand_color: string;
-  logo_url: string;
   name_ar: string;
   name_fr: string;
   hero_subtitle_ar: string;
@@ -105,8 +104,8 @@ export async function createProductAction(payload: ProductPayload) {
 
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
-    brand_color: payload.brand_color,
-    logo_url: payload.logo_url,
+    brand_color: BRAND_COLOR,
+    logo_url: SITE_LOGO_URL,
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
     hero_subtitle_ar: payload.hero_subtitle_ar,
@@ -176,8 +175,8 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     .from("products")
     .update({
       default_language: payload.default_language,
-      brand_color: payload.brand_color,
-      logo_url: payload.logo_url,
+      brand_color: BRAND_COLOR,
+      logo_url: SITE_LOGO_URL,
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
       hero_subtitle_ar: payload.hero_subtitle_ar,
