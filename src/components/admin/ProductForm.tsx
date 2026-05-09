@@ -163,7 +163,12 @@ const LANDING_SECTION_MAP = [
     fields:
       "logo_url + header_offer_text_* + header_discount_text_* + header_promo_text_* + header_announcement_text_* + header_cta_text_*",
   },
-  { id: "hero", title: "Hero", fields: "name_* + hero_subtitle_* + hero_badge_* + media_* + price/discount + cta_text_*" },
+  {
+    id: "offer",
+    title: "Offer",
+    fields: "offer_badge_* + offer_discount_text_* + offer_limited_text_* + price/discount + cta_text_*",
+  },
+  { id: "hero", title: "Hero", fields: "name_* + hero_subtitle_* + media_*" },
   { id: "features", title: "Features", fields: "features_title_* + features_ar/fr[]" },
   { id: "media-secondary", title: "Secondary Media", fields: "secondary_media_type + secondary_media_url" },
   { id: "testimonials", title: "Testimonials", fields: "testimonials_title_* + testimonials_ar/fr[]" },
@@ -203,6 +208,12 @@ export function ProductForm({ mode, initial }: Props) {
   );
   const [headerCtaTextAr, setHeaderCtaTextAr] = useState(initial?.header_cta_text_ar ?? "");
   const [headerCtaTextFr, setHeaderCtaTextFr] = useState(initial?.header_cta_text_fr ?? "");
+  const [offerBadgeAr, setOfferBadgeAr] = useState(initial?.offer_badge_ar ?? "");
+  const [offerBadgeFr, setOfferBadgeFr] = useState(initial?.offer_badge_fr ?? "");
+  const [offerDiscountTextAr, setOfferDiscountTextAr] = useState(initial?.offer_discount_text_ar ?? "");
+  const [offerDiscountTextFr, setOfferDiscountTextFr] = useState(initial?.offer_discount_text_fr ?? "");
+  const [offerLimitedTextAr, setOfferLimitedTextAr] = useState(initial?.offer_limited_text_ar ?? "");
+  const [offerLimitedTextFr, setOfferLimitedTextFr] = useState(initial?.offer_limited_text_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
   const [ctaTextAr, setCtaTextAr] = useState(initial?.cta_text_ar ?? "");
@@ -368,6 +379,12 @@ export function ProductForm({ mode, initial }: Props) {
       header_announcement_text_fr: headerAnnouncementTextFr.trim(),
       header_cta_text_ar: headerCtaTextAr.trim(),
       header_cta_text_fr: headerCtaTextFr.trim(),
+      offer_badge_ar: offerBadgeAr.trim(),
+      offer_badge_fr: offerBadgeFr.trim(),
+      offer_discount_text_ar: offerDiscountTextAr.trim(),
+      offer_discount_text_fr: offerDiscountTextFr.trim(),
+      offer_limited_text_ar: offerLimitedTextAr.trim(),
+      offer_limited_text_fr: offerLimitedTextFr.trim(),
       description_ar: descriptionAr.trim(),
       description_fr: descriptionFr,
       cta_text_ar: ctaTextAr.trim(),
@@ -646,6 +663,30 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">Header CTA text — French</label>
               <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerCtaTextFr} onChange={(e) => setHeaderCtaTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Offer badge — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerBadgeAr} onChange={(e) => setOfferBadgeAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Offer badge — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerBadgeFr} onChange={(e) => setOfferBadgeFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Offer discount text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerDiscountTextAr} onChange={(e) => setOfferDiscountTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Offer discount text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerDiscountTextFr} onChange={(e) => setOfferDiscountTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Limited-time text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerLimitedTextAr} onChange={(e) => setOfferLimitedTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Limited-time text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerLimitedTextFr} onChange={(e) => setOfferLimitedTextFr(e.target.value)} dir="ltr" />
             </div>
           </div>
         </section>

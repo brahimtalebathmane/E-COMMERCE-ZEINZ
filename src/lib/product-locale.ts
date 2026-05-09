@@ -91,6 +91,9 @@ export function getLocalizedProductCopy(
       p.header_announcement_text_fr,
     ),
     headerCtaText: pickStr(locale, p.header_cta_text_ar, p.header_cta_text_fr),
+    offerBadgeText: pickStr(locale, p.offer_badge_ar, p.offer_badge_fr),
+    offerDiscountText: pickStr(locale, p.offer_discount_text_ar, p.offer_discount_text_fr),
+    offerLimitedText: pickStr(locale, p.offer_limited_text_ar, p.offer_limited_text_fr),
     ctaText: pickStr(locale, p.cta_text_ar, p.cta_text_fr),
     featuresTitle: pickStr(locale, p.features_title_ar, p.features_title_fr),
     testimonialsTitle: pickStr(

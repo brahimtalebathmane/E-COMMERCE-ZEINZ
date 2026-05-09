@@ -179,6 +179,13 @@ export function ProductLanding({ product }: Props) {
     setOpen(true);
   };
 
+  const scrollToOrderForm = () => {
+    if (typeof window === "undefined") return;
+    const target = document.getElementById("order-form-section");
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div
       className="mx-auto max-w-[390px] overflow-hidden bg-[#fff7ee] pb-24 text-[#251b13] md:max-w-[460px]"
@@ -206,63 +213,65 @@ export function ProductLanding({ product }: Props) {
         onCtaClick={openCheckout}
       />
 
-      <section className="bg-[#fef6ea] px-4 pb-8">
-        <div className="mx-auto overflow-hidden rounded-[26px] border border-[#f0dfcf] bg-[#fffaf3] p-2 shadow-[0_20px_36px_rgba(100,67,37,0.12)]">
+      <section className="bg-[#fef6ea] px-4 pb-4 pt-5 text-center">
+        <h1 className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[#0f6a15] sm:max-w-[380px] sm:text-[2.7rem]">
+          {copy.heroSubtitle}
+        </h1>
+      </section>
+
+      <section className="bg-[#fef6ea] px-4 pb-5">
+        <div className="mx-auto overflow-hidden rounded-[10px] bg-white shadow-[0_10px_24px_rgba(94,67,34,0.14)]">
           <LandingMedia product={product} priority />
         </div>
+      </section>
 
-        <div className="mx-auto mt-5 max-w-sm rounded-[24px] border border-[#f0decf] bg-[#fffaf3] p-5 text-center shadow-[0_16px_30px_rgba(106,70,35,0.1)]">
-          <div className="mx-auto mb-3 inline-flex rounded-full bg-[#fff0e4] px-4 py-1 text-[11px] font-extrabold text-[#bb6425]">
-            {discountPercent != null
-              ? locale === "fr"
-                ? `- ${discountPercent}% aujourd'hui`
-                : `خصم ${discountPercent}% لفترة محدودة`
-              : copy.heroBadge}
+      <section className="bg-[#fff9ef] px-4 pb-4 text-center">
+        <h2 className="break-words text-[2.1rem] font-black leading-[1.18] text-[#17120d]">{copy.name}</h2>
+        {heroSummary ? (
+          <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[#2f241b]">{heroSummary}</p>
+        ) : null}
+      </section>
+
+      {heroTestimonial ? (
+        <section className="bg-[#fff9ef] px-4 pb-5">
+          <div className="mx-auto max-w-sm rounded-[20px] border border-[#dbe7d7] bg-[linear-gradient(180deg,#f5fbef_0%,#eef8ea_100%)] px-4 py-3 shadow-[0_12px_22px_rgba(78,117,70,0.16)]">
+            <div className="flex items-center gap-3 text-right">
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.98rem] font-black leading-[1.2] text-[#16120f]">{heroTestimonial.name}</p>
+                <p className="mt-1 text-[1.02rem] font-bold leading-[1.4] text-[#17120d]">{heroTestimonial.quote}</p>
+                <p className="mt-1 text-[0.95rem] text-[#d08a2a]">{starText(heroTestimonial.rating)}</p>
+              </div>
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[#e8efe3]">
+                {heroTestimonial.image ? (
+                  <Image src={heroTestimonial.image} alt={heroTestimonial.name} fill className="object-cover" sizes="64px" />
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="flex items-end justify-center gap-3">
+        </section>
+      ) : null}
+
+      <section className="bg-[#fff9ef] px-4 pb-4 text-center">
+        <div className="mx-auto max-w-sm rounded-[12px] bg-[#4f915f] px-3 py-2 text-white shadow-[0_8px_18px_rgba(58,109,72,0.25)]">
+          <div className="flex items-center justify-center gap-3">
             {price.discounted != null ? (
-              <span className="text-sm font-semibold text-[#9b7f66] line-through">{formatPrice(price.original)}</span>
+              <span className="text-[1.15rem] font-extrabold leading-none text-[#e7f2ea] line-through">{formatPrice(price.original)}</span>
             ) : null}
-            <span className="text-[2.5rem] font-black leading-none tracking-[-0.02em] text-[#20160f]">
+            <span className="text-[1.95rem] font-black leading-none">
               {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
             </span>
           </div>
-          <h1 className="mt-5 break-words text-[1.95rem] font-black leading-[1.24] tracking-[-0.01em] text-[#1f1913]">{copy.name}</h1>
-          {copy.heroSubtitle ? (
-            <p className="mt-2 break-words text-[1.02rem] font-medium leading-[1.68] text-[#6d5644]">{copy.heroSubtitle}</p>
-          ) : null}
-          {heroSummary ? (
-            <p className="mt-3 break-words rounded-2xl bg-[#fff3e7] px-4 py-3 text-[0.95rem] leading-[1.72] text-[#5e4838]">{heroSummary}</p>
-          ) : null}
-          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-6 w-full bg-[#ef8a3d]`}>
-            {ctaText}
-          </button>
-          <p className="mt-3 text-[0.95rem] font-semibold leading-[1.55] text-[#3f2f24]">{codReassurance}</p>
-          <p className="mt-1 text-[0.78rem] font-semibold leading-[1.45] text-[#8b674a]">{trustSnippet}</p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            {stats.slice(0, 3).map((line, idx) => (
-              <span
-                key={`${line}-${idx}`}
-                className="inline-flex max-w-full truncate rounded-full border border-[#efddca] bg-white px-2.5 py-1 text-[10px] font-bold text-[#7b6049]"
-              >
-                {line}
-              </span>
-            ))}
-          </div>
-          {heroTestimonial ? (
-            <div className="mx-auto mt-4 flex max-w-xs items-center gap-2 rounded-2xl bg-white px-3 py-2 text-right shadow-sm">
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#f4e6d9]">
-                {heroTestimonial.image ? (
-                  <Image src={heroTestimonial.image} alt={heroTestimonial.name} fill className="object-cover" sizes="40px" />
-                ) : null}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] text-[#d38b30]">{starText(heroTestimonial.rating)}</p>
-                <p className="line-clamp-1 text-xs font-bold text-[#3d2d22]">{heroTestimonial.name}</p>
-              </div>
-            </div>
-          ) : null}
+          <p className="mt-1 text-sm font-extrabold">{copy.offerBadgeText || copy.heroBadge}</p>
+          <p className="text-[0.83rem] font-semibold">{copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")}</p>
+          <p className="text-[0.82rem] font-bold">{copy.offerLimitedText}</p>
         </div>
+      </section>
+
+      <section className="bg-[#fff9ef] px-4 pb-6 text-center">
+        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} w-full bg-[#167a26]`}>
+          {ctaText}
+        </button>
+        <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[#3f2f24]">{codReassurance}</p>
       </section>
 
       <section className={`bg-[#fffaf3] ${sectionPadClass}`}>
@@ -395,7 +404,7 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className="bg-[#fef2e4] px-4 py-8 text-center">
+      <section id="order-form-section" className="bg-[#fef2e4] px-4 py-8 text-center">
         <div className={`${softCardClass} px-4 py-5`}>
           <p className="text-[0.95rem] font-semibold leading-[1.45] text-[#805f44]">
             {copy.heroBadge}
