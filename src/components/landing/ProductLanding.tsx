@@ -25,9 +25,9 @@ type Props = {
 const landingShellClass =
   "mx-auto w-full max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)] md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl";
 
-/** Escape the centered shell so media spans the full viewport width (matches order-form breakout pattern). */
-const viewportMediaBleedClass =
-  "relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw]";
+/** Escape horizontal padding / narrow ancestors so media spans the viewport (translate centers a 100vw strip). */
+const fullBleedStripClass =
+  "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2";
 
 /** Title/copy aligned with other sections while the band behind gallery media spans the full viewport. */
 const sectionContentInsetClass = `${landingShellClass} px-4 sm:px-6 md:px-8 lg:px-10`;
@@ -229,7 +229,7 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className={`${landingShellClass} overflow-x-clip bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10`}
+      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10"
       dir={dir}
       style={
         {
@@ -262,7 +262,7 @@ export function ProductLanding({ product }: Props) {
           {copy.heroSubtitle}
         </h1>
 
-        <div className={`${viewportMediaBleedClass} mt-4 sm:mt-5`}>
+        <div className={`${fullBleedStripClass} mt-4 sm:mt-5`}>
           <LandingMedia product={product} priority edgeToEdge />
         </div>
 
@@ -321,7 +321,7 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className={`${viewportMediaBleedClass} bg-[var(--card)] py-8 sm:py-10`}>
+      <section className="w-full bg-[var(--card)] py-8 sm:py-10">
         <div className={sectionContentInsetClass}>
           <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
         </div>
@@ -402,7 +402,7 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       {product.tertiary_media_url ? (
-        <section className={`${viewportMediaBleedClass} bg-[var(--background)] py-8 sm:py-10`}>
+        <section className="w-full bg-[var(--background)] py-8 sm:py-10">
           <div className="w-full">
             <LandingMedia
               mediaType={product.tertiary_media_type}
@@ -445,7 +445,7 @@ export function ProductLanding({ product }: Props) {
 
       <section
         id="order-form-section"
-        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw] scroll-mt-6 border-y border-[var(--accent-muted)]/40"
+        className="relative scroll-mt-6 w-full max-w-none border-y border-[var(--accent-muted)]/40"
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {ctaBannerImg ? (
