@@ -4,14 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-/** Landing-only header logo (hosted asset). */
-const LANDING_HEADER_LOGO_URL = "https://i.postimg.cc/3JgfjBz4/ughujgijk.png";
+/** Fallback when product has no logo URL in admin. */
+const DEFAULT_HEADER_LOGO_URL = "https://i.postimg.cc/3JgfjBz4/ughujgijk.png";
 
 type Props = {
   offerText: string;
   discountText: string;
   promoText: string;
   announcementText: string;
+  /** Resolved landing header logo (HTTPS). */
+  logoSrc: string;
+  /** Optional line under the promo strip (from admin header CTA fields). */
+  headerCtaText?: string;
 };
 
 export function LandingHeader({
@@ -19,10 +23,13 @@ export function LandingHeader({
   discountText,
   promoText,
   announcementText,
+  logoSrc,
+  headerCtaText,
 }: Props) {
   const hasPromoStrip = Boolean(
     offerText.trim() || discountText.trim() || promoText.trim() || announcementText.trim(),
   );
+  const logo = logoSrc.trim() || DEFAULT_HEADER_LOGO_URL;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--accent-muted)]/70 bg-[var(--background)]/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-sm">
@@ -39,7 +46,7 @@ export function LandingHeader({
             aria-label="Go to home page"
           >
             <Image
-              src={LANDING_HEADER_LOGO_URL}
+              src={logo}
               alt=""
               fill
               className="object-contain object-right"
@@ -72,6 +79,12 @@ export function LandingHeader({
                 <span className="font-bold text-[var(--accent)]">{announcementText.trim()}</span>
               </>
             ) : null}
+          </p>
+        ) : null}
+
+        {headerCtaText?.trim() ? (
+          <p className="mt-3 border-t border-[var(--accent-muted)]/60 pt-3 text-center text-[11px] font-semibold leading-snug text-[var(--accent)] sm:text-xs">
+            {headerCtaText.trim()}
           </p>
         ) : null}
       </div>

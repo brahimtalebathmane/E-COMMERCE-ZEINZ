@@ -13,6 +13,16 @@ function pickStr(locale: Locale, ar: string, fr: string): string {
   return t.length > 0 ? fr : ar;
 }
 
+function pickOptionalLine(
+  locale: Locale,
+  ar: string,
+  fr: string,
+  fallback: string,
+): string {
+  const s = pickStr(locale, ar, fr).trim();
+  return s.length > 0 ? s : fallback;
+}
+
 function pickFeatures(
   locale: Locale,
   ar: string[],
@@ -103,6 +113,28 @@ export function getLocalizedProductCopy(
     ),
     mediaCaption: pickStr(locale, p.media_caption_ar, p.media_caption_fr),
     faqTitle: pickStr(locale, p.faq_title_ar, p.faq_title_fr),
+    statsSectionTitle: pickOptionalLine(
+      locale,
+      p.stats_section_title_ar,
+      p.stats_section_title_fr,
+      locale === "fr"
+        ? "Pourquoi nos clients nous font confiance"
+        : "لماذا يثق بنا العملاء",
+    ),
+    testimonialsBadge: pickOptionalLine(
+      locale,
+      p.testimonials_badge_ar,
+      p.testimonials_badge_fr,
+      locale === "fr"
+        ? "Avis verifies apres achat"
+        : "تقييمات من استبيانات ما بعد البيع",
+    ),
+    footerNote: pickOptionalLine(
+      locale,
+      p.footer_note_ar,
+      p.footer_note_fr,
+      locale === "fr" ? "Tous droits reserves 2026" : "جميع الحقوق محفوظة 2026",
+    ),
     contactTitle: pickStr(locale, p.contact_title_ar, p.contact_title_fr),
     description: pickStr(locale, p.description_ar, p.description_fr),
     features: pickFeatures(locale, p.features_ar, p.features_fr),

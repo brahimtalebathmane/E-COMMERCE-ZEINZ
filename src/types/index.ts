@@ -52,6 +52,15 @@ export type ProductRow = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  /** Stats band heading (optional; landing uses defaults when empty). */
+  stats_section_title_ar: string;
+  stats_section_title_fr: string;
+  /** Pill line under testimonials title (optional). */
+  testimonials_badge_ar: string;
+  testimonials_badge_fr: string;
+  /** Footer copyright / note line (optional). */
+  footer_note_ar: string;
+  footer_note_fr: string;
   /** Solid banner fill (hex). Empty = theme gradient when no image. */
   cta_banner_background_color: string;
   cta_banner_background_image_url: string;
@@ -119,6 +128,9 @@ export type LocalizedProductCopy = {
   testimonialsTitle: string;
   mediaCaption: string;
   faqTitle: string;
+  statsSectionTitle: string;
+  testimonialsBadge: string;
+  footerNote: string;
   contactTitle: string;
   description: string;
   features: string[];

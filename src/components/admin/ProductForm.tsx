@@ -8,6 +8,7 @@ import {
   type ProductPayload,
 } from "@/app/admin/(dashboard)/products/actions";
 import { adminAr as a } from "@/locales/admin-ar";
+import { BRAND_COLOR } from "@/lib/site-branding";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -207,6 +208,46 @@ export function ProductForm({ mode, initial }: Props) {
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
 
+  const [brandColor, setBrandColor] = useState(initial?.brand_color ?? BRAND_COLOR);
+  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [headerOfferAr, setHeaderOfferAr] = useState(initial?.header_offer_text_ar ?? "");
+  const [headerOfferFr, setHeaderOfferFr] = useState(initial?.header_offer_text_fr ?? "");
+  const [headerDiscountAr, setHeaderDiscountAr] = useState(initial?.header_discount_text_ar ?? "");
+  const [headerDiscountFr, setHeaderDiscountFr] = useState(initial?.header_discount_text_fr ?? "");
+  const [headerPromoAr, setHeaderPromoAr] = useState(initial?.header_promo_text_ar ?? "");
+  const [headerPromoFr, setHeaderPromoFr] = useState(initial?.header_promo_text_fr ?? "");
+  const [headerAnnouncementAr, setHeaderAnnouncementAr] = useState(
+    initial?.header_announcement_text_ar ?? "",
+  );
+  const [headerAnnouncementFr, setHeaderAnnouncementFr] = useState(
+    initial?.header_announcement_text_fr ?? "",
+  );
+  const [headerCtaAr, setHeaderCtaAr] = useState(initial?.header_cta_text_ar ?? "");
+  const [headerCtaFr, setHeaderCtaFr] = useState(initial?.header_cta_text_fr ?? "");
+  const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
+  const [stickyFooterBarBg, setStickyFooterBarBg] = useState(initial?.sticky_footer_bar_bg_color ?? "");
+  const [stickyFooterBadgeBg, setStickyFooterBadgeBg] = useState(
+    initial?.sticky_footer_badge_bg_color ?? "",
+  );
+  const [stickyFooterTimerBoxBg, setStickyFooterTimerBoxBg] = useState(
+    initial?.sticky_footer_timer_box_bg_color ?? "",
+  );
+  const [stickyFooterTimerDigit, setStickyFooterTimerDigit] = useState(
+    initial?.sticky_footer_timer_digit_color ?? "",
+  );
+  const [stickyFooterCtaBg, setStickyFooterCtaBg] = useState(initial?.sticky_footer_cta_bg_color ?? "");
+  const [stickyFooterCtaFg, setStickyFooterCtaFg] = useState(initial?.sticky_footer_cta_text_color ?? "");
+  const [statsSectionTitleAr, setStatsSectionTitleAr] = useState(initial?.stats_section_title_ar ?? "");
+  const [statsSectionTitleFr, setStatsSectionTitleFr] = useState(initial?.stats_section_title_fr ?? "");
+  const [testimonialsBadgeAr, setTestimonialsBadgeAr] = useState(initial?.testimonials_badge_ar ?? "");
+  const [testimonialsBadgeFr, setTestimonialsBadgeFr] = useState(initial?.testimonials_badge_fr ?? "");
+  const [footerNoteAr, setFooterNoteAr] = useState(initial?.footer_note_ar ?? "");
+  const [footerNoteFr, setFooterNoteFr] = useState(initial?.footer_note_fr ?? "");
+  const [galleryUrls, setGalleryUrls] = useState<string[]>(() =>
+    initial?.gallery?.length ? [...initial.gallery] : [],
+  );
+
   function buildPayload(): ProductPayload {
     const discountPrice =
       discount.trim() === "" ? null : Number.parseFloat(discount);
@@ -265,27 +306,26 @@ export function ProductForm({ mode, initial }: Props) {
       a: f.a_fr.trim(),
     }));
 
-    const persisted = mode === "edit" && initial ? initial : null;
-
     return {
       default_language: defaultLanguage,
-      logo_url: persisted ? (persisted.logo_url ?? "").trim() : "",
+      brand_color: brandColor,
+      logo_url: logoUrl.trim(),
       name_ar: nameAr.trim(),
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
       hero_badge_ar: heroBadgeAr.trim(),
       hero_badge_fr: heroBadgeFr,
-      header_offer_text_ar: persisted ? (persisted.header_offer_text_ar ?? "").trim() : "",
-      header_offer_text_fr: persisted ? (persisted.header_offer_text_fr ?? "").trim() : "",
-      header_discount_text_ar: persisted ? (persisted.header_discount_text_ar ?? "").trim() : "",
-      header_discount_text_fr: persisted ? (persisted.header_discount_text_fr ?? "").trim() : "",
-      header_promo_text_ar: persisted ? (persisted.header_promo_text_ar ?? "").trim() : "",
-      header_promo_text_fr: persisted ? (persisted.header_promo_text_fr ?? "").trim() : "",
-      header_announcement_text_ar: persisted ? (persisted.header_announcement_text_ar ?? "").trim() : "",
-      header_announcement_text_fr: persisted ? (persisted.header_announcement_text_fr ?? "").trim() : "",
-      header_cta_text_ar: persisted ? (persisted.header_cta_text_ar ?? "").trim() : "",
-      header_cta_text_fr: persisted ? (persisted.header_cta_text_fr ?? "").trim() : "",
+      header_offer_text_ar: headerOfferAr.trim(),
+      header_offer_text_fr: headerOfferFr.trim(),
+      header_discount_text_ar: headerDiscountAr.trim(),
+      header_discount_text_fr: headerDiscountFr.trim(),
+      header_promo_text_ar: headerPromoAr.trim(),
+      header_promo_text_fr: headerPromoFr.trim(),
+      header_announcement_text_ar: headerAnnouncementAr.trim(),
+      header_announcement_text_fr: headerAnnouncementFr.trim(),
+      header_cta_text_ar: headerCtaAr.trim(),
+      header_cta_text_fr: headerCtaFr.trim(),
       offer_badge_ar: offerBadgeAr.trim(),
       offer_badge_fr: offerBadgeFr.trim(),
       offer_discount_text_ar: offerDiscountTextAr.trim(),
@@ -304,7 +344,13 @@ export function ProductForm({ mode, initial }: Props) {
       media_caption_fr: mediaCaptionFr,
       faq_title_ar: faqTitleAr.trim(),
       faq_title_fr: faqTitleFr,
-      cta_banner_background_color: persisted ? (persisted.cta_banner_background_color ?? "").trim() : "",
+      stats_section_title_ar: statsSectionTitleAr.trim(),
+      stats_section_title_fr: statsSectionTitleFr.trim(),
+      testimonials_badge_ar: testimonialsBadgeAr.trim(),
+      testimonials_badge_fr: testimonialsBadgeFr.trim(),
+      footer_note_ar: footerNoteAr.trim(),
+      footer_note_fr: footerNoteFr.trim(),
+      cta_banner_background_color: ctaBannerBgColor.trim(),
       cta_banner_background_image_url: ctaBannerBgImageUrl.trim(),
       cta_banner_image_overlay: Math.min(1, Math.max(0, ctaBannerOverlayPct / 100)),
       contact_title_ar: contactTitleAr.trim(),
@@ -323,7 +369,7 @@ export function ProductForm({ mode, initial }: Props) {
       tertiary_media_url: tertiaryMediaUrl,
       features_ar,
       features_fr,
-      gallery: mode === "edit" && initial?.gallery?.length ? [...initial.gallery] : [],
+      gallery: galleryUrls.map((u) => u.trim()).filter(Boolean),
       testimonials_ar: cleanedTestimonialsAr,
       testimonials_fr: cleanedTestimonialsFr,
       faqs_ar: cleanedFaqsAr,
@@ -354,16 +400,12 @@ export function ProductForm({ mode, initial }: Props) {
       sticky_footer_timer_label_fr: stickyFooterTimerLabelFr.trim(),
       sticky_footer_savings_badge_ar: stickyFooterSavingsAr.trim(),
       sticky_footer_savings_badge_fr: stickyFooterSavingsFr.trim(),
-      sticky_footer_bar_bg_color: persisted ? (persisted.sticky_footer_bar_bg_color ?? "").trim() : "",
-      sticky_footer_badge_bg_color: persisted ? (persisted.sticky_footer_badge_bg_color ?? "").trim() : "",
-      sticky_footer_timer_box_bg_color: persisted
-        ? (persisted.sticky_footer_timer_box_bg_color ?? "").trim()
-        : "",
-      sticky_footer_timer_digit_color: persisted
-        ? (persisted.sticky_footer_timer_digit_color ?? "").trim()
-        : "",
-      sticky_footer_cta_bg_color: persisted ? (persisted.sticky_footer_cta_bg_color ?? "").trim() : "",
-      sticky_footer_cta_text_color: persisted ? (persisted.sticky_footer_cta_text_color ?? "").trim() : "",
+      sticky_footer_bar_bg_color: stickyFooterBarBg.trim(),
+      sticky_footer_badge_bg_color: stickyFooterBadgeBg.trim(),
+      sticky_footer_timer_box_bg_color: stickyFooterTimerBoxBg.trim(),
+      sticky_footer_timer_digit_color: stickyFooterTimerDigit.trim(),
+      sticky_footer_cta_bg_color: stickyFooterCtaBg.trim(),
+      sticky_footer_cta_text_color: stickyFooterCtaFg.trim(),
       sticky_footer_show_timer: stickyFooterShowTimer,
     };
   }
@@ -413,6 +455,28 @@ export function ProductForm({ mode, initial }: Props) {
       setError(err instanceof Error ? err.message : "فشل رفع صورة البانر.");
     } finally {
       setUploadingCtaBanner(false);
+    }
+  }
+
+  async function uploadLogoImage(file: File) {
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "landing-logos");
+      const response = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const payload = (await response.json()) as { signedUrl?: string; error?: string };
+      if (!response.ok || !payload.signedUrl) {
+        throw new Error(payload.error || "فشل رفع الشعار.");
+      }
+      setLogoUrl(payload.signedUrl as string);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل رفع الشعار.");
+    } finally {
+      setUploadingLogo(false);
     }
   }
 
@@ -473,10 +537,7 @@ export function ProductForm({ mode, initial }: Props) {
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start" dir="rtl">
       <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
         <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
-        <p className="mt-1 text-xs text-[var(--muted)]">
-          نصوص الصفحة، الصور والفيديو، الأسعار، التقييمات، الأسئلة الشائعة، وعدّاد العرض. التخطيط والألوان
-          الافتراضية ثابتة في القالب.
-        </p>
+        <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.introBody}</p>
       </div>
 
       {mode === "edit" && initial ? (
@@ -503,6 +564,141 @@ export function ProductForm({ mode, initial }: Props) {
             <option value="fr">{a.productForm.defaultLanguageFrench}</option>
           </select>
         </div>
+
+        <section className="sm:col-span-2 space-y-4 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">{a.productForm.sectionBrand}</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionBrandHint}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">لون التمييز (Hex)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                placeholder={BRAND_COLOR}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">شعار أعلى الصفحة (رابط HTTPS)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://"
+                dir="ltr"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                className="mt-2 block w-full text-sm file:mr-2 file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--card)] file:px-3 file:py-2"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadLogoImage(f);
+                  e.target.value = "";
+                }}
+              />
+              {uploadingLogo ? <p className="mt-1 text-xs text-[var(--muted)]">جارٍ رفع الشعار…</p> : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">{a.productForm.sectionHeader}</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionHeaderHint}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">عرض / خبر — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerOfferAr}
+                onChange={(e) => setHeaderOfferAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">Offer — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerOfferFr}
+                onChange={(e) => setHeaderOfferFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">الخصم في الرأس — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerDiscountAr}
+                onChange={(e) => setHeaderDiscountAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">Discount header — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerDiscountFr}
+                onChange={(e) => setHeaderDiscountFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">ترويج — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerPromoAr}
+                onChange={(e) => setHeaderPromoAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">Promo — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerPromoFr}
+                onChange={(e) => setHeaderPromoFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">إعلان — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerAnnouncementAr}
+                onChange={(e) => setHeaderAnnouncementAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">Annonce — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerAnnouncementFr}
+                onChange={(e) => setHeaderAnnouncementFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">نداء الرأس (سطر إضافي) — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerCtaAr}
+                onChange={(e) => setHeaderCtaAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">Header CTA — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerCtaFr}
+                onChange={(e) => setHeaderCtaFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+          </div>
+        </section>
+
         <div>
           <label className="text-sm font-medium">
             {a.productForm.name} — {a.productForm.langArabic}
@@ -686,6 +882,23 @@ export function ProductForm({ mode, initial }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.statsSectionTitle} — عربي</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={statsSectionTitleAr}
+            onChange={(e) => setStatsSectionTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.statsSectionTitle} — FR</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={statsSectionTitleFr}
+            onChange={(e) => setStatsSectionTitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
           <label className="text-sm font-medium">
             إحصائيات الشريط الأخضر (سطر لكل عنصر) — {a.productForm.langArabic}
           </label>
@@ -826,6 +1039,72 @@ export function ProductForm({ mode, initial }: Props) {
             dir="ltr"
           />
         </div>
+
+        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">{a.productForm.gallery}</h3>
+              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.galleryHint}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGalleryUrls((g) => [...g, ""])}
+              className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
+            >
+              {a.productForm.addGalleryImage}
+            </button>
+          </div>
+          <div className="space-y-2">
+            {galleryUrls.map((url, gi) => (
+              <div key={`gal-${gi}`} className="flex flex-wrap items-start gap-2 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2">
+                <input
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                  value={url}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setGalleryUrls((prev) => {
+                      const next = [...prev];
+                      next[gi] = v;
+                      return next;
+                    });
+                  }}
+                  placeholder={a.productForm.galleryUrlPlaceholder}
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  className="rounded-lg border border-[var(--accent-muted)] px-2 py-2 text-xs text-red-700"
+                  onClick={() => setGalleryUrls((prev) => prev.filter((_, j) => j !== gi))}
+                >
+                  {a.productForm.removeItem}
+                </button>
+                {url.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin preview
+                  <img src={url.trim()} alt="" className="h-14 w-14 rounded-md border border-[var(--accent-muted)] object-cover" />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.testimonialsBadgeLabel} — عربي</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={testimonialsBadgeAr}
+            onChange={(e) => setTestimonialsBadgeAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.testimonialsBadgeLabel} — FR</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={testimonialsBadgeFr}
+            onChange={(e) => setTestimonialsBadgeFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التقييمات — {a.productForm.langArabic}</label>
           <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
@@ -893,6 +1172,19 @@ export function ProductForm({ mode, initial }: Props) {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-1">
+            <div>
+              <label className="text-sm font-medium">لون خلفية البانر بدون صورة (Hex، اختياري)</label>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                إذا لم يُضَف رابط صورة أعلاه يُستخدم هذا اللون مع تدرّج افتراضي عند تركه فارغاً.
+              </p>
+              <input
+                className="mt-1 w-full max-w-md rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={ctaBannerBgColor}
+                onChange={(e) => setCtaBannerBgColor(e.target.value)}
+                placeholder="#006B0C"
+                dir="ltr"
+              />
+            </div>
             <div>
               <label className="text-sm font-medium">صورة الخلفية</label>
               <p className="mt-1 text-xs text-[var(--muted)]">
@@ -1005,6 +1297,72 @@ export function ProductForm({ mode, initial }: Props) {
               />
             </div>
           </div>
+          <div>
+            <h4 className="text-xs font-semibold text-[var(--foreground)]">{a.productForm.sectionStickyColors}</h4>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionStickyColorsHint}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="text-xs text-[var(--muted)]">خلفية الشريط</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterBarBg}
+                onChange={(e) => setStickyFooterBarBg(e.target.value)}
+                placeholder="#14532d"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">شارة التوفير</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterBadgeBg}
+                onChange={(e) => setStickyFooterBadgeBg(e.target.value)}
+                placeholder="#22c55e"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">صندوق المؤقت</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerBoxBg}
+                onChange={(e) => setStickyFooterTimerBoxBg(e.target.value)}
+                placeholder="#ffffff"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">أرقام المؤقت</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerDigit}
+                onChange={(e) => setStickyFooterTimerDigit(e.target.value)}
+                placeholder="#15803d"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">زر الطلب (خلفية)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterCtaBg}
+                onChange={(e) => setStickyFooterCtaBg(e.target.value)}
+                placeholder="#ffffff"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">زر الطلب (نص)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterCtaFg}
+                onChange={(e) => setStickyFooterCtaFg(e.target.value)}
+                placeholder="#14532d"
+                dir="ltr"
+              />
+            </div>
+          </div>
         </section>
 
         <div className="sm:col-span-2">
@@ -1023,6 +1381,24 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={contactTitleFr}
             onChange={(e) => setContactTitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.footerNoteLabel} — عربي</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={footerNoteAr}
+            onChange={(e) => setFooterNoteAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">{a.productForm.footerNoteLabel} — FR</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={footerNoteFr}
+            onChange={(e) => setFooterNoteFr(e.target.value)}
             dir="ltr"
           />
         </div>
@@ -1531,28 +1907,33 @@ export function ProductForm({ mode, initial }: Props) {
           ) : null}
         </section>
 
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{a.productForm.metaPixel}</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={metaPixel}
-            onChange={(e) => setMetaPixel(e.target.value)}
-            placeholder={a.productForm.metaPlaceholder}
-            dir="ltr"
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{a.productForm.whatsappTemplate}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.whatsappTemplateHint}</p>
-          <textarea
-            rows={4}
-            className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={whatsAppTemplate}
-            onChange={(e) => setWhatsAppTemplate(e.target.value)}
-            placeholder="مثال: شكراً لطلبكم! سيتم التواصل معكم قريباً."
-          />
-        </div>
+        <section className="sm:col-span-2 space-y-4 rounded-xl border border-dashed border-[var(--accent-muted)] bg-[var(--background)] p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">{a.productForm.sectionIntegrations}</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionIntegrationsHint}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium">{a.productForm.metaPixel}</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              value={metaPixel}
+              onChange={(e) => setMetaPixel(e.target.value)}
+              placeholder={a.productForm.metaPlaceholder}
+              dir="ltr"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">{a.productForm.whatsappTemplate}</label>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.whatsappTemplateHint}</p>
+            <textarea
+              rows={4}
+              className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              value={whatsAppTemplate}
+              onChange={(e) => setWhatsAppTemplate(e.target.value)}
+              placeholder="مثال: شكراً لطلبكم! سيتم التواصل معكم قريباً."
+            />
+          </div>
+        </section>
       </div>
 
       {error ? (

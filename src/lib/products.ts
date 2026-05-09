@@ -47,6 +47,12 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     media_caption_fr: (row.media_caption_fr as string) ?? "",
     faq_title_ar: (row.faq_title_ar as string) ?? "",
     faq_title_fr: (row.faq_title_fr as string) ?? "",
+    stats_section_title_ar: (row.stats_section_title_ar as string) ?? "",
+    stats_section_title_fr: (row.stats_section_title_fr as string) ?? "",
+    testimonials_badge_ar: (row.testimonials_badge_ar as string) ?? "",
+    testimonials_badge_fr: (row.testimonials_badge_fr as string) ?? "",
+    footer_note_ar: (row.footer_note_ar as string) ?? "",
+    footer_note_fr: (row.footer_note_fr as string) ?? "",
     cta_banner_background_color: (row.cta_banner_background_color as string) ?? "",
     cta_banner_background_image_url: (row.cta_banner_background_image_url as string) ?? "",
     cta_banner_image_overlay:

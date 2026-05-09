@@ -95,6 +95,14 @@ export const adminAr = {
     defaultLanguageArabic: "عربي (AR)",
     defaultLanguageFrench: "Français (FR)",
     slugFixed: "المسار (ثابت):",
+    introBody:
+      "كل الحقول في هذه الصفحة تؤثر مباشرة على صفحة المنتج للزبائن: الهوية، الرأس، النصوص، الوسائط، الشريط السفلي، ثم التتبع والواتساب.",
+    sectionBrand: "الشعار ولون الصفحة",
+    sectionBrandHint:
+      "يُستخدم اللون في أزرار العناوين والتمييز؛ الشعار يظهر أعلى صفحة الهبوط. صيغة اللون #RRGGBB.",
+    sectionHeader: "شريط الرأس (عروض وأخبار)",
+    sectionHeaderHint:
+      "الأسطر تُعرض أعلى الصفحة. اختياري. «نداء الرأس» يظهر تحت الشريط عند ملئه.",
     name: "الاسم",
     description: "الوصف",
     price: "السعر (MRU)",
@@ -132,6 +140,15 @@ export const adminAr = {
     addFaq: "إضافة سؤال",
     faqQuestion: "السؤال",
     faqAnswer: "الجواب",
+    sectionStickyColors: "ألوان الشريط السفلي الثابت",
+    sectionStickyColorsHint:
+      "اترك أي حقل فارغاً للافتراضي في القالب. صيغة #RRGGBB.",
+    sectionIntegrations: "التتبع والرسائل",
+    sectionIntegrationsHint:
+      "البكسل يُحمّل في صفحة المنتج. قالب واتساب يُستخدم على الخادم بعد الطلب وليس كنص في الواجهة.",
+    statsSectionTitle: "عنوان قسم الإحصائيات (اختياري)",
+    testimonialsBadgeLabel: "السطر تحت عنوان التقييمات (اختياري)",
+    footerNoteLabel: "سطر أسفل الصفحة / حقوق النشر (اختياري)",
     metaPixel: "معرّف Meta Pixel",
     metaPlaceholder: "أرقام فقط",
     whatsappTemplate: "قالب رسالة واتساب (اختياري)",

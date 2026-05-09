@@ -1,6 +1,7 @@
 "use server";
 
 import { RESERVED_SLUGS } from "@/lib/constants";
+import { normalizeHexColor, normalizeOptionalHexColor } from "@/lib/color";
 import { slugify } from "@/lib/slug";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
@@ -10,6 +11,8 @@ import { revalidatePath } from "next/cache";
 export type ProductPayload = {
   /** Default storefront language for this landing page. */
   default_language: "ar" | "fr";
+  /** Landing accent (#rrggbb). */
+  brand_color: string;
   name_ar: string;
   name_fr: string;
   hero_subtitle_ar: string;
@@ -45,6 +48,12 @@ export type ProductPayload = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  stats_section_title_ar: string;
+  stats_section_title_fr: string;
+  testimonials_badge_ar: string;
+  testimonials_badge_fr: string;
+  footer_note_ar: string;
+  footer_note_fr: string;
   cta_banner_background_color: string;
   cta_banner_background_image_url: string;
   cta_banner_image_overlay: number;
@@ -198,7 +207,7 @@ export async function createProductAction(payload: ProductPayload) {
 
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
-    brand_color: BRAND_COLOR,
+    brand_color: normalizeHexColor(payload.brand_color, BRAND_COLOR),
     logo_url: payload.logo_url.trim(),
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
@@ -234,7 +243,13 @@ export async function createProductAction(payload: ProductPayload) {
     media_caption_fr: payload.media_caption_fr,
     faq_title_ar: payload.faq_title_ar,
     faq_title_fr: payload.faq_title_fr,
-    cta_banner_background_color: payload.cta_banner_background_color.trim(),
+    stats_section_title_ar: payload.stats_section_title_ar.trim(),
+    stats_section_title_fr: payload.stats_section_title_fr.trim(),
+    testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
+    testimonials_badge_fr: payload.testimonials_badge_fr.trim(),
+    footer_note_ar: payload.footer_note_ar.trim(),
+    footer_note_fr: payload.footer_note_fr.trim(),
+    cta_banner_background_color: normalizeOptionalHexColor(payload.cta_banner_background_color),
     cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
     cta_banner_image_overlay: payload.cta_banner_image_overlay,
     contact_title_ar: payload.contact_title_ar,
@@ -267,12 +282,12 @@ export async function createProductAction(payload: ProductPayload) {
     sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
     sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
     sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
-    sticky_footer_bar_bg_color: payload.sticky_footer_bar_bg_color.trim(),
-    sticky_footer_badge_bg_color: payload.sticky_footer_badge_bg_color.trim(),
-    sticky_footer_timer_box_bg_color: payload.sticky_footer_timer_box_bg_color.trim(),
-    sticky_footer_timer_digit_color: payload.sticky_footer_timer_digit_color.trim(),
-    sticky_footer_cta_bg_color: payload.sticky_footer_cta_bg_color.trim(),
-    sticky_footer_cta_text_color: payload.sticky_footer_cta_text_color.trim(),
+    sticky_footer_bar_bg_color: normalizeOptionalHexColor(payload.sticky_footer_bar_bg_color),
+    sticky_footer_badge_bg_color: normalizeOptionalHexColor(payload.sticky_footer_badge_bg_color),
+    sticky_footer_timer_box_bg_color: normalizeOptionalHexColor(payload.sticky_footer_timer_box_bg_color),
+    sticky_footer_timer_digit_color: normalizeOptionalHexColor(payload.sticky_footer_timer_digit_color),
+    sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
+    sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
     sticky_footer_show_timer: payload.sticky_footer_show_timer,
   });
 
@@ -301,7 +316,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     .from("products")
     .update({
       default_language: payload.default_language,
-      brand_color: BRAND_COLOR,
+      brand_color: normalizeHexColor(payload.brand_color, BRAND_COLOR),
       logo_url: payload.logo_url.trim(),
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
@@ -337,7 +352,13 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       media_caption_fr: payload.media_caption_fr,
       faq_title_ar: payload.faq_title_ar,
       faq_title_fr: payload.faq_title_fr,
-      cta_banner_background_color: payload.cta_banner_background_color.trim(),
+      stats_section_title_ar: payload.stats_section_title_ar.trim(),
+      stats_section_title_fr: payload.stats_section_title_fr.trim(),
+      testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
+      testimonials_badge_fr: payload.testimonials_badge_fr.trim(),
+      footer_note_ar: payload.footer_note_ar.trim(),
+      footer_note_fr: payload.footer_note_fr.trim(),
+      cta_banner_background_color: normalizeOptionalHexColor(payload.cta_banner_background_color),
       cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
       cta_banner_image_overlay: payload.cta_banner_image_overlay,
       contact_title_ar: payload.contact_title_ar,
@@ -369,12 +390,12 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
       sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
       sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
-      sticky_footer_bar_bg_color: payload.sticky_footer_bar_bg_color.trim(),
-      sticky_footer_badge_bg_color: payload.sticky_footer_badge_bg_color.trim(),
-      sticky_footer_timer_box_bg_color: payload.sticky_footer_timer_box_bg_color.trim(),
-      sticky_footer_timer_digit_color: payload.sticky_footer_timer_digit_color.trim(),
-      sticky_footer_cta_bg_color: payload.sticky_footer_cta_bg_color.trim(),
-      sticky_footer_cta_text_color: payload.sticky_footer_cta_text_color.trim(),
+      sticky_footer_bar_bg_color: normalizeOptionalHexColor(payload.sticky_footer_bar_bg_color),
+      sticky_footer_badge_bg_color: normalizeOptionalHexColor(payload.sticky_footer_badge_bg_color),
+      sticky_footer_timer_box_bg_color: normalizeOptionalHexColor(payload.sticky_footer_timer_box_bg_color),
+      sticky_footer_timer_digit_color: normalizeOptionalHexColor(payload.sticky_footer_timer_digit_color),
+      sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
+      sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
       sticky_footer_show_timer: payload.sticky_footer_show_timer,
     })
     .eq("id", id);

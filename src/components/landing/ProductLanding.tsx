@@ -16,7 +16,6 @@ import {
   touchMetaFunnelActivity,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
-import { BRAND_COLOR } from "@/lib/site-branding";
 
 type Props = {
   product: ProductRow;
@@ -134,7 +133,7 @@ export function ProductLanding({ product }: Props) {
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-  const accent = BRAND_COLOR;
+  const accent = copy.brandColor;
 
   const stats = copy.stats;
   const contacts = copy.contactLines;
@@ -243,9 +242,9 @@ export function ProductLanding({ product }: Props) {
       dir={dir}
       style={
         {
-          "--accent": BRAND_COLOR,
+          "--accent": copy.brandColor,
+          "--accent-muted": `color-mix(in srgb, ${copy.brandColor} 34%, white)`,
           "--accent-foreground": "#f0fff0",
-          "--accent-muted": "#c5e8c5",
           "--card": "#f4fff4",
           "--muted": "#4a5c4a",
           "--brand-accent": accent,
@@ -259,6 +258,8 @@ export function ProductLanding({ product }: Props) {
         discountText={copy.headerDiscountText}
         promoText={copy.headerPromoText}
         announcementText={copy.headerAnnouncementText}
+        logoSrc={copy.logoUrl}
+        headerCtaText={copy.headerCtaText}
       />
 
       {/* Hero: title → media → name → description → testimonial → offer line → CTA */}
@@ -353,10 +354,28 @@ export function ProductLanding({ product }: Props) {
         ) : null}
       </section>
 
+      {product.gallery.length > 0 ? (
+        <section className={`bg-[var(--background)] ${sectionPadClass}`}>
+          <h3 className={`${sectionTitleClass} break-words`}>
+            {locale === "fr" ? "Galerie" : "معرض الصور"}
+          </h3>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+            {product.gallery.map((src, gi) => (
+              <div
+                key={`${src}-${gi}`}
+                className="relative aspect-square overflow-hidden rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]"
+              >
+                <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 640px) 45vw, 240px" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className={`bg-[var(--background)] ${sectionPadClass}`}>
         <h3 className={`${sectionTitleClass} break-words`}>{copy.testimonialsTitle}</h3>
         <p className="mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] sm:px-4 sm:text-xs">
-          {locale === "fr" ? "Avis verifies apres achat" : "تقييمات من استبيانات ما بعد البيع"}
+          {copy.testimonialsBadge}
         </p>
         <div className="mt-5 space-y-3">
           {testimonialGridItems.filter(Boolean).map((item, idx) => {
@@ -388,9 +407,7 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words`}>
-          {locale === "fr" ? "Pourquoi nos clients nous font confiance" : "لماذا يثق بنا العملاء"}
-        </h3>
+        <h3 className={`${sectionTitleClass} break-words`}>{copy.statsSectionTitle}</h3>
         <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:mt-6 sm:gap-4">
           {statItems.map((item, idx) => {
             const raw = item ?? "";
@@ -511,9 +528,7 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <footer className="bg-[var(--accent-muted)] px-4 py-5 text-center sm:py-6">
-        <p className="text-xs font-semibold text-[var(--muted)] sm:text-sm">
-          {locale === "fr" ? "Tous droits reserves 2026" : "جميع الحقوق محفوظة 2026"}
-        </p>
+        <p className="text-xs font-semibold text-[var(--muted)] sm:text-sm">{copy.footerNote}</p>
       </footer>
 
       <LandingStickyFooter
