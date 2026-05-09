@@ -53,6 +53,24 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
       row.cta_banner_image_overlay === null || row.cta_banner_image_overlay === undefined
         ? 0.45
         : Number(row.cta_banner_image_overlay),
+    sticky_footer_offer_ends_at:
+      row.sticky_footer_offer_ends_at != null
+        ? String(row.sticky_footer_offer_ends_at)
+        : null,
+    sticky_footer_timer_label_ar: (row.sticky_footer_timer_label_ar as string) ?? "",
+    sticky_footer_timer_label_fr: (row.sticky_footer_timer_label_fr as string) ?? "",
+    sticky_footer_savings_badge_ar: (row.sticky_footer_savings_badge_ar as string) ?? "",
+    sticky_footer_savings_badge_fr: (row.sticky_footer_savings_badge_fr as string) ?? "",
+    sticky_footer_bar_bg_color: (row.sticky_footer_bar_bg_color as string) ?? "",
+    sticky_footer_badge_bg_color: (row.sticky_footer_badge_bg_color as string) ?? "",
+    sticky_footer_timer_box_bg_color: (row.sticky_footer_timer_box_bg_color as string) ?? "",
+    sticky_footer_timer_digit_color: (row.sticky_footer_timer_digit_color as string) ?? "",
+    sticky_footer_cta_bg_color: (row.sticky_footer_cta_bg_color as string) ?? "",
+    sticky_footer_cta_text_color: (row.sticky_footer_cta_text_color as string) ?? "",
+    sticky_footer_show_timer:
+      row.sticky_footer_show_timer === null || row.sticky_footer_show_timer === undefined
+        ? true
+        : Boolean(row.sticky_footer_show_timer),
     contact_title_ar: (row.contact_title_ar as string) ?? "",
     contact_title_fr: (row.contact_title_fr as string) ?? "",
     whatsapp_message_template:

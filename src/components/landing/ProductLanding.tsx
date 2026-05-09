@@ -6,6 +6,7 @@ import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
+import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
@@ -238,7 +239,7 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10"
+      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(7.5rem,calc(6rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(8rem,calc(6.5rem+env(safe-area-inset-bottom)))]"
       dir={dir}
       style={
         {
@@ -515,24 +516,12 @@ export function ProductLanding({ product }: Props) {
         </p>
       </footer>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--accent-muted)] bg-[var(--background)]/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 shadow-[0_-8px_24px_rgba(12,28,12,0.16)] backdrop-blur md:hidden">
-        <div className="mx-auto max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)]">
-          <div className="mb-2 flex items-center justify-between gap-2 text-xs font-medium leading-tight text-[var(--muted)]">
-            <span className="min-w-0 flex-1 line-clamp-1 text-start">{copy.heroBadge}</span>
-            <div className="shrink-0 text-right">
-              <p className="text-sm font-bold tabular-nums leading-none text-[var(--foreground)]">
-                {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
-              </p>
-              {price.discounted != null ? (
-                <p className="text-[10px] text-[var(--muted)] line-through">{formatPrice(price.original)}</p>
-              ) : null}
-            </div>
-          </div>
-          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} w-full`}>
-            {ctaText}
-          </button>
-        </div>
-      </div>
+      <LandingStickyFooter
+        product={product}
+        ctaLabel={ctaText}
+        locale={locale}
+        onCheckout={openCheckout}
+      />
 
       <OrderFormModal product={product} open={open} onClose={() => setOpen(false)} />
     </div>

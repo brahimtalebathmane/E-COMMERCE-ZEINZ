@@ -30,6 +30,21 @@ function newRowId(): string {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function stickyEndsAtToDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso.trim());
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function parseStickyEndsAtLocal(local: string): string | null {
+  const t = local.trim();
+  if (!t) return null;
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 type FeatureRow = { ar: string; fr: string };
 
 type TestimonialDraft = {
@@ -181,6 +196,12 @@ const LANDING_SECTION_MAP = [
     title: "Pre-contact CTA banner",
     fields: "cta_banner_background_color + cta_banner_background_image_url + cta_banner_image_overlay",
   },
+  {
+    id: "sticky-footer",
+    title: "Sticky bottom bar",
+    fields:
+      "sticky_footer_offer_ends_at + timer labels + savings badges + colors + CTA uses cta_text_* + prices",
+  },
   { id: "contact", title: "Contact", fields: "contact_title_* + contact_lines_ar/fr[]" },
 ] as const;
 
@@ -239,6 +260,34 @@ export function ProductForm({ mode, initial }: Props) {
   const [ctaBannerBgImageUrl, setCtaBannerBgImageUrl] = useState(initial?.cta_banner_background_image_url ?? "");
   const [ctaBannerOverlayPct, setCtaBannerOverlayPct] = useState(() =>
     Math.round(Math.min(100, Math.max(0, (initial?.cta_banner_image_overlay ?? 0.45) * 100))),
+  );
+  const [stickyFooterEndsAt, setStickyFooterEndsAt] = useState(() =>
+    stickyEndsAtToDatetimeLocal(initial?.sticky_footer_offer_ends_at),
+  );
+  const [stickyFooterTimerLabelAr, setStickyFooterTimerLabelAr] = useState(
+    initial?.sticky_footer_timer_label_ar ?? "",
+  );
+  const [stickyFooterTimerLabelFr, setStickyFooterTimerLabelFr] = useState(
+    initial?.sticky_footer_timer_label_fr ?? "",
+  );
+  const [stickyFooterSavingsAr, setStickyFooterSavingsAr] = useState(
+    initial?.sticky_footer_savings_badge_ar ?? "",
+  );
+  const [stickyFooterSavingsFr, setStickyFooterSavingsFr] = useState(
+    initial?.sticky_footer_savings_badge_fr ?? "",
+  );
+  const [stickyFooterBarBg, setStickyFooterBarBg] = useState(initial?.sticky_footer_bar_bg_color ?? "");
+  const [stickyFooterBadgeBg, setStickyFooterBadgeBg] = useState(initial?.sticky_footer_badge_bg_color ?? "");
+  const [stickyFooterTimerBoxBg, setStickyFooterTimerBoxBg] = useState(
+    initial?.sticky_footer_timer_box_bg_color ?? "",
+  );
+  const [stickyFooterTimerDigit, setStickyFooterTimerDigit] = useState(
+    initial?.sticky_footer_timer_digit_color ?? "",
+  );
+  const [stickyFooterCtaBg, setStickyFooterCtaBg] = useState(initial?.sticky_footer_cta_bg_color ?? "");
+  const [stickyFooterCtaFg, setStickyFooterCtaFg] = useState(initial?.sticky_footer_cta_text_color ?? "");
+  const [stickyFooterShowTimer, setStickyFooterShowTimer] = useState(
+    initial?.sticky_footer_show_timer ?? true,
   );
   const [contactTitleAr, setContactTitleAr] = useState(initial?.contact_title_ar ?? "");
   const [contactTitleFr, setContactTitleFr] = useState(initial?.contact_title_fr ?? "");
@@ -450,6 +499,18 @@ export function ProductForm({ mode, initial }: Props) {
         .filter(Boolean),
       meta_pixel_id: metaPixel.trim() || null,
       old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
+      sticky_footer_offer_ends_at: parseStickyEndsAtLocal(stickyFooterEndsAt),
+      sticky_footer_timer_label_ar: stickyFooterTimerLabelAr.trim(),
+      sticky_footer_timer_label_fr: stickyFooterTimerLabelFr.trim(),
+      sticky_footer_savings_badge_ar: stickyFooterSavingsAr.trim(),
+      sticky_footer_savings_badge_fr: stickyFooterSavingsFr.trim(),
+      sticky_footer_bar_bg_color: stickyFooterBarBg.trim(),
+      sticky_footer_badge_bg_color: stickyFooterBadgeBg.trim(),
+      sticky_footer_timer_box_bg_color: stickyFooterTimerBoxBg.trim(),
+      sticky_footer_timer_digit_color: stickyFooterTimerDigit.trim(),
+      sticky_footer_cta_bg_color: stickyFooterCtaBg.trim(),
+      sticky_footer_cta_text_color: stickyFooterCtaFg.trim(),
+      sticky_footer_show_timer: stickyFooterShowTimer,
     };
   }
 
@@ -1123,6 +1184,142 @@ export function ProductForm({ mode, initial }: Props) {
                 className="mt-2 w-full accent-[var(--accent)]"
               />
               <p className="mt-1 text-xs text-[var(--muted)]">{ctaBannerOverlayPct}%</p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="sticky-footer"
+          className="sm:col-span-2 space-y-4 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4"
+        >
+          <div>
+            <h3 className="text-sm font-semibold">الشريط السفلي الثابت (أسعار + عدّاد + زر الطلب)</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              يظهر ملصقاً على جميع مقاسات الشاشة. الأسعار والخصم من حقول السعر أعلاه. نص زر الطلب من حقول «cta» أعلاه.
+              اختياري: وقت انتهاء العرض للعد التنازلي؛ إن ترك فارغاً أو عُطّل العدّاد يُخفى المؤقت ويبقى السعر والزر.
+            </p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={stickyFooterShowTimer}
+              onChange={(e) => setStickyFooterShowTimer(e.target.checked)}
+              className="rounded border-[var(--accent-muted)]"
+            />
+            إظهار العد التنازلي عند تعيين تاريخ الانتهاء
+          </label>
+          <div>
+            <label className="text-sm font-medium">انتهاء العرض (تاريخ ووقت محلي)</label>
+            <input
+              type="datetime-local"
+              className="mt-1 w-full max-w-md rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              value={stickyFooterEndsAt}
+              onChange={(e) => setStickyFooterEndsAt(e.target.value)}
+              dir="ltr"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">عنوان أسفل المؤقت — عربي</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerLabelAr}
+                onChange={(e) => setStickyFooterTimerLabelAr(e.target.value)}
+                placeholder="العرض ينتهي خلال"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Timer caption — FR</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerLabelFr}
+                onChange={(e) => setStickyFooterTimerLabelFr(e.target.value)}
+                placeholder="L'offre se termine dans"
+                dir="ltr"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">شارة التوفير — عربي (اختياري)</label>
+              <p className="mt-1 text-xs text-[var(--muted)]">إن تُرك فارغاً مع وجود سعر مخفض يُحسب تلقائياً.</p>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterSavingsAr}
+                onChange={(e) => setStickyFooterSavingsAr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Badge économies — FR (optionnel)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterSavingsFr}
+                onChange={(e) => setStickyFooterSavingsFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="text-sm font-medium">لون خلفية الشريط</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterBarBg}
+                onChange={(e) => setStickyFooterBarBg(e.target.value)}
+                placeholder="#14532d"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">لون شارة التوفير</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterBadgeBg}
+                onChange={(e) => setStickyFooterBadgeBg(e.target.value)}
+                placeholder="#22c55e"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">خلفية خانات العدّاد</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerBoxBg}
+                onChange={(e) => setStickyFooterTimerBoxBg(e.target.value)}
+                placeholder="#ffffff"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">لون أرقام العدّاد</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterTimerDigit}
+                onChange={(e) => setStickyFooterTimerDigit(e.target.value)}
+                placeholder="#15803d"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">خلفية زر الطلب</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterCtaBg}
+                onChange={(e) => setStickyFooterCtaBg(e.target.value)}
+                placeholder="#ffffff"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">لون نص وأيقونة الزر</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={stickyFooterCtaFg}
+                onChange={(e) => setStickyFooterCtaFg(e.target.value)}
+                placeholder="#14532d"
+                dir="ltr"
+              />
             </div>
           </div>
         </section>

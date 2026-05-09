@@ -72,6 +72,18 @@ export type ProductPayload = {
   contact_lines_fr: string[];
   meta_pixel_id: string | null;
   old_slugs: string[];
+  sticky_footer_offer_ends_at: string | null;
+  sticky_footer_timer_label_ar: string;
+  sticky_footer_timer_label_fr: string;
+  sticky_footer_savings_badge_ar: string;
+  sticky_footer_savings_badge_fr: string;
+  sticky_footer_bar_bg_color: string;
+  sticky_footer_badge_bg_color: string;
+  sticky_footer_timer_box_bg_color: string;
+  sticky_footer_timer_digit_color: string;
+  sticky_footer_cta_bg_color: string;
+  sticky_footer_cta_text_color: string;
+  sticky_footer_show_timer: boolean;
 };
 
 function trimText(v: string): string {
@@ -256,6 +268,18 @@ export async function createProductAction(payload: ProductPayload) {
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
     meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+    sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
+    sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
+    sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
+    sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
+    sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
+    sticky_footer_bar_bg_color: payload.sticky_footer_bar_bg_color.trim(),
+    sticky_footer_badge_bg_color: payload.sticky_footer_badge_bg_color.trim(),
+    sticky_footer_timer_box_bg_color: payload.sticky_footer_timer_box_bg_color.trim(),
+    sticky_footer_timer_digit_color: payload.sticky_footer_timer_digit_color.trim(),
+    sticky_footer_cta_bg_color: payload.sticky_footer_cta_bg_color.trim(),
+    sticky_footer_cta_text_color: payload.sticky_footer_cta_text_color.trim(),
+    sticky_footer_show_timer: payload.sticky_footer_show_timer,
   });
 
   if (error) throw new Error(error.message);
@@ -346,6 +370,18 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       contact_lines_fr: payload.contact_lines_fr,
       meta_pixel_id: payload.meta_pixel_id?.trim() || null,
       old_slugs: payload.old_slugs.filter(Boolean),
+      sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
+      sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
+      sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
+      sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
+      sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
+      sticky_footer_bar_bg_color: payload.sticky_footer_bar_bg_color.trim(),
+      sticky_footer_badge_bg_color: payload.sticky_footer_badge_bg_color.trim(),
+      sticky_footer_timer_box_bg_color: payload.sticky_footer_timer_box_bg_color.trim(),
+      sticky_footer_timer_digit_color: payload.sticky_footer_timer_digit_color.trim(),
+      sticky_footer_cta_bg_color: payload.sticky_footer_cta_bg_color.trim(),
+      sticky_footer_cta_text_color: payload.sticky_footer_cta_text_color.trim(),
+      sticky_footer_show_timer: payload.sticky_footer_show_timer,
     })
     .eq("id", id);
 

@@ -57,6 +57,20 @@ export type ProductRow = {
   cta_banner_background_image_url: string;
   /** 0–1 darkness overlay when a banner image is set. */
   cta_banner_image_overlay: number;
+  /** Sticky footer countdown target (UTC). Null = no countdown / hide timer segment when disabled. */
+  sticky_footer_offer_ends_at: string | null;
+  sticky_footer_timer_label_ar: string;
+  sticky_footer_timer_label_fr: string;
+  /** Optional; empty = derive from price − discount when discounted. */
+  sticky_footer_savings_badge_ar: string;
+  sticky_footer_savings_badge_fr: string;
+  sticky_footer_bar_bg_color: string;
+  sticky_footer_badge_bg_color: string;
+  sticky_footer_timer_box_bg_color: string;
+  sticky_footer_timer_digit_color: string;
+  sticky_footer_cta_bg_color: string;
+  sticky_footer_cta_text_color: string;
+  sticky_footer_show_timer: boolean;
   contact_title_ar: string;
   contact_title_fr: string;
   whatsapp_message_template: string | null;
