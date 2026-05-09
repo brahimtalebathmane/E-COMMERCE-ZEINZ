@@ -37,7 +37,11 @@ const primaryCtaClass =
 
 /** FAQ → Contact strip: compact band, pill button (background from admin: image / color / gradient). */
 const preContactCtaButtonClass =
-  "store-btn-primary w-full max-w-md rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_12px_26px_rgba(0,107,12,0.26)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-8 sm:py-3 sm:text-base sm:font-extrabold";
+  "store-btn-primary w-full max-w-full rounded-full px-5 py-2 text-sm font-semibold shadow-[0_10px_22px_rgba(0,107,12,0.24)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-2.5 sm:text-base sm:font-extrabold";
+
+/** Centered card — narrower than full viewport, balanced with landing column. */
+const preContactCtaCardClass =
+  "relative mx-auto w-full max-w-[min(100%,18.5rem)] overflow-hidden rounded-2xl border border-[var(--accent-muted)]/55 shadow-[0_10px_28px_rgba(12,28,12,0.1)] sm:max-w-[20.5rem] md:max-w-[22rem]";
 
 const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
 const softCardClass =
@@ -446,41 +450,40 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section
-        id="order-form-section"
-        className="relative scroll-mt-6 w-full max-w-none overflow-hidden border-y border-[var(--accent-muted)]/40"
-      >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {ctaBannerImg ? (
-            <>
+      <section id="order-form-section" className="scroll-mt-6 w-full px-4 py-3 sm:px-6 sm:py-4">
+        <div className={preContactCtaCardClass}>
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+            {ctaBannerImg ? (
+              <>
+                <div
+                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url(${ctaBannerImg})` }}
+                  role="presentation"
+                />
+                <div
+                  className="absolute inset-0 bg-black"
+                  style={{ opacity: ctaBannerOverlay }}
+                  role="presentation"
+                />
+              </>
+            ) : ctaBannerColor ? (
+              <div className="absolute inset-0" style={{ backgroundColor: ctaBannerColor }} role="presentation" />
+            ) : (
               <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url(${ctaBannerImg})` }}
+                className="absolute inset-0 bg-gradient-to-br from-[var(--card)] via-[var(--background)] to-[var(--accent-muted)]"
                 role="presentation"
               />
-              <div
-                className="absolute inset-0 bg-black"
-                style={{ opacity: ctaBannerOverlay }}
-                role="presentation"
-              />
-            </>
-          ) : ctaBannerColor ? (
-            <div className="absolute inset-0" style={{ backgroundColor: ctaBannerColor }} role="presentation" />
-          ) : (
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-[var(--card)] via-[var(--background)] to-[var(--accent-muted)]"
-              role="presentation"
-            />
-          )}
-        </div>
-        <div className="relative z-10 mx-auto flex w-full max-w-4xl justify-center px-4 py-5 sm:px-6 sm:py-6 md:py-7">
-          <button
-            type="button"
-            onClick={openCheckout}
-            className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_14px_36px_rgba(0,0,0,0.28)]" : ""}`}
-          >
-            {ctaText}
-          </button>
+            )}
+          </div>
+          <div className="relative z-10 flex justify-center px-3 py-3.5 sm:px-4 sm:py-4">
+            <button
+              type="button"
+              onClick={openCheckout}
+              className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_12px_32px_rgba(0,0,0,0.26)]" : ""}`}
+            >
+              {ctaText}
+            </button>
+          </div>
         </div>
       </section>
 
