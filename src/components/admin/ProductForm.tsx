@@ -9,7 +9,7 @@ import {
 } from "@/app/admin/(dashboard)/products/actions";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 function moveAt<T>(arr: T[], i: number, dir: -1 | 1): T[] {
   const j = i + dir;
@@ -69,92 +69,6 @@ type FaqDraft = {
   a_fr: string;
 };
 
-function GalleryUrlRow({
-  url,
-  onChange,
-  onRemove,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-}: {
-  url: string;
-  onChange: (v: string) => void;
-  onRemove: () => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}) {
-  const [broken, setBroken] = useState(false);
-  const trimmed = url.trim();
-  useEffect(() => {
-    setBroken(false);
-  }, [trimmed]);
-
-  return (
-    <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1 space-y-2">
-          <input
-            type="url"
-            className="w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={url}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={a.productForm.galleryUrlPlaceholder}
-            dir="ltr"
-            autoComplete="off"
-          />
-          {trimmed ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-[var(--muted)]">{a.productForm.galleryPreview}</span>
-              {broken ? (
-                <div
-                  className="h-16 w-16 shrink-0 rounded-lg border border-dashed border-[var(--accent-muted)] bg-[var(--accent-muted)]/30"
-                  aria-hidden
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- external gallery URLs from admin
-                <img
-                  src={trimmed}
-                  alt=""
-                  className="h-16 w-16 rounded-lg border border-[var(--accent-muted)] object-cover"
-                  onError={() => setBroken(true)}
-                />
-              )}
-            </div>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
-          <button
-            type="button"
-            className="rounded-lg border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-            onClick={onMoveUp}
-            disabled={!canMoveUp}
-          >
-            {a.productForm.moveUp}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-            onClick={onMoveDown}
-            disabled={!canMoveDown}
-          >
-            {a.productForm.moveDown}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-700 dark:border-red-800 dark:text-red-400"
-            onClick={onRemove}
-          >
-            {a.productForm.removeItem}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 type Props = {
   mode: "create" | "edit";
   initial?: ProductRow;
@@ -171,40 +85,6 @@ function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
   }));
 }
 
-const LANDING_SECTION_MAP = [
-  {
-    id: "header",
-    title: "Header Strip",
-    fields:
-      "logo_url + header_offer_text_* + header_discount_text_* + header_promo_text_* + header_announcement_text_* + header_cta_text_*",
-  },
-  {
-    id: "offer",
-    title: "Offer",
-    fields: "offer_badge_* + offer_discount_text_* + offer_limited_text_* + price/discount + cta_text_*",
-  },
-  { id: "hero", title: "Hero", fields: "name_* + hero_subtitle_* + media_*" },
-  { id: "features", title: "Features", fields: "features_title_* + features_ar/fr[]" },
-  { id: "media-secondary", title: "Secondary Media", fields: "secondary_media_type + secondary_media_url" },
-  { id: "testimonials", title: "Testimonials", fields: "testimonials_title_* + testimonials_ar/fr[]" },
-  { id: "stats", title: "Stats Bar", fields: "stats_ar/fr[]" },
-  { id: "media-caption", title: "Caption Block", fields: "media_caption_* + description_* (extra lines)" },
-  { id: "media-tertiary", title: "Tertiary Media", fields: "tertiary_media_type + tertiary_media_url" },
-  { id: "faq", title: "FAQ", fields: "faq_title_* + faqs_ar/fr[]" },
-  {
-    id: "cta-banner",
-    title: "Pre-contact CTA banner",
-    fields: "cta_banner_background_color + cta_banner_background_image_url + cta_banner_image_overlay",
-  },
-  {
-    id: "sticky-footer",
-    title: "Sticky bottom bar",
-    fields:
-      "sticky_footer_offer_ends_at + timer labels + savings badges + colors + CTA uses cta_text_* + prices",
-  },
-  { id: "contact", title: "Contact", fields: "contact_title_* + contact_lines_ar/fr[]" },
-] as const;
-
 export function ProductForm({ mode, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -219,21 +99,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [heroSubtitleFr, setHeroSubtitleFr] = useState(initial?.hero_subtitle_fr ?? "");
   const [heroBadgeAr, setHeroBadgeAr] = useState(initial?.hero_badge_ar ?? "");
   const [heroBadgeFr, setHeroBadgeFr] = useState(initial?.hero_badge_fr ?? "");
-  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
-  const [headerOfferTextAr, setHeaderOfferTextAr] = useState(initial?.header_offer_text_ar ?? "");
-  const [headerOfferTextFr, setHeaderOfferTextFr] = useState(initial?.header_offer_text_fr ?? "");
-  const [headerDiscountTextAr, setHeaderDiscountTextAr] = useState(initial?.header_discount_text_ar ?? "");
-  const [headerDiscountTextFr, setHeaderDiscountTextFr] = useState(initial?.header_discount_text_fr ?? "");
-  const [headerPromoTextAr, setHeaderPromoTextAr] = useState(initial?.header_promo_text_ar ?? "");
-  const [headerPromoTextFr, setHeaderPromoTextFr] = useState(initial?.header_promo_text_fr ?? "");
-  const [headerAnnouncementTextAr, setHeaderAnnouncementTextAr] = useState(
-    initial?.header_announcement_text_ar ?? "",
-  );
-  const [headerAnnouncementTextFr, setHeaderAnnouncementTextFr] = useState(
-    initial?.header_announcement_text_fr ?? "",
-  );
-  const [headerCtaTextAr, setHeaderCtaTextAr] = useState(initial?.header_cta_text_ar ?? "");
-  const [headerCtaTextFr, setHeaderCtaTextFr] = useState(initial?.header_cta_text_fr ?? "");
   const [offerBadgeAr, setOfferBadgeAr] = useState(initial?.offer_badge_ar ?? "");
   const [offerBadgeFr, setOfferBadgeFr] = useState(initial?.offer_badge_fr ?? "");
   const [offerDiscountTextAr, setOfferDiscountTextAr] = useState(initial?.offer_discount_text_ar ?? "");
@@ -256,7 +121,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [mediaCaptionFr, setMediaCaptionFr] = useState(initial?.media_caption_fr ?? "");
   const [faqTitleAr, setFaqTitleAr] = useState(initial?.faq_title_ar ?? "");
   const [faqTitleFr, setFaqTitleFr] = useState(initial?.faq_title_fr ?? "");
-  const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
   const [ctaBannerBgImageUrl, setCtaBannerBgImageUrl] = useState(initial?.cta_banner_background_image_url ?? "");
   const [ctaBannerOverlayPct, setCtaBannerOverlayPct] = useState(() =>
     Math.round(Math.min(100, Math.max(0, (initial?.cta_banner_image_overlay ?? 0.45) * 100))),
@@ -276,16 +140,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [stickyFooterSavingsFr, setStickyFooterSavingsFr] = useState(
     initial?.sticky_footer_savings_badge_fr ?? "",
   );
-  const [stickyFooterBarBg, setStickyFooterBarBg] = useState(initial?.sticky_footer_bar_bg_color ?? "");
-  const [stickyFooterBadgeBg, setStickyFooterBadgeBg] = useState(initial?.sticky_footer_badge_bg_color ?? "");
-  const [stickyFooterTimerBoxBg, setStickyFooterTimerBoxBg] = useState(
-    initial?.sticky_footer_timer_box_bg_color ?? "",
-  );
-  const [stickyFooterTimerDigit, setStickyFooterTimerDigit] = useState(
-    initial?.sticky_footer_timer_digit_color ?? "",
-  );
-  const [stickyFooterCtaBg, setStickyFooterCtaBg] = useState(initial?.sticky_footer_cta_bg_color ?? "");
-  const [stickyFooterCtaFg, setStickyFooterCtaFg] = useState(initial?.sticky_footer_cta_text_color ?? "");
   const [stickyFooterShowTimer, setStickyFooterShowTimer] = useState(
     initial?.sticky_footer_show_timer ?? true,
   );
@@ -321,11 +175,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [featureRows, setFeatureRows] = useState<FeatureRow[]>(() =>
     buildInitialFeatures(initial),
   );
-  const [gallery, setGallery] = useState<{ id: string; url: string }[]>(() =>
-    initial?.gallery?.length
-      ? initial.gallery.map((url, i) => ({ id: `gallery-init-${i}`, url }))
-      : [],
-  );
   const [testimonials, setTestimonials] = useState<TestimonialDraft[]>(() =>
     initial?.testimonials_ar?.length
       ? initial.testimonials_ar.map((t, i) => ({
@@ -344,7 +193,6 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingCtaBanner, setUploadingCtaBanner] = useState(false);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
     initial?.faqs_ar?.length
@@ -358,9 +206,6 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
-  const [oldSlugs, setOldSlugs] = useState<string[]>(() =>
-    initial?.old_slugs?.length ? [...initial.old_slugs] : [],
-  );
 
   function buildPayload(): ProductPayload {
     const discountPrice =
@@ -420,25 +265,27 @@ export function ProductForm({ mode, initial }: Props) {
       a: f.a_fr.trim(),
     }));
 
+    const persisted = mode === "edit" && initial ? initial : null;
+
     return {
       default_language: defaultLanguage,
-      logo_url: logoUrl.trim(),
+      logo_url: persisted ? (persisted.logo_url ?? "").trim() : "",
       name_ar: nameAr.trim(),
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
       hero_badge_ar: heroBadgeAr.trim(),
       hero_badge_fr: heroBadgeFr,
-      header_offer_text_ar: headerOfferTextAr.trim(),
-      header_offer_text_fr: headerOfferTextFr.trim(),
-      header_discount_text_ar: headerDiscountTextAr.trim(),
-      header_discount_text_fr: headerDiscountTextFr.trim(),
-      header_promo_text_ar: headerPromoTextAr.trim(),
-      header_promo_text_fr: headerPromoTextFr.trim(),
-      header_announcement_text_ar: headerAnnouncementTextAr.trim(),
-      header_announcement_text_fr: headerAnnouncementTextFr.trim(),
-      header_cta_text_ar: headerCtaTextAr.trim(),
-      header_cta_text_fr: headerCtaTextFr.trim(),
+      header_offer_text_ar: persisted ? (persisted.header_offer_text_ar ?? "").trim() : "",
+      header_offer_text_fr: persisted ? (persisted.header_offer_text_fr ?? "").trim() : "",
+      header_discount_text_ar: persisted ? (persisted.header_discount_text_ar ?? "").trim() : "",
+      header_discount_text_fr: persisted ? (persisted.header_discount_text_fr ?? "").trim() : "",
+      header_promo_text_ar: persisted ? (persisted.header_promo_text_ar ?? "").trim() : "",
+      header_promo_text_fr: persisted ? (persisted.header_promo_text_fr ?? "").trim() : "",
+      header_announcement_text_ar: persisted ? (persisted.header_announcement_text_ar ?? "").trim() : "",
+      header_announcement_text_fr: persisted ? (persisted.header_announcement_text_fr ?? "").trim() : "",
+      header_cta_text_ar: persisted ? (persisted.header_cta_text_ar ?? "").trim() : "",
+      header_cta_text_fr: persisted ? (persisted.header_cta_text_fr ?? "").trim() : "",
       offer_badge_ar: offerBadgeAr.trim(),
       offer_badge_fr: offerBadgeFr.trim(),
       offer_discount_text_ar: offerDiscountTextAr.trim(),
@@ -457,7 +304,7 @@ export function ProductForm({ mode, initial }: Props) {
       media_caption_fr: mediaCaptionFr,
       faq_title_ar: faqTitleAr.trim(),
       faq_title_fr: faqTitleFr,
-      cta_banner_background_color: ctaBannerBgColor.trim(),
+      cta_banner_background_color: persisted ? (persisted.cta_banner_background_color ?? "").trim() : "",
       cta_banner_background_image_url: ctaBannerBgImageUrl.trim(),
       cta_banner_image_overlay: Math.min(1, Math.max(0, ctaBannerOverlayPct / 100)),
       contact_title_ar: contactTitleAr.trim(),
@@ -476,7 +323,7 @@ export function ProductForm({ mode, initial }: Props) {
       tertiary_media_url: tertiaryMediaUrl,
       features_ar,
       features_fr,
-      gallery: gallery.map((g) => g.url.trim()).filter(Boolean),
+      gallery: mode === "edit" && initial?.gallery?.length ? [...initial.gallery] : [],
       testimonials_ar: cleanedTestimonialsAr,
       testimonials_fr: cleanedTestimonialsFr,
       faqs_ar: cleanedFaqsAr,
@@ -498,18 +345,25 @@ export function ProductForm({ mode, initial }: Props) {
         .map((s) => s.trim())
         .filter(Boolean),
       meta_pixel_id: metaPixel.trim() || null,
-      old_slugs: oldSlugs.map((s) => s.trim()).filter(Boolean),
+      old_slugs:
+        mode === "edit" && initial?.old_slugs?.length
+          ? initial.old_slugs.map((s) => s.trim()).filter(Boolean)
+          : [],
       sticky_footer_offer_ends_at: parseStickyEndsAtLocal(stickyFooterEndsAt),
       sticky_footer_timer_label_ar: stickyFooterTimerLabelAr.trim(),
       sticky_footer_timer_label_fr: stickyFooterTimerLabelFr.trim(),
       sticky_footer_savings_badge_ar: stickyFooterSavingsAr.trim(),
       sticky_footer_savings_badge_fr: stickyFooterSavingsFr.trim(),
-      sticky_footer_bar_bg_color: stickyFooterBarBg.trim(),
-      sticky_footer_badge_bg_color: stickyFooterBadgeBg.trim(),
-      sticky_footer_timer_box_bg_color: stickyFooterTimerBoxBg.trim(),
-      sticky_footer_timer_digit_color: stickyFooterTimerDigit.trim(),
-      sticky_footer_cta_bg_color: stickyFooterCtaBg.trim(),
-      sticky_footer_cta_text_color: stickyFooterCtaFg.trim(),
+      sticky_footer_bar_bg_color: persisted ? (persisted.sticky_footer_bar_bg_color ?? "").trim() : "",
+      sticky_footer_badge_bg_color: persisted ? (persisted.sticky_footer_badge_bg_color ?? "").trim() : "",
+      sticky_footer_timer_box_bg_color: persisted
+        ? (persisted.sticky_footer_timer_box_bg_color ?? "").trim()
+        : "",
+      sticky_footer_timer_digit_color: persisted
+        ? (persisted.sticky_footer_timer_digit_color ?? "").trim()
+        : "",
+      sticky_footer_cta_bg_color: persisted ? (persisted.sticky_footer_cta_bg_color ?? "").trim() : "",
+      sticky_footer_cta_text_color: persisted ? (persisted.sticky_footer_cta_text_color ?? "").trim() : "",
       sticky_footer_show_timer: stickyFooterShowTimer,
     };
   }
@@ -559,28 +413,6 @@ export function ProductForm({ mode, initial }: Props) {
       setError(err instanceof Error ? err.message : "فشل رفع صورة البانر.");
     } finally {
       setUploadingCtaBanner(false);
-    }
-  }
-
-  async function uploadHeaderLogo(file: File) {
-    setUploadingLogo(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", "header-logo");
-      const response = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: fd,
-      });
-      const payload = (await response.json()) as { signedUrl?: string; error?: string };
-      if (!response.ok || !payload.signedUrl) {
-        throw new Error(payload.error || "فشل رفع الشعار.");
-      }
-      setLogoUrl(payload.signedUrl);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل رفع الشعار.");
-    } finally {
-      setUploadingLogo(false);
     }
   }
 
@@ -639,24 +471,13 @@ export function ProductForm({ mode, initial }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start" dir="rtl">
-      <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-        <h3 className="text-sm font-semibold">خريطة ربط أقسام الهبوط (Admin → Landing)</h3>
+      <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+        <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">
-          ترتيب العرض ثابت كما هو في الصفحة، وكل سطر يوضح الحقول التي تتحكم مباشرة في القسم المقابل.
+          نصوص الصفحة، الصور والفيديو، الأسعار، التقييمات، الأسئلة الشائعة، وعدّاد العرض. التخطيط والألوان
+          الافتراضية ثابتة في القالب.
         </p>
-        <div className="mt-3 space-y-2 text-xs">
-          {LANDING_SECTION_MAP.map((s, i) => (
-            <div key={s.id} className="rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2">
-              <p className="font-semibold">
-                {i + 1}. {s.title}
-              </p>
-              <p className="mt-1 font-mono text-[var(--muted)]" dir="ltr">
-                {s.fields}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
 
       {mode === "edit" && initial ? (
         <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
@@ -682,111 +503,6 @@ export function ProductForm({ mode, initial }: Props) {
             <option value="fr">{a.productForm.defaultLanguageFrench}</option>
           </select>
         </div>
-        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-          <h3 className="text-sm font-semibold">إعدادات هيدر العرض (3 أقسام)</h3>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div>
-              <label className="text-sm font-medium">رابط الشعار</label>
-              <input
-                required
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[var(--muted)]">أو رفع شعار</label>
-              <input
-                type="file"
-                accept="image/*"
-                className="store-file-input mt-1"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  void uploadHeaderLogo(file);
-                  e.currentTarget.value = "";
-                }}
-              />
-            </div>
-          </div>
-          {uploadingLogo ? <p className="text-xs text-[var(--muted)]">جار رفع الشعار...</p> : null}
-          {logoUrl.trim() ? (
-            // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
-            <img
-              src={logoUrl.trim()}
-              alt=""
-              className="h-14 w-auto rounded-lg border border-[var(--accent-muted)] bg-white object-contain p-2"
-            />
-          ) : null}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">Offer text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerOfferTextAr} onChange={(e) => setHeaderOfferTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Offer text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerOfferTextFr} onChange={(e) => setHeaderOfferTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Discount text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerDiscountTextAr} onChange={(e) => setHeaderDiscountTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Discount text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerDiscountTextFr} onChange={(e) => setHeaderDiscountTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Promo message — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerPromoTextAr} onChange={(e) => setHeaderPromoTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Promo message — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerPromoTextFr} onChange={(e) => setHeaderPromoTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Announcement text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerAnnouncementTextAr} onChange={(e) => setHeaderAnnouncementTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Announcement text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerAnnouncementTextFr} onChange={(e) => setHeaderAnnouncementTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Header CTA text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerCtaTextAr} onChange={(e) => setHeaderCtaTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Header CTA text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerCtaTextFr} onChange={(e) => setHeaderCtaTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Offer badge — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerBadgeAr} onChange={(e) => setOfferBadgeAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Offer badge — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerBadgeFr} onChange={(e) => setOfferBadgeFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Offer discount text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerDiscountTextAr} onChange={(e) => setOfferDiscountTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Offer discount text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerDiscountTextFr} onChange={(e) => setOfferDiscountTextFr(e.target.value)} dir="ltr" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Limited-time text — عربي</label>
-              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerLimitedTextAr} onChange={(e) => setOfferLimitedTextAr(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Limited-time text — French</label>
-              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={offerLimitedTextFr} onChange={(e) => setOfferLimitedTextFr(e.target.value)} dir="ltr" />
-            </div>
-          </div>
-        </section>
         <div>
           <label className="text-sm font-medium">
             {a.productForm.name} — {a.productForm.langArabic}
@@ -873,6 +589,61 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={heroBadgeFr}
             onChange={(e) => setHeroBadgeFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">شارة العرض والخصم — عربي</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">يظهر مع سطر العرض تحت زر الشراء.</p>
+          <input
+            required
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerBadgeAr}
+            onChange={(e) => setOfferBadgeAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Offer badge — French</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerBadgeFr}
+            onChange={(e) => setOfferBadgeFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">نص الخصم في سطر العرض — عربي</label>
+          <input
+            required
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerDiscountTextAr}
+            onChange={(e) => setOfferDiscountTextAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Offer discount line — French</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerDiscountTextFr}
+            onChange={(e) => setOfferDiscountTextFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">نص «لفترة محدودة» — عربي</label>
+          <input
+            required
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerLimitedTextAr}
+            onChange={(e) => setOfferLimitedTextAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Limited-time line — French</label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={offerLimitedTextFr}
+            onChange={(e) => setOfferLimitedTextFr(e.target.value)}
             dir="ltr"
           />
         </div>
@@ -1117,41 +888,15 @@ export function ProductForm({ mode, initial }: Props) {
           <div>
             <h3 className="text-sm font-semibold">بانر الطلب (قبل التواصل)</h3>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              يظهر بين الأسئلة الشائعة وقسم جهات الاتصال كبطاقة مدمجة ومتوسطة مع زر واحد. الخلفية قابلة للتخصيص بالكامل من هنا دون تعديل الكود:
-              لون ثابت، أو صورة تغطي مساحة البطاقة (رفع ملف أو لصق رابط URL)، مع منزلق الظل لتحسين تباين الزر على الصور.
+              يظهر بين الأسئلة الشائعة وقسم التواصل. ارفع صورة خلفية أو الصق رابطاً مباشراً، واضبط شفافية الطبقة
+              الداكنة فوق الصورة لتحسين وضوح الزر.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">لون الخلفية</label>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <input
-                  type="color"
-                  className="h-10 w-14 shrink-0 cursor-pointer rounded border border-[var(--accent-muted)] bg-[var(--background)] p-0.5"
-                  value={
-                    /^#[0-9A-Fa-f]{6}$/.test(ctaBannerBgColor.trim())
-                      ? ctaBannerBgColor.trim()
-                      : "#006B0C"
-                  }
-                  onChange={(e) => setCtaBannerBgColor(e.target.value)}
-                  aria-label="لون الخلفية"
-                />
-                <input
-                  className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                  value={ctaBannerBgColor}
-                  onChange={(e) => setCtaBannerBgColor(e.target.value)}
-                  placeholder="#006B0C"
-                  dir="ltr"
-                />
-              </div>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                بدون صورة: إذا كان اللون فارغاً يُستخدم تدرج افتراضي من ألوان الصفحة.
-              </p>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-1">
             <div>
               <label className="text-sm font-medium">صورة الخلفية</label>
               <p className="mt-1 text-xs text-[var(--muted)]">
-                تُعرض داخل البطاقة المدمجة (تغطية كاملة للخلفية). ارفع صورة أو الصق رابطاً مباشراً.
+                تُعرض داخل البطاقة. دون صورة تُستخدم ألوان القالب الافتراضية.
               </p>
               <input
                 type="file"
@@ -1172,7 +917,7 @@ export function ProductForm({ mode, initial }: Props) {
                 dir="ltr"
               />
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <label className="text-sm font-medium">ظل داكن فوق الصورة (0–100٪)</label>
               <p className="mt-1 text-xs text-[var(--muted)]">يُستخدم عند وجود صورة خلفية لتحسين تباين الزر.</p>
               <input
@@ -1256,68 +1001,6 @@ export function ProductForm({ mode, initial }: Props) {
                 className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
                 value={stickyFooterSavingsFr}
                 onChange={(e) => setStickyFooterSavingsFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="text-sm font-medium">لون خلفية الشريط</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterBarBg}
-                onChange={(e) => setStickyFooterBarBg(e.target.value)}
-                placeholder="#14532d"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">لون شارة التوفير</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterBadgeBg}
-                onChange={(e) => setStickyFooterBadgeBg(e.target.value)}
-                placeholder="#22c55e"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">خلفية خانات العدّاد</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterTimerBoxBg}
-                onChange={(e) => setStickyFooterTimerBoxBg(e.target.value)}
-                placeholder="#ffffff"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">لون أرقام العدّاد</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterTimerDigit}
-                onChange={(e) => setStickyFooterTimerDigit(e.target.value)}
-                placeholder="#15803d"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">خلفية زر الطلب</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterCtaBg}
-                onChange={(e) => setStickyFooterCtaBg(e.target.value)}
-                placeholder="#ffffff"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">لون نص وأيقونة الزر</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={stickyFooterCtaFg}
-                onChange={(e) => setStickyFooterCtaFg(e.target.value)}
-                placeholder="#14532d"
                 dir="ltr"
               />
             </div>
@@ -1432,50 +1115,6 @@ export function ProductForm({ mode, initial }: Props) {
             ))}
           </div>
           {featureRows.length === 0 ? (
-            <p className="text-xs text-[var(--muted)]">—</p>
-          ) : null}
-        </section>
-
-        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold">{a.productForm.gallery}</h3>
-              <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.galleryHint}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setGallery((g) => [...g, { id: newRowId(), url: "" }])
-              }
-              className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
-            >
-              {a.productForm.addGalleryImage}
-            </button>
-          </div>
-          <div className="space-y-3">
-            {gallery.map((row, i) => (
-              <GalleryUrlRow
-                key={row.id}
-                url={row.url}
-                onChange={(v) =>
-                  setGallery((prev) => {
-                    const next = [...prev];
-                    const cur = next[i];
-                    if (cur) next[i] = { ...cur, url: v };
-                    return next;
-                  })
-                }
-                onRemove={() =>
-                  setGallery((prev) => prev.filter((_, j) => j !== i))
-                }
-                canMoveUp={i > 0}
-                canMoveDown={i < gallery.length - 1}
-                onMoveUp={() => setGallery((prev) => moveAt(prev, i, -1))}
-                onMoveDown={() => setGallery((prev) => moveAt(prev, i, 1))}
-              />
-            ))}
-          </div>
-          {gallery.length === 0 ? (
             <p className="text-xs text-[var(--muted)]">—</p>
           ) : null}
         </section>
@@ -1914,77 +1553,6 @@ export function ProductForm({ mode, initial }: Props) {
             placeholder="مثال: شكراً لطلبكم! سيتم التواصل معكم قريباً."
           />
         </div>
-
-        {mode === "edit" ? (
-          <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold">{a.productForm.legacySlugs}</h3>
-                <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.legacySlugsHint}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOldSlugs((s) => [...s, ""])}
-                className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
-              >
-                {a.productForm.addLegacySlug}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {oldSlugs.map((slug, i) => (
-                <div
-                  key={`os-${i}`}
-                  className="flex flex-col gap-2 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2 sm:flex-row sm:items-center"
-                >
-                  <input
-                    className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 font-mono text-sm"
-                    value={slug}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setOldSlugs((prev) => {
-                        const next = [...prev];
-                        next[i] = v;
-                        return next;
-                      });
-                    }}
-                    placeholder={a.productForm.legacySlugPlaceholder}
-                    dir="ltr"
-                  />
-                  <div className="flex shrink-0 flex-wrap gap-1">
-                    <button
-                      type="button"
-                      className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-                      onClick={() => setOldSlugs((prev) => moveAt(prev, i, -1))}
-                      disabled={i === 0}
-                    >
-                      {a.productForm.moveUp}
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
-                      onClick={() => setOldSlugs((prev) => moveAt(prev, i, 1))}
-                      disabled={i === oldSlugs.length - 1}
-                    >
-                      {a.productForm.moveDown}
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 dark:border-red-800 dark:text-red-400"
-                      onClick={() =>
-                        setOldSlugs((prev) => prev.filter((_, j) => j !== i))
-                      }
-                    >
-                      {a.productForm.removeItem}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {oldSlugs.length === 0 ? (
-              <p className="text-xs text-[var(--muted)]">—</p>
-            ) : null}
-          </section>
-        ) : null}
       </div>
 
       {error ? (
