@@ -34,6 +34,11 @@ const sectionContentInsetClass = `${landingShellClass} px-4 sm:px-6 md:px-8 lg:p
 
 const primaryCtaClass =
   "store-btn-primary rounded-2xl px-5 py-3.5 text-base font-semibold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-4 sm:text-lg sm:font-extrabold";
+
+/** FAQ → Contact strip: compact band, pill button (background from admin: image / color / gradient). */
+const preContactCtaButtonClass =
+  "store-btn-primary w-full max-w-md rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_12px_26px_rgba(0,107,12,0.26)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-8 sm:py-3 sm:text-base sm:font-extrabold";
+
 const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
 const softCardClass =
   "rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-[0_14px_28px_rgba(12,28,12,0.08)] sm:rounded-[24px]";
@@ -249,8 +254,6 @@ export function ProductLanding({ product }: Props) {
         discountText={copy.headerDiscountText}
         promoText={copy.headerPromoText}
         announcementText={copy.headerAnnouncementText}
-        ctaText={copy.headerCtaText || ctaText}
-        onCtaClick={openCheckout}
       />
 
       {/* Hero: title → media → name → description → testimonial → offer line → CTA */}
@@ -445,13 +448,13 @@ export function ProductLanding({ product }: Props) {
 
       <section
         id="order-form-section"
-        className="relative scroll-mt-6 w-full max-w-none border-y border-[var(--accent-muted)]/40"
+        className="relative scroll-mt-6 w-full max-w-none overflow-hidden border-y border-[var(--accent-muted)]/40"
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {ctaBannerImg ? (
             <>
               <div
-                className="absolute inset-0 bg-cover bg-center"
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${ctaBannerImg})` }}
                 role="presentation"
               />
@@ -470,11 +473,11 @@ export function ProductLanding({ product }: Props) {
             />
           )}
         </div>
-        <div className="relative z-10 mx-auto flex w-full max-w-4xl justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-16">
+        <div className="relative z-10 mx-auto flex w-full max-w-4xl justify-center px-4 py-5 sm:px-6 sm:py-6 md:py-7">
           <button
             type="button"
             onClick={openCheckout}
-            className={`${primaryCtaClass} w-full max-w-md ${ctaBannerImg ? "ring-2 ring-white/45 shadow-[0_20px_50px_rgba(0,0,0,0.2)]" : ""}`}
+            className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_14px_36px_rgba(0,0,0,0.28)]" : ""}`}
           >
             {ctaText}
           </button>

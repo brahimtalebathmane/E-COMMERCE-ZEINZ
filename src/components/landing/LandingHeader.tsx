@@ -1,16 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { SiteLogo } from "@/components/SiteLogo";
+
+/** Landing-only header logo (hosted asset). */
+const LANDING_HEADER_LOGO_URL = "https://i.postimg.cc/3JgfjBz4/ughujgijk.png";
 
 type Props = {
   offerText: string;
   discountText: string;
   promoText: string;
   announcementText: string;
-  ctaText: string;
-  onCtaClick: () => void;
 };
 
 export function LandingHeader({
@@ -18,8 +19,6 @@ export function LandingHeader({
   discountText,
   promoText,
   announcementText,
-  ctaText,
-  onCtaClick,
 }: Props) {
   const hasPromoStrip = Boolean(
     offerText.trim() || discountText.trim() || promoText.trim() || announcementText.trim(),
@@ -28,21 +27,26 @@ export function LandingHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--accent-muted)]/70 bg-[var(--background)]/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-sm">
       <div className="mx-auto w-full max-w-[min(100%,24rem)] px-4 pb-3 pt-2 sm:max-w-[min(100%,26rem)] sm:px-6 md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl md:px-8">
-        <div className="flex items-center gap-3">
-          <Link href="/" aria-label="Go to home page" className="min-w-0 shrink-0">
-            <SiteLogo priority className="h-10 sm:h-11" alt="E-Commerce Zeina" />
-          </Link>
-
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+        {/* dir="ltr" keeps language left / logo right regardless of page reading direction */}
+        <div className="flex w-full items-center justify-between gap-4" dir="ltr">
+          <div className="min-w-0 shrink-0">
             <LanguageSwitcher storageKey="landing-locale" />
-            <button
-              type="button"
-              onClick={onCtaClick}
-              className="store-btn-primary !w-auto max-w-[min(160px,42vw)] shrink-0 rounded-xl px-3 py-2 text-[11px] font-extrabold leading-tight shadow-[0_6px_14px_rgba(0,107,12,0.22)] min-h-[42px] sm:text-xs"
-            >
-              <span className="line-clamp-2 text-center">{ctaText}</span>
-            </button>
           </div>
+
+          <Link
+            href="/"
+            className="relative block h-10 w-[min(52vw,11rem)] shrink-0 sm:h-11 sm:w-[min(44vw,12.5rem)]"
+            aria-label="Go to home page"
+          >
+            <Image
+              src={LANDING_HEADER_LOGO_URL}
+              alt=""
+              fill
+              className="object-contain object-right"
+              sizes="(max-width: 640px) 52vw, 200px"
+              priority
+            />
+          </Link>
         </div>
 
         {hasPromoStrip ? (
