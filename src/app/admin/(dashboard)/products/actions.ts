@@ -45,6 +45,9 @@ export type ProductPayload = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  cta_banner_background_color: string;
+  cta_banner_background_image_url: string;
+  cta_banner_image_overlay: number;
   contact_title_ar: string;
   contact_title_fr: string;
   whatsapp_message_template: string | null;
@@ -225,6 +228,9 @@ export async function createProductAction(payload: ProductPayload) {
     media_caption_fr: payload.media_caption_fr,
     faq_title_ar: payload.faq_title_ar,
     faq_title_fr: payload.faq_title_fr,
+    cta_banner_background_color: payload.cta_banner_background_color.trim(),
+    cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
+    cta_banner_image_overlay: payload.cta_banner_image_overlay,
     contact_title_ar: payload.contact_title_ar,
     contact_title_fr: payload.contact_title_fr,
     whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
@@ -313,6 +319,9 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       media_caption_fr: payload.media_caption_fr,
       faq_title_ar: payload.faq_title_ar,
       faq_title_fr: payload.faq_title_fr,
+      cta_banner_background_color: payload.cta_banner_background_color.trim(),
+      cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
+      cta_banner_image_overlay: payload.cta_banner_image_overlay,
       contact_title_ar: payload.contact_title_ar,
       contact_title_fr: payload.contact_title_fr,
       whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,

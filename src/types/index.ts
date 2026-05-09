@@ -52,6 +52,11 @@ export type ProductRow = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  /** Solid banner fill (hex). Empty = theme gradient when no image. */
+  cta_banner_background_color: string;
+  cta_banner_background_image_url: string;
+  /** 0–1 darkness overlay when a banner image is set. */
+  cta_banner_image_overlay: number;
   contact_title_ar: string;
   contact_title_fr: string;
   whatsapp_message_template: string | null;

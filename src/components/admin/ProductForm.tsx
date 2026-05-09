@@ -176,6 +176,11 @@ const LANDING_SECTION_MAP = [
   { id: "media-caption", title: "Caption Block", fields: "media_caption_* + description_* (extra lines)" },
   { id: "media-tertiary", title: "Tertiary Media", fields: "tertiary_media_type + tertiary_media_url" },
   { id: "faq", title: "FAQ", fields: "faq_title_* + faqs_ar/fr[]" },
+  {
+    id: "cta-banner",
+    title: "Pre-contact CTA banner",
+    fields: "cta_banner_background_color + cta_banner_background_image_url + cta_banner_image_overlay",
+  },
   { id: "contact", title: "Contact", fields: "contact_title_* + contact_lines_ar/fr[]" },
 ] as const;
 
@@ -230,6 +235,11 @@ export function ProductForm({ mode, initial }: Props) {
   const [mediaCaptionFr, setMediaCaptionFr] = useState(initial?.media_caption_fr ?? "");
   const [faqTitleAr, setFaqTitleAr] = useState(initial?.faq_title_ar ?? "");
   const [faqTitleFr, setFaqTitleFr] = useState(initial?.faq_title_fr ?? "");
+  const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
+  const [ctaBannerBgImageUrl, setCtaBannerBgImageUrl] = useState(initial?.cta_banner_background_image_url ?? "");
+  const [ctaBannerOverlayPct, setCtaBannerOverlayPct] = useState(() =>
+    Math.round(Math.min(100, Math.max(0, (initial?.cta_banner_image_overlay ?? 0.45) * 100))),
+  );
   const [contactTitleAr, setContactTitleAr] = useState(initial?.contact_title_ar ?? "");
   const [contactTitleFr, setContactTitleFr] = useState(initial?.contact_title_fr ?? "");
   const [statsArText, setStatsArText] = useState((initial?.stats_ar ?? []).join("\n"));
@@ -286,6 +296,7 @@ export function ProductForm({ mode, initial }: Props) {
   );
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCtaBanner, setUploadingCtaBanner] = useState(false);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
     initial?.faqs_ar?.length
       ? initial.faqs_ar.map((f, i) => ({
@@ -397,6 +408,9 @@ export function ProductForm({ mode, initial }: Props) {
       media_caption_fr: mediaCaptionFr,
       faq_title_ar: faqTitleAr.trim(),
       faq_title_fr: faqTitleFr,
+      cta_banner_background_color: ctaBannerBgColor.trim(),
+      cta_banner_background_image_url: ctaBannerBgImageUrl.trim(),
+      cta_banner_image_overlay: Math.min(1, Math.max(0, ctaBannerOverlayPct / 100)),
       contact_title_ar: contactTitleAr.trim(),
       contact_title_fr: contactTitleFr,
       whatsapp_message_template: whatsAppTemplate.trim() || null,
@@ -462,6 +476,28 @@ export function ProductForm({ mode, initial }: Props) {
       setError(err instanceof Error ? err.message : "فشل رفع الصورة.");
     } finally {
       setUploadingTestimonialId(null);
+    }
+  }
+
+  async function uploadCtaBannerImage(file: File) {
+    setUploadingCtaBanner(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "cta-banner");
+      const response = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const payload = (await response.json()) as { signedUrl?: string; error?: string };
+      if (!response.ok || !payload.signedUrl) {
+        throw new Error(payload.error || "فشل رفع صورة البانر.");
+      }
+      setCtaBannerBgImageUrl(payload.signedUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل رفع صورة البانر.");
+    } finally {
+      setUploadingCtaBanner(false);
     }
   }
 
@@ -1015,6 +1051,78 @@ export function ProductForm({ mode, initial }: Props) {
             dir="ltr"
           />
         </div>
+
+        <section className="sm:col-span-2 space-y-4 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-4">
+          <div>
+            <h3 className="text-sm font-semibold">بانر الطلب (قبل التواصل)</h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              يظهر بين الأسئلة الشائعة وقسم جهات الاتصال، بعرض الشاشة بالكامل. زر واحد فقط دون نصوص إضافية.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">لون الخلفية</label>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input
+                  type="color"
+                  className="h-10 w-14 shrink-0 cursor-pointer rounded border border-[var(--accent-muted)] bg-[var(--background)] p-0.5"
+                  value={
+                    /^#[0-9A-Fa-f]{6}$/.test(ctaBannerBgColor.trim())
+                      ? ctaBannerBgColor.trim()
+                      : "#006B0C"
+                  }
+                  onChange={(e) => setCtaBannerBgColor(e.target.value)}
+                  aria-label="لون الخلفية"
+                />
+                <input
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                  value={ctaBannerBgColor}
+                  onChange={(e) => setCtaBannerBgColor(e.target.value)}
+                  placeholder="#006B0C"
+                  dir="ltr"
+                />
+              </div>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                بدون صورة: إذا كان اللون فارغاً يُستخدم تدرج افتراضي من ألوان الصفحة.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">صورة الخلفية</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="mt-1 block w-full text-sm file:mr-2 file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--card)] file:px-3 file:py-2"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadCtaBannerImage(f);
+                  e.target.value = "";
+                }}
+              />
+              {uploadingCtaBanner ? <p className="mt-1 text-xs text-[var(--muted)]">جار الرفع...</p> : null}
+              <input
+                className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={ctaBannerBgImageUrl}
+                onChange={(e) => setCtaBannerBgImageUrl(e.target.value)}
+                placeholder="https://"
+                dir="ltr"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium">ظل داكن فوق الصورة (0–100٪)</label>
+              <p className="mt-1 text-xs text-[var(--muted)]">يُستخدم عند وجود صورة خلفية لتحسين تباين الزر.</p>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={ctaBannerOverlayPct}
+                onChange={(e) => setCtaBannerOverlayPct(Number(e.target.value))}
+                className="mt-2 w-full accent-[var(--accent)]"
+              />
+              <p className="mt-1 text-xs text-[var(--muted)]">{ctaBannerOverlayPct}%</p>
+            </div>
+          </div>
+        </section>
+
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التواصل — {a.productForm.langArabic}</label>
           <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>

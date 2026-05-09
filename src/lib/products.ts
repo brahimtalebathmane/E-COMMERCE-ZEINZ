@@ -47,6 +47,12 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     media_caption_fr: (row.media_caption_fr as string) ?? "",
     faq_title_ar: (row.faq_title_ar as string) ?? "",
     faq_title_fr: (row.faq_title_fr as string) ?? "",
+    cta_banner_background_color: (row.cta_banner_background_color as string) ?? "",
+    cta_banner_background_image_url: (row.cta_banner_background_image_url as string) ?? "",
+    cta_banner_image_overlay:
+      row.cta_banner_image_overlay === null || row.cta_banner_image_overlay === undefined
+        ? 0.45
+        : Number(row.cta_banner_image_overlay),
     contact_title_ar: (row.contact_title_ar as string) ?? "",
     contact_title_fr: (row.contact_title_fr as string) ?? "",
     whatsapp_message_template:

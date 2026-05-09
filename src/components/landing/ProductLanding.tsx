@@ -138,10 +138,6 @@ export function ProductLanding({ product }: Props) {
     (locale === "fr"
       ? "Paiement a la livraison disponible dans toutes les zones"
       : "الدفع عند الاستلام متاح في كل المناطق");
-  const trustSnippet =
-    descLines[2] ??
-    stats[0] ??
-    (locale === "fr" ? "Plus de 5000 clients satisfaits" : "اكثر من 5000 عميل راض");
 
   const price = useMemo(() => {
     const original = product.price;
@@ -220,9 +216,13 @@ export function ProductLanding({ product }: Props) {
     price.original,
   ]);
 
+  const ctaBannerImg = product.cta_banner_background_image_url?.trim() ?? "";
+  const ctaBannerColor = product.cta_banner_background_color?.trim() ?? "";
+  const ctaBannerOverlay = Math.min(1, Math.max(0, Number(product.cta_banner_image_overlay ?? 0.45)));
+
   return (
     <div
-      className={`${landingShellClass} overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10`}
+      className={`${landingShellClass} overflow-x-clip bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10`}
       dir={dir}
       style={
         {
@@ -425,11 +425,39 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section id="order-form-section" className="bg-[var(--background)] px-4 py-8 text-center sm:px-6 md:px-8">
-        <div className={`${softCardClass} mx-auto max-w-lg px-4 py-5 sm:px-6`}>
-          <p className="text-sm font-semibold leading-snug text-[var(--muted)] sm:text-base">{copy.heroBadge}</p>
-          <p className="mt-1 text-xs font-medium leading-relaxed text-[var(--muted)] sm:text-sm">{trustSnippet}</p>
-          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 w-full`}>
+      <section
+        id="order-form-section"
+        className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw] scroll-mt-6 border-y border-[var(--accent-muted)]/40"
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {ctaBannerImg ? (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${ctaBannerImg})` }}
+                role="presentation"
+              />
+              <div
+                className="absolute inset-0 bg-black"
+                style={{ opacity: ctaBannerOverlay }}
+                role="presentation"
+              />
+            </>
+          ) : ctaBannerColor ? (
+            <div className="absolute inset-0" style={{ backgroundColor: ctaBannerColor }} role="presentation" />
+          ) : (
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-[var(--card)] via-[var(--background)] to-[var(--accent-muted)]"
+              role="presentation"
+            />
+          )}
+        </div>
+        <div className="relative z-10 mx-auto flex w-full max-w-4xl justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-16">
+          <button
+            type="button"
+            onClick={openCheckout}
+            className={`${primaryCtaClass} w-full max-w-md ${ctaBannerImg ? "ring-2 ring-white/45 shadow-[0_20px_50px_rgba(0,0,0,0.2)]" : ""}`}
+          >
             {ctaText}
           </button>
         </div>
