@@ -27,7 +27,7 @@ export function LandingHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--accent-muted)]/70 bg-[var(--background)]/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-sm">
-      <div className="mx-auto w-full max-w-[390px] px-4 pb-3 pt-2 md:max-w-[460px]">
+      <div className="mx-auto w-full max-w-[min(100%,24rem)] px-4 pb-3 pt-2 sm:max-w-[min(100%,26rem)] sm:px-6 md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl md:px-8">
         <div className="flex items-center gap-3">
           <Link href="/" aria-label="Go to home page" className="min-w-0 shrink-0">
             <SiteLogo priority className="h-10 sm:h-11" alt="E-Commerce Zeina" />

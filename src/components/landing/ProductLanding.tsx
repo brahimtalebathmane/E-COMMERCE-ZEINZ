@@ -21,12 +21,22 @@ type Props = {
   product: ProductRow;
 };
 
+/** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
+const landingShellClass =
+  "mx-auto w-full max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)] md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl";
+
 const primaryCtaClass =
-  "store-btn-primary rounded-[18px] px-6 py-4 text-lg font-extrabold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985]";
-const sectionPadClass = "px-4 py-8";
+  "store-btn-primary rounded-2xl px-5 py-3.5 text-base font-semibold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-4 sm:text-lg sm:font-extrabold";
+const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
 const softCardClass =
-  "rounded-[24px] border border-[var(--accent-muted)] bg-[var(--card)] shadow-[0_14px_28px_rgba(12,28,12,0.08)]";
-const sectionTitleClass = "text-center text-[1.62rem] font-black leading-[1.28] tracking-[-0.01em]";
+  "rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-[0_14px_28px_rgba(12,28,12,0.08)] sm:rounded-[24px]";
+const sectionTitleClass =
+  "text-center text-lg font-bold leading-snug tracking-tight text-[var(--foreground)] sm:text-xl md:text-2xl md:leading-tight";
+const bodyTextClass = "text-sm leading-relaxed text-[var(--muted)] sm:text-base sm:leading-relaxed";
+const heroTitleClass =
+  "break-words font-extrabold leading-[1.15] tracking-tight text-[var(--accent)] [font-size:clamp(1.65rem,4.2vw+0.85rem,2.35rem)]";
+const productNameClass =
+  "break-words font-bold leading-snug text-[var(--foreground)] [font-size:clamp(1.2rem,2.4vw+0.65rem,1.75rem)] sm:font-extrabold";
 
 function fixedSlots<T>(items: T[], count: number): Array<T | null> {
   if (items.length === 0) return Array.from({ length: count }, () => null);
@@ -212,7 +222,7 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="mx-auto max-w-[390px] overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)] md:max-w-[460px]"
+      className={`${landingShellClass} overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)] md:pb-10`}
       dir={dir}
       style={
         {
@@ -237,31 +247,31 @@ export function ProductLanding({ product }: Props) {
       />
 
       {/* Hero: title → media → name → description → testimonial → offer line → CTA */}
-      <section className="bg-[var(--background)] px-4 pb-6 pt-5 text-center" aria-labelledby="hero-title">
-        <h1
-          id="hero-title"
-          className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[var(--accent)] sm:max-w-[380px] sm:text-[2.7rem]"
-        >
+      <section
+        className="bg-[var(--background)] px-4 pb-8 pt-5 text-center sm:px-6 sm:pb-10 md:px-8"
+        aria-labelledby="hero-title"
+      >
+        <h1 id="hero-title" className={`mx-auto max-w-[34rem] ${heroTitleClass}`}>
           {copy.heroSubtitle}
         </h1>
 
-        <div className="mx-auto mt-4 overflow-hidden rounded-[10px] bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)]">
+        <div className="mx-auto mt-4 overflow-hidden rounded-xl bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)] sm:mt-5 sm:rounded-2xl">
           <LandingMedia product={product} priority />
         </div>
 
-        <h2 className="mt-4 break-words text-[2.1rem] font-black leading-[1.18] text-[var(--foreground)]">{copy.name}</h2>
+        <h2 className={`mt-4 sm:mt-5 ${productNameClass}`}>{copy.name}</h2>
 
         {heroSummary ? (
-          <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[var(--muted)]">{heroSummary}</p>
+          <p className={`mx-auto mt-2 max-w-[34rem] break-words ${bodyTextClass}`}>{heroSummary}</p>
         ) : null}
 
         {heroTestimonial ? (
-          <div className="mx-auto mt-4 max-w-sm rounded-[20px] border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)]">
+          <div className="mx-auto mt-4 max-w-lg rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)] sm:mt-5 sm:px-5 sm:py-4">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[0.98rem] font-black leading-[1.2] text-[var(--foreground)]">{heroTestimonial.name}</p>
-                <p className="mt-1 text-[1.02rem] font-bold leading-[1.4] text-[var(--foreground)]">{heroTestimonial.quote}</p>
-                <p className="mt-1 text-[0.95rem] text-[var(--accent)]">{starText(heroTestimonial.rating)}</p>
+                <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{heroTestimonial.name}</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--foreground)] sm:text-base">{heroTestimonial.quote}</p>
+                <p className="mt-1 text-sm text-[var(--accent)]">{starText(heroTestimonial.rating)}</p>
               </div>
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
                 {heroTestimonial.image ? (
@@ -273,29 +283,29 @@ export function ProductLanding({ product }: Props) {
         ) : null}
 
         <p
-          className="mx-auto mt-4 max-w-[min(100%,20rem)] text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:text-xs"
+          className="mx-auto mt-4 max-w-lg text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:text-xs"
           aria-label={locale === "fr" ? "Offre" : "العرض"}
         >
           {heroOfferLine}
         </p>
 
-        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-3 w-full`}>
+        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-3 w-full max-w-lg sm:mx-auto sm:mt-4`}>
           {ctaText}
         </button>
-        <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[var(--muted)]">{codReassurance}</p>
+        <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
       </section>
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h2 className={`${sectionTitleClass} text-[var(--foreground)]`}>{copy.featuresTitle}</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <h2 className={`${sectionTitleClass} break-words`}>{copy.featuresTitle}</h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
           {featureItems.map((f, idx) => (
             <div
               key={`${f ?? "empty"}-${idx}`}
-              className={`${softCardClass} flex min-h-[132px] flex-col justify-start p-3 text-center transition-transform duration-200 hover:-translate-y-0.5`}
+              className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-transform duration-200 hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4`}
             >
               <FeatureIcon feature={f ?? ""} color={accent} />
               {f ? (
-                <p className="mt-2 text-[0.92rem] font-bold leading-[1.45] text-[var(--foreground)]">{f}</p>
+                <p className="mt-2 text-xs font-semibold leading-snug text-[var(--foreground)] sm:text-sm">{f}</p>
               ) : (
                 <p className="mt-2 min-h-10" aria-hidden />
               )}
@@ -305,19 +315,19 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-              <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>
+        <h3 className={`${sectionTitleClass} break-words`}>
           {locale === "fr" ? "Pourquoi nos clients nous font confiance" : "لماذا يثق بنا العملاء"}
         </h3>
-        <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+        <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:mt-6 sm:gap-4">
           {statItems.map((item, idx) => {
             const raw = item ?? "";
             const numberPart = raw.split(" ")[0] ?? raw;
             return (
-              <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-2 py-4`}>
-                <p className="text-[1.95rem] font-black leading-none tracking-[-0.01em] text-[var(--foreground)]">
+              <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-1.5 py-3 sm:px-3 sm:py-4`}>
+                <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-[var(--foreground)] sm:text-2xl md:text-3xl">
                   {item ? <AnimatedCounter value={numberPart} /> : <span aria-hidden>&nbsp;</span>}
                 </p>
-                <p className="mt-1 text-[0.72rem] font-semibold leading-[1.4] text-[var(--muted)]">
+                <p className="mt-1.5 text-[0.65rem] font-medium leading-snug text-[var(--muted)] sm:text-xs">
                   {item ? statLabel(raw) : ""}
                 </p>
               </div>
@@ -327,7 +337,7 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.mediaCaption}</h3>
+        <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
         <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--accent-muted)] bg-[var(--background)] p-2 shadow-[0_16px_28px_rgba(12,28,12,0.08)]">
           <LandingMedia
             mediaType={product.secondary_media_type}
@@ -336,7 +346,7 @@ export function ProductLanding({ product }: Props) {
           />
         </div>
         {descLines.length > 3 ? (
-          <div className={`${softCardClass} mt-3 space-y-1 rounded-2xl px-4 py-3 text-[0.93rem] leading-[1.7] text-[var(--muted)]`}>
+          <div className={`${softCardClass} mt-3 space-y-1.5 rounded-2xl px-4 py-3 sm:mt-4 ${bodyTextClass}`}>
             {descLines.slice(3, 6).map((line, idx) => (
               <p key={`${line}-${idx}`}>• {line}</p>
             ))}
@@ -354,8 +364,8 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.testimonialsTitle}</h3>
-        <p className="mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-4 py-1 text-[0.72rem] font-bold leading-none text-[var(--accent)]">
+        <h3 className={`${sectionTitleClass} break-words`}>{copy.testimonialsTitle}</h3>
+        <p className="mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] sm:px-4 sm:text-xs">
           {locale === "fr" ? "Avis verifies apres achat" : "تقييمات من استبيانات ما بعد البيع"}
         </p>
         <div className="mt-5 space-y-3">
@@ -373,14 +383,14 @@ export function ProductLanding({ product }: Props) {
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1 text-right">
-                    <p className="text-[0.95rem] font-black leading-[1.25] text-[var(--foreground)]">{testimonial.name}</p>
+                    <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{testimonial.name}</p>
                     {testimonial.location ? (
-                      <p className="mt-0.5 text-[0.76rem] leading-[1.35] text-[var(--muted)]">{testimonial.location}</p>
+                      <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{testimonial.location}</p>
                     ) : null}
-                    <p className="mt-1 text-[0.9rem] leading-none text-[var(--accent)]">{starText(testimonial.rating)}</p>
+                    <p className="mt-1 text-sm leading-none text-[var(--accent)]">{starText(testimonial.rating)}</p>
                   </div>
                 </div>
-                <p className="mt-3 break-words text-[0.93rem] leading-[1.72] text-[var(--muted)]">{`"${testimonial.quote}"`}</p>
+                <p className={`mt-3 break-words ${bodyTextClass}`}>{`"${testimonial.quote}"`}</p>
               </article>
             );
           })}
@@ -388,25 +398,25 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.faqTitle}</h3>
-        <div className="mt-4 space-y-3">
+        <h3 className={`${sectionTitleClass} break-words`}>{copy.faqTitle}</h3>
+        <div className="mt-4 space-y-3 sm:mt-5">
           {faqItems.map((faq, i) => {
             const opened = openFaqIndex === i;
             return (
               <div key={`${faq?.q ?? "empty"}-${i}`} className="overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] shadow-sm">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-5 text-right"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5"
                   onClick={() => setOpenFaqIndex((prev) => (prev === i ? null : i))}
                 >
-                  <span className="break-words text-[0.96rem] font-bold leading-[1.42] text-[var(--foreground)]">{faq?.q ?? ""}</span>
-                  <span className="text-xl font-bold text-[var(--accent)]">{opened ? "−" : "+"}</span>
+                  <span className="break-words text-start text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-base">{faq?.q ?? ""}</span>
+                  <span className="shrink-0 text-lg font-semibold text-[var(--accent)] sm:text-xl">{opened ? "−" : "+"}</span>
                 </button>
                 <div
                   className={`grid transition-all duration-300 ease-out ${opened ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
                 >
                   <div className="overflow-hidden">
-                    <p className="break-words px-4 pb-4 text-[0.93rem] leading-[1.72] text-[var(--muted)]">{faq?.a ?? ""}</p>
+                    <p className={`break-words px-4 pb-4 pt-0 text-start sm:px-5 ${bodyTextClass}`}>{faq?.a ?? ""}</p>
                   </div>
                 </div>
               </div>
@@ -415,12 +425,10 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section id="order-form-section" className="bg-[var(--background)] px-4 py-8 text-center">
-        <div className={`${softCardClass} px-4 py-5`}>
-          <p className="text-[0.95rem] font-semibold leading-[1.45] text-[var(--muted)]">
-            {copy.heroBadge}
-          </p>
-          <p className="mt-1 text-[0.78rem] font-semibold leading-[1.45] text-[var(--muted)]">{trustSnippet}</p>
+      <section id="order-form-section" className="bg-[var(--background)] px-4 py-8 text-center sm:px-6 md:px-8">
+        <div className={`${softCardClass} mx-auto max-w-lg px-4 py-5 sm:px-6`}>
+          <p className="text-sm font-semibold leading-snug text-[var(--muted)] sm:text-base">{copy.heroBadge}</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-[var(--muted)] sm:text-sm">{trustSnippet}</p>
           <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 w-full`}>
             {ctaText}
           </button>
@@ -428,8 +436,8 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.contactTitle}</h3>
-        <div className="mt-5 space-y-3">
+        <h3 className={`${sectionTitleClass} break-words`}>{copy.contactTitle}</h3>
+        <div className="mt-5 space-y-3 sm:mx-auto sm:max-w-lg">
           {contactItems.map((line, idx) => {
             const value = line ?? "";
             const lower = value.toLowerCase();
@@ -438,9 +446,9 @@ export function ProductLanding({ product }: Props) {
             const label = isEmail ? "الايميل" : isWhatsApp ? "الواتساب" : "الهاتف";
             const icon = isEmail ? "✉" : isWhatsApp ? "◉" : "☎";
             return (
-              <div key={`${value}-${idx}`} className={`${softCardClass} rounded-2xl px-4 py-3`}>
-                <p className="text-[0.76rem] font-bold leading-none text-[var(--accent)]">{icon} {label}</p>
-                <p className="mt-1 break-all text-[0.95rem] font-bold leading-[1.4] text-[var(--foreground)]" dir="ltr">
+              <div key={`${value}-${idx}`} className={`${softCardClass} rounded-2xl px-4 py-3 sm:py-4`}>
+                <p className="text-xs font-semibold tracking-wide text-[var(--accent)]">{icon} {label}</p>
+                <p className="mt-1 break-all text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-base" dir="ltr">
                   {value}
                 </p>
               </div>
@@ -449,18 +457,18 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <footer className="bg-[var(--accent-muted)] px-4 py-5 text-center">
-        <p className="text-sm font-bold text-[var(--muted)]">
+      <footer className="bg-[var(--accent-muted)] px-4 py-5 text-center sm:py-6">
+        <p className="text-xs font-semibold text-[var(--muted)] sm:text-sm">
           {locale === "fr" ? "Tous droits reserves 2026" : "جميع الحقوق محفوظة 2026"}
         </p>
       </footer>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--accent-muted)] bg-[var(--background)]/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 shadow-[0_-8px_24px_rgba(12,28,12,0.16)] backdrop-blur md:hidden">
-        <div className="mx-auto max-w-[390px]">
-          <div className="mb-2 flex items-center justify-between text-[0.76rem] font-bold leading-none text-[var(--muted)]">
-            <span className="line-clamp-1">{copy.heroBadge}</span>
-            <div className="text-left">
-              <p className="text-[1rem] font-black leading-none tracking-[-0.01em] text-[var(--foreground)]">
+        <div className="mx-auto max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)]">
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs font-medium leading-tight text-[var(--muted)]">
+            <span className="min-w-0 flex-1 line-clamp-1 text-start">{copy.heroBadge}</span>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-bold tabular-nums leading-none text-[var(--foreground)]">
                 {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
               </p>
               {price.discounted != null ? (
