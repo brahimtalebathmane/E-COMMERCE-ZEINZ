@@ -29,6 +29,9 @@ const landingShellClass =
 const viewportMediaBleedClass =
   "relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw]";
 
+/** Title/copy aligned with other sections while the band behind gallery media spans the full viewport. */
+const sectionContentInsetClass = `${landingShellClass} px-4 sm:px-6 md:px-8 lg:px-10`;
+
 const primaryCtaClass =
   "store-btn-primary rounded-2xl px-5 py-3.5 text-base font-semibold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-4 sm:text-lg sm:font-extrabold";
 const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
@@ -318,21 +321,26 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
-        <div className={`${viewportMediaBleedClass} mt-4`}>
+      <section className={`${viewportMediaBleedClass} bg-[var(--card)] py-8 sm:py-10`}>
+        <div className={sectionContentInsetClass}>
+          <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
+        </div>
+        <div className="mt-4 w-full">
           <LandingMedia
             mediaType={product.secondary_media_type}
             mediaUrl={product.secondary_media_url || product.media_url}
             mediaName={copy.name}
             edgeToEdge
+            immersive
           />
         </div>
         {descLines.length > 3 ? (
-          <div className={`${softCardClass} mt-3 space-y-1.5 rounded-2xl px-4 py-3 sm:mt-4 ${bodyTextClass}`}>
-            {descLines.slice(3, 6).map((line, idx) => (
-              <p key={`${line}-${idx}`}>• {line}</p>
-            ))}
+          <div className={`${sectionContentInsetClass} mt-3 sm:mt-4`}>
+            <div className={`${softCardClass} space-y-1.5 rounded-2xl px-4 py-3 ${bodyTextClass}`}>
+              {descLines.slice(3, 6).map((line, idx) => (
+                <p key={`${line}-${idx}`}>• {line}</p>
+              ))}
+            </div>
           </div>
         ) : null}
       </section>
@@ -394,13 +402,14 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       {product.tertiary_media_url ? (
-        <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-          <div className={`${viewportMediaBleedClass}`}>
+        <section className={`${viewportMediaBleedClass} bg-[var(--background)] py-8 sm:py-10`}>
+          <div className="w-full">
             <LandingMedia
               mediaType={product.tertiary_media_type}
               mediaUrl={product.tertiary_media_url}
               mediaName={copy.name}
               edgeToEdge
+              immersive
             />
           </div>
         </section>

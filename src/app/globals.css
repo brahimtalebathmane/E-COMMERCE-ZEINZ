@@ -92,6 +92,14 @@ body {
     margin-inline: auto;
   }
 
+  /* Gallery immersive: use full device width for portrait video (no centered pillar). */
+  .landing-mux-shell[data-landing-immersive][data-landing-portrait],
+  .landing-native-shell[data-landing-immersive][data-landing-portrait] {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+  }
+
   /* Native <video>: letterbox inside measured aspect box (no stretch). */
   .landing-native-shell {
     position: relative;
@@ -114,6 +122,11 @@ body {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    object-position: center center;
+  }
+
+  .landing-native-shell[data-landing-immersive] > video {
+    object-fit: cover;
     object-position: center center;
   }
 }

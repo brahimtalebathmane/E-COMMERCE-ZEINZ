@@ -108,6 +108,8 @@ type Props = {
   priority?: boolean;
   /** Full viewport width on the landing page; uses cover + 100vw sizing for photos */
   edgeToEdge?: boolean;
+  /** Gallery blocks only: wider cinematic framing, full band layout — not used for the hero product image */
+  immersive?: boolean;
 };
 
 function muxPlayerOpts(priority: boolean | undefined) {
@@ -133,6 +135,7 @@ export function LandingMedia({
   mediaName,
   priority,
   edgeToEdge,
+  immersive,
 }: Props) {
   const { locale } = useLanguage();
   const displayName = useMemo(
@@ -260,17 +263,22 @@ export function LandingMedia({
     !muxPlaybackId;
 
   if (treatAsImage) {
+    const imageShellClass = immersive
+      ? "relative w-full min-w-0 overflow-hidden bg-[var(--accent-muted)] aspect-[16/11] sm:aspect-[16/9] md:aspect-[21/9] max-h-[min(88vh,58rem)]"
+      : "relative aspect-video w-full min-w-0 max-h-[min(85vh,56rem)] bg-[var(--accent-muted)]";
+    const imgSizes = edgeToEdge || immersive ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)";
+    const imgCover = immersive || edgeToEdge ? "object-cover" : "object-contain sm:object-cover";
     return (
-      <div className="relative aspect-video w-full min-w-0 max-h-[min(85vh,56rem)] bg-[var(--accent-muted)]">
+      <div className={imageShellClass}>
         <Image
           src={url}
           alt={displayName}
           fill
-          className={edgeToEdge ? "object-cover" : "object-contain sm:object-cover"}
-          sizes={edgeToEdge ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)"}
+          className={imgCover}
+          sizes={imgSizes}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
-          quality={85}
+          quality={immersive ? 88 : 85}
         />
       </div>
     );
@@ -281,9 +289,10 @@ export function LandingMedia({
     return (
       <div
         className="landing-mux-shell relative min-h-0 min-w-0 bg-black"
+        data-landing-immersive={immersive ? "" : undefined}
         style={
           {
-            "--ar-w": 16,
+            "--ar-w": immersive ? 21 : 16,
             "--ar-h": 9,
           } as CSSProperties
         }
@@ -329,6 +338,7 @@ export function LandingMedia({
             "--ar-h": muxParts.h,
           } as CSSProperties
         }
+        data-landing-immersive={immersive ? "" : undefined}
         data-landing-portrait={muxParts.h > muxParts.w ? "" : undefined}
       >
         {muxPlaybackId ? (
@@ -382,18 +392,23 @@ export function LandingMedia({
   return (
     <div className="relative w-full bg-black">
       <div
-        className="landing-native-shell w-full bg-black"
+        className="landing-native-shell relative w-full bg-black"
         style={
           {
             "--ar-w": nativeParts.w,
             "--ar-h": nativeParts.h,
           } as CSSProperties
         }
+        data-landing-immersive={immersive ? "" : undefined}
         data-landing-portrait={nativeParts.h > nativeParts.w ? "" : undefined}
       >
         <video
           ref={nativeVideoRef}
-          className="mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
+          className={
+            immersive
+              ? "mx-auto block w-full max-w-full max-h-[min(88vh,58rem)] bg-black object-cover sm:max-h-[min(88vh,58rem)]"
+              : "mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
+          }
           src={url}
           controls
           playsInline
