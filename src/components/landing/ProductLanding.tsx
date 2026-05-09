@@ -271,7 +271,7 @@ export function ProductLanding({ product }: Props) {
         </h1>
 
         <div className={`${fullBleedStripClass} mt-4 sm:mt-5`}>
-          <LandingMedia product={product} priority edgeToEdge />
+          <LandingMedia product={product} priority edgeToEdge primaryHero />
         </div>
 
         <h2 className={`mt-4 sm:mt-5 ${productNameClass}`}>{copy.name}</h2>

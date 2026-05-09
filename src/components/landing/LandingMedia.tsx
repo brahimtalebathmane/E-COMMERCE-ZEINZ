@@ -110,6 +110,11 @@ type Props = {
   edgeToEdge?: boolean;
   /** Gallery blocks only: wider cinematic framing, full band layout — not used for the hero product image */
   immersive?: boolean;
+  /**
+   * Hero product media only: preserve the asset’s natural aspect ratio (no fixed 16:9 box, no object-cover).
+   * Do not set on secondary/tertiary gallery strips — those keep cinematic/immersive styling.
+   */
+  primaryHero?: boolean;
 };
 
 function muxPlayerOpts(priority: boolean | undefined) {
@@ -136,6 +141,7 @@ export function LandingMedia({
   priority,
   edgeToEdge,
   immersive,
+  primaryHero,
 }: Props) {
   const { locale } = useLanguage();
   const displayName = useMemo(
@@ -261,6 +267,22 @@ export function LandingMedia({
     (mediaType ?? product?.media_type ?? "image") === "image" &&
     !isHls(url) &&
     !muxPlaybackId;
+
+  if (treatAsImage && primaryHero) {
+    return (
+      <div className="relative w-full min-w-0 bg-[var(--accent-muted)]">
+        {/* Hero product image: intrinsic dimensions (any aspect ratio). Next/Image `fill` needs a sized box; img avoids a forced 16:9 frame. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={displayName}
+          className="mx-auto block h-auto w-full max-h-[min(92vh,56rem)] object-contain"
+          loading={priority ? "eager" : "lazy"}
+          {...(priority ? { fetchPriority: "high" as const } : {})}
+        />
+      </div>
+    );
+  }
 
   if (treatAsImage) {
     const imageShellClass = immersive
@@ -407,7 +429,9 @@ export function LandingMedia({
           className={
             immersive
               ? "mx-auto block w-full max-w-full max-h-[min(88vh,58rem)] bg-black object-cover sm:max-h-[min(88vh,58rem)]"
-              : "mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
+              : primaryHero
+                ? "mx-auto block h-auto w-full max-h-[min(85vh,56rem)] bg-black object-contain sm:max-h-[min(85vh,56rem)] sm:w-full sm:max-w-full"
+                : "mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
           }
           src={url}
           controls
