@@ -24,6 +24,16 @@ export type ProductRow = {
   hero_subtitle_fr: string;
   hero_badge_ar: string;
   hero_badge_fr: string;
+  header_offer_text_ar: string;
+  header_offer_text_fr: string;
+  header_discount_text_ar: string;
+  header_discount_text_fr: string;
+  header_promo_text_ar: string;
+  header_promo_text_fr: string;
+  header_announcement_text_ar: string;
+  header_announcement_text_fr: string;
+  header_cta_text_ar: string;
+  header_cta_text_fr: string;
   description_ar: string;
   description_fr: string;
   cta_text_ar: string;
@@ -71,6 +81,11 @@ export type LocalizedProductCopy = {
   name: string;
   heroSubtitle: string;
   heroBadge: string;
+  headerOfferText: string;
+  headerDiscountText: string;
+  headerPromoText: string;
+  headerAnnouncementText: string;
+  headerCtaText: string;
   ctaText: string;
   featuresTitle: string;
   testimonialsTitle: string;

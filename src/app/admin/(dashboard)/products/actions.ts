@@ -2,7 +2,7 @@
 
 import { RESERVED_SLUGS } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
-import { BRAND_COLOR, SITE_LOGO_URL } from "@/lib/site-branding";
+import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
 import type { Testimonial, FAQ } from "@/types";
 import { revalidatePath } from "next/cache";
@@ -16,6 +16,17 @@ export type ProductPayload = {
   hero_subtitle_fr: string;
   hero_badge_ar: string;
   hero_badge_fr: string;
+  logo_url: string;
+  header_offer_text_ar: string;
+  header_offer_text_fr: string;
+  header_discount_text_ar: string;
+  header_discount_text_fr: string;
+  header_promo_text_ar: string;
+  header_promo_text_fr: string;
+  header_announcement_text_ar: string;
+  header_announcement_text_fr: string;
+  header_cta_text_ar: string;
+  header_cta_text_fr: string;
   description_ar: string;
   description_fr: string;
   cta_text_ar: string;
@@ -67,6 +78,12 @@ function validateProductPayload(payload: ProductPayload) {
     payload.name_ar,
     payload.hero_subtitle_ar,
     payload.hero_badge_ar,
+    payload.logo_url,
+    payload.header_offer_text_ar,
+    payload.header_discount_text_ar,
+    payload.header_promo_text_ar,
+    payload.header_announcement_text_ar,
+    payload.header_cta_text_ar,
     payload.cta_text_ar,
     payload.features_title_ar,
     payload.testimonials_title_ar,
@@ -164,13 +181,23 @@ export async function createProductAction(payload: ProductPayload) {
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
     brand_color: BRAND_COLOR,
-    logo_url: SITE_LOGO_URL,
+    logo_url: payload.logo_url.trim(),
     name_ar: payload.name_ar.trim(),
     name_fr: payload.name_fr.trim(),
     hero_subtitle_ar: payload.hero_subtitle_ar,
     hero_subtitle_fr: payload.hero_subtitle_fr,
     hero_badge_ar: payload.hero_badge_ar,
     hero_badge_fr: payload.hero_badge_fr,
+    header_offer_text_ar: payload.header_offer_text_ar,
+    header_offer_text_fr: payload.header_offer_text_fr,
+    header_discount_text_ar: payload.header_discount_text_ar,
+    header_discount_text_fr: payload.header_discount_text_fr,
+    header_promo_text_ar: payload.header_promo_text_ar,
+    header_promo_text_fr: payload.header_promo_text_fr,
+    header_announcement_text_ar: payload.header_announcement_text_ar,
+    header_announcement_text_fr: payload.header_announcement_text_fr,
+    header_cta_text_ar: payload.header_cta_text_ar,
+    header_cta_text_fr: payload.header_cta_text_fr,
     description_ar: payload.description_ar,
     description_fr: payload.description_fr,
     cta_text_ar: payload.cta_text_ar,
@@ -236,13 +263,23 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     .update({
       default_language: payload.default_language,
       brand_color: BRAND_COLOR,
-      logo_url: SITE_LOGO_URL,
+      logo_url: payload.logo_url.trim(),
       name_ar: payload.name_ar.trim(),
       name_fr: payload.name_fr.trim(),
       hero_subtitle_ar: payload.hero_subtitle_ar,
       hero_subtitle_fr: payload.hero_subtitle_fr,
       hero_badge_ar: payload.hero_badge_ar,
       hero_badge_fr: payload.hero_badge_fr,
+      header_offer_text_ar: payload.header_offer_text_ar,
+      header_offer_text_fr: payload.header_offer_text_fr,
+      header_discount_text_ar: payload.header_discount_text_ar,
+      header_discount_text_fr: payload.header_discount_text_fr,
+      header_promo_text_ar: payload.header_promo_text_ar,
+      header_promo_text_fr: payload.header_promo_text_fr,
+      header_announcement_text_ar: payload.header_announcement_text_ar,
+      header_announcement_text_fr: payload.header_announcement_text_fr,
+      header_cta_text_ar: payload.header_cta_text_ar,
+      header_cta_text_fr: payload.header_cta_text_fr,
       description_ar: payload.description_ar,
       description_fr: payload.description_fr,
       cta_text_ar: payload.cta_text_ar,

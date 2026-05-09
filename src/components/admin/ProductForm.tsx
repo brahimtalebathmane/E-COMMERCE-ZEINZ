@@ -157,6 +157,12 @@ function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
 }
 
 const LANDING_SECTION_MAP = [
+  {
+    id: "header",
+    title: "Header Strip",
+    fields:
+      "logo_url + header_offer_text_* + header_discount_text_* + header_promo_text_* + header_announcement_text_* + header_cta_text_*",
+  },
   { id: "hero", title: "Hero", fields: "name_* + hero_subtitle_* + hero_badge_* + media_* + price/discount + cta_text_*" },
   { id: "features", title: "Features", fields: "features_title_* + features_ar/fr[]" },
   { id: "media-secondary", title: "Secondary Media", fields: "secondary_media_type + secondary_media_url" },
@@ -182,6 +188,21 @@ export function ProductForm({ mode, initial }: Props) {
   const [heroSubtitleFr, setHeroSubtitleFr] = useState(initial?.hero_subtitle_fr ?? "");
   const [heroBadgeAr, setHeroBadgeAr] = useState(initial?.hero_badge_ar ?? "");
   const [heroBadgeFr, setHeroBadgeFr] = useState(initial?.hero_badge_fr ?? "");
+  const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
+  const [headerOfferTextAr, setHeaderOfferTextAr] = useState(initial?.header_offer_text_ar ?? "");
+  const [headerOfferTextFr, setHeaderOfferTextFr] = useState(initial?.header_offer_text_fr ?? "");
+  const [headerDiscountTextAr, setHeaderDiscountTextAr] = useState(initial?.header_discount_text_ar ?? "");
+  const [headerDiscountTextFr, setHeaderDiscountTextFr] = useState(initial?.header_discount_text_fr ?? "");
+  const [headerPromoTextAr, setHeaderPromoTextAr] = useState(initial?.header_promo_text_ar ?? "");
+  const [headerPromoTextFr, setHeaderPromoTextFr] = useState(initial?.header_promo_text_fr ?? "");
+  const [headerAnnouncementTextAr, setHeaderAnnouncementTextAr] = useState(
+    initial?.header_announcement_text_ar ?? "",
+  );
+  const [headerAnnouncementTextFr, setHeaderAnnouncementTextFr] = useState(
+    initial?.header_announcement_text_fr ?? "",
+  );
+  const [headerCtaTextAr, setHeaderCtaTextAr] = useState(initial?.header_cta_text_ar ?? "");
+  const [headerCtaTextFr, setHeaderCtaTextFr] = useState(initial?.header_cta_text_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
   const [ctaTextAr, setCtaTextAr] = useState(initial?.cta_text_ar ?? "");
@@ -253,6 +274,7 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
     initial?.faqs_ar?.length
       ? initial.faqs_ar.map((f, i) => ({
@@ -329,12 +351,23 @@ export function ProductForm({ mode, initial }: Props) {
 
     return {
       default_language: defaultLanguage,
+      logo_url: logoUrl.trim(),
       name_ar: nameAr.trim(),
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
       hero_badge_ar: heroBadgeAr.trim(),
       hero_badge_fr: heroBadgeFr,
+      header_offer_text_ar: headerOfferTextAr.trim(),
+      header_offer_text_fr: headerOfferTextFr.trim(),
+      header_discount_text_ar: headerDiscountTextAr.trim(),
+      header_discount_text_fr: headerDiscountTextFr.trim(),
+      header_promo_text_ar: headerPromoTextAr.trim(),
+      header_promo_text_fr: headerPromoTextFr.trim(),
+      header_announcement_text_ar: headerAnnouncementTextAr.trim(),
+      header_announcement_text_fr: headerAnnouncementTextFr.trim(),
+      header_cta_text_ar: headerCtaTextAr.trim(),
+      header_cta_text_fr: headerCtaTextFr.trim(),
       description_ar: descriptionAr.trim(),
       description_fr: descriptionFr,
       cta_text_ar: ctaTextAr.trim(),
@@ -412,6 +445,28 @@ export function ProductForm({ mode, initial }: Props) {
       setError(err instanceof Error ? err.message : "فشل رفع الصورة.");
     } finally {
       setUploadingTestimonialId(null);
+    }
+  }
+
+  async function uploadHeaderLogo(file: File) {
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "header-logo");
+      const response = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const payload = (await response.json()) as { signedUrl?: string; error?: string };
+      if (!response.ok || !payload.signedUrl) {
+        throw new Error(payload.error || "فشل رفع الشعار.");
+      }
+      setLogoUrl(payload.signedUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل رفع الشعار.");
+    } finally {
+      setUploadingLogo(false);
     }
   }
 
@@ -513,6 +568,87 @@ export function ProductForm({ mode, initial }: Props) {
             <option value="fr">{a.productForm.defaultLanguageFrench}</option>
           </select>
         </div>
+        <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <h3 className="text-sm font-semibold">إعدادات هيدر العرض (3 أقسام)</h3>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <label className="text-sm font-medium">رابط الشعار</label>
+              <input
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[var(--muted)]">أو رفع شعار</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="store-file-input mt-1"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  void uploadHeaderLogo(file);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </div>
+          </div>
+          {uploadingLogo ? <p className="text-xs text-[var(--muted)]">جار رفع الشعار...</p> : null}
+          {logoUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
+            <img
+              src={logoUrl.trim()}
+              alt=""
+              className="h-14 w-auto rounded-lg border border-[var(--accent-muted)] bg-white object-contain p-2"
+            />
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">Offer text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerOfferTextAr} onChange={(e) => setHeaderOfferTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Offer text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerOfferTextFr} onChange={(e) => setHeaderOfferTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Discount text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerDiscountTextAr} onChange={(e) => setHeaderDiscountTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Discount text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerDiscountTextFr} onChange={(e) => setHeaderDiscountTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Promo message — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerPromoTextAr} onChange={(e) => setHeaderPromoTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Promo message — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerPromoTextFr} onChange={(e) => setHeaderPromoTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Announcement text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerAnnouncementTextAr} onChange={(e) => setHeaderAnnouncementTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Announcement text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerAnnouncementTextFr} onChange={(e) => setHeaderAnnouncementTextFr(e.target.value)} dir="ltr" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Header CTA text — عربي</label>
+              <input required className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerCtaTextAr} onChange={(e) => setHeaderCtaTextAr(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Header CTA text — French</label>
+              <input className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm" value={headerCtaTextFr} onChange={(e) => setHeaderCtaTextFr(e.target.value)} dir="ltr" />
+            </div>
+          </div>
+        </section>
         <div>
           <label className="text-sm font-medium">
             {a.productForm.name} — {a.productForm.langArabic}

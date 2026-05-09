@@ -82,6 +82,15 @@ export function getLocalizedProductCopy(
     name: pickStr(locale, p.name_ar, p.name_fr),
     heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
     heroBadge: pickStr(locale, p.hero_badge_ar, p.hero_badge_fr),
+    headerOfferText: pickStr(locale, p.header_offer_text_ar, p.header_offer_text_fr),
+    headerDiscountText: pickStr(locale, p.header_discount_text_ar, p.header_discount_text_fr),
+    headerPromoText: pickStr(locale, p.header_promo_text_ar, p.header_promo_text_fr),
+    headerAnnouncementText: pickStr(
+      locale,
+      p.header_announcement_text_ar,
+      p.header_announcement_text_fr,
+    ),
+    headerCtaText: pickStr(locale, p.header_cta_text_ar, p.header_cta_text_fr),
     ctaText: pickStr(locale, p.cta_text_ar, p.cta_text_fr),
     featuresTitle: pickStr(locale, p.features_title_ar, p.features_title_fr),
     testimonialsTitle: pickStr(

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
+import { LandingHeader } from "./LandingHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
@@ -195,16 +196,15 @@ export function ProductLanding({ product }: Props) {
     >
       <MetaPixel pixelId={product.meta_pixel_id} />
 
-      <header className="bg-[#fef6ea] px-4 pb-7 pt-5 text-center">
-        <div className="mx-auto w-full max-w-xs">
-          <span className="mb-3 inline-flex rounded-full border border-[#efddca] bg-white px-3 py-1.5 text-xs font-bold leading-none text-[#875a33] shadow-sm">
-            {copy.heroBadge}
-          </span>
-        </div>
-        <div className="mx-auto mb-4 w-fit rounded-full bg-white px-3 py-1.5 shadow-sm">
-          <Image src={copy.logoUrl} alt="logo" width={72} height={28} className="h-6 w-auto object-contain" />
-        </div>
-      </header>
+      <LandingHeader
+        logoUrl={copy.logoUrl}
+        offerText={copy.headerOfferText}
+        discountText={copy.headerDiscountText}
+        promoText={copy.headerPromoText}
+        announcementText={copy.headerAnnouncementText}
+        ctaText={copy.headerCtaText || ctaText}
+        onCtaClick={openCheckout}
+      />
 
       <section className="bg-[#fef6ea] px-4 pb-8">
         <div className="mx-auto overflow-hidden rounded-[26px] border border-[#f0dfcf] bg-[#fffaf3] p-2 shadow-[0_20px_36px_rgba(100,67,37,0.12)]">
