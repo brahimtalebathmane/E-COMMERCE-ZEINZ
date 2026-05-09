@@ -15,16 +15,17 @@ import {
   touchMetaFunnelActivity,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { BRAND_COLOR } from "@/lib/site-branding";
 
 type Props = {
   product: ProductRow;
 };
 
 const primaryCtaClass =
-  "store-btn-primary rounded-[18px] px-6 py-4 text-lg font-extrabold shadow-[0_16px_36px_rgba(223,130,55,0.34)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985]";
+  "store-btn-primary rounded-[18px] px-6 py-4 text-lg font-extrabold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985]";
 const sectionPadClass = "px-4 py-8";
 const softCardClass =
-  "rounded-[24px] border border-[#eddccc] bg-white shadow-[0_14px_28px_rgba(88,58,32,0.1)]";
+  "rounded-[24px] border border-[var(--accent-muted)] bg-[var(--card)] shadow-[0_14px_28px_rgba(12,28,12,0.08)]";
 const sectionTitleClass = "text-center text-[1.62rem] font-black leading-[1.28] tracking-[-0.01em]";
 
 function fixedSlots<T>(items: T[], count: number): Array<T | null> {
@@ -93,7 +94,7 @@ function FeatureIcon({ feature, color }: { feature: string; color: string }) {
   }
 
   return (
-    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#ebdac8] bg-[#fff8f0]">
+    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--accent-muted)] bg-[var(--background)]">
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d={path} />
       </svg>
@@ -106,7 +107,7 @@ export function ProductLanding({ product }: Props) {
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-  const accent = copy.brandColor || "#f08a3e";
+  const accent = BRAND_COLOR;
 
   const stats = copy.stats;
   const contacts = copy.contactLines;
@@ -188,15 +189,15 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="mx-auto max-w-[390px] overflow-hidden bg-[#fff7ee] pb-24 text-[#251b13] md:max-w-[460px]"
+      className="mx-auto max-w-[390px] overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)] md:max-w-[460px]"
       dir={dir}
       style={
         {
-          "--accent": "#ef8a3d",
-          "--accent-foreground": "#fff9f4",
-          "--accent-muted": "#f1e4d6",
-          "--card": "#fff9f1",
-          "--muted": "#776450",
+          "--accent": BRAND_COLOR,
+          "--accent-foreground": "#f0fff0",
+          "--accent-muted": "#c5e8c5",
+          "--card": "#f4fff4",
+          "--muted": "#4a5c4a",
           "--brand-accent": accent,
         } as CSSProperties
       }
@@ -204,7 +205,6 @@ export function ProductLanding({ product }: Props) {
       <MetaPixel pixelId={product.meta_pixel_id} />
 
       <LandingHeader
-        logoUrl={copy.logoUrl}
         offerText={copy.headerOfferText}
         discountText={copy.headerDiscountText}
         promoText={copy.headerPromoText}
@@ -213,35 +213,35 @@ export function ProductLanding({ product }: Props) {
         onCtaClick={openCheckout}
       />
 
-      <section className="bg-[#fef6ea] px-4 pb-4 pt-5 text-center">
-        <h1 className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[#0f6a15] sm:max-w-[380px] sm:text-[2.7rem]">
+      <section className="bg-[var(--background)] px-4 pb-4 pt-5 text-center">
+        <h1 className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[var(--accent)] sm:max-w-[380px] sm:text-[2.7rem]">
           {copy.heroSubtitle}
         </h1>
       </section>
 
-      <section className="bg-[#fef6ea] px-4 pb-5">
-        <div className="mx-auto overflow-hidden rounded-[10px] bg-white shadow-[0_10px_24px_rgba(94,67,34,0.14)]">
+      <section className="bg-[var(--background)] px-4 pb-5">
+        <div className="mx-auto overflow-hidden rounded-[10px] bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)]">
           <LandingMedia product={product} priority />
         </div>
       </section>
 
-      <section className="bg-[#fff9ef] px-4 pb-4 text-center">
-        <h2 className="break-words text-[2.1rem] font-black leading-[1.18] text-[#17120d]">{copy.name}</h2>
+      <section className="bg-[var(--background)] px-4 pb-4 text-center">
+        <h2 className="break-words text-[2.1rem] font-black leading-[1.18] text-[var(--foreground)]">{copy.name}</h2>
         {heroSummary ? (
-          <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[#2f241b]">{heroSummary}</p>
+          <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[var(--muted)]">{heroSummary}</p>
         ) : null}
       </section>
 
       {heroTestimonial ? (
-        <section className="bg-[#fff9ef] px-4 pb-5">
-          <div className="mx-auto max-w-sm rounded-[20px] border border-[#dbe7d7] bg-[linear-gradient(180deg,#f5fbef_0%,#eef8ea_100%)] px-4 py-3 shadow-[0_12px_22px_rgba(78,117,70,0.16)]">
+        <section className="bg-[var(--background)] px-4 pb-5">
+          <div className="mx-auto max-w-sm rounded-[20px] border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 shadow-[0_12px_22px_rgba(22,75,22,0.15)]">
             <div className="flex items-center gap-3 text-right">
               <div className="min-w-0 flex-1">
-                <p className="text-[0.98rem] font-black leading-[1.2] text-[#16120f]">{heroTestimonial.name}</p>
-                <p className="mt-1 text-[1.02rem] font-bold leading-[1.4] text-[#17120d]">{heroTestimonial.quote}</p>
-                <p className="mt-1 text-[0.95rem] text-[#d08a2a]">{starText(heroTestimonial.rating)}</p>
+                <p className="text-[0.98rem] font-black leading-[1.2] text-[var(--foreground)]">{heroTestimonial.name}</p>
+                <p className="mt-1 text-[1.02rem] font-bold leading-[1.4] text-[var(--foreground)]">{heroTestimonial.quote}</p>
+                <p className="mt-1 text-[0.95rem] text-[var(--accent)]">{starText(heroTestimonial.rating)}</p>
               </div>
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[#e8efe3]">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
                 {heroTestimonial.image ? (
                   <Image src={heroTestimonial.image} alt={heroTestimonial.name} fill className="object-cover" sizes="64px" />
                 ) : null}
@@ -251,11 +251,11 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      <section className="bg-[#fff9ef] px-4 pb-4 text-center">
-        <div className="mx-auto max-w-sm rounded-[12px] bg-[#4f915f] px-3 py-2 text-white shadow-[0_8px_18px_rgba(58,109,72,0.25)]">
+      <section className="bg-[var(--background)] px-4 pb-4 text-center">
+        <div className="mx-auto max-w-sm rounded-[12px] bg-[var(--accent)] px-3 py-2 text-[var(--accent-foreground)] shadow-[0_8px_18px_rgba(0,107,12,0.28)]">
           <div className="flex items-center justify-center gap-3">
             {price.discounted != null ? (
-              <span className="text-[1.15rem] font-extrabold leading-none text-[#e7f2ea] line-through">{formatPrice(price.original)}</span>
+              <span className="text-[1.15rem] font-extrabold leading-none text-[var(--accent-muted)] line-through">{formatPrice(price.original)}</span>
             ) : null}
             <span className="text-[1.95rem] font-black leading-none">
               {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
@@ -267,15 +267,15 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className="bg-[#fff9ef] px-4 pb-6 text-center">
-        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} w-full bg-[#167a26]`}>
+      <section className="bg-[var(--background)] px-4 pb-6 text-center">
+        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} w-full`}>
           {ctaText}
         </button>
-        <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[#3f2f24]">{codReassurance}</p>
+        <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[var(--muted)]">{codReassurance}</p>
       </section>
 
-      <section className={`bg-[#fffaf3] ${sectionPadClass}`}>
-        <h2 className={`${sectionTitleClass} text-[#2a1e15]`}>{copy.featuresTitle}</h2>
+      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h2 className={`${sectionTitleClass} text-[var(--foreground)]`}>{copy.featuresTitle}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {featureItems.map((f, idx) => (
             <div
@@ -284,7 +284,7 @@ export function ProductLanding({ product }: Props) {
             >
               <FeatureIcon feature={f ?? ""} color={accent} />
               {f ? (
-                <p className="mt-2 text-[0.92rem] font-bold leading-[1.45] text-[#3f2f23]">{f}</p>
+                <p className="mt-2 text-[0.92rem] font-bold leading-[1.45] text-[var(--foreground)]">{f}</p>
               ) : (
                 <p className="mt-2 min-h-10" aria-hidden />
               )}
@@ -293,8 +293,8 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className={`bg-[#f9eede] ${sectionPadClass}`}>
-              <h3 className={`${sectionTitleClass} break-words text-[#2f2115]`}>
+      <section className={`bg-[var(--background)] ${sectionPadClass}`}>
+              <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>
           {locale === "fr" ? "Pourquoi nos clients nous font confiance" : "لماذا يثق بنا العملاء"}
         </h3>
         <div className="mt-5 grid grid-cols-3 gap-3 text-center">
@@ -303,10 +303,10 @@ export function ProductLanding({ product }: Props) {
             const numberPart = raw.split(" ")[0] ?? raw;
             return (
               <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-2 py-4`}>
-                <p className="text-[1.95rem] font-black leading-none tracking-[-0.01em] text-[#23201b]">
+                <p className="text-[1.95rem] font-black leading-none tracking-[-0.01em] text-[var(--foreground)]">
                   {item ? <AnimatedCounter value={numberPart} /> : <span aria-hidden>&nbsp;</span>}
                 </p>
-                <p className="mt-1 text-[0.72rem] font-semibold leading-[1.4] text-[#6d5846]">
+                <p className="mt-1 text-[0.72rem] font-semibold leading-[1.4] text-[var(--muted)]">
                   {item ? statLabel(raw) : ""}
                 </p>
               </div>
@@ -315,9 +315,9 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className={`bg-[#fff5e8] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[#2d2015]`}>{copy.mediaCaption}</h3>
-        <div className="mt-4 overflow-hidden rounded-[24px] border border-[#ecdac6] bg-[#fffaf3] p-2 shadow-[0_16px_28px_rgba(88,58,32,0.1)]">
+      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.mediaCaption}</h3>
+        <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--accent-muted)] bg-[var(--background)] p-2 shadow-[0_16px_28px_rgba(12,28,12,0.08)]">
           <LandingMedia
             mediaType={product.secondary_media_type}
             mediaUrl={product.secondary_media_url || product.media_url}
@@ -325,14 +325,14 @@ export function ProductLanding({ product }: Props) {
           />
         </div>
         {descLines.length > 3 ? (
-          <div className={`${softCardClass} mt-3 space-y-1 rounded-2xl px-4 py-3 text-[0.93rem] leading-[1.7] text-[#5e4736]`}>
+          <div className={`${softCardClass} mt-3 space-y-1 rounded-2xl px-4 py-3 text-[0.93rem] leading-[1.7] text-[var(--muted)]`}>
             {descLines.slice(3, 6).map((line, idx) => (
               <p key={`${line}-${idx}`}>• {line}</p>
             ))}
           </div>
         ) : null}
         {product.tertiary_media_url ? (
-          <div className="mt-4 overflow-hidden rounded-[24px] border border-[#ecdac6] bg-[#fffaf3] p-2 shadow-[0_16px_28px_rgba(88,58,32,0.1)]">
+          <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--accent-muted)] bg-[var(--background)] p-2 shadow-[0_16px_28px_rgba(12,28,12,0.08)]">
             <LandingMedia
               mediaType={product.tertiary_media_type}
               mediaUrl={product.tertiary_media_url}
@@ -342,9 +342,9 @@ export function ProductLanding({ product }: Props) {
         ) : null}
       </section>
 
-      <section className={`bg-[#fff9f2] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[#291f17]`}>{copy.testimonialsTitle}</h3>
-        <p className="mx-auto mt-2 w-fit rounded-full bg-[#ffeede] px-4 py-1 text-[0.72rem] font-bold leading-none text-[#a8642d]">
+      <section className={`bg-[var(--background)] ${sectionPadClass}`}>
+        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.testimonialsTitle}</h3>
+        <p className="mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-4 py-1 text-[0.72rem] font-bold leading-none text-[var(--accent)]">
           {locale === "fr" ? "Avis verifies apres achat" : "تقييمات من استبيانات ما بعد البيع"}
         </p>
         <div className="mt-5 space-y-3">
@@ -353,49 +353,49 @@ export function ProductLanding({ product }: Props) {
             return (
               <article
                 key={`${testimonial.name}-${idx}`}
-                className="rounded-3xl border border-[#efdfcf] bg-white p-4 shadow-[0_14px_24px_rgba(96,66,38,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
+                className="rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-transform duration-200 hover:-translate-y-0.5"
               >
                 <div className="flex items-start gap-3">
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#f4e5d6]">
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
                     {testimonial.image ? (
                       <Image src={testimonial.image} alt={testimonial.name} fill sizes="48px" className="object-cover" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1 text-right">
-                    <p className="text-[0.95rem] font-black leading-[1.25] text-[#2f2218]">{testimonial.name}</p>
+                    <p className="text-[0.95rem] font-black leading-[1.25] text-[var(--foreground)]">{testimonial.name}</p>
                     {testimonial.location ? (
-                      <p className="mt-0.5 text-[0.76rem] leading-[1.35] text-[#8a6b51]">{testimonial.location}</p>
+                      <p className="mt-0.5 text-[0.76rem] leading-[1.35] text-[var(--muted)]">{testimonial.location}</p>
                     ) : null}
-                    <p className="mt-1 text-[0.9rem] leading-none text-[#db9235]">{starText(testimonial.rating)}</p>
+                    <p className="mt-1 text-[0.9rem] leading-none text-[var(--accent)]">{starText(testimonial.rating)}</p>
                   </div>
                 </div>
-                <p className="mt-3 break-words text-[0.93rem] leading-[1.72] text-[#4c3a2d]">{`"${testimonial.quote}"`}</p>
+                <p className="mt-3 break-words text-[0.93rem] leading-[1.72] text-[var(--muted)]">{`"${testimonial.quote}"`}</p>
               </article>
             );
           })}
         </div>
       </section>
 
-      <section className={`bg-[#fff4e8] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[#2f2014]`}>{copy.faqTitle}</h3>
+      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.faqTitle}</h3>
         <div className="mt-4 space-y-3">
           {faqItems.map((faq, i) => {
             const opened = openFaqIndex === i;
             return (
-              <div key={`${faq?.q ?? "empty"}-${i}`} className="overflow-hidden rounded-2xl border border-[#ecdac8] bg-white shadow-sm">
+              <div key={`${faq?.q ?? "empty"}-${i}`} className="overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] shadow-sm">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-3 px-4 py-5 text-right"
                   onClick={() => setOpenFaqIndex((prev) => (prev === i ? null : i))}
                 >
-                  <span className="text-[0.96rem] font-bold leading-[1.42] text-[#332419] break-words">{faq?.q ?? ""}</span>
-                  <span className="text-xl font-bold text-[#b9783f]">{opened ? "−" : "+"}</span>
+                  <span className="break-words text-[0.96rem] font-bold leading-[1.42] text-[var(--foreground)]">{faq?.q ?? ""}</span>
+                  <span className="text-xl font-bold text-[var(--accent)]">{opened ? "−" : "+"}</span>
                 </button>
                 <div
                   className={`grid transition-all duration-300 ease-out ${opened ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
                 >
                   <div className="overflow-hidden">
-                    <p className="break-words px-4 pb-4 text-[0.93rem] leading-[1.72] text-[#6f5845]">{faq?.a ?? ""}</p>
+                    <p className="break-words px-4 pb-4 text-[0.93rem] leading-[1.72] text-[var(--muted)]">{faq?.a ?? ""}</p>
                   </div>
                 </div>
               </div>
@@ -404,20 +404,20 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section id="order-form-section" className="bg-[#fef2e4] px-4 py-8 text-center">
+      <section id="order-form-section" className="bg-[var(--background)] px-4 py-8 text-center">
         <div className={`${softCardClass} px-4 py-5`}>
-          <p className="text-[0.95rem] font-semibold leading-[1.45] text-[#805f44]">
+          <p className="text-[0.95rem] font-semibold leading-[1.45] text-[var(--muted)]">
             {copy.heroBadge}
           </p>
-          <p className="mt-1 text-[0.78rem] font-semibold leading-[1.45] text-[#8f6a4d]">{trustSnippet}</p>
-          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 w-full bg-[#ef8a3d]`}>
+          <p className="mt-1 text-[0.78rem] font-semibold leading-[1.45] text-[var(--muted)]">{trustSnippet}</p>
+          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-3 w-full`}>
             {ctaText}
           </button>
         </div>
       </section>
 
-      <section className={`bg-[#fffaf3] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words text-[#2f2217]`}>{copy.contactTitle}</h3>
+      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h3 className={`${sectionTitleClass} break-words text-[var(--foreground)]`}>{copy.contactTitle}</h3>
         <div className="mt-5 space-y-3">
           {contactItems.map((line, idx) => {
             const value = line ?? "";
@@ -428,8 +428,8 @@ export function ProductLanding({ product }: Props) {
             const icon = isEmail ? "✉" : isWhatsApp ? "◉" : "☎";
             return (
               <div key={`${value}-${idx}`} className={`${softCardClass} rounded-2xl px-4 py-3`}>
-                <p className="text-[0.76rem] font-bold leading-none text-[#9f714d]">{icon} {label}</p>
-                <p className="mt-1 break-all text-[0.95rem] font-bold leading-[1.4] text-[#32251b]" dir="ltr">
+                <p className="text-[0.76rem] font-bold leading-none text-[var(--accent)]">{icon} {label}</p>
+                <p className="mt-1 break-all text-[0.95rem] font-bold leading-[1.4] text-[var(--foreground)]" dir="ltr">
                   {value}
                 </p>
               </div>
@@ -438,26 +438,26 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <footer className="bg-[#f0ded0] px-4 py-5 text-center">
-        <p className="text-sm font-bold text-[#6a4e36]">
+      <footer className="bg-[var(--accent-muted)] px-4 py-5 text-center">
+        <p className="text-sm font-bold text-[var(--muted)]">
           {locale === "fr" ? "Tous droits reserves 2026" : "جميع الحقوق محفوظة 2026"}
         </p>
       </footer>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#e2c8af] bg-[#fff8ee]/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 shadow-[0_-8px_24px_rgba(76,48,24,0.18)] backdrop-blur md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--accent-muted)] bg-[var(--background)]/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2 shadow-[0_-8px_24px_rgba(12,28,12,0.16)] backdrop-blur md:hidden">
         <div className="mx-auto max-w-[390px]">
-          <div className="mb-2 flex items-center justify-between text-[0.76rem] font-bold leading-none text-[#6f533d]">
+          <div className="mb-2 flex items-center justify-between text-[0.76rem] font-bold leading-none text-[var(--muted)]">
             <span className="line-clamp-1">{copy.heroBadge}</span>
             <div className="text-left">
-              <p className="text-[1rem] font-black leading-none tracking-[-0.01em] text-[#2f2117]">
+              <p className="text-[1rem] font-black leading-none tracking-[-0.01em] text-[var(--foreground)]">
                 {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
               </p>
               {price.discounted != null ? (
-                <p className="text-[10px] text-[#8f6b4e] line-through">{formatPrice(price.original)}</p>
+                <p className="text-[10px] text-[var(--muted)] line-through">{formatPrice(price.original)}</p>
               ) : null}
             </div>
           </div>
-          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} w-full bg-[#ef8a3d]`}>
+          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} w-full`}>
             {ctaText}
           </button>
         </div>
