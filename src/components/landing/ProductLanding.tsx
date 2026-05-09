@@ -213,29 +213,42 @@ export function ProductLanding({ product }: Props) {
         onCtaClick={openCheckout}
       />
 
-      <section className="bg-[var(--background)] px-4 pb-4 pt-5 text-center">
-        <h1 className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[var(--accent)] sm:max-w-[380px] sm:text-[2.7rem]">
+      {/* Hero: title → media → name → description → offer → testimonial → CTA */}
+      <section className="bg-[var(--background)] px-4 pb-6 pt-5 text-center" aria-labelledby="hero-title">
+        <h1
+          id="hero-title"
+          className="mx-auto max-w-[330px] break-words text-[2.45rem] font-black leading-[1.16] tracking-[-0.01em] text-[var(--accent)] sm:max-w-[380px] sm:text-[2.7rem]"
+        >
           {copy.heroSubtitle}
         </h1>
-      </section>
 
-      <section className="bg-[var(--background)] px-4 pb-5">
-        <div className="mx-auto overflow-hidden rounded-[10px] bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)]">
+        <div className="mx-auto mt-4 overflow-hidden rounded-[10px] bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)]">
           <LandingMedia product={product} priority />
         </div>
-      </section>
 
-      <section className="bg-[var(--background)] px-4 pb-4 text-center">
-        <h2 className="break-words text-[2.1rem] font-black leading-[1.18] text-[var(--foreground)]">{copy.name}</h2>
+        <h2 className="mt-4 break-words text-[2.1rem] font-black leading-[1.18] text-[var(--foreground)]">{copy.name}</h2>
+
         {heroSummary ? (
           <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[var(--muted)]">{heroSummary}</p>
         ) : null}
-      </section>
 
-      {heroTestimonial ? (
-        <section className="bg-[var(--background)] px-4 pb-5">
-          <div className="mx-auto max-w-sm rounded-[20px] border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 shadow-[0_12px_22px_rgba(22,75,22,0.15)]">
-            <div className="flex items-center gap-3 text-right">
+        <div className="mx-auto mt-4 max-w-sm rounded-[12px] bg-[var(--accent)] px-3 py-2 text-[var(--accent-foreground)] shadow-[0_8px_18px_rgba(0,107,12,0.28)]">
+          <div className="flex items-center justify-center gap-3">
+            {price.discounted != null ? (
+              <span className="text-[1.15rem] font-extrabold leading-none text-[var(--accent-muted)] line-through">{formatPrice(price.original)}</span>
+            ) : null}
+            <span className="text-[1.95rem] font-black leading-none">
+              {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
+            </span>
+          </div>
+          <p className="mt-1 text-sm font-extrabold">{copy.offerBadgeText || copy.heroBadge}</p>
+          <p className="text-[0.83rem] font-semibold">{copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")}</p>
+          {copy.offerLimitedText ? <p className="text-[0.82rem] font-bold">{copy.offerLimitedText}</p> : null}
+        </div>
+
+        {heroTestimonial ? (
+          <div className="mx-auto mt-4 max-w-sm rounded-[20px] border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)]">
+            <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[0.98rem] font-black leading-[1.2] text-[var(--foreground)]">{heroTestimonial.name}</p>
                 <p className="mt-1 text-[1.02rem] font-bold leading-[1.4] text-[var(--foreground)]">{heroTestimonial.quote}</p>
@@ -248,27 +261,9 @@ export function ProductLanding({ product }: Props) {
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      <section className="bg-[var(--background)] px-4 pb-4 text-center">
-        <div className="mx-auto max-w-sm rounded-[12px] bg-[var(--accent)] px-3 py-2 text-[var(--accent-foreground)] shadow-[0_8px_18px_rgba(0,107,12,0.28)]">
-          <div className="flex items-center justify-center gap-3">
-            {price.discounted != null ? (
-              <span className="text-[1.15rem] font-extrabold leading-none text-[var(--accent-muted)] line-through">{formatPrice(price.original)}</span>
-            ) : null}
-            <span className="text-[1.95rem] font-black leading-none">
-              {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
-            </span>
-          </div>
-          <p className="mt-1 text-sm font-extrabold">{copy.offerBadgeText || copy.heroBadge}</p>
-          <p className="text-[0.83rem] font-semibold">{copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")}</p>
-          <p className="text-[0.82rem] font-bold">{copy.offerLimitedText}</p>
-        </div>
-      </section>
-
-      <section className="bg-[var(--background)] px-4 pb-6 text-center">
-        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} w-full`}>
+        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-4 w-full`}>
           {ctaText}
         </button>
         <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[var(--muted)]">{codReassurance}</p>
@@ -348,7 +343,7 @@ export function ProductLanding({ product }: Props) {
           {locale === "fr" ? "Avis verifies apres achat" : "تقييمات من استبيانات ما بعد البيع"}
         </p>
         <div className="mt-5 space-y-3">
-          {[heroTestimonial, ...testimonialGridItems].filter(Boolean).map((item, idx) => {
+          {testimonialGridItems.filter(Boolean).map((item, idx) => {
             const testimonial = item!;
             return (
               <article
