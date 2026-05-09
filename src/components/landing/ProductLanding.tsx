@@ -25,7 +25,7 @@ type Props = {
 const landingShellClass =
   "mx-auto w-full max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)] md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl";
 
-/** Full-bleed strip (translate-centered `100vw`). Wrapper uses `dir="ltr"` so RTL does not break centering vs `overflow-x-clip`. */
+/** Full-bleed strip (translate-centered `100vw`). Wrapper uses `dir="ltr"` so centering stays stable vs `overflow-x-clip`. */
 const fullBleedStripClass =
   "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2";
 
@@ -129,7 +129,7 @@ function FeatureIcon({ feature, color }: { feature: string; color: string }) {
 }
 
 export function ProductLanding({ product }: Props) {
-  const { dir, locale, setLocale } = useLanguage();
+  const { locale, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -239,7 +239,7 @@ export function ProductLanding({ product }: Props) {
   return (
     <div
       className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(7.5rem,calc(6rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(8rem,calc(6.5rem+env(safe-area-inset-bottom)))]"
-      dir={dir}
+      dir="ltr"
       style={
         {
           "--accent": copy.brandColor,

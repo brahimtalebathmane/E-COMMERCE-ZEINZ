@@ -42,7 +42,7 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
 }
 
 export function OrderFormModal({ product, open, onClose }: Props) {
-  const { dir, locale, t } = useLanguage();
+  const { locale, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
 
@@ -189,7 +189,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         className="relative max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl sm:p-6"
-        dir={dir}
+        dir="ltr"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
