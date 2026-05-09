@@ -106,6 +106,8 @@ type Props = {
   mediaUrl?: string;
   mediaName?: string;
   priority?: boolean;
+  /** Full viewport width on the landing page; uses cover + 100vw sizing for photos */
+  edgeToEdge?: boolean;
 };
 
 function muxPlayerOpts(priority: boolean | undefined) {
@@ -124,7 +126,14 @@ function muxPlayerOpts(priority: boolean | undefined) {
 const muxPlayerLayoutClass =
   "absolute inset-0 block h-full w-full max-h-full max-w-full";
 
-export function LandingMedia({ product, mediaType, mediaUrl, mediaName, priority }: Props) {
+export function LandingMedia({
+  product,
+  mediaType,
+  mediaUrl,
+  mediaName,
+  priority,
+  edgeToEdge,
+}: Props) {
   const { locale } = useLanguage();
   const displayName = useMemo(
     () => {
@@ -257,8 +266,8 @@ export function LandingMedia({ product, mediaType, mediaUrl, mediaName, priority
           src={url}
           alt={displayName}
           fill
-          className="object-contain sm:object-cover"
-          sizes="(max-width: 640px) 100vw, min(90vw, 1280px)"
+          className={edgeToEdge ? "object-cover" : "object-contain sm:object-cover"}
+          sizes={edgeToEdge ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)"}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
           quality={85}

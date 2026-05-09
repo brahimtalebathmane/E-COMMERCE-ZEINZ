@@ -25,6 +25,10 @@ type Props = {
 const landingShellClass =
   "mx-auto w-full max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)] md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl";
 
+/** Escape the centered shell so media spans the full viewport width (matches order-form breakout pattern). */
+const viewportMediaBleedClass =
+  "relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw]";
+
 const primaryCtaClass =
   "store-btn-primary rounded-2xl px-5 py-3.5 text-base font-semibold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-4 sm:text-lg sm:font-extrabold";
 const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
@@ -255,8 +259,8 @@ export function ProductLanding({ product }: Props) {
           {copy.heroSubtitle}
         </h1>
 
-        <div className="mx-auto mt-4 overflow-hidden rounded-xl bg-[var(--card)] shadow-[0_10px_24px_rgba(15,26,15,0.12)] sm:mt-5 sm:rounded-2xl">
-          <LandingMedia product={product} priority />
+        <div className={`${viewportMediaBleedClass} mt-4 sm:mt-5`}>
+          <LandingMedia product={product} priority edgeToEdge />
         </div>
 
         <h2 className={`mt-4 sm:mt-5 ${productNameClass}`}>{copy.name}</h2>
@@ -314,35 +318,14 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words`}>
-          {locale === "fr" ? "Pourquoi nos clients nous font confiance" : "لماذا يثق بنا العملاء"}
-        </h3>
-        <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:mt-6 sm:gap-4">
-          {statItems.map((item, idx) => {
-            const raw = item ?? "";
-            const numberPart = raw.split(" ")[0] ?? raw;
-            return (
-              <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-1.5 py-3 sm:px-3 sm:py-4`}>
-                <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-[var(--foreground)] sm:text-2xl md:text-3xl">
-                  {item ? <AnimatedCounter value={numberPart} /> : <span aria-hidden>&nbsp;</span>}
-                </p>
-                <p className="mt-1.5 text-[0.65rem] font-medium leading-snug text-[var(--muted)] sm:text-xs">
-                  {item ? statLabel(raw) : ""}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
-        <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--accent-muted)] bg-[var(--background)] p-2 shadow-[0_16px_28px_rgba(12,28,12,0.08)]">
+        <div className={`${viewportMediaBleedClass} mt-4`}>
           <LandingMedia
             mediaType={product.secondary_media_type}
             mediaUrl={product.secondary_media_url || product.media_url}
             mediaName={copy.name}
+            edgeToEdge
           />
         </div>
         {descLines.length > 3 ? (
@@ -350,15 +333,6 @@ export function ProductLanding({ product }: Props) {
             {descLines.slice(3, 6).map((line, idx) => (
               <p key={`${line}-${idx}`}>• {line}</p>
             ))}
-          </div>
-        ) : null}
-        {product.tertiary_media_url ? (
-          <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--accent-muted)] bg-[var(--background)] p-2 shadow-[0_16px_28px_rgba(12,28,12,0.08)]">
-            <LandingMedia
-              mediaType={product.tertiary_media_type}
-              mediaUrl={product.tertiary_media_url}
-              mediaName={copy.name}
-            />
           </div>
         ) : null}
       </section>
@@ -396,6 +370,41 @@ export function ProductLanding({ product }: Props) {
           })}
         </div>
       </section>
+
+      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h3 className={`${sectionTitleClass} break-words`}>
+          {locale === "fr" ? "Pourquoi nos clients nous font confiance" : "لماذا يثق بنا العملاء"}
+        </h3>
+        <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:mt-6 sm:gap-4">
+          {statItems.map((item, idx) => {
+            const raw = item ?? "";
+            const numberPart = raw.split(" ")[0] ?? raw;
+            return (
+              <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-1.5 py-3 sm:px-3 sm:py-4`}>
+                <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-[var(--foreground)] sm:text-2xl md:text-3xl">
+                  {item ? <AnimatedCounter value={numberPart} /> : <span aria-hidden>&nbsp;</span>}
+                </p>
+                <p className="mt-1.5 text-[0.65rem] font-medium leading-snug text-[var(--muted)] sm:text-xs">
+                  {item ? statLabel(raw) : ""}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {product.tertiary_media_url ? (
+        <section className={`bg-[var(--background)] ${sectionPadClass}`}>
+          <div className={`${viewportMediaBleedClass}`}>
+            <LandingMedia
+              mediaType={product.tertiary_media_type}
+              mediaUrl={product.tertiary_media_url}
+              mediaName={copy.name}
+              edgeToEdge
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h3 className={`${sectionTitleClass} break-words`}>{copy.faqTitle}</h3>
