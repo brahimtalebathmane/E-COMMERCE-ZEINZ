@@ -187,6 +187,29 @@ export function ProductLanding({ product }: Props) {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const heroOfferLine = useMemo(() => {
+    const parts: string[] = [];
+    if (price.discounted != null) {
+      parts.push(`${formatPrice(price.original)} → ${formatPrice(price.discounted)}`);
+    } else {
+      parts.push(formatPrice(price.original));
+    }
+    const badge = (copy.offerBadgeText || copy.heroBadge).trim();
+    if (badge) parts.push(badge);
+    const disc = (copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")).trim();
+    if (disc) parts.push(disc);
+    if (copy.offerLimitedText?.trim()) parts.push(copy.offerLimitedText.trim());
+    return parts.join(" · ");
+  }, [
+    copy.heroBadge,
+    copy.offerBadgeText,
+    copy.offerDiscountText,
+    copy.offerLimitedText,
+    discountPercent,
+    price.discounted,
+    price.original,
+  ]);
+
   return (
     <div
       className="mx-auto max-w-[390px] overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)] md:max-w-[460px]"
@@ -213,7 +236,7 @@ export function ProductLanding({ product }: Props) {
         onCtaClick={openCheckout}
       />
 
-      {/* Hero: title → media → name → description → offer → testimonial → CTA */}
+      {/* Hero: title → media → name → description → testimonial → offer line → CTA */}
       <section className="bg-[var(--background)] px-4 pb-6 pt-5 text-center" aria-labelledby="hero-title">
         <h1
           id="hero-title"
@@ -232,20 +255,6 @@ export function ProductLanding({ product }: Props) {
           <p className="mx-auto mt-2 max-w-[330px] break-words text-[1.03rem] leading-[1.65] text-[var(--muted)]">{heroSummary}</p>
         ) : null}
 
-        <div className="mx-auto mt-4 max-w-sm rounded-[12px] bg-[var(--accent)] px-3 py-2 text-[var(--accent-foreground)] shadow-[0_8px_18px_rgba(0,107,12,0.28)]">
-          <div className="flex items-center justify-center gap-3">
-            {price.discounted != null ? (
-              <span className="text-[1.15rem] font-extrabold leading-none text-[var(--accent-muted)] line-through">{formatPrice(price.original)}</span>
-            ) : null}
-            <span className="text-[1.95rem] font-black leading-none">
-              {price.discounted != null ? formatPrice(price.discounted) : formatPrice(price.original)}
-            </span>
-          </div>
-          <p className="mt-1 text-sm font-extrabold">{copy.offerBadgeText || copy.heroBadge}</p>
-          <p className="text-[0.83rem] font-semibold">{copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")}</p>
-          {copy.offerLimitedText ? <p className="text-[0.82rem] font-bold">{copy.offerLimitedText}</p> : null}
-        </div>
-
         {heroTestimonial ? (
           <div className="mx-auto mt-4 max-w-sm rounded-[20px] border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)]">
             <div className="flex items-center gap-3">
@@ -263,7 +272,14 @@ export function ProductLanding({ product }: Props) {
           </div>
         ) : null}
 
-        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-4 w-full`}>
+        <p
+          className="mx-auto mt-4 max-w-[min(100%,20rem)] text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:text-xs"
+          aria-label={locale === "fr" ? "Offre" : "العرض"}
+        >
+          {heroOfferLine}
+        </p>
+
+        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-3 w-full`}>
           {ctaText}
         </button>
         <p className="mt-2 text-[0.9rem] font-semibold leading-[1.55] text-[var(--muted)]">{codReassurance}</p>
