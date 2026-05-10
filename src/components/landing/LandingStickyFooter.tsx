@@ -57,6 +57,8 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
   const currentPrice = discounted != null ? discounted : price;
   const hasDiscount = discounted != null && discounted < price;
   const savingsAmount = hasDiscount ? price - discounted : 0;
+  const discountPct =
+    hasDiscount && price > 0 ? Math.round((savingsAmount / price) * 100) : 0;
 
   const savingsLine =
     locale === "fr"
@@ -86,126 +88,135 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
   const ctaFg = product.sticky_footer_cta_text_color.trim() || DEFAULT_CTA_FG;
 
   const units = timerUnitCaptions(locale);
-  const priceLabel = locale === "fr" ? "Prix" : "السعر";
+  const priceLabel = locale === "fr" ? "Prix promo" : "السعر بعد الخصم";
+  const originalLabel = locale === "fr" ? "Au lieu de" : "بدلاً من";
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 pb-[max(env(safe-area-inset-bottom),12px)] pt-0 shadow-[0_-12px_48px_rgba(0,0,0,0.28)] backdrop-blur-[2px] sm:pb-[max(env(safe-area-inset-bottom),14px)]"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 pb-[max(env(safe-area-inset-bottom),10px)] pt-0 shadow-[0_-18px_56px_rgba(0,0,0,0.32)] backdrop-blur-md"
       style={{
         backgroundColor: barBg,
         backgroundImage:
-          "linear-gradient(to top, rgba(0,0,0,0.14) 0%, rgba(0,0,0,0) 42%), linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 100%)",
+          "linear-gradient(to top, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0) 55%), radial-gradient(120% 220% at 50% 100%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 60%)",
       }}
     >
-      {/* Top highlight line */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden />
+      {/* Top accent gradient line */}
+      <div
+        className="h-[2px] w-full"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 18%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.35) 82%, transparent 100%)",
+        }}
+        aria-hidden
+      />
 
-      <div className="mx-auto max-w-4xl px-4 pt-3.5 sm:px-6 sm:pt-4">
+      {/* Countdown row (full-width centered pill, only when enabled) */}
+      {showTimer ? (
         <div
-          className={`grid items-center gap-y-3 ${showTimer ? "grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 sm:gap-x-5" : "grid-cols-[minmax(0,1fr)_auto] gap-x-3 sm:gap-x-6"}`}
+          className="mx-auto flex w-full max-w-4xl items-center justify-center px-4 pt-2.5 sm:px-6 sm:pt-3"
           dir="ltr"
         >
-          {/* Pricing */}
+          <div
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1.5 ring-1 ring-white/12 backdrop-blur-sm sm:gap-3 sm:px-4 sm:py-1.5"
+            role="timer"
+            aria-live="polite"
+            aria-label={timerLabel}
+          >
+            <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-full w-full rounded-full bg-red-500" />
+            </span>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/85 sm:text-[11px]">
+              {timerLabel}
+            </p>
+            <span className="h-3 w-px bg-white/20 sm:h-3.5" aria-hidden />
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <TimerCell value={pad2(h)} unit={units.h} bg={timerBoxBg} fg={timerDigit} />
+              <TimerSep />
+              <TimerCell value={pad2(m)} unit={units.m} bg={timerBoxBg} fg={timerDigit} />
+              <TimerSep />
+              <TimerCell value={pad2(s)} unit={units.s} bg={timerBoxBg} fg={timerDigit} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Main row: pricing + CTA */}
+      <div className="mx-auto max-w-4xl px-4 pt-3 sm:px-6 sm:pt-3.5">
+        <div
+          className="grid items-center gap-x-3 gap-y-2 sm:gap-x-6"
+          style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}
+          dir="ltr"
+        >
+          {/* Pricing block */}
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/65 sm:text-[11px]">
-              {priceLabel}
-            </p>
-            <p
-              className="mt-0.5 text-xl font-bold tabular-nums tracking-tight text-white sm:text-2xl md:text-[1.65rem]"
-              dir="ltr"
-            >
-              {formatPrice(currentPrice)}
-            </p>
-            {hasDiscount ? (
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                {badgeText ? (
-                  <span
-                    className="inline-flex max-w-full items-center truncate rounded-full px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-black/10 sm:text-[11px]"
-                    style={{ backgroundColor: badgeBg }}
-                  >
-                    {badgeText}
-                  </span>
-                ) : null}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/65 sm:text-[11px]">
+                {priceLabel}
+              </p>
+              {hasDiscount && discountPct > 0 ? (
                 <span
-                  className="text-[11px] font-medium tabular-nums text-white/75 line-through decoration-white/50 sm:text-xs"
-                  dir="ltr"
+                  className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white shadow-sm ring-1 ring-black/15 sm:text-[11px]"
+                  style={{ backgroundColor: badgeBg }}
                 >
-                  {formatPrice(price)}
+                  -{discountPct}%
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-1 flex items-baseline gap-2 sm:gap-3">
+              <span
+                className="text-[1.7rem] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)] sm:text-[2.1rem] md:text-[2.25rem]"
+                dir="ltr"
+              >
+                {formatPrice(currentPrice)}
+              </span>
+              {hasDiscount ? (
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-white/55 sm:text-[10px]">
+                    {originalLabel}
+                  </span>
+                  <span
+                    className="text-[13px] font-semibold tabular-nums text-white/70 line-through decoration-white/55 decoration-[1.5px] sm:text-sm"
+                    dir="ltr"
+                  >
+                    {formatPrice(price)}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+
+            {hasDiscount && badgeText ? (
+              <div className="mt-1.5">
+                <span
+                  className="inline-flex max-w-full items-center truncate rounded-full px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-black/15 sm:text-[11px]"
+                  style={{ backgroundColor: badgeBg }}
+                >
+                  {badgeText}
                 </span>
               </div>
             ) : null}
           </div>
-
-          {/* Countdown */}
-          {showTimer ? (
-            <div
-              className="flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl bg-black/18 px-2 py-2 ring-1 ring-white/12 sm:gap-2 sm:px-3.5 sm:py-2.5"
-              role="timer"
-              aria-live="polite"
-              aria-label={timerLabel}
-            >
-              <p className="max-w-[9.5rem] text-center text-[9px] font-medium leading-tight text-white/85 sm:max-w-none sm:text-[10px]">
-                {timerLabel}
-              </p>
-              <div className="flex items-center justify-center gap-0.5 sm:gap-1">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span
-                    className="flex min-w-[2rem] items-center justify-center rounded-lg px-1.5 py-1 text-sm font-bold tabular-nums shadow-inner sm:min-w-[2.35rem] sm:px-2 sm:py-1.5 sm:text-base md:text-lg"
-                    style={{ backgroundColor: timerBoxBg, color: timerDigit }}
-                  >
-                    {pad2(h)}
-                  </span>
-                  <span className="text-[8px] font-semibold uppercase tracking-wide text-white/70 sm:text-[9px]">
-                    {units.h}
-                  </span>
-                </div>
-                <span className="self-start pt-1 text-sm font-bold leading-none text-white/50 sm:pt-1.5 sm:text-base" aria-hidden>
-                  :
-                </span>
-                <div className="flex flex-col items-center gap-0.5">
-                  <span
-                    className="flex min-w-[2rem] items-center justify-center rounded-lg px-1.5 py-1 text-sm font-bold tabular-nums shadow-inner sm:min-w-[2.35rem] sm:px-2 sm:py-1.5 sm:text-base md:text-lg"
-                    style={{ backgroundColor: timerBoxBg, color: timerDigit }}
-                  >
-                    {pad2(m)}
-                  </span>
-                  <span className="text-[8px] font-semibold uppercase tracking-wide text-white/70 sm:text-[9px]">
-                    {units.m}
-                  </span>
-                </div>
-                <span className="self-start pt-1 text-sm font-bold leading-none text-white/50 sm:pt-1.5 sm:text-base" aria-hidden>
-                  :
-                </span>
-                <div className="flex flex-col items-center gap-0.5">
-                  <span
-                    className="flex min-w-[2rem] items-center justify-center rounded-lg px-1.5 py-1 text-sm font-bold tabular-nums shadow-inner sm:min-w-[2.35rem] sm:px-2 sm:py-1.5 sm:text-base md:text-lg"
-                    style={{ backgroundColor: timerBoxBg, color: timerDigit }}
-                  >
-                    {pad2(s)}
-                  </span>
-                  <span className="text-[8px] font-semibold uppercase tracking-wide text-white/70 sm:text-[9px]">
-                    {units.s}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           {/* CTA */}
           <div className="flex shrink-0 justify-end">
             <button
               type="button"
               onClick={onCheckout}
-              className="group inline-flex min-h-[48px] w-full min-w-0 max-w-[11rem] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold leading-snug shadow-[0_4px_14px_rgba(0,0,0,0.22)] ring-1 ring-black/10 transition hover:brightness-110 active:scale-[0.98] active:brightness-95 sm:min-h-[52px] sm:max-w-[14rem] sm:gap-2.5 sm:rounded-2xl sm:px-5 sm:py-3 sm:text-sm md:text-base"
+              className="group relative inline-flex min-h-[54px] w-full min-w-0 max-w-[12rem] items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-xs font-extrabold leading-snug shadow-[0_10px_24px_rgba(0,0,0,0.3)] ring-1 ring-black/15 transition-transform duration-200 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.97] active:brightness-95 sm:min-h-[60px] sm:max-w-[15rem] sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-[15px] md:text-base"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
             >
-              <span className="line-clamp-2 flex-1 text-center">{ctaLabel}</span>
+              {/* Shine sweep on hover */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/45 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
+              />
               <svg
                 viewBox="0 0 24 24"
-                className="h-5 w-5 shrink-0 opacity-90 transition group-hover:translate-x-0.5 sm:h-5 sm:w-5"
+                className="relative h-5 w-5 shrink-0 opacity-90 transition-transform duration-200 group-hover:translate-x-0.5"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden
@@ -214,10 +225,45 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
                 <circle cx="20" cy="21" r="1" />
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
+              <span className="relative line-clamp-2 flex-1 text-center">{ctaLabel}</span>
             </button>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function TimerCell({
+  value,
+  unit,
+  bg,
+  fg,
+}: {
+  value: string;
+  unit: string;
+  bg: string;
+  fg: string;
+}) {
+  return (
+    <div className="flex items-baseline gap-1">
+      <span
+        className="inline-flex min-w-[1.85rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[13px] font-extrabold tabular-nums shadow-inner sm:min-w-[2.1rem] sm:px-1.5 sm:py-1 sm:text-sm"
+        style={{ backgroundColor: bg, color: fg }}
+      >
+        {value}
+      </span>
+      <span className="text-[9px] font-bold uppercase tracking-wide text-white/70 sm:text-[10px]">
+        {unit}
+      </span>
+    </div>
+  );
+}
+
+function TimerSep() {
+  return (
+    <span className="text-xs font-bold leading-none text-white/40 sm:text-sm" aria-hidden>
+      :
+    </span>
   );
 }
