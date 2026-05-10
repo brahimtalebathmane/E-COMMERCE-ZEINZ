@@ -14,9 +14,19 @@ type Props = {
   logoSrc: string;
   /** Optional line under the promo strip (from admin header CTA fields). */
   headerCtaText?: string;
+  /** 0 = full wrap; 1–12 = max visible lines with ellipsis. */
+  headerBarMaxLines?: number;
+  /** Optional font size in px; omit/null keeps responsive theme sizing. */
+  headerBarFontSizePx?: number | null;
 };
 
-export function LandingHeader({ headerBarText, logoSrc, headerCtaText }: Props) {
+export function LandingHeader({
+  headerBarText,
+  logoSrc,
+  headerCtaText,
+  headerBarMaxLines = 0,
+  headerBarFontSizePx = null,
+}: Props) {
   const hasPromoStrip = Boolean(headerBarText.trim());
   const logo = logoSrc.trim() || DEFAULT_HEADER_LOGO_URL;
 
@@ -46,7 +56,26 @@ export function LandingHeader({ headerBarText, logoSrc, headerCtaText }: Props) 
         </div>
 
         {hasPromoStrip ? (
-          <p className="mt-3 border-t border-[var(--accent-muted)]/60 pt-3 text-center text-xs font-semibold leading-snug text-[var(--foreground)] sm:text-sm">
+          <p
+            className={`mt-3 border-t border-[var(--accent-muted)]/60 pt-3 text-center font-semibold leading-snug text-[var(--foreground)] ${
+              headerBarFontSizePx == null ? "text-xs sm:text-sm" : ""
+            }`}
+            style={{
+              ...(headerBarFontSizePx != null
+                ? { fontSize: `${headerBarFontSizePx}px` }
+                : {}),
+              ...(headerBarMaxLines > 0
+                ? {
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: headerBarMaxLines,
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-line",
+                  }
+                : { whiteSpace: "pre-line" }),
+            }}
+          >
             {headerBarText.trim()}
           </p>
         ) : null}

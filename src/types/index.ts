@@ -35,6 +35,10 @@ export type ProductRow = {
   header_announcement_text_fr: string;
   header_cta_text_ar: string;
   header_cta_text_fr: string;
+  /** 0 = unlimited wrapped lines; 1–12 = CSS line-clamp. */
+  header_bar_max_lines: number;
+  /** Optional promo strip font size (px); null uses responsive defaults on the landing header. */
+  header_bar_font_size_px: number | null;
   description_ar: string;
   description_fr: string;
   cta_text_ar: string;
@@ -110,6 +114,8 @@ export type LocalizedProductCopy = {
   name: string;
   heroSubtitle: string;
   headerBarText: string;
+  headerBarMaxLines: number;
+  headerBarFontSizePx: number | null;
   headerCtaText: string;
   ctaText: string;
   featuresTitle: string;

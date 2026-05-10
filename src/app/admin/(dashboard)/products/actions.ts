@@ -20,6 +20,8 @@ export type ProductPayload = {
   logo_url: string;
   header_bar_text_ar: string;
   header_bar_text_fr: string;
+  header_bar_max_lines: number;
+  header_bar_font_size_px: number | null;
   header_cta_text_ar: string;
   header_cta_text_fr: string;
   description_ar: string;
@@ -83,6 +85,19 @@ export type ProductPayload = {
 
 function trimText(v: string): string {
   return v.trim();
+}
+
+function normalizeHeaderBarMaxLines(raw: number): number {
+  if (!Number.isFinite(raw)) return 0;
+  const n = Math.round(raw);
+  return Math.min(12, Math.max(0, n));
+}
+
+function normalizeHeaderBarFontSizePx(raw: number | null): number | null {
+  if (raw == null || !Number.isFinite(raw)) return null;
+  const n = Math.round(raw);
+  if (n <= 0) return null;
+  return Math.min(24, Math.max(10, n));
 }
 
 function trimList(items: string[]): string[] {
@@ -187,6 +202,9 @@ export async function createProductAction(payload: ProductPayload) {
 
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
+  const headerBarMaxLines = normalizeHeaderBarMaxLines(payload.header_bar_max_lines);
+  const headerBarFontSizePx = normalizeHeaderBarFontSizePx(payload.header_bar_font_size_px);
+
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
     brand_color: normalizeHexColor(payload.brand_color, BRAND_COLOR),
@@ -197,6 +215,8 @@ export async function createProductAction(payload: ProductPayload) {
     hero_subtitle_fr: payload.hero_subtitle_fr,
     header_bar_text_ar: payload.header_bar_text_ar.trim(),
     header_bar_text_fr: payload.header_bar_text_fr.trim(),
+    header_bar_max_lines: headerBarMaxLines,
+    header_bar_font_size_px: headerBarFontSizePx,
     header_offer_text_ar: "",
     header_offer_text_fr: "",
     header_discount_text_ar: "",
@@ -288,6 +308,9 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     throw new Error("Product not found");
   }
 
+  const headerBarMaxLines = normalizeHeaderBarMaxLines(payload.header_bar_max_lines);
+  const headerBarFontSizePx = normalizeHeaderBarFontSizePx(payload.header_bar_font_size_px);
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -300,6 +323,8 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       hero_subtitle_fr: payload.hero_subtitle_fr,
       header_bar_text_ar: payload.header_bar_text_ar.trim(),
       header_bar_text_fr: payload.header_bar_text_fr.trim(),
+      header_bar_max_lines: headerBarMaxLines,
+      header_bar_font_size_px: headerBarFontSizePx,
       header_offer_text_ar: "",
       header_offer_text_fr: "",
       header_discount_text_ar: "",

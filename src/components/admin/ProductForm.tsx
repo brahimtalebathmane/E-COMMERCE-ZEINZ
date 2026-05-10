@@ -235,6 +235,13 @@ export function ProductForm({ mode, initial }: Props) {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [headerBarAr, setHeaderBarAr] = useState(() => initialHeaderBarAr(initial));
   const [headerBarFr, setHeaderBarFr] = useState(() => initialHeaderBarFr(initial));
+  const [headerBarMaxLines, setHeaderBarMaxLines] = useState(
+    () => initial?.header_bar_max_lines ?? 0,
+  );
+  const [headerBarFontSizePx, setHeaderBarFontSizePx] = useState(() => {
+    const v = initial?.header_bar_font_size_px;
+    return v != null && Number.isFinite(v) ? String(v) : "";
+  });
   const [headerCtaAr, setHeaderCtaAr] = useState(initial?.header_cta_text_ar ?? "");
   const [headerCtaFr, setHeaderCtaFr] = useState(initial?.header_cta_text_fr ?? "");
   const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
@@ -328,6 +335,17 @@ export function ProductForm({ mode, initial }: Props) {
       hero_subtitle_fr: heroSubtitleFr,
       header_bar_text_ar: headerBarAr.trim(),
       header_bar_text_fr: headerBarFr.trim(),
+      header_bar_max_lines: Math.min(
+        12,
+        Math.max(0, Math.round(Number(headerBarMaxLines)) || 0),
+      ),
+      header_bar_font_size_px: (() => {
+        const t = headerBarFontSizePx.trim();
+        if (!t) return null;
+        const n = Number.parseFloat(t);
+        if (!Number.isFinite(n)) return null;
+        return Math.min(24, Math.max(10, Math.round(n)));
+      })(),
       header_cta_text_ar: headerCtaAr.trim(),
       header_cta_text_fr: headerCtaFr.trim(),
       description_ar: descriptionAr.trim(),
@@ -611,7 +629,8 @@ export function ProductForm({ mode, initial }: Props) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarArabic}</label>
-              <input
+              <textarea
+                rows={3}
                 className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
                 value={headerBarAr}
                 onChange={(e) => setHeaderBarAr(e.target.value)}
@@ -619,12 +638,44 @@ export function ProductForm({ mode, initial }: Props) {
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarFrench}</label>
-              <input
+              <textarea
+                rows={3}
                 className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
                 value={headerBarFr}
                 onChange={(e) => setHeaderBarFr(e.target.value)}
                 dir="ltr"
               />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarMaxLinesLabel}</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerBarMaxLines}
+                onChange={(e) => setHeaderBarMaxLines(Number(e.target.value))}
+              >
+                <option value={0}>{a.productForm.headerBarMaxLinesUnlimited}</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} {a.productForm.headerBarLinesMaxSuffix}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">{a.productForm.headerBarMaxLinesHint}</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarFontSizeLabel}</label>
+              <input
+                type="number"
+                min={10}
+                max={24}
+                inputMode="numeric"
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={headerBarFontSizePx}
+                onChange={(e) => setHeaderBarFontSizePx(e.target.value)}
+                placeholder="12"
+                dir="ltr"
+              />
+              <p className="mt-1 text-[11px] text-[var(--muted)]">{a.productForm.headerBarFontSizeHint}</p>
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">نداء الرأس (سطر إضافي) — عربي</label>

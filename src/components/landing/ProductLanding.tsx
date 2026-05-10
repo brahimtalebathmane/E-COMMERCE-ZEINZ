@@ -228,6 +228,8 @@ export function ProductLanding({ product }: Props) {
         headerBarText={copy.headerBarText}
         logoSrc={copy.logoUrl}
         headerCtaText={copy.headerCtaText}
+        headerBarMaxLines={copy.headerBarMaxLines}
+        headerBarFontSizePx={copy.headerBarFontSizePx}
       />
 
       {/* Hero: title → media → name → description → testimonial → CTA → reassurance */}

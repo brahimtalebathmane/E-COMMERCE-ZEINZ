@@ -29,6 +29,20 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     header_announcement_text_fr: (row.header_announcement_text_fr as string) ?? "",
     header_cta_text_ar: (row.header_cta_text_ar as string) ?? "",
     header_cta_text_fr: (row.header_cta_text_fr as string) ?? "",
+    header_bar_max_lines: (() => {
+      const v = row.header_bar_max_lines;
+      if (v === null || v === undefined) return 0;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return 0;
+      return Math.min(12, Math.max(0, Math.round(n)));
+    })(),
+    header_bar_font_size_px: (() => {
+      const v = row.header_bar_font_size_px;
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return Math.min(24, Math.max(10, Math.round(n)));
+    })(),
     description_ar: (row.description_ar as string) ?? "",
     description_fr: (row.description_fr as string) ?? "",
     cta_text_ar: (row.cta_text_ar as string) ?? "",
