@@ -46,6 +46,36 @@ function parseStickyEndsAtLocal(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+function initialHeaderBarAr(p: ProductRow | undefined): string {
+  if (!p) return "";
+  const direct = p.header_bar_text_ar?.trim();
+  if (direct) return direct;
+  return [
+    p.header_offer_text_ar,
+    p.header_discount_text_ar,
+    p.header_promo_text_ar,
+    p.header_announcement_text_ar,
+  ]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function initialHeaderBarFr(p: ProductRow | undefined): string {
+  if (!p) return "";
+  const direct = p.header_bar_text_fr?.trim();
+  if (direct) return direct;
+  return [
+    p.header_offer_text_fr,
+    p.header_discount_text_fr,
+    p.header_promo_text_fr,
+    p.header_announcement_text_fr,
+  ]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
 type FeatureRow = { ar: string; fr: string };
 
 type TestimonialDraft = {
@@ -203,18 +233,8 @@ export function ProductForm({ mode, initial }: Props) {
   const [brandColor, setBrandColor] = useState(initial?.brand_color ?? BRAND_COLOR);
   const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [headerOfferAr, setHeaderOfferAr] = useState(initial?.header_offer_text_ar ?? "");
-  const [headerOfferFr, setHeaderOfferFr] = useState(initial?.header_offer_text_fr ?? "");
-  const [headerDiscountAr, setHeaderDiscountAr] = useState(initial?.header_discount_text_ar ?? "");
-  const [headerDiscountFr, setHeaderDiscountFr] = useState(initial?.header_discount_text_fr ?? "");
-  const [headerPromoAr, setHeaderPromoAr] = useState(initial?.header_promo_text_ar ?? "");
-  const [headerPromoFr, setHeaderPromoFr] = useState(initial?.header_promo_text_fr ?? "");
-  const [headerAnnouncementAr, setHeaderAnnouncementAr] = useState(
-    initial?.header_announcement_text_ar ?? "",
-  );
-  const [headerAnnouncementFr, setHeaderAnnouncementFr] = useState(
-    initial?.header_announcement_text_fr ?? "",
-  );
+  const [headerBarAr, setHeaderBarAr] = useState(() => initialHeaderBarAr(initial));
+  const [headerBarFr, setHeaderBarFr] = useState(() => initialHeaderBarFr(initial));
   const [headerCtaAr, setHeaderCtaAr] = useState(initial?.header_cta_text_ar ?? "");
   const [headerCtaFr, setHeaderCtaFr] = useState(initial?.header_cta_text_fr ?? "");
   const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
@@ -306,14 +326,8 @@ export function ProductForm({ mode, initial }: Props) {
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
-      header_offer_text_ar: headerOfferAr.trim(),
-      header_offer_text_fr: headerOfferFr.trim(),
-      header_discount_text_ar: headerDiscountAr.trim(),
-      header_discount_text_fr: headerDiscountFr.trim(),
-      header_promo_text_ar: headerPromoAr.trim(),
-      header_promo_text_fr: headerPromoFr.trim(),
-      header_announcement_text_ar: headerAnnouncementAr.trim(),
-      header_announcement_text_fr: headerAnnouncementFr.trim(),
+      header_bar_text_ar: headerBarAr.trim(),
+      header_bar_text_fr: headerBarFr.trim(),
       header_cta_text_ar: headerCtaAr.trim(),
       header_cta_text_fr: headerCtaFr.trim(),
       description_ar: descriptionAr.trim(),
@@ -596,70 +610,19 @@ export function ProductForm({ mode, initial }: Props) {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-[var(--muted)]">عرض / خبر — عربي</label>
+              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarArabic}</label>
               <input
                 className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerOfferAr}
-                onChange={(e) => setHeaderOfferAr(e.target.value)}
+                value={headerBarAr}
+                onChange={(e) => setHeaderBarAr(e.target.value)}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-[var(--muted)]">Offer — FR</label>
+              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarFrench}</label>
               <input
                 className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerOfferFr}
-                onChange={(e) => setHeaderOfferFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">الخصم في الرأس — عربي</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerDiscountAr}
-                onChange={(e) => setHeaderDiscountAr(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">Discount header — FR</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerDiscountFr}
-                onChange={(e) => setHeaderDiscountFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">ترويج — عربي</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerPromoAr}
-                onChange={(e) => setHeaderPromoAr(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">Promo — FR</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerPromoFr}
-                onChange={(e) => setHeaderPromoFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">إعلان — عربي</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerAnnouncementAr}
-                onChange={(e) => setHeaderAnnouncementAr(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">Annonce — FR</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerAnnouncementFr}
-                onChange={(e) => setHeaderAnnouncementFr(e.target.value)}
+                value={headerBarFr}
+                onChange={(e) => setHeaderBarFr(e.target.value)}
                 dir="ltr"
               />
             </div>

@@ -8,27 +8,16 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 const DEFAULT_HEADER_LOGO_URL = "https://i.postimg.cc/3JgfjBz4/ughujgijk.png";
 
 type Props = {
-  offerText: string;
-  discountText: string;
-  promoText: string;
-  announcementText: string;
+  /** Single localized promo line for the thin strip under the logo row. */
+  headerBarText: string;
   /** Resolved landing header logo (HTTPS). */
   logoSrc: string;
   /** Optional line under the promo strip (from admin header CTA fields). */
   headerCtaText?: string;
 };
 
-export function LandingHeader({
-  offerText,
-  discountText,
-  promoText,
-  announcementText,
-  logoSrc,
-  headerCtaText,
-}: Props) {
-  const hasPromoStrip = Boolean(
-    offerText.trim() || discountText.trim() || promoText.trim() || announcementText.trim(),
-  );
+export function LandingHeader({ headerBarText, logoSrc, headerCtaText }: Props) {
+  const hasPromoStrip = Boolean(headerBarText.trim());
   const logo = logoSrc.trim() || DEFAULT_HEADER_LOGO_URL;
 
   return (
@@ -57,28 +46,8 @@ export function LandingHeader({
         </div>
 
         {hasPromoStrip ? (
-          <p className="mt-3 border-t border-[var(--accent-muted)]/60 pt-3 text-center text-[10px] leading-snug text-[var(--foreground)] sm:text-[11px]">
-            {offerText.trim() ? <span className="font-semibold">{offerText.trim()}</span> : null}
-            {discountText.trim() ? (
-              <>
-                {offerText.trim() ? <span className="text-[var(--muted)]"> · </span> : null}
-                <span className="font-bold text-[var(--accent)]">{discountText.trim()}</span>
-              </>
-            ) : null}
-            {promoText.trim() ? (
-              <>
-                {offerText.trim() || discountText.trim() ? <span className="text-[var(--muted)]"> · </span> : null}
-                <span className="font-semibold text-[var(--muted)]">{promoText.trim()}</span>
-              </>
-            ) : null}
-            {announcementText.trim() ? (
-              <>
-                {offerText.trim() || discountText.trim() || promoText.trim() ? (
-                  <span className="text-[var(--muted)]"> · </span>
-                ) : null}
-                <span className="font-bold text-[var(--accent)]">{announcementText.trim()}</span>
-              </>
-            ) : null}
+          <p className="mt-3 border-t border-[var(--accent-muted)]/60 pt-3 text-center text-xs font-semibold leading-snug text-[var(--foreground)] sm:text-sm">
+            {headerBarText.trim()}
           </p>
         ) : null}
 

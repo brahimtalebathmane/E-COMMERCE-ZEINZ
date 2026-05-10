@@ -22,6 +22,9 @@ export type ProductRow = {
   name_fr: string;
   hero_subtitle_ar: string;
   hero_subtitle_fr: string;
+  /** Primary landing header promo line; FR optional (falls back to AR). Legacy columns are fallback when empty. */
+  header_bar_text_ar: string;
+  header_bar_text_fr: string;
   header_offer_text_ar: string;
   header_offer_text_fr: string;
   header_discount_text_ar: string;
@@ -106,10 +109,7 @@ export type LocalizedProductCopy = {
   logoUrl: string;
   name: string;
   heroSubtitle: string;
-  headerOfferText: string;
-  headerDiscountText: string;
-  headerPromoText: string;
-  headerAnnouncementText: string;
+  headerBarText: string;
   headerCtaText: string;
   ctaText: string;
   featuresTitle: string;

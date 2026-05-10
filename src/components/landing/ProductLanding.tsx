@@ -217,10 +217,7 @@ export function ProductLanding({ product }: Props) {
       <MetaPixel pixelId={product.meta_pixel_id} />
 
       <LandingHeader
-        offerText={copy.headerOfferText}
-        discountText={copy.headerDiscountText}
-        promoText={copy.headerPromoText}
-        announcementText={copy.headerAnnouncementText}
+        headerBarText={copy.headerBarText}
         logoSrc={copy.logoUrl}
         headerCtaText={copy.headerCtaText}
       />

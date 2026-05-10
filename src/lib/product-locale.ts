@@ -69,6 +69,14 @@ function pickTestimonials(
   });
 }
 
+function legacyHeaderBarText(locale: Locale, p: ProductRow): string {
+  const o = pickStr(locale, p.header_offer_text_ar, p.header_offer_text_fr).trim();
+  const d = pickStr(locale, p.header_discount_text_ar, p.header_discount_text_fr).trim();
+  const pr = pickStr(locale, p.header_promo_text_ar, p.header_promo_text_fr).trim();
+  const an = pickStr(locale, p.header_announcement_text_ar, p.header_announcement_text_fr).trim();
+  return [o, d, pr, an].filter(Boolean).join(" · ");
+}
+
 function pickFaqs(locale: Locale, ar: FAQ[], fr: FAQ[]): FAQ[] {
   if (locale !== "fr") return ar;
   if (!fr.length) return ar;
@@ -91,14 +99,11 @@ export function getLocalizedProductCopy(
     logoUrl: p.logo_url?.trim() || SITE_LOGO_URL,
     name: pickStr(locale, p.name_ar, p.name_fr),
     heroSubtitle: pickStr(locale, p.hero_subtitle_ar, p.hero_subtitle_fr),
-    headerOfferText: pickStr(locale, p.header_offer_text_ar, p.header_offer_text_fr),
-    headerDiscountText: pickStr(locale, p.header_discount_text_ar, p.header_discount_text_fr),
-    headerPromoText: pickStr(locale, p.header_promo_text_ar, p.header_promo_text_fr),
-    headerAnnouncementText: pickStr(
-      locale,
-      p.header_announcement_text_ar,
-      p.header_announcement_text_fr,
-    ),
+    headerBarText: (() => {
+      const primary = pickStr(locale, p.header_bar_text_ar, p.header_bar_text_fr).trim();
+      if (primary.length > 0) return primary;
+      return legacyHeaderBarText(locale, p);
+    })(),
     headerCtaText: pickStr(locale, p.header_cta_text_ar, p.header_cta_text_fr),
     ctaText: pickStr(locale, p.cta_text_ar, p.cta_text_fr),
     featuresTitle: pickStr(locale, p.features_title_ar, p.features_title_fr),

@@ -17,6 +17,8 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     name_fr: (row.name_fr as string) ?? "",
     hero_subtitle_ar: (row.hero_subtitle_ar as string) ?? "",
     hero_subtitle_fr: (row.hero_subtitle_fr as string) ?? "",
+    header_bar_text_ar: (row.header_bar_text_ar as string) ?? "",
+    header_bar_text_fr: (row.header_bar_text_fr as string) ?? "",
     header_offer_text_ar: (row.header_offer_text_ar as string) ?? "",
     header_offer_text_fr: (row.header_offer_text_fr as string) ?? "",
     header_discount_text_ar: (row.header_discount_text_ar as string) ?? "",

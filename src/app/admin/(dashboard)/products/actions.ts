@@ -18,14 +18,8 @@ export type ProductPayload = {
   hero_subtitle_ar: string;
   hero_subtitle_fr: string;
   logo_url: string;
-  header_offer_text_ar: string;
-  header_offer_text_fr: string;
-  header_discount_text_ar: string;
-  header_discount_text_fr: string;
-  header_promo_text_ar: string;
-  header_promo_text_fr: string;
-  header_announcement_text_ar: string;
-  header_announcement_text_fr: string;
+  header_bar_text_ar: string;
+  header_bar_text_fr: string;
   header_cta_text_ar: string;
   header_cta_text_fr: string;
   description_ar: string;
@@ -201,14 +195,16 @@ export async function createProductAction(payload: ProductPayload) {
     name_fr: payload.name_fr.trim(),
     hero_subtitle_ar: payload.hero_subtitle_ar,
     hero_subtitle_fr: payload.hero_subtitle_fr,
-    header_offer_text_ar: payload.header_offer_text_ar,
-    header_offer_text_fr: payload.header_offer_text_fr,
-    header_discount_text_ar: payload.header_discount_text_ar,
-    header_discount_text_fr: payload.header_discount_text_fr,
-    header_promo_text_ar: payload.header_promo_text_ar,
-    header_promo_text_fr: payload.header_promo_text_fr,
-    header_announcement_text_ar: payload.header_announcement_text_ar,
-    header_announcement_text_fr: payload.header_announcement_text_fr,
+    header_bar_text_ar: payload.header_bar_text_ar.trim(),
+    header_bar_text_fr: payload.header_bar_text_fr.trim(),
+    header_offer_text_ar: "",
+    header_offer_text_fr: "",
+    header_discount_text_ar: "",
+    header_discount_text_fr: "",
+    header_promo_text_ar: "",
+    header_promo_text_fr: "",
+    header_announcement_text_ar: "",
+    header_announcement_text_fr: "",
     header_cta_text_ar: payload.header_cta_text_ar,
     header_cta_text_fr: payload.header_cta_text_fr,
     description_ar: payload.description_ar,
@@ -302,14 +298,16 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       name_fr: payload.name_fr.trim(),
       hero_subtitle_ar: payload.hero_subtitle_ar,
       hero_subtitle_fr: payload.hero_subtitle_fr,
-      header_offer_text_ar: payload.header_offer_text_ar,
-      header_offer_text_fr: payload.header_offer_text_fr,
-      header_discount_text_ar: payload.header_discount_text_ar,
-      header_discount_text_fr: payload.header_discount_text_fr,
-      header_promo_text_ar: payload.header_promo_text_ar,
-      header_promo_text_fr: payload.header_promo_text_fr,
-      header_announcement_text_ar: payload.header_announcement_text_ar,
-      header_announcement_text_fr: payload.header_announcement_text_fr,
+      header_bar_text_ar: payload.header_bar_text_ar.trim(),
+      header_bar_text_fr: payload.header_bar_text_fr.trim(),
+      header_offer_text_ar: "",
+      header_offer_text_fr: "",
+      header_discount_text_ar: "",
+      header_discount_text_fr: "",
+      header_promo_text_ar: "",
+      header_promo_text_fr: "",
+      header_announcement_text_ar: "",
+      header_announcement_text_fr: "",
       header_cta_text_ar: payload.header_cta_text_ar,
       header_cta_text_fr: payload.header_cta_text_fr,
       description_ar: payload.description_ar,
