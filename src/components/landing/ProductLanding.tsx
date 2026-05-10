@@ -140,8 +140,12 @@ export function ProductLanding({ product }: Props) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  const heroTestimonial = copy.testimonials[0] ?? null;
-  const testimonialGridItems = fixedSlots(copy.testimonials.slice(1), 4);
+  const testimonials = copy.testimonials;
+  /** Spotlight above CTA — same source row as admin order #1 */
+  const heroTestimonial = testimonials[0] ?? null;
+  /** Full reviews section: every admin testimonial once, same order (no wrap-around padding). */
+  const sectionTestimonials = testimonials;
+
   const featureItems = fixedSlots(copy.features, 4);
   const statItems = fixedSlots(stats, 3);
   const faqItems = fixedSlots(copy.faqs, 4);
@@ -330,11 +334,9 @@ export function ProductLanding({ product }: Props) {
           {copy.testimonialsBadge}
         </p>
         <div className="mt-5 space-y-3">
-          {testimonialGridItems.filter(Boolean).map((item, idx) => {
-            const testimonial = item!;
-            return (
+          {sectionTestimonials.map((testimonial, idx) => (
               <article
-                key={`${testimonial.name}-${idx}`}
+                key={`${idx}-${testimonial.name}-${testimonial.quote.slice(0, 48)}`}
                 className="rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-transform duration-200 hover:-translate-y-0.5"
               >
                 <div className="flex items-start gap-3">
@@ -353,8 +355,7 @@ export function ProductLanding({ product }: Props) {
                 </div>
                 <p className={`mt-3 break-words ${bodyTextClass}`}>{`"${testimonial.quote}"`}</p>
               </article>
-            );
-          })}
+            ))}
         </div>
       </section>
 
