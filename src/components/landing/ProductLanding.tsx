@@ -201,7 +201,7 @@ export function ProductLanding({ product }: Props) {
 
   return (
     <div
-      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(9.25rem,calc(7rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(10.5rem,calc(7.75rem+env(safe-area-inset-bottom)))]"
+      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
       dir="ltr"
       style={
         {
