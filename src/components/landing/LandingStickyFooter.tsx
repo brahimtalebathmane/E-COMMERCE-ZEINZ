@@ -80,29 +80,29 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.18)] sm:px-4 sm:pt-3"
+      className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl px-4 pb-[max(env(safe-area-inset-bottom),14px)] pt-3.5 shadow-[0_-14px_36px_rgba(0,0,0,0.22)] sm:px-6 sm:pb-[max(env(safe-area-inset-bottom),16px)] sm:pt-4"
       style={{ backgroundColor: barBg }}
     >
-      <div className="mx-auto flex max-w-4xl items-center gap-2 sm:gap-4" dir="ltr">
+      <div className="mx-auto flex max-w-4xl items-center gap-3 sm:gap-5" dir="ltr">
         {/* Pricing */}
         <div className="min-w-0 flex-1">
           <p
-            className="text-base font-bold tabular-nums leading-none text-white sm:text-lg"
+            className="text-lg font-bold tabular-nums leading-none text-white sm:text-xl md:text-2xl"
             dir="ltr"
           >
             {formatPrice(currentPrice)}
           </p>
           {hasDiscount ? (
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {badgeText ? (
                 <span
-                  className="inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-bold text-white sm:text-[11px]"
+                  className="inline-block max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-bold text-white sm:text-xs"
                   style={{ backgroundColor: badgeBg }}
                 >
                   {badgeText}
                 </span>
               ) : null}
-              <span className="text-[11px] font-medium tabular-nums text-white/85 line-through sm:text-xs" dir="ltr">
+              <span className="text-xs font-medium tabular-nums text-white/85 line-through sm:text-sm" dir="ltr">
                 {formatPrice(price)}
               </span>
             </div>
@@ -111,30 +111,30 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
 
         {/* Countdown */}
         {showTimer ? (
-          <div className="flex shrink-0 flex-col items-center gap-0.5 px-0.5">
-            <div className="flex items-center gap-0.5 font-mono text-[11px] font-bold tabular-nums sm:gap-1 sm:text-sm">
+          <div className="flex shrink-0 flex-col items-center gap-1 px-0.5">
+            <div className="flex items-center gap-1 font-mono text-xs font-bold tabular-nums sm:gap-1.5 sm:text-base md:text-lg">
               <span
-                className="min-w-[1.35rem] rounded px-1 py-0.5 text-center sm:min-w-[1.65rem] sm:px-1.5 sm:py-1"
+                className="min-w-[1.55rem] rounded-md px-1.5 py-1 text-center sm:min-w-[1.85rem] sm:px-2 sm:py-1.5"
                 style={{ backgroundColor: timerBoxBg, color: timerDigit }}
               >
                 {pad2(h)}
               </span>
               <span className="text-white/90">:</span>
               <span
-                className="min-w-[1.35rem] rounded px-1 py-0.5 text-center sm:min-w-[1.65rem] sm:px-1.5 sm:py-1"
+                className="min-w-[1.55rem] rounded-md px-1.5 py-1 text-center sm:min-w-[1.85rem] sm:px-2 sm:py-1.5"
                 style={{ backgroundColor: timerBoxBg, color: timerDigit }}
               >
                 {pad2(m)}
               </span>
               <span className="text-white/90">:</span>
               <span
-                className="min-w-[1.35rem] rounded px-1 py-0.5 text-center sm:min-w-[1.65rem] sm:px-1.5 sm:py-1"
+                className="min-w-[1.55rem] rounded-md px-1.5 py-1 text-center sm:min-w-[1.85rem] sm:px-2 sm:py-1.5"
                 style={{ backgroundColor: timerBoxBg, color: timerDigit }}
               >
                 {pad2(s)}
               </span>
             </div>
-            <p className="max-w-[6.5rem] text-center text-[9px] font-medium leading-tight text-white/90 sm:max-w-none sm:text-[10px]">
+            <p className="max-w-[7rem] text-center text-[10px] font-medium leading-tight text-white/90 sm:max-w-none sm:text-[11px]">
               {timerLabel}
             </p>
           </div>
@@ -145,13 +145,13 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
           <button
             type="button"
             onClick={onCheckout}
-            className="inline-flex max-w-[9.5rem] items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[11px] font-extrabold leading-tight shadow-md transition hover:brightness-105 active:brightness-95 sm:max-w-none sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm"
+            className="inline-flex min-h-[48px] max-w-[11rem] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-extrabold leading-tight shadow-lg transition hover:brightness-105 active:brightness-95 sm:min-h-[52px] sm:max-w-none sm:gap-2.5 sm:rounded-[1.35rem] sm:px-6 sm:py-3.5 sm:text-sm md:text-base"
             style={{ backgroundColor: ctaBg, color: ctaFg }}
           >
             <span className="line-clamp-2 text-end">{ctaLabel}</span>
             <svg
               viewBox="0 0 24 24"
-              className="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+              className="h-5 w-5 shrink-0 sm:h-6 sm:w-6"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"

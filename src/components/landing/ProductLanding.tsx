@@ -10,7 +10,6 @@ import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
-import { formatPrice } from "@/lib/currency";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
@@ -155,16 +154,6 @@ export function ProductLanding({ product }: Props) {
       ? "Paiement a la livraison disponible dans toutes les zones"
       : "الدفع عند الاستلام متاح في كل المناطق");
 
-  const price = useMemo(() => {
-    const original = product.price;
-    const discounted = product.discount_price != null ? product.discount_price : null;
-    return { original, discounted };
-  }, [product]);
-  const discountPercent = useMemo(() => {
-    if (price.discounted == null || price.original <= 0 || price.discounted >= price.original) return null;
-    return Math.round(((price.original - price.discounted) / price.original) * 100);
-  }, [price.discounted, price.original]);
-
   useEffect(() => {
     setLocale(product.default_language ?? "ar");
   }, [product.default_language, setLocale]);
@@ -202,43 +191,13 @@ export function ProductLanding({ product }: Props) {
     setOpen(true);
   };
 
-  const scrollToOrderForm = () => {
-    if (typeof window === "undefined") return;
-    const target = document.getElementById("order-form-section");
-    if (!target) return;
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const heroOfferLine = useMemo(() => {
-    const parts: string[] = [];
-    if (price.discounted != null) {
-      parts.push(`${formatPrice(price.original)} → ${formatPrice(price.discounted)}`);
-    } else {
-      parts.push(formatPrice(price.original));
-    }
-    const badge = (copy.offerBadgeText || copy.heroBadge).trim();
-    if (badge) parts.push(badge);
-    const disc = (copy.offerDiscountText || (discountPercent != null ? `${discountPercent}%` : "")).trim();
-    if (disc) parts.push(disc);
-    if (copy.offerLimitedText?.trim()) parts.push(copy.offerLimitedText.trim());
-    return parts.join(" · ");
-  }, [
-    copy.heroBadge,
-    copy.offerBadgeText,
-    copy.offerDiscountText,
-    copy.offerLimitedText,
-    discountPercent,
-    price.discounted,
-    price.original,
-  ]);
-
   const ctaBannerImg = product.cta_banner_background_image_url?.trim() ?? "";
   const ctaBannerColor = product.cta_banner_background_color?.trim() ?? "";
   const ctaBannerOverlay = Math.min(1, Math.max(0, Number(product.cta_banner_image_overlay ?? 0.45)));
 
   return (
     <div
-      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(7.5rem,calc(6rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(8rem,calc(6.5rem+env(safe-area-inset-bottom)))]"
+      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(9.25rem,calc(7rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(10.5rem,calc(7.75rem+env(safe-area-inset-bottom)))]"
       dir="ltr"
       style={
         {
@@ -262,7 +221,7 @@ export function ProductLanding({ product }: Props) {
         headerCtaText={copy.headerCtaText}
       />
 
-      {/* Hero: title → media → name → description → testimonial → offer line → CTA */}
+      {/* Hero: title → media → name → description → testimonial → CTA → reassurance */}
       <section
         className="bg-[var(--background)] px-4 pb-8 pt-5 text-center sm:px-6 sm:pb-10 md:px-8"
         aria-labelledby="hero-title"
@@ -298,14 +257,7 @@ export function ProductLanding({ product }: Props) {
           </div>
         ) : null}
 
-        <p
-          className="mx-auto mt-4 max-w-lg text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:text-xs"
-          aria-label={locale === "fr" ? "Offre" : "العرض"}
-        >
-          {heroOfferLine}
-        </p>
-
-        <button type="button" onClick={scrollToOrderForm} className={`${primaryCtaClass} mt-3 w-full max-w-lg sm:mx-auto sm:mt-4`}>
+        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-4 w-full max-w-lg sm:mx-auto sm:mt-5`}>
           {ctaText}
         </button>
         <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>

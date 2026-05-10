@@ -17,8 +17,6 @@ export type ProductPayload = {
   name_fr: string;
   hero_subtitle_ar: string;
   hero_subtitle_fr: string;
-  hero_badge_ar: string;
-  hero_badge_fr: string;
   logo_url: string;
   header_offer_text_ar: string;
   header_offer_text_fr: string;
@@ -30,12 +28,6 @@ export type ProductPayload = {
   header_announcement_text_fr: string;
   header_cta_text_ar: string;
   header_cta_text_fr: string;
-  offer_badge_ar: string;
-  offer_badge_fr: string;
-  offer_discount_text_ar: string;
-  offer_discount_text_fr: string;
-  offer_limited_text_ar: string;
-  offer_limited_text_fr: string;
   description_ar: string;
   description_fr: string;
   cta_text_ar: string;
@@ -107,10 +99,6 @@ function validateProductPayload(payload: ProductPayload) {
   const requiredText = [
     payload.name_ar,
     payload.hero_subtitle_ar,
-    payload.hero_badge_ar,
-    payload.offer_badge_ar,
-    payload.offer_discount_text_ar,
-    payload.offer_limited_text_ar,
     payload.cta_text_ar,
     payload.features_title_ar,
     payload.testimonials_title_ar,
@@ -213,8 +201,6 @@ export async function createProductAction(payload: ProductPayload) {
     name_fr: payload.name_fr.trim(),
     hero_subtitle_ar: payload.hero_subtitle_ar,
     hero_subtitle_fr: payload.hero_subtitle_fr,
-    hero_badge_ar: payload.hero_badge_ar,
-    hero_badge_fr: payload.hero_badge_fr,
     header_offer_text_ar: payload.header_offer_text_ar,
     header_offer_text_fr: payload.header_offer_text_fr,
     header_discount_text_ar: payload.header_discount_text_ar,
@@ -225,12 +211,6 @@ export async function createProductAction(payload: ProductPayload) {
     header_announcement_text_fr: payload.header_announcement_text_fr,
     header_cta_text_ar: payload.header_cta_text_ar,
     header_cta_text_fr: payload.header_cta_text_fr,
-    offer_badge_ar: payload.offer_badge_ar,
-    offer_badge_fr: payload.offer_badge_fr,
-    offer_discount_text_ar: payload.offer_discount_text_ar,
-    offer_discount_text_fr: payload.offer_discount_text_fr,
-    offer_limited_text_ar: payload.offer_limited_text_ar,
-    offer_limited_text_fr: payload.offer_limited_text_fr,
     description_ar: payload.description_ar,
     description_fr: payload.description_fr,
     cta_text_ar: payload.cta_text_ar,
@@ -322,8 +302,6 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       name_fr: payload.name_fr.trim(),
       hero_subtitle_ar: payload.hero_subtitle_ar,
       hero_subtitle_fr: payload.hero_subtitle_fr,
-      hero_badge_ar: payload.hero_badge_ar,
-      hero_badge_fr: payload.hero_badge_fr,
       header_offer_text_ar: payload.header_offer_text_ar,
       header_offer_text_fr: payload.header_offer_text_fr,
       header_discount_text_ar: payload.header_discount_text_ar,
@@ -334,12 +312,6 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       header_announcement_text_fr: payload.header_announcement_text_fr,
       header_cta_text_ar: payload.header_cta_text_ar,
       header_cta_text_fr: payload.header_cta_text_fr,
-      offer_badge_ar: payload.offer_badge_ar,
-      offer_badge_fr: payload.offer_badge_fr,
-      offer_discount_text_ar: payload.offer_discount_text_ar,
-      offer_discount_text_fr: payload.offer_discount_text_fr,
-      offer_limited_text_ar: payload.offer_limited_text_ar,
-      offer_limited_text_fr: payload.offer_limited_text_fr,
       description_ar: payload.description_ar,
       description_fr: payload.description_fr,
       cta_text_ar: payload.cta_text_ar,

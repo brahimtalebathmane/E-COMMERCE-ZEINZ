@@ -98,14 +98,6 @@ export function ProductForm({ mode, initial }: Props) {
   const [nameFr, setNameFr] = useState(initial?.name_fr ?? "");
   const [heroSubtitleAr, setHeroSubtitleAr] = useState(initial?.hero_subtitle_ar ?? "");
   const [heroSubtitleFr, setHeroSubtitleFr] = useState(initial?.hero_subtitle_fr ?? "");
-  const [heroBadgeAr, setHeroBadgeAr] = useState(initial?.hero_badge_ar ?? "");
-  const [heroBadgeFr, setHeroBadgeFr] = useState(initial?.hero_badge_fr ?? "");
-  const [offerBadgeAr, setOfferBadgeAr] = useState(initial?.offer_badge_ar ?? "");
-  const [offerBadgeFr, setOfferBadgeFr] = useState(initial?.offer_badge_fr ?? "");
-  const [offerDiscountTextAr, setOfferDiscountTextAr] = useState(initial?.offer_discount_text_ar ?? "");
-  const [offerDiscountTextFr, setOfferDiscountTextFr] = useState(initial?.offer_discount_text_fr ?? "");
-  const [offerLimitedTextAr, setOfferLimitedTextAr] = useState(initial?.offer_limited_text_ar ?? "");
-  const [offerLimitedTextFr, setOfferLimitedTextFr] = useState(initial?.offer_limited_text_fr ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initial?.description_ar ?? "");
   const [descriptionFr, setDescriptionFr] = useState(initial?.description_fr ?? "");
   const [ctaTextAr, setCtaTextAr] = useState(initial?.cta_text_ar ?? "");
@@ -314,8 +306,6 @@ export function ProductForm({ mode, initial }: Props) {
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
-      hero_badge_ar: heroBadgeAr.trim(),
-      hero_badge_fr: heroBadgeFr,
       header_offer_text_ar: headerOfferAr.trim(),
       header_offer_text_fr: headerOfferFr.trim(),
       header_discount_text_ar: headerDiscountAr.trim(),
@@ -326,12 +316,6 @@ export function ProductForm({ mode, initial }: Props) {
       header_announcement_text_fr: headerAnnouncementFr.trim(),
       header_cta_text_ar: headerCtaAr.trim(),
       header_cta_text_fr: headerCtaFr.trim(),
-      offer_badge_ar: offerBadgeAr.trim(),
-      offer_badge_fr: offerBadgeFr.trim(),
-      offer_discount_text_ar: offerDiscountTextAr.trim(),
-      offer_discount_text_fr: offerDiscountTextFr.trim(),
-      offer_limited_text_ar: offerLimitedTextAr.trim(),
-      offer_limited_text_fr: offerLimitedTextFr.trim(),
       description_ar: descriptionAr.trim(),
       description_fr: descriptionFr,
       cta_text_ar: ctaTextAr.trim(),
@@ -766,80 +750,6 @@ export function ProductForm({ mode, initial }: Props) {
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={heroSubtitleFr}
             onChange={(e) => setHeroSubtitleFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">شارة أعلى الصفحة — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={heroBadgeAr}
-            onChange={(e) => setHeroBadgeAr(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Hero badge — {a.productForm.langFrench}</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={heroBadgeFr}
-            onChange={(e) => setHeroBadgeFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">شارة العرض والخصم — عربي</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">يظهر مع سطر العرض تحت زر الشراء.</p>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerBadgeAr}
-            onChange={(e) => setOfferBadgeAr(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Offer badge — French</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerBadgeFr}
-            onChange={(e) => setOfferBadgeFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">نص الخصم في سطر العرض — عربي</label>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerDiscountTextAr}
-            onChange={(e) => setOfferDiscountTextAr(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Offer discount line — French</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerDiscountTextFr}
-            onChange={(e) => setOfferDiscountTextFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">نص «لفترة محدودة» — عربي</label>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerLimitedTextAr}
-            onChange={(e) => setOfferLimitedTextAr(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium">Limited-time line — French</label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={offerLimitedTextFr}
-            onChange={(e) => setOfferLimitedTextFr(e.target.value)}
             dir="ltr"
           />
         </div>
