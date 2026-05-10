@@ -60,6 +60,7 @@ export function CatalogPageClient({ products, configured }: Props) {
           <li key={p.slug}>
             <Link
               href={`/${p.slug}`}
+              prefetch={false}
               className="flex min-h-[52px] min-w-0 touch-manipulation items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition active:bg-[var(--accent-muted)]/30 hover:border-[var(--accent)] sm:min-h-0 sm:px-5"
             >
               <span className="min-w-0 flex-1 break-words font-medium">

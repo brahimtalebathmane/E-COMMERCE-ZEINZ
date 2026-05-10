@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  compress: true,
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? { exclude: ["error", "warn"] }
+        : false,
+  },
   async redirects() {
     return [
       {
@@ -20,7 +28,12 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ["sonner", "@mux/mux-player-react"],
+    optimizePackageImports: [
+      "sonner",
+      "@mux/mux-player-react",
+      "@supabase/supabase-js",
+      "@supabase/ssr",
+    ],
   },
 };
 

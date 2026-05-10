@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
@@ -8,13 +9,20 @@ import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { OrderFormModal } from "@/components/landing/OrderFormModal";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+
+const OrderFormModal = dynamic(
+  () =>
+    import("@/components/landing/OrderFormModal").then((m) => ({
+      default: m.OrderFormModal,
+    })),
+  { ssr: false },
+);
 
 type Props = {
   product: ProductRow;

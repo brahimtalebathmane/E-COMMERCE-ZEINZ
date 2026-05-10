@@ -1,6 +1,5 @@
 "use client";
 
-import "@mux/mux-player/themes/classic";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
@@ -17,19 +16,26 @@ import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-/** Non-lazy bundle: `lazy` mounts a bare `<mux-player>` placeholder that triggers Media Chrome “no stylesheet” warnings. */
-const MuxPlayer = dynamic(() => import("@mux/mux-player-react").then((mod) => mod.default), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="landing-mux-shell flex min-h-[12rem] items-center justify-center text-sm text-white/60"
-      style={{ "--ar-w": 16, "--ar-h": 9 } as CSSProperties}
-      aria-hidden
-    >
-      …
-    </div>
-  ),
-});
+/** Theme + player load together only when a landing renders video (image-only pages skip this chunk). */
+const MuxPlayer = dynamic(
+  () =>
+    Promise.all([
+      import("@mux/mux-player/themes/classic"),
+      import("@mux/mux-player-react"),
+    ]).then(([, mod]) => mod.default),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="landing-mux-shell flex min-h-[12rem] items-center justify-center text-sm text-white/60"
+        style={{ "--ar-w": 16, "--ar-h": 9 } as CSSProperties}
+        aria-hidden
+      >
+        …
+      </div>
+    ),
+  },
+);
 
 function isHls(url: string) {
   return /\.m3u8($|\?)/i.test(url) || /stream\.mux\.com/i.test(url);
