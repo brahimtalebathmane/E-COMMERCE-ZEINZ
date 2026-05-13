@@ -102,7 +102,7 @@ function AnimatedCounter({ value, active }: { value: string; active: boolean }) 
       return;
     }
     let frame = 0;
-    const duration = 1200;
+    const duration = 1550;
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
@@ -122,7 +122,12 @@ function AnimatedCounter({ value, active }: { value: string; active: boolean }) 
   );
 }
 
-const motionEnterDurationClass = "duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
+/** Features grid + title: slightly slower entrance. */
+const motionFeaturesDurationClass =
+  "duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
+/** Reviews (header + cards): slightly slower slide/fade. */
+const motionReviewsDurationClass =
+  "duration-[750ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
 
 function TestimonialReveal({
   testimonial,
@@ -144,7 +149,7 @@ function TestimonialReveal({
   return (
     <article
       ref={setRef}
-      className={`rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${slideState} motion-reduce:translate-x-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 motion-reduce:hover:translate-y-0`}
+      className={`rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-[transform,opacity] ${motionReviewsDurationClass} will-change-transform ${slideState} motion-reduce:translate-x-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 motion-reduce:hover:translate-y-0`}
     >
       <div className="flex items-start gap-3">
         <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
@@ -182,11 +187,11 @@ function FeatureCard({
   const enter = visible
     ? "translate-y-0 scale-100 rotate-0 opacity-100"
     : `translate-y-6 scale-[0.96] ${tiltHidden} opacity-0 sm:translate-y-7`;
-  const delayMs = visible ? idx * 90 : 0;
+  const delayMs = visible ? idx * 115 : 0;
 
   return (
     <div
-      className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${enter} motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4 motion-reduce:hover:translate-y-0`}
+      className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-[transform,opacity] ${motionFeaturesDurationClass} will-change-transform ${enter} motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4 motion-reduce:hover:translate-y-0`}
       style={{ transitionDelay: `${delayMs}ms` }}
     >
       <FeatureIcon feature={feature ?? ""} color={accent} />
@@ -373,7 +378,7 @@ export function ProductLanding({ product }: Props) {
 
       <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h2
-          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionFeaturesDurationClass} will-change-transform ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
         >
           {copy.featuresTitle}
         </h2>
@@ -435,13 +440,13 @@ export function ProductLanding({ product }: Props) {
 
       <section ref={setTestimonialsSectionRef} className={`bg-[var(--background)] ${sectionPadClass}`}>
         <h3
-          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionReviewsDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
         >
           {copy.testimonialsTitle}
         </h3>
         <p
-          className={`mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] transition-[transform,opacity] sm:px-4 sm:text-xs ${motionEnterDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
-          style={{ transitionDelay: testimonialsSectionVisible ? "115ms" : "0ms" }}
+          className={`mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] transition-[transform,opacity] sm:px-4 sm:text-xs ${motionReviewsDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          style={{ transitionDelay: testimonialsSectionVisible ? "150ms" : "0ms" }}
         >
           {copy.testimonialsBadge}
         </p>
