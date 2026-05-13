@@ -2,21 +2,10 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatPrice } from "@/lib/currency";
-import type { Locale } from "@/lib/i18n";
-
-type CatalogProduct = {
-  name_ar: string;
-  name_fr: string;
-  slug: string;
-  discount_price: number | null;
-  price: number;
-};
-
-function catalogDisplayName(p: CatalogProduct, locale: Locale): string {
-  if (locale === "fr" && p.name_fr.trim()) return p.name_fr;
-  return p.name_ar;
-}
+import {
+  CatalogProductCard,
+  type CatalogProduct,
+} from "@/components/store/CatalogProductCard";
 
 type Props = {
   products: CatalogProduct[];
@@ -24,7 +13,7 @@ type Props = {
 };
 
 export function CatalogPageClient({ products, configured }: Props) {
-  const { t, dir, locale } = useLanguage();
+  const { t, dir } = useLanguage();
 
   if (!configured) {
     return (
@@ -50,38 +39,33 @@ export function CatalogPageClient({ products, configured }: Props) {
 
   return (
     <div
-      className="mx-auto min-w-0 max-w-3xl overflow-x-clip px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] sm:py-16"
+      className="mx-auto min-w-0 max-w-7xl overflow-x-clip px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6 sm:pt-10 lg:px-8 lg:pt-14"
       dir={dir}
     >
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("catalog.title")}</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">{t("catalog.subtitle")}</p>
-      <ul className="mt-10 space-y-3">
-        {products.map((p) => (
-          <li key={p.slug}>
-            <Link
-              href={`/${p.slug}`}
-              prefetch={false}
-              className="flex min-h-[52px] min-w-0 touch-manipulation items-center justify-between gap-4 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-4 transition active:bg-[var(--accent-muted)]/30 hover:border-[var(--accent)] sm:min-h-0 sm:px-5"
-            >
-              <span className="min-w-0 flex-1 break-words font-medium">
-                {catalogDisplayName(p, locale)}
-              </span>
-              <span className="shrink-0 text-sm text-[var(--muted)]" dir="ltr">
-                {formatPrice(
-                  p.discount_price != null
-                    ? Number(p.discount_price)
-                    : Number(p.price),
-                )}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <header className="max-w-2xl">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+          {t("catalog.title")}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--muted)] sm:text-base">
+          {t("catalog.subtitle")}
+        </p>
+      </header>
+
       {products.length === 0 ? (
-        <p className="mt-8 text-sm text-[var(--muted)]">{t("catalog.noProducts")}</p>
-      ) : null}
-      <p className="mt-12 text-center text-xs text-[var(--muted)]">
-        <Link href="/admin" className="underline">
+        <p className="mt-10 text-sm text-[var(--muted)]">{t("catalog.noProducts")}</p>
+      ) : (
+        <ul
+          className="mt-8 grid list-none grid-cols-1 gap-5 p-0 sm:mt-10 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8"
+          role="list"
+        >
+          {products.map((p, index) => (
+            <CatalogProductCard key={p.slug} product={p} index={index} />
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-12 text-center text-xs text-[var(--muted)] sm:mt-16">
+        <Link href="/admin" className="underline underline-offset-2 transition hover:text-[var(--foreground)]">
           {t("catalog.adminLink")}
         </Link>
       </p>

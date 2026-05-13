@@ -7,7 +7,10 @@
     "configureAnd": "و",
     "configureSuffix": "لتحميل المنتجات.",
     "noProducts": "لا توجد منتجات بعد. أضف منتجاً من لوحة التحكم.",
-    "adminLink": "الإدارة"
+    "adminLink": "الإدارة",
+    "viewProduct": "عرض",
+    "reviewsCount": "({{count}} تقييم)",
+    "noReviewsYet": "لا توجد تقييمات بعد"
   },
   "product": {
     "buyNow": "شراء الآن",

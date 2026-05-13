@@ -7,7 +7,10 @@
     "configureAnd": "et",
     "configureSuffix": "pour charger les produits.",
     "noProducts": "Aucun produit pour l’instant. Ajoutez-en un depuis l’administration.",
-    "adminLink": "Administration"
+    "adminLink": "Administration",
+    "viewProduct": "Voir",
+    "reviewsCount": "({{count}} avis)",
+    "noReviewsYet": "Pas encore d’avis"
   },
   "product": {
     "buyNow": "Achetez maintenant",
