@@ -203,7 +203,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
             <button
               type="button"
               onClick={onCheckout}
-              className="group relative inline-flex min-h-[54px] w-full min-w-0 max-w-[12rem] items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-xs font-extrabold leading-snug shadow-[0_10px_24px_rgba(0,0,0,0.3)] ring-1 ring-black/15 transition-transform duration-200 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.97] active:brightness-95 sm:min-h-[60px] sm:max-w-[15rem] sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-[15px] md:text-base"
+              className="landing-cta-soft-breathe group relative inline-flex min-h-[54px] w-full min-w-0 max-w-[12rem] items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-xs font-extrabold leading-snug shadow-[0_10px_24px_rgba(0,0,0,0.3)] ring-1 ring-black/15 transition-transform duration-200 motion-reduce:animate-none motion-reduce:transition-none hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.97] active:brightness-95 sm:min-h-[60px] sm:max-w-[15rem] sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-[15px] md:text-base"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
             >
               {/* Shine sweep on hover */}

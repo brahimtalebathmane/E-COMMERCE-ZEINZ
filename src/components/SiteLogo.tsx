@@ -1,26 +1,35 @@
 "use client";
 
 import Image from "next/image";
-import { SITE_LOGO_URL } from "@/lib/site-branding";
+import { SITE_LOGO_FRAME_CLASS, SITE_LOGO_URL } from "@/lib/site-branding";
 
 type Props = {
   className?: string;
   priority?: boolean;
   /** Use `""` when the link already has a screen-reader label (e.g. admin nav). */
   alt?: string;
+  /** Defaults to the fixed storefront logo URL. */
+  src?: string;
+  /** `end` matches the landing header (logo toward the outer edge); `start` for the default storefront header. */
+  objectAlign?: "start" | "end";
 };
 
-export function SiteLogo({ className, priority, alt = "E-Commerce Zeina" }: Props) {
+export function SiteLogo({
+  className,
+  priority,
+  alt = "E-Commerce Zeina",
+  src = SITE_LOGO_URL,
+  objectAlign = "start",
+}: Props) {
+  const objectClass = objectAlign === "end" ? "object-right" : "object-left";
   return (
-    <span
-      className={`relative inline-block h-9 w-[min(100%,220px)] sm:h-10 ${className ?? ""}`}
-    >
+    <span className={`relative ${SITE_LOGO_FRAME_CLASS} ${className ?? ""}`}>
       <Image
-        src={SITE_LOGO_URL}
+        src={src}
         alt={alt}
         fill
-        className="object-contain object-start"
-        sizes="220px"
+        className={`object-contain ${objectClass}`}
+        sizes="(max-width: 640px) 42vw, 180px"
         priority={priority}
       />
     </span>

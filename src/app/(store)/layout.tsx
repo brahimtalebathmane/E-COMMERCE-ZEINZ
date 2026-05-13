@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { StoreLayoutHeader } from "@/components/store/StoreLayoutHeader";
+import { StoreSiteFooter } from "@/components/store/StoreSiteFooter";
 
 const StoreToaster = dynamic(() =>
   import("@/components/StoreToaster").then((m) => ({
@@ -15,9 +16,10 @@ export default function StoreLayout({
 }) {
   return (
     <LanguageProvider>
-      <div className="min-h-screen min-w-0 overflow-x-clip">
+      <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
         <StoreLayoutHeader />
-        {children}
+        <div className="min-h-0 flex-1">{children}</div>
+        <StoreSiteFooter />
         <StoreToaster />
       </div>
     </LanguageProvider>

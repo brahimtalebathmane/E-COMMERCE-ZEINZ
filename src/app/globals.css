@@ -52,6 +52,27 @@ body {
   animation: buy-modal-step-in 0.28s ease-out;
 }
 
+/* Sticky landing CTA: very subtle continuous motion (disabled when user prefers reduced motion). */
+@keyframes landing-cta-soft-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    filter: brightness(1.05);
+    box-shadow:
+      0 11px 28px rgba(0, 0, 0, 0.26),
+      0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-cta-soft-breathe {
+    animation: landing-cta-soft-breathe 3.6s ease-in-out infinite;
+  }
+}
+
 @layer components {
   /* Store / checkout: 16px+ text on inputs reduces iOS zoom; 48px min touch targets */
   .store-input {

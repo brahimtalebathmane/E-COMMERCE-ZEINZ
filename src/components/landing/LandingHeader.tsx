@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-
-/** Fallback when product has no logo URL in admin. */
-const DEFAULT_HEADER_LOGO_URL = "https://i.postimg.cc/3JgfjBz4/ughujgijk.png";
+import { SiteLogo } from "@/components/SiteLogo";
+import { SITE_LOGO_URL } from "@/lib/site-branding";
 
 type Props = {
   /** Resolved landing header logo (HTTPS). */
@@ -16,7 +14,7 @@ type Props = {
 
 export function LandingHeader({ logoSrc, headerCtaText }: Props) {
   const hasCta = Boolean(headerCtaText?.trim());
-  const logo = logoSrc.trim() || DEFAULT_HEADER_LOGO_URL;
+  const logo = logoSrc.trim() || SITE_LOGO_URL;
 
   return (
     <header className="border-b border-[var(--accent-muted)]/70 bg-[var(--background)]/95 shadow-sm backdrop-blur-sm">
@@ -43,19 +41,8 @@ export function LandingHeader({ logoSrc, headerCtaText }: Props) {
             <div className="min-w-0 flex-1" aria-hidden />
           )}
 
-          <Link
-            href="/"
-            className="relative block h-10 w-[min(42vw,9.5rem)] shrink-0 sm:h-11 sm:w-[min(38vw,11rem)] md:w-[min(36vw,12rem)]"
-            aria-label="Go to home page"
-          >
-            <Image
-              src={logo}
-              alt=""
-              fill
-              className="object-contain object-right"
-              sizes="(max-width: 640px) 42vw, 180px"
-              priority
-            />
+          <Link href="/" className="shrink-0" aria-label="Go to home page">
+            <SiteLogo src={logo} alt="" objectAlign="end" priority />
           </Link>
         </div>
       </div>

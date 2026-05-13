@@ -54,5 +54,15 @@
   "lang": {
     "ar": "AR",
     "fr": "FR"
+  },
+  "siteFooter": {
+    "brand": "Zeina",
+    "tagline": "Achetez en toute confiance — pages produit claires et assistance réactive.",
+    "contactHeading": "Contact",
+    "phone": "Téléphone",
+    "whatsapp": "WhatsApp",
+    "email": "E-mail",
+    "hoursHint": "Réponse pendant les heures ouvrables. Pour les demandes urgentes, privilégiez WhatsApp.",
+    "copyright": "© {{year}} Zeina. Tous droits réservés."
   }
 }

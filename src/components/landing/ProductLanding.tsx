@@ -3,7 +3,7 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ProductRow } from "@/types";
+import type { ProductRow, Testimonial } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
@@ -16,6 +16,7 @@ import {
   touchMetaFunnelActivity,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { useInViewOnce } from "@/hooks/useInViewOnce";
 
 const OrderFormModal = dynamic(
   () =>
@@ -86,14 +87,22 @@ function starText(rating?: number): string {
   return "★".repeat(value) + "☆".repeat(5 - value);
 }
 
-function AnimatedCounter({ value }: { value: string }) {
+function AnimatedCounter({ value, active }: { value: string; active: boolean }) {
   const target = statNumber(value);
   const suffix = statSuffix(value);
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    if (!active) {
+      setCurrent(0);
+      return;
+    }
+    if (target <= 0) {
+      setCurrent(0);
+      return;
+    }
     let frame = 0;
-    const duration = 1300;
+    const duration = 900;
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
@@ -103,13 +112,90 @@ function AnimatedCounter({ value }: { value: string }) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [target]);
+  }, [target, active]);
 
   return (
     <span>
       {current}
       {suffix}
     </span>
+  );
+}
+
+const motionEnterDurationClass = "duration-[480ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
+
+function TestimonialReveal({
+  testimonial,
+  idx,
+  bodyTextClass,
+}: {
+  testimonial: Testimonial;
+  idx: number;
+  bodyTextClass: string;
+}) {
+  const [setRef, visible] = useInViewOnce({ rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+  const fromLeft = idx % 2 === 0;
+  const slideState = visible
+    ? "translate-x-0 opacity-100"
+    : fromLeft
+      ? "-translate-x-8 opacity-0 sm:-translate-x-10"
+      : "translate-x-8 opacity-0 sm:translate-x-10";
+
+  return (
+    <article
+      ref={setRef}
+      className={`rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${slideState} motion-reduce:translate-x-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 motion-reduce:hover:translate-y-0`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
+          {testimonial.image ? (
+            <Image src={testimonial.image} alt={testimonial.name} fill sizes="48px" className="object-cover" />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{testimonial.name}</p>
+          {testimonial.location ? (
+            <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{testimonial.location}</p>
+          ) : null}
+          <p className="mt-1 text-sm leading-none text-[var(--accent)]">{starText(testimonial.rating)}</p>
+        </div>
+      </div>
+      <p className={`mt-3 break-words ${bodyTextClass}`}>{`"${testimonial.quote}"`}</p>
+    </article>
+  );
+}
+
+function FeatureCard({
+  feature,
+  idx,
+  accent,
+  softCardClass,
+  visible,
+}: {
+  feature: string | null;
+  idx: number;
+  accent: string;
+  softCardClass: string;
+  visible: boolean;
+}) {
+  const tiltHidden = idx % 2 === 0 ? "-rotate-[2.5deg]" : "rotate-[2.5deg]";
+  const enter = visible
+    ? "translate-y-0 scale-100 rotate-0 opacity-100"
+    : `translate-y-6 scale-[0.96] ${tiltHidden} opacity-0 sm:translate-y-7`;
+  const delayMs = visible ? idx * 70 : 0;
+
+  return (
+    <div
+      className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${enter} motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4 motion-reduce:hover:translate-y-0`}
+      style={{ transitionDelay: `${delayMs}ms` }}
+    >
+      <FeatureIcon feature={feature ?? ""} color={accent} />
+      {feature ? (
+        <p className="mt-2 text-xs font-semibold leading-snug text-[var(--foreground)] sm:text-sm">{feature}</p>
+      ) : (
+        <p className="mt-2 min-h-10" aria-hidden />
+      )}
+    </div>
   );
 }
 
@@ -208,6 +294,17 @@ export function ProductLanding({ product }: Props) {
   const ctaBannerColor = product.cta_banner_background_color?.trim() ?? "";
   const ctaBannerOverlay = Math.min(1, Math.max(0, Number(product.cta_banner_image_overlay ?? 0.45)));
 
+  const [setFeaturesRef, featuresVisible] = useInViewOnce();
+  const [setTestimonialsSectionRef, testimonialsSectionVisible] = useInViewOnce();
+  const [setStatsRef, statsVisible] = useInViewOnce();
+
+  const featuresTitleMotion = featuresVisible
+    ? "translate-y-0 opacity-100"
+    : "translate-y-5 opacity-0 sm:translate-y-6";
+  const testimonialsHeaderMotion = testimonialsSectionVisible
+    ? "translate-y-0 opacity-100"
+    : "translate-y-4 opacity-0";
+
   return (
     <div
       className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
@@ -274,21 +371,22 @@ export function ProductLanding({ product }: Props) {
         <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
       </section>
 
-      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h2 className={`${sectionTitleClass} break-words`}>{copy.featuresTitle}</h2>
+      <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
+        <h2
+          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+        >
+          {copy.featuresTitle}
+        </h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
           {featureItems.map((f, idx) => (
-            <div
+            <FeatureCard
               key={`${f ?? "empty"}-${idx}`}
-              className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-transform duration-200 hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4`}
-            >
-              <FeatureIcon feature={f ?? ""} color={accent} />
-              {f ? (
-                <p className="mt-2 text-xs font-semibold leading-snug text-[var(--foreground)] sm:text-sm">{f}</p>
-              ) : (
-                <p className="mt-2 min-h-10" aria-hidden />
-              )}
-            </div>
+              feature={f}
+              idx={idx}
+              accent={accent}
+              softCardClass={softCardClass}
+              visible={featuresVisible}
+            />
           ))}
         </div>
       </section>
@@ -335,38 +433,31 @@ export function ProductLanding({ product }: Props) {
         </section>
       ) : null}
 
-      <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words`}>{copy.testimonialsTitle}</h3>
-        <p className="mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] sm:px-4 sm:text-xs">
+      <section ref={setTestimonialsSectionRef} className={`bg-[var(--background)] ${sectionPadClass}`}>
+        <h3
+          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionEnterDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+        >
+          {copy.testimonialsTitle}
+        </h3>
+        <p
+          className={`mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] transition-[transform,opacity] sm:px-4 sm:text-xs ${motionEnterDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          style={{ transitionDelay: testimonialsSectionVisible ? "90ms" : "0ms" }}
+        >
           {copy.testimonialsBadge}
         </p>
         <div className="mt-5 space-y-3">
           {sectionTestimonials.map((testimonial, idx) => (
-              <article
-                key={`${idx}-${testimonial.name}-${testimonial.quote.slice(0, 48)}`}
-                className="rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-[0_14px_24px_rgba(12,28,12,0.07)] transition-transform duration-200 hover:-translate-y-0.5"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
-                    {testimonial.image ? (
-                      <Image src={testimonial.image} alt={testimonial.name} fill sizes="48px" className="object-cover" />
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 flex-1 text-right">
-                    <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{testimonial.name}</p>
-                    {testimonial.location ? (
-                      <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{testimonial.location}</p>
-                    ) : null}
-                    <p className="mt-1 text-sm leading-none text-[var(--accent)]">{starText(testimonial.rating)}</p>
-                  </div>
-                </div>
-                <p className={`mt-3 break-words ${bodyTextClass}`}>{`"${testimonial.quote}"`}</p>
-              </article>
-            ))}
+            <TestimonialReveal
+              key={`${idx}-${testimonial.name}-${testimonial.quote.slice(0, 48)}`}
+              testimonial={testimonial}
+              idx={idx}
+              bodyTextClass={bodyTextClass}
+            />
+          ))}
         </div>
       </section>
 
-      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
+      <section ref={setStatsRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h3 className={`${sectionTitleClass} break-words`}>{copy.statsSectionTitle}</h3>
         <div className="mt-5 grid grid-cols-3 gap-2 text-center sm:mt-6 sm:gap-4">
           {statItems.map((item, idx) => {
@@ -375,7 +466,7 @@ export function ProductLanding({ product }: Props) {
             return (
               <div key={`${item ?? "empty"}-${idx}`} className={`${softCardClass} rounded-2xl px-1.5 py-3 sm:px-3 sm:py-4`}>
                 <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-[var(--foreground)] sm:text-2xl md:text-3xl">
-                  {item ? <AnimatedCounter value={numberPart} /> : <span aria-hidden>&nbsp;</span>}
+                  {item ? <AnimatedCounter value={numberPart} active={statsVisible} /> : <span aria-hidden>&nbsp;</span>}
                 </p>
                 <p className="mt-1.5 text-[0.65rem] font-medium leading-snug text-[var(--muted)] sm:text-xs">
                   {item ? statLabel(raw) : ""}
