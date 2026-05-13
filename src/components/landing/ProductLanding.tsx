@@ -7,6 +7,7 @@ import type { ProductRow } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
+import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
@@ -224,13 +225,12 @@ export function ProductLanding({ product }: Props) {
     >
       <MetaPixel pixelId={product.meta_pixel_id} />
 
-      <LandingHeader
-        headerBarText={copy.headerBarText}
-        logoSrc={copy.logoUrl}
-        headerCtaText={copy.headerCtaText}
-        headerBarMaxLines={copy.headerBarMaxLines}
-        headerBarFontSizePx={copy.headerBarFontSizePx}
-      />
+      <div className="sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
+        {copy.headerBarText.trim() ? (
+          <LandingTopBanner text={copy.headerBarText} bleedClassName={fullBleedStripClass} />
+        ) : null}
+        <LandingHeader logoSrc={copy.logoUrl} headerCtaText={copy.headerCtaText} />
+      </div>
 
       {/* Hero: title → media → name → description → testimonial → CTA → reassurance */}
       <section

@@ -114,8 +114,6 @@ export type LocalizedProductCopy = {
   name: string;
   heroSubtitle: string;
   headerBarText: string;
-  headerBarMaxLines: number;
-  headerBarFontSizePx: number | null;
   headerCtaText: string;
   ctaText: string;
   featuresTitle: string;

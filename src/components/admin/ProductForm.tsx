@@ -46,11 +46,13 @@ function parseStickyEndsAtLocal(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-function initialHeaderBarAr(p: ProductRow | undefined): string {
+function initialTopBannerOfferText(p: ProductRow | undefined): string {
   if (!p) return "";
-  const direct = p.header_bar_text_ar?.trim();
-  if (direct) return direct;
-  return [
+  const unifiedAr = p.header_bar_text_ar?.trim();
+  if (unifiedAr) return unifiedAr;
+  const unifiedFr = p.header_bar_text_fr?.trim();
+  if (unifiedFr) return unifiedFr;
+  const legacyAr = [
     p.header_offer_text_ar,
     p.header_discount_text_ar,
     p.header_promo_text_ar,
@@ -59,12 +61,7 @@ function initialHeaderBarAr(p: ProductRow | undefined): string {
     .map((s) => s.trim())
     .filter(Boolean)
     .join(" · ");
-}
-
-function initialHeaderBarFr(p: ProductRow | undefined): string {
-  if (!p) return "";
-  const direct = p.header_bar_text_fr?.trim();
-  if (direct) return direct;
+  if (legacyAr) return legacyAr;
   return [
     p.header_offer_text_fr,
     p.header_discount_text_fr,
@@ -233,15 +230,9 @@ export function ProductForm({ mode, initial }: Props) {
   const [brandColor, setBrandColor] = useState(initial?.brand_color ?? BRAND_COLOR);
   const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [headerBarAr, setHeaderBarAr] = useState(() => initialHeaderBarAr(initial));
-  const [headerBarFr, setHeaderBarFr] = useState(() => initialHeaderBarFr(initial));
-  const [headerBarMaxLines, setHeaderBarMaxLines] = useState(
-    () => initial?.header_bar_max_lines ?? 0,
+  const [topBannerOfferText, setTopBannerOfferText] = useState(() =>
+    initialTopBannerOfferText(initial),
   );
-  const [headerBarFontSizePx, setHeaderBarFontSizePx] = useState(() => {
-    const v = initial?.header_bar_font_size_px;
-    return v != null && Number.isFinite(v) ? String(v) : "";
-  });
   const [headerCtaAr, setHeaderCtaAr] = useState(initial?.header_cta_text_ar ?? "");
   const [headerCtaFr, setHeaderCtaFr] = useState(initial?.header_cta_text_fr ?? "");
   const [ctaBannerBgColor, setCtaBannerBgColor] = useState(initial?.cta_banner_background_color ?? "");
@@ -333,19 +324,8 @@ export function ProductForm({ mode, initial }: Props) {
       name_fr: nameFr,
       hero_subtitle_ar: heroSubtitleAr.trim(),
       hero_subtitle_fr: heroSubtitleFr,
-      header_bar_text_ar: headerBarAr.trim(),
-      header_bar_text_fr: headerBarFr.trim(),
-      header_bar_max_lines: Math.min(
-        12,
-        Math.max(0, Math.round(Number(headerBarMaxLines)) || 0),
-      ),
-      header_bar_font_size_px: (() => {
-        const t = headerBarFontSizePx.trim();
-        if (!t) return null;
-        const n = Number.parseFloat(t);
-        if (!Number.isFinite(n)) return null;
-        return Math.min(24, Math.max(10, Math.round(n)));
-      })(),
+      header_bar_text_ar: topBannerOfferText.replace(/\s+/g, " ").trim(),
+      header_bar_text_fr: "",
       header_cta_text_ar: headerCtaAr.trim(),
       header_cta_text_fr: headerCtaFr.trim(),
       description_ar: descriptionAr.trim(),
@@ -626,57 +606,18 @@ export function ProductForm({ mode, initial }: Props) {
             <h3 className="text-sm font-semibold text-[var(--foreground)]">{a.productForm.sectionHeader}</h3>
             <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionHeaderHint}</p>
           </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.topBannerOffer}</label>
+            <input
+              type="text"
+              maxLength={280}
+              className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              value={topBannerOfferText}
+              onChange={(e) => setTopBannerOfferText(e.target.value)}
+              placeholder={a.productForm.topBannerOfferPlaceholder}
+            />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarArabic}</label>
-              <textarea
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerBarAr}
-                onChange={(e) => setHeaderBarAr(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarFrench}</label>
-              <textarea
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerBarFr}
-                onChange={(e) => setHeaderBarFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarMaxLinesLabel}</label>
-              <select
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerBarMaxLines}
-                onChange={(e) => setHeaderBarMaxLines(Number(e.target.value))}
-              >
-                <option value={0}>{a.productForm.headerBarMaxLinesUnlimited}</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} {a.productForm.headerBarLinesMaxSuffix}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{a.productForm.headerBarMaxLinesHint}</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--muted)]">{a.productForm.headerBarFontSizeLabel}</label>
-              <input
-                type="number"
-                min={10}
-                max={24}
-                inputMode="numeric"
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={headerBarFontSizePx}
-                onChange={(e) => setHeaderBarFontSizePx(e.target.value)}
-                placeholder="12"
-                dir="ltr"
-              />
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{a.productForm.headerBarFontSizeHint}</p>
-            </div>
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">نداء الرأس (سطر إضافي) — عربي</label>
               <input

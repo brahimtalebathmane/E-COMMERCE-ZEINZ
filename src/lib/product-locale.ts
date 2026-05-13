@@ -104,18 +104,6 @@ export function getLocalizedProductCopy(
       if (primary.length > 0) return primary;
       return legacyHeaderBarText(locale, p);
     })(),
-    headerBarMaxLines: (() => {
-      const n = Math.round(Number(p.header_bar_max_lines));
-      if (!Number.isFinite(n)) return 0;
-      return Math.min(12, Math.max(0, n));
-    })(),
-    headerBarFontSizePx: (() => {
-      const v = p.header_bar_font_size_px;
-      if (v === null || v === undefined) return null;
-      const n = Number(v);
-      if (!Number.isFinite(n) || n <= 0) return null;
-      return Math.min(24, Math.max(10, Math.round(n)));
-    })(),
     headerCtaText: pickStr(locale, p.header_cta_text_ar, p.header_cta_text_fr),
     ctaText: pickStr(locale, p.cta_text_ar, p.cta_text_fr),
     featuresTitle: pickStr(locale, p.features_title_ar, p.features_title_fr),
