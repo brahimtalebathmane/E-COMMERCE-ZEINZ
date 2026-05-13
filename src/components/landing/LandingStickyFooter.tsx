@@ -209,7 +209,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
               {/* Shine sweep on hover */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/45 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/45 to-transparent transition-transform duration-[900ms] ease-out group-hover:translate-x-full"
               />
               <svg
                 viewBox="0 0 24 24"

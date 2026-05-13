@@ -69,7 +69,7 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   .landing-cta-soft-breathe {
-    animation: landing-cta-soft-breathe 3.6s ease-in-out infinite;
+    animation: landing-cta-soft-breathe 4.5s ease-in-out infinite;
   }
 }
 

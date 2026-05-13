@@ -102,7 +102,7 @@ function AnimatedCounter({ value, active }: { value: string; active: boolean }) 
       return;
     }
     let frame = 0;
-    const duration = 900;
+    const duration = 1200;
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
@@ -122,7 +122,7 @@ function AnimatedCounter({ value, active }: { value: string; active: boolean }) 
   );
 }
 
-const motionEnterDurationClass = "duration-[480ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
+const motionEnterDurationClass = "duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0";
 
 function TestimonialReveal({
   testimonial,
@@ -182,7 +182,7 @@ function FeatureCard({
   const enter = visible
     ? "translate-y-0 scale-100 rotate-0 opacity-100"
     : `translate-y-6 scale-[0.96] ${tiltHidden} opacity-0 sm:translate-y-7`;
-  const delayMs = visible ? idx * 70 : 0;
+  const delayMs = visible ? idx * 90 : 0;
 
   return (
     <div
@@ -441,7 +441,7 @@ export function ProductLanding({ product }: Props) {
         </h3>
         <p
           className={`mx-auto mt-2 w-fit rounded-full bg-[var(--accent-muted)] px-3 py-1 text-[0.65rem] font-semibold leading-normal text-[var(--accent)] transition-[transform,opacity] sm:px-4 sm:text-xs ${motionEnterDurationClass} will-change-transform ${testimonialsHeaderMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
-          style={{ transitionDelay: testimonialsSectionVisible ? "90ms" : "0ms" }}
+          style={{ transitionDelay: testimonialsSectionVisible ? "115ms" : "0ms" }}
         >
           {copy.testimonialsBadge}
         </p>
@@ -507,7 +507,7 @@ export function ProductLanding({ product }: Props) {
                   <span className="shrink-0 text-lg font-semibold text-[var(--accent)] sm:text-xl">{opened ? "−" : "+"}</span>
                 </button>
                 <div
-                  className={`grid transition-all duration-300 ease-out ${opened ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                  className={`grid transition-all duration-[400ms] ease-out ${opened ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
                 >
                   <div className="overflow-hidden">
                     <p className={`break-words px-4 pb-4 pt-0 text-start sm:px-5 ${bodyTextClass}`}>{faq?.a ?? ""}</p>
