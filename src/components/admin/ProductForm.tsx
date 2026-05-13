@@ -689,10 +689,13 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             العنوان الفرعي أعلى الصفحة — {a.productForm.langArabic}
           </label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
-          <input
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            إلزامي — اضغط Enter للانتقال إلى سطر جديد
+          </p>
+          <textarea
             required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            rows={3}
+            className="mt-1 w-full resize-y whitespace-pre-wrap rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm leading-relaxed"
             value={heroSubtitleAr}
             onChange={(e) => setHeroSubtitleAr(e.target.value)}
           />
@@ -701,8 +704,12 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             Hero subtitle — {a.productForm.langFrench}
           </label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Press Enter to start a new line
+          </p>
+          <textarea
+            rows={3}
+            className="mt-1 w-full resize-y whitespace-pre-wrap rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm leading-relaxed"
             value={heroSubtitleFr}
             onChange={(e) => setHeroSubtitleFr(e.target.value)}
             dir="ltr"

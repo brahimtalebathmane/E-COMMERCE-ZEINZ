@@ -58,7 +58,7 @@ const sectionTitleClass =
   "text-center text-lg font-bold leading-snug tracking-tight text-[var(--foreground)] sm:text-xl md:text-2xl md:leading-tight";
 const bodyTextClass = "text-sm leading-relaxed text-[var(--muted)] sm:text-base sm:leading-relaxed";
 const heroTitleClass =
-  "break-words font-extrabold leading-[1.15] tracking-tight text-[var(--accent)] [font-size:clamp(1.65rem,4.2vw+0.85rem,2.35rem)]";
+  "whitespace-pre-line break-words font-extrabold leading-[1.15] tracking-tight text-[var(--accent)] [font-size:clamp(1.4rem,3.6vw+0.7rem,2rem)]";
 const productNameClass =
   "break-words font-bold leading-snug text-[var(--foreground)] [font-size:clamp(1.2rem,2.4vw+0.65rem,1.75rem)] sm:font-extrabold";
 
