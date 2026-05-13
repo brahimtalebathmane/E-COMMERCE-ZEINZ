@@ -43,13 +43,13 @@ const sectionContentInsetClass = `${landingShellClass} px-4 sm:px-6 md:px-8 lg:p
 const primaryCtaClass =
   "store-btn-primary rounded-2xl px-5 py-3.5 text-base font-semibold shadow-[0_16px_36px_rgba(0,107,12,0.28)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-4 sm:text-lg sm:font-extrabold";
 
-/** FAQ → Contact strip: compact band, pill button (background from admin: image / color / gradient). */
+/** FAQ → Contact strip: full-bleed band behind CTA; pill is centered with capped width (background from admin: image / color / gradient). */
 const preContactCtaButtonClass =
-  "store-btn-primary w-full max-w-full rounded-full px-5 py-2 text-sm font-semibold shadow-[0_10px_22px_rgba(0,107,12,0.24)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:px-6 sm:py-2.5 sm:text-base sm:font-extrabold";
+  "store-btn-primary mx-auto flex w-full max-w-[14.5rem] justify-center rounded-full px-4 py-1.5 text-sm font-semibold shadow-[0_8px_20px_rgba(0,107,12,0.22)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:max-w-[16rem] sm:px-5 sm:py-2 sm:font-bold";
 
-/** Centered card — narrower than full viewport, balanced with landing column. */
-const preContactCtaCardClass =
-  "relative mx-auto w-full max-w-[min(100%,18.5rem)] overflow-hidden rounded-2xl border border-[var(--accent-muted)]/55 shadow-[0_10px_28px_rgba(12,28,12,0.1)] sm:max-w-[20.5rem] md:max-w-[22rem]";
+/** Edge-to-edge band behind the pre-contact CTA (pairs with `fullBleedStripClass`). */
+const preContactCtaBandClass =
+  "relative min-h-[3.25rem] overflow-hidden border-y border-[var(--accent-muted)]/40 shadow-[0_8px_24px_rgba(12,28,12,0.08)] sm:min-h-[3.5rem]";
 
 const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
 const softCardClass =
@@ -428,9 +428,9 @@ export function ProductLanding({ product }: Props) {
         </div>
       </section>
 
-      <section id="order-form-section" className="scroll-mt-6 w-full px-4 py-3 sm:px-6 sm:py-4">
-        <div className={preContactCtaCardClass}>
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+      <section id="order-form-section" className="scroll-mt-6 w-full py-3 sm:py-4">
+        <div className={`${fullBleedStripClass} ${preContactCtaBandClass}`}>
+          <div className="pointer-events-none absolute inset-0">
             {ctaBannerImg ? (
               <>
                 <div
@@ -453,11 +453,11 @@ export function ProductLanding({ product }: Props) {
               />
             )}
           </div>
-          <div className="relative z-10 flex justify-center px-3 py-3.5 sm:px-4 sm:py-4">
+          <div className="relative z-10 flex justify-center px-4 py-3 sm:px-6 sm:py-3.5">
             <button
               type="button"
               onClick={openCheckout}
-              className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_12px_32px_rgba(0,0,0,0.26)]" : ""}`}
+              className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_10px_26px_rgba(0,0,0,0.24)]" : ""}`}
             >
               {ctaText}
             </button>
