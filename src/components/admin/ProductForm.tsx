@@ -8,6 +8,7 @@ import type {
   ProductSourcingType,
 } from "@/types";
 import {
+  completeLandingSetupAction,
   createProductAction,
   deleteProductAction,
   updateProductAction,
@@ -73,7 +74,7 @@ function initialTopBannerOfferText(p: ProductRow | undefined): string {
 }
 
 type Props = {
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "landing-setup";
   initial?: ProductRow;
 };
 
@@ -90,6 +91,7 @@ function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
 
 export function ProductForm({ mode, initial }: Props) {
   const router = useRouter();
+  const isLandingSetup = mode === "landing-setup";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -491,7 +493,9 @@ export function ProductForm({ mode, initial }: Props) {
       if (payload.contact_lines_ar.length < 3) {
         throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
       }
-      if (mode === "create") {
+      if (mode === "landing-setup" && initial) {
+        await completeLandingSetupAction(initial.id, payload);
+      } else if (mode === "create") {
         await createProductAction(payload);
       } else if (initial) {
         await updateProductAction(initial.id, payload);
@@ -525,10 +529,12 @@ export function ProductForm({ mode, initial }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start" dir="rtl">
-      <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-        <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
-        <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.introBody}</p>
-      </div>
+      {!isLandingSetup ? (
+        <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.introBody}</p>
+        </div>
+      ) : null}
 
       {mode === "edit" && initial ? (
         <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
@@ -632,28 +638,32 @@ export function ProductForm({ mode, initial }: Props) {
           </div>
         </section>
 
-        <div>
-          <label className="text-sm font-medium">
-            {a.productForm.name} — {a.productForm.langArabic}
-          </label>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={nameAr}
-            onChange={(e) => setNameAr(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">
-            {a.productForm.name} — {a.productForm.langFrench}
-          </label>
-          <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={nameFr}
-            onChange={(e) => setNameFr(e.target.value)}
-            dir="ltr"
-          />
-        </div>
+        {!isLandingSetup ? (
+          <>
+            <div>
+              <label className="text-sm font-medium">
+                {a.productForm.name} — {a.productForm.langArabic}
+              </label>
+              <input
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={nameAr}
+                onChange={(e) => setNameAr(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                {a.productForm.name} — {a.productForm.langFrench}
+              </label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={nameFr}
+                onChange={(e) => setNameFr(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+          </>
+        ) : null}
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">
             {a.productForm.description} — {a.productForm.langArabic}
@@ -814,6 +824,7 @@ export function ProductForm({ mode, initial }: Props) {
             dir="ltr"
           />
         </div>
+        {!isLandingSetup ? (
         <div className="sm:col-span-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
           <h3 className="text-sm font-semibold">{a.productForm.sectionPipeline}</h3>
           <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionPipelineHint}</p>
@@ -879,55 +890,60 @@ export function ProductForm({ mode, initial }: Props) {
             </div>
           </div>
         </div>
-        <div>
-          <label className="text-sm font-medium">{a.productForm.price}</label>
-          <input
-            required
-            type="number"
-            step="0.01"
-            min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder={a.productForm.pricePlaceholder}
-            dir="ltr"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{a.productForm.discount}</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-            placeholder={a.productForm.discountPlaceholder}
-            dir="ltr"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{a.productForm.mediaType}</label>
-          <select
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={mediaType}
-            onChange={(e) => setMediaType(e.target.value as "image" | "video")}
-          >
-            <option value="image">{a.productForm.mediaImage}</option>
-            <option value="video">{a.productForm.mediaVideo}</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
-          <input
-            required
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-            value={mediaUrl}
-            onChange={(e) => setMediaUrl(e.target.value)}
-            placeholder="https://"
-            dir="ltr"
-          />
-        </div>
+        ) : null}
+        {!isLandingSetup ? (
+          <>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.price}</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder={a.productForm.pricePlaceholder}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.discount}</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder={a.productForm.discountPlaceholder}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.mediaType}</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={mediaType}
+                onChange={(e) => setMediaType(e.target.value as "image" | "video")}
+              >
+                <option value="image">{a.productForm.mediaImage}</option>
+                <option value="video">{a.productForm.mediaVideo}</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
+              <input
+                required
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                placeholder="https://"
+                dir="ltr"
+              />
+            </div>
+          </>
+        ) : null}
         <div>
           <label className="text-sm font-medium">الوسيط الثاني: النوع</label>
           <select
@@ -1173,10 +1189,14 @@ export function ProductForm({ mode, initial }: Props) {
           className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-60"
         >
           {busy
-            ? a.productForm.saving
-            : mode === "create"
-              ? a.productForm.create
-              : a.productForm.saveChanges}
+            ? isLandingSetup
+              ? a.landingSetup.saving
+              : a.productForm.saving
+            : isLandingSetup
+              ? a.landingSetup.submit
+              : mode === "create"
+                ? a.productForm.create
+                : a.productForm.saveChanges}
         </button>
         {mode === "edit" ? (
           <button

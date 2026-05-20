@@ -120,6 +120,27 @@ export type ProductRow = {
   created_at: string;
 };
 
+/**
+ * Landing sections that may be empty while `test_status === 'under_research'`.
+ * Populated when completing landing setup.
+ */
+export type ProductLandingContentFields = {
+  description_ar?: string;
+  description_fr?: string;
+  hero_subtitle_ar?: string;
+  features_ar?: string[];
+  features_fr?: string[];
+  testimonials_ar?: Testimonial[];
+  testimonials_fr?: Testimonial[];
+  faqs_ar?: FAQ[];
+  faqs_fr?: FAQ[];
+  stats_ar?: string[];
+  stats_fr?: string[];
+  contact_lines_ar?: string[];
+  contact_lines_fr?: string[];
+  gallery?: string[];
+};
+
 /** Resolved strings for the current storefront locale (Arabic or French with Arabic fallback). */
 export type LocalizedProductCopy = {
   brandColor: string;

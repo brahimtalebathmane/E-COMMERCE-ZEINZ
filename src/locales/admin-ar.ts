@@ -33,6 +33,8 @@ export const adminAr = {
     marginLabel: "الهامش",
     marginUnset: "أدخل سعر التكلفة",
     moveToTest: "نقل إلى مرحلة الاختبار",
+    setupLanding: "إعداد صفحة الهبوط",
+    priceColumn: "السعر",
     markWinner: "فائز / نشط",
     markFailed: "فاشل",
     stage: "المرحلة",
@@ -42,9 +44,35 @@ export const adminAr = {
     statusUpdateFailed: "تعذر تحديث حالة المنتج",
   },
   newProduct: {
-    title: "منتج جديد",
+    title: "منتج جديد (بحث وتقصي)",
     slugHint:
       "يُولَّد المسار (slug) تلقائياً من الاسم ولا يمكن تغييره لاحقاً.",
+    researchHint:
+      "أدخل بيانات التوريد والتسعير فقط. بعد الحفظ، أكمل صفحة الهبوط من تبويب «البحث والتقصي».",
+  },
+  researchForm: {
+    title: "بيانات المنتج — مرحلة البحث",
+    hint: "الحقول التالية فقط مطلوبة الآن. باقي أقسام صفحة الهبوط تُضاف لاحقاً عبر «إعداد صفحة الهبوط».",
+    productName: "اسم المنتج",
+    mainImage: "الصورة الرئيسية (رابط أو رفع)",
+    price: "سعر البيع (MRU)",
+    costPrice: "سعر التكلفة (MRU)",
+    sourcingType: "نوع التوريد",
+    sourcingLink: "رابط التوريد الداخلي",
+    uploading: "جارٍ رفع الصورة…",
+    create: "إضافة إلى البحث والتقصي",
+    saving: "جاري الحفظ…",
+    cancel: "إلغاء",
+    failedSave: "فشل إنشاء المنتج",
+  },
+  landingSetup: {
+    title: "إعداد صفحة الهبوط",
+    subtitle:
+      "أكمل محتوى الصفحة أدناه. عند الحفظ يُنقل المنتج تلقائياً إلى «جاهز للاختبار».",
+    backToPipeline: "العودة إلى المنتجات",
+    cost: "التكلفة",
+    submit: "حفظ الصفحة ونقل إلى جاهز للاختبار",
+    saving: "جاري الحفظ…",
   },
   editProduct: {
     title: "تعديل المنتج",

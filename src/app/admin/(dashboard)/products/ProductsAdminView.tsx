@@ -81,14 +81,12 @@ function PipelineActions({
 }) {
   if (tab === "research") {
     return (
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => onStatus(row.id, "ready_for_test")}
-        className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-50"
+      <Link
+        href={`/admin/products/${row.id}/landing-setup`}
+        className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
       >
-        {a.pipeline.moveToTest}
-      </button>
+        {a.pipeline.setupLanding}
+      </Link>
     );
   }
 
@@ -220,8 +218,8 @@ export function ProductsAdminView({ products }: Props) {
                 <>
                   <th className="px-4 py-3">{a.pipeline.image}</th>
                   <th className="px-4 py-3">{a.products.name}</th>
+                  <th className="px-4 py-3">{a.pipeline.priceColumn}</th>
                   <th className="px-4 py-3">{a.pipeline.sourcingType}</th>
-                  <th className="px-4 py-3">{a.pipeline.sourcingLink}</th>
                   <th className="px-4 py-3">{a.pipeline.codMargin}</th>
                   <th className="px-4 py-3" />
                 </>
@@ -246,21 +244,12 @@ export function ProductsAdminView({ products }: Props) {
                     <ProductThumb row={p} />
                   </td>
                   <td className="px-4 py-3 font-medium">{p.name_ar}</td>
-                  <td className="px-4 py-3">{sourcingTypeLabel(p.sourcing_type)}</td>
-                  <td className="px-4 py-3 max-w-[200px] truncate" dir="ltr">
-                    {p.sourcing_link.trim() ? (
-                      <a
-                        href={p.sourcing_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[var(--accent)] underline"
-                      >
-                        {p.sourcing_link}
-                      </a>
-                    ) : (
-                      <span className="text-[var(--muted)]">—</span>
+                  <td className="px-4 py-3 whitespace-nowrap" dir="ltr">
+                    {formatPrice(
+                      p.discount_price != null ? Number(p.discount_price) : Number(p.price),
                     )}
                   </td>
+                  <td className="px-4 py-3">{sourcingTypeLabel(p.sourcing_type)}</td>
                   <td className="px-4 py-3">
                     <MarginBadge row={p} />
                   </td>

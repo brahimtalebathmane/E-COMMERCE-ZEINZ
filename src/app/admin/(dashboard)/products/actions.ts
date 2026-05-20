@@ -12,6 +12,7 @@ import type {
   ProductSourcingType,
 } from "@/types";
 import { revalidatePath } from "next/cache";
+import type { ResearchProductPayload } from "./research-types";
 
 export type ProductPayload = {
   /** Default storefront language for this landing page. */
@@ -106,7 +107,28 @@ function trimList(items: string[]): string[] {
   return items.map((item) => item.trim()).filter(Boolean);
 }
 
-function validateProductPayload(payload: ProductPayload) {
+function validateResearchProductPayload(payload: ResearchProductPayload) {
+  if (!trimText(payload.name_ar)) {
+    throw new Error("Product name is required.");
+  }
+  if (!trimText(payload.media_url)) {
+    throw new Error("Main image URL is required.");
+  }
+  if (!Number.isFinite(payload.price) || payload.price <= 0) {
+    throw new Error("Price must be greater than zero.");
+  }
+  if (!Number.isFinite(payload.cost_price) || payload.cost_price < 0) {
+    throw new Error("Cost price is required and must be zero or greater.");
+  }
+  if (payload.sourcing_type !== "local" && payload.sourcing_type !== "import") {
+    throw new Error("Sourcing type must be local or import.");
+  }
+  if (!trimText(payload.sourcing_link)) {
+    throw new Error("Sourcing link is required.");
+  }
+}
+
+function validateLandingProductPayload(payload: ProductPayload) {
   const requiredText = [
     payload.name_ar,
     payload.hero_subtitle_ar,
@@ -226,8 +248,111 @@ async function allocateUniqueSlug(
   throw new Error("Could not allocate a unique slug — try again.");
 }
 
+function researchInsertDefaults(payload: ResearchProductPayload, slug: string) {
+  return {
+    default_language: "ar" as const,
+    brand_color: BRAND_COLOR,
+    logo_url: "",
+    name_ar: payload.name_ar.trim(),
+    name_fr: "",
+    hero_subtitle_ar: "",
+    hero_subtitle_fr: "",
+    header_bar_text_ar: "",
+    header_bar_text_fr: "",
+    header_bar_max_lines: 1,
+    header_bar_font_size_px: null,
+    header_offer_text_ar: "",
+    header_offer_text_fr: "",
+    header_discount_text_ar: "",
+    header_discount_text_fr: "",
+    header_promo_text_ar: "",
+    header_promo_text_fr: "",
+    header_announcement_text_ar: "",
+    header_announcement_text_fr: "",
+    header_cta_text_ar: "",
+    header_cta_text_fr: "",
+    description_ar: "",
+    description_fr: "",
+    cta_text_ar: "",
+    cta_text_fr: "",
+    features_title_ar: "",
+    features_title_fr: "",
+    testimonials_title_ar: "",
+    testimonials_title_fr: "",
+    media_caption_ar: "",
+    media_caption_fr: "",
+    faq_title_ar: "",
+    faq_title_fr: "",
+    stats_section_title_ar: "",
+    stats_section_title_fr: "",
+    testimonials_badge_ar: "",
+    testimonials_badge_fr: "",
+    footer_note_ar: "",
+    footer_note_fr: "",
+    cta_banner_background_color: "",
+    cta_banner_background_image_url: "",
+    cta_banner_image_overlay: 0.45,
+    contact_title_ar: "",
+    contact_title_fr: "",
+    whatsapp_message_template: null,
+    slug,
+    old_slugs: [] as string[],
+    price: payload.price,
+    discount_price: null,
+    media_type: payload.media_type,
+    media_url: payload.media_url.trim(),
+    secondary_media_type: "image" as const,
+    secondary_media_url: "",
+    tertiary_media_type: "image" as const,
+    tertiary_media_url: "",
+    features_ar: [] as string[],
+    features_fr: [] as string[],
+    gallery: [] as string[],
+    testimonials_ar: [],
+    testimonials_fr: [],
+    faqs_ar: [],
+    faqs_fr: [],
+    stats_ar: [] as string[],
+    stats_fr: [] as string[],
+    contact_lines_ar: [] as string[],
+    contact_lines_fr: [] as string[],
+    meta_pixel_id: null,
+    sticky_footer_offer_ends_at: null,
+    sticky_footer_timer_label_ar: "",
+    sticky_footer_timer_label_fr: "",
+    sticky_footer_savings_badge_ar: "",
+    sticky_footer_savings_badge_fr: "",
+    sticky_footer_bar_bg_color: "",
+    sticky_footer_badge_bg_color: "",
+    sticky_footer_timer_box_bg_color: "",
+    sticky_footer_timer_digit_color: "",
+    sticky_footer_cta_bg_color: "",
+    sticky_footer_cta_text_color: "",
+    sticky_footer_show_timer: true,
+    test_status: "under_research" as const,
+    sourcing_type: payload.sourcing_type,
+    sourcing_link: payload.sourcing_link.trim(),
+    cost_price: payload.cost_price,
+  };
+}
+
+export async function createResearchProductAction(payload: ResearchProductPayload) {
+  validateResearchProductPayload(payload);
+  const supabase = await assertAdmin();
+  const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
+
+  const { error } = await supabase
+    .from("products")
+    .insert(researchInsertDefaults(payload, candidate));
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/products");
+  return { slug: candidate };
+}
+
 export async function createProductAction(payload: ProductPayload) {
-  validateProductPayload(payload);
+  validateLandingProductPayload(payload);
   const supabase = await assertAdmin();
 
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
@@ -356,8 +481,128 @@ export async function updateProductTestStatusAction(
   revalidatePath("/admin/products");
 }
 
+function landingFieldsFromPayload(payload: ProductPayload) {
+  return {
+    default_language: payload.default_language,
+    brand_color: normalizeHexColor(payload.brand_color, BRAND_COLOR),
+    logo_url: payload.logo_url.trim(),
+    name_ar: payload.name_ar.trim(),
+    name_fr: payload.name_fr.trim(),
+    hero_subtitle_ar: payload.hero_subtitle_ar,
+    hero_subtitle_fr: payload.hero_subtitle_fr,
+    header_bar_text_ar: payload.header_bar_text_ar.trim(),
+    header_bar_text_fr: payload.header_bar_text_fr.trim(),
+    header_bar_max_lines: 1,
+    header_bar_font_size_px: null,
+    header_offer_text_ar: "",
+    header_offer_text_fr: "",
+    header_discount_text_ar: "",
+    header_discount_text_fr: "",
+    header_promo_text_ar: "",
+    header_promo_text_fr: "",
+    header_announcement_text_ar: "",
+    header_announcement_text_fr: "",
+    header_cta_text_ar: payload.header_cta_text_ar,
+    header_cta_text_fr: payload.header_cta_text_fr,
+    description_ar: payload.description_ar,
+    description_fr: payload.description_fr,
+    cta_text_ar: payload.cta_text_ar,
+    cta_text_fr: payload.cta_text_fr,
+    features_title_ar: payload.features_title_ar,
+    features_title_fr: payload.features_title_fr,
+    testimonials_title_ar: payload.testimonials_title_ar,
+    testimonials_title_fr: payload.testimonials_title_fr,
+    media_caption_ar: payload.media_caption_ar,
+    media_caption_fr: payload.media_caption_fr,
+    faq_title_ar: payload.faq_title_ar,
+    faq_title_fr: payload.faq_title_fr,
+    stats_section_title_ar: payload.stats_section_title_ar.trim(),
+    stats_section_title_fr: payload.stats_section_title_fr.trim(),
+    testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
+    testimonials_badge_fr: payload.testimonials_badge_fr.trim(),
+    footer_note_ar: payload.footer_note_ar.trim(),
+    footer_note_fr: payload.footer_note_fr.trim(),
+    cta_banner_background_color: normalizeOptionalHexColor(payload.cta_banner_background_color),
+    cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
+    cta_banner_image_overlay: payload.cta_banner_image_overlay,
+    contact_title_ar: payload.contact_title_ar,
+    contact_title_fr: payload.contact_title_fr,
+    whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
+    discount_price: payload.discount_price,
+    secondary_media_type: payload.secondary_media_type,
+    secondary_media_url: payload.secondary_media_url.trim(),
+    tertiary_media_type: payload.tertiary_media_type,
+    tertiary_media_url: payload.tertiary_media_url.trim(),
+    features_ar: payload.features_ar,
+    features_fr: payload.features_fr,
+    gallery: payload.gallery,
+    testimonials_ar: payload.testimonials_ar,
+    testimonials_fr: payload.testimonials_fr,
+    faqs_ar: payload.faqs_ar,
+    faqs_fr: payload.faqs_fr,
+    stats_ar: payload.stats_ar,
+    stats_fr: payload.stats_fr,
+    contact_lines_ar: payload.contact_lines_ar,
+    contact_lines_fr: payload.contact_lines_fr,
+    meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+    old_slugs: payload.old_slugs.filter(Boolean),
+    sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
+    sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
+    sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
+    sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
+    sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
+    sticky_footer_bar_bg_color: normalizeOptionalHexColor(payload.sticky_footer_bar_bg_color),
+    sticky_footer_badge_bg_color: normalizeOptionalHexColor(payload.sticky_footer_badge_bg_color),
+    sticky_footer_timer_box_bg_color: normalizeOptionalHexColor(
+      payload.sticky_footer_timer_box_bg_color,
+    ),
+    sticky_footer_timer_digit_color: normalizeOptionalHexColor(
+      payload.sticky_footer_timer_digit_color,
+    ),
+    sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
+    sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
+    sticky_footer_show_timer: payload.sticky_footer_show_timer,
+  };
+}
+
+/** Saves full landing content and moves product from research to ready_for_test. */
+export async function completeLandingSetupAction(id: string, payload: ProductPayload) {
+  validateLandingProductPayload(payload);
+  const supabase = await assertAdmin();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("products")
+    .select("slug, test_status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    throw new Error("Product not found");
+  }
+  if (existing.test_status !== "under_research") {
+    throw new Error("Landing setup is only available for products in research.");
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      ...landingFieldsFromPayload(payload),
+      test_status: "ready_for_test",
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  if (existing.slug) {
+    revalidatePath(`/${existing.slug}`);
+  }
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}/landing-setup`);
+}
+
 export async function updateProductAction(id: string, payload: ProductPayload) {
-  validateProductPayload(payload);
+  validateLandingProductPayload(payload);
   const supabase = await assertAdmin();
 
   const { data: existing, error: fetchErr } = await supabase
@@ -373,84 +618,10 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
   const { error } = await supabase
     .from("products")
     .update({
-      default_language: payload.default_language,
-      brand_color: normalizeHexColor(payload.brand_color, BRAND_COLOR),
-      logo_url: payload.logo_url.trim(),
-      name_ar: payload.name_ar.trim(),
-      name_fr: payload.name_fr.trim(),
-      hero_subtitle_ar: payload.hero_subtitle_ar,
-      hero_subtitle_fr: payload.hero_subtitle_fr,
-      header_bar_text_ar: payload.header_bar_text_ar.trim(),
-      header_bar_text_fr: payload.header_bar_text_fr.trim(),
-      header_bar_max_lines: 1,
-      header_bar_font_size_px: null,
-      header_offer_text_ar: "",
-      header_offer_text_fr: "",
-      header_discount_text_ar: "",
-      header_discount_text_fr: "",
-      header_promo_text_ar: "",
-      header_promo_text_fr: "",
-      header_announcement_text_ar: "",
-      header_announcement_text_fr: "",
-      header_cta_text_ar: payload.header_cta_text_ar,
-      header_cta_text_fr: payload.header_cta_text_fr,
-      description_ar: payload.description_ar,
-      description_fr: payload.description_fr,
-      cta_text_ar: payload.cta_text_ar,
-      cta_text_fr: payload.cta_text_fr,
-      features_title_ar: payload.features_title_ar,
-      features_title_fr: payload.features_title_fr,
-      testimonials_title_ar: payload.testimonials_title_ar,
-      testimonials_title_fr: payload.testimonials_title_fr,
-      media_caption_ar: payload.media_caption_ar,
-      media_caption_fr: payload.media_caption_fr,
-      faq_title_ar: payload.faq_title_ar,
-      faq_title_fr: payload.faq_title_fr,
-      stats_section_title_ar: payload.stats_section_title_ar.trim(),
-      stats_section_title_fr: payload.stats_section_title_fr.trim(),
-      testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
-      testimonials_badge_fr: payload.testimonials_badge_fr.trim(),
-      footer_note_ar: payload.footer_note_ar.trim(),
-      footer_note_fr: payload.footer_note_fr.trim(),
-      cta_banner_background_color: normalizeOptionalHexColor(payload.cta_banner_background_color),
-      cta_banner_background_image_url: payload.cta_banner_background_image_url.trim(),
-      cta_banner_image_overlay: payload.cta_banner_image_overlay,
-      contact_title_ar: payload.contact_title_ar,
-      contact_title_fr: payload.contact_title_fr,
-      whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
+      ...landingFieldsFromPayload(payload),
       price: payload.price,
-      discount_price: payload.discount_price,
       media_type: payload.media_type,
       media_url: payload.media_url.trim(),
-      secondary_media_type: payload.secondary_media_type,
-      secondary_media_url: payload.secondary_media_url.trim(),
-      tertiary_media_type: payload.tertiary_media_type,
-      tertiary_media_url: payload.tertiary_media_url.trim(),
-      features_ar: payload.features_ar,
-      features_fr: payload.features_fr,
-      gallery: payload.gallery,
-      testimonials_ar: payload.testimonials_ar,
-      testimonials_fr: payload.testimonials_fr,
-      faqs_ar: payload.faqs_ar,
-      faqs_fr: payload.faqs_fr,
-      stats_ar: payload.stats_ar,
-      stats_fr: payload.stats_fr,
-      contact_lines_ar: payload.contact_lines_ar,
-      contact_lines_fr: payload.contact_lines_fr,
-      meta_pixel_id: payload.meta_pixel_id?.trim() || null,
-      old_slugs: payload.old_slugs.filter(Boolean),
-      sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
-      sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
-      sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
-      sticky_footer_savings_badge_ar: payload.sticky_footer_savings_badge_ar,
-      sticky_footer_savings_badge_fr: payload.sticky_footer_savings_badge_fr,
-      sticky_footer_bar_bg_color: normalizeOptionalHexColor(payload.sticky_footer_bar_bg_color),
-      sticky_footer_badge_bg_color: normalizeOptionalHexColor(payload.sticky_footer_badge_bg_color),
-      sticky_footer_timer_box_bg_color: normalizeOptionalHexColor(payload.sticky_footer_timer_box_bg_color),
-      sticky_footer_timer_digit_color: normalizeOptionalHexColor(payload.sticky_footer_timer_digit_color),
-      sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
-      sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
-      sticky_footer_show_timer: payload.sticky_footer_show_timer,
       ...pipelineFieldsFromPayload(payload),
     })
     .eq("id", id);
