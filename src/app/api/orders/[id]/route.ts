@@ -9,7 +9,13 @@ type Body = {
   status?: OrderStatus;
 };
 
-const ORDER_STATUSES: OrderStatus[] = ["pending", "confirmed", "shipped", "cancelled"];
+const ORDER_STATUSES: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "shipped",
+  "cancelled",
+  "requires_human_intervention",
+];
 
 async function assertAdmin() {
   const supabase = await createClient();

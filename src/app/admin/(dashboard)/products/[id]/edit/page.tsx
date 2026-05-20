@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { createClient } from "@/lib/supabase/server";
 import { mapProductRow } from "@/lib/products";
@@ -23,7 +24,15 @@ export default async function EditProductPage({ params }: PageProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">{a.editProduct.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{a.editProduct.title}</h1>
+        <Link
+          href={`/admin/products/${id}/ai-agent`}
+          className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-muted)]/20"
+        >
+          {a.aiAgent.openManager}
+        </Link>
+      </div>
       <div className="mt-8">
         <ProductForm mode="edit" initial={product} />
       </div>

@@ -238,6 +238,9 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
                   <option value="confirmed">{a.orderStatus.confirmed}</option>
                   <option value="shipped">{a.orderStatus.shipped}</option>
                   <option value="cancelled">{a.orderStatus.cancelled}</option>
+                  <option value="requires_human_intervention">
+                    {a.orderStatus.requires_human_intervention}
+                  </option>
                 </select>
                 <button
                   type="button"

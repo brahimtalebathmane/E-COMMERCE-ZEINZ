@@ -17,6 +17,8 @@ function statusBadgeClass(status: OrderStatus): string {
       return "border-sky-500/40 bg-sky-500/10 text-sky-900";
     case "cancelled":
       return "border-red-500/40 bg-red-500/10 text-red-900";
+    case "requires_human_intervention":
+      return "border-violet-500/40 bg-violet-500/10 text-violet-900";
     default:
       return "border-[var(--accent-muted)] bg-[var(--card)] text-[var(--foreground)]";
   }

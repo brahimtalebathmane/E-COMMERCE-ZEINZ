@@ -47,6 +47,9 @@ export function OrderRowActions({
         <option value="confirmed">{a.orderStatus.confirmed}</option>
         <option value="shipped">{a.orderStatus.shipped}</option>
         <option value="cancelled">{a.orderStatus.cancelled}</option>
+        <option value="requires_human_intervention">
+          {a.orderStatus.requires_human_intervention}
+        </option>
       </select>
     </div>
   );

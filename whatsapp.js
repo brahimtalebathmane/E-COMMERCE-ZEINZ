@@ -8,6 +8,7 @@ const {
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } = require("@whiskeysockets/baileys");
+const { registerInboundHandler } = require("./whatsapp-inbound");
 
 const MAX_LOG_LINES = 200;
 
@@ -138,6 +139,8 @@ async function connectWhatsApp() {
           logEvent(`Failed to persist session credentials: ${msg}`);
         }
       });
+
+      registerInboundHandler(sock);
 
       sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;

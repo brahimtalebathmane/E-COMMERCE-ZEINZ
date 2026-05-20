@@ -166,7 +166,12 @@ export type LocalizedProductCopy = {
   contactLines: string[];
 };
 
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "shipped"
+  | "cancelled"
+  | "requires_human_intervention";
 
 export type OrderRow = {
   id: string;
