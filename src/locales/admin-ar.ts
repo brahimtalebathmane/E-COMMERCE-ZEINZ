@@ -149,6 +149,10 @@ export const adminAr = {
     saving: "جاري الحفظ…",
     saveSuccess: "تم حفظ إعدادات الوكيل",
     saveFailed: "تعذر الحفظ",
+    runtimeTitle: "تشغيل الردود على واتساب (ليس Netlify فقط)",
+    runtimeBody:
+      "حفظ القواعد هنا يعمل على Netlify. لكن الرد التلقائي يحتاج: (1) Railway متصل بواتساب، (2) WHATSAPP_WEBHOOK_SECRET على Railway وNetlify، (3) WHATSAPP_WEBHOOK_FORWARD_URL على Railway = رابط Netlify أدناه، (4) OPENAI_API_KEY و OPENAI_ASSISTANT_ID على Netlify.",
+    runtimeWebhookUrl: "رابط توجيه الرسائل على Railway:",
   },
   orderActions: {
     delete: "حذف",

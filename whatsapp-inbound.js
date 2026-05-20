@@ -3,6 +3,10 @@ const { downloadMediaMessage } = require("@whiskeysockets/baileys");
 const { normalizeE164 } = require("./otp-service");
 
 function resolveWebhookUrl() {
+  // Split deploy (Netlify storefront + Railway Baileys): forward to Netlify API.
+  const forward = process.env.WHATSAPP_WEBHOOK_FORWARD_URL?.trim();
+  if (forward) return forward.replace(/\/$/, "");
+
   const explicit = process.env.WEBHOOK_INTERNAL_BASE_URL?.trim();
   const port = process.env.PORT || "3000";
   const base = explicit || `http://127.0.0.1:${port}`;
@@ -43,7 +47,13 @@ async function imageToDataUrl(sock, msg) {
 
 async function forwardInbound(sock, msg) {
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET?.trim();
-  if (!secret) return;
+  if (!secret) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[whatsapp-inbound] WHATSAPP_WEBHOOK_SECRET not set — inbound AI disabled",
+    );
+    return;
+  }
 
   const remoteJid = msg.key?.remoteJid || "";
   if (!remoteJid.endsWith("@s.whatsapp.net")) return;

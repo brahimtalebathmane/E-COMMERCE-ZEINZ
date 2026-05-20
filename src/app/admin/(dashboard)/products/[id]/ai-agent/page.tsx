@@ -40,6 +40,16 @@ export default async function ProductAiAgentPage({ params }: PageProps) {
       <h1 className="mt-4 text-2xl font-semibold">{a.aiAgent.title}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">{a.aiAgent.subtitle}</p>
 
+      <div className="mt-4 max-w-3xl rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-950 dark:text-sky-100">
+        <p className="font-semibold">{a.aiAgent.runtimeTitle}</p>
+        <p className="mt-2 text-xs leading-relaxed opacity-90">{a.aiAgent.runtimeBody}</p>
+        <p className="mt-3 text-xs font-mono" dir="ltr">
+          {a.aiAgent.runtimeWebhookUrl}
+          <br />
+          https://zeina-ecomerce.netlify.app/api/webhooks/whatsapp
+        </p>
+      </div>
+
       <div className="mt-8 max-w-3xl">
         <AiAgentManager
           productId={id}
