@@ -1,6 +1,11 @@
+import { toMetaPixelPurchaseMoney } from "@/lib/currency";
+
 /**
- * Fixed value/currency for Meta Pixel + CAPI Purchase events only.
- * Real order totals (MRU) in Supabase and UI are unchanged.
+ * Builds Meta Purchase event value/currency from an order total stored in MRU.
  */
-export const META_PURCHASE_TRACKING_VALUE = 25;
-export const META_PURCHASE_TRACKING_CURRENCY = "USD" as const;
+export function metaPurchaseMoneyFromOrderTotal(
+  totalPriceMru: number,
+  orderCurrency = "MRU",
+): { value: number; currency: string } {
+  return toMetaPixelPurchaseMoney(totalPriceMru, orderCurrency);
+}

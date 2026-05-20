@@ -4,10 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Script from "next/script";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 import {
-  META_PURCHASE_TRACKING_CURRENCY,
-  META_PURCHASE_TRACKING_VALUE,
-} from "@/lib/meta-purchase-tracking";
-import {
   buildMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
   type MetaPixelAdvancedMatchingPayload,
@@ -168,16 +164,21 @@ export function trackInitiateCheckout(eventId: string) {
   window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
 }
 
-/** Purchase Pixel payload matches CAPI: fixed 25 USD (not real MRU order total). */
-export function trackPurchase(params: { eventId: string }) {
+/** Purchase Pixel payload matches CAPI: MRU order total converted to USD. */
+export function trackPurchase(params: {
+  eventId: string;
+  valueMru: number;
+  currency?: string;
+}) {
   if (typeof window === "undefined" || !window.fbq) return;
+  const { value, currency } = toMetaPixelPurchaseMoney(
+    params.valueMru,
+    params.currency ?? "MRU",
+  );
   window.fbq(
     "track",
     "Purchase",
-    {
-      value: META_PURCHASE_TRACKING_VALUE,
-      currency: META_PURCHASE_TRACKING_CURRENCY,
-    },
+    { value, currency },
     { eventID: params.eventId },
   );
 }

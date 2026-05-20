@@ -1,6 +1,12 @@
 "use client";
 
-import type { ProductRow, Testimonial, FAQ } from "@/types";
+import type {
+  ProductRow,
+  Testimonial,
+  FAQ,
+  ProductTestingStatus,
+  ProductSourcingType,
+} from "@/types";
 import {
   createProductAction,
   deleteProductAction,
@@ -148,6 +154,16 @@ export function ProductForm({ mode, initial }: Props) {
   const [price, setPrice] = useState(String(initial?.price ?? "0"));
   const [discount, setDiscount] = useState(
     initial?.discount_price != null ? String(initial.discount_price) : "",
+  );
+  const [testStatus, setTestStatus] = useState<ProductTestingStatus>(
+    initial?.test_status ?? "under_research",
+  );
+  const [sourcingType, setSourcingType] = useState<ProductSourcingType | "">(
+    initial?.sourcing_type ?? "",
+  );
+  const [sourcingLink, setSourcingLink] = useState(initial?.sourcing_link ?? "");
+  const [costPrice, setCostPrice] = useState(
+    initial?.cost_price != null ? String(initial.cost_price) : "",
   );
   const [mediaType, setMediaType] = useState<"image" | "video">(
     initial?.media_type ?? "image",
@@ -372,6 +388,15 @@ export function ProductForm({ mode, initial }: Props) {
       sticky_footer_cta_bg_color: stickyFooterCtaBg.trim(),
       sticky_footer_cta_text_color: stickyFooterCtaFg.trim(),
       sticky_footer_show_timer: stickyFooterShowTimer,
+      test_status: testStatus,
+      sourcing_type: sourcingType === "" ? null : sourcingType,
+      sourcing_link: sourcingLink,
+      cost_price: (() => {
+        const t = costPrice.trim();
+        if (!t) return null;
+        const n = Number.parseFloat(t);
+        return Number.isFinite(n) ? n : null;
+      })(),
     };
   }
 
@@ -788,6 +813,71 @@ export function ProductForm({ mode, initial }: Props) {
             onChange={(e) => setContactFrText(e.target.value)}
             dir="ltr"
           />
+        </div>
+        <div className="sm:col-span-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <h3 className="text-sm font-semibold">{a.productForm.sectionPipeline}</h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionPipelineHint}</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">{a.productForm.testStatus}</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={testStatus}
+                onChange={(e) =>
+                  setTestStatus(e.target.value as ProductTestingStatus)
+                }
+              >
+                <option value="under_research">
+                  {a.productForm.testStatusUnderResearch}
+                </option>
+                <option value="ready_for_test">{a.productForm.testStatusReady}</option>
+                <option value="testing">{a.productForm.testStatusTesting}</option>
+                <option value="winner">{a.productForm.testStatusWinner}</option>
+                <option value="failed">{a.productForm.testStatusFailed}</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.sourcingType}</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={sourcingType}
+                onChange={(e) =>
+                  setSourcingType(
+                    e.target.value === ""
+                      ? ""
+                      : (e.target.value as ProductSourcingType),
+                  )
+                }
+              >
+                <option value="">{a.productForm.sourcingTypeUnset}</option>
+                <option value="local">{a.productForm.sourcingLocal}</option>
+                <option value="import">{a.productForm.sourcingImport}</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium">{a.productForm.sourcingLink}</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={sourcingLink}
+                onChange={(e) => setSourcingLink(e.target.value)}
+                placeholder={a.productForm.sourcingLinkPlaceholder}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{a.productForm.costPrice}</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
+                placeholder={a.productForm.costPricePlaceholder}
+                dir="ltr"
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label className="text-sm font-medium">{a.productForm.price}</label>

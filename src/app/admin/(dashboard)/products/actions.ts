@@ -5,7 +5,12 @@ import { normalizeHexColor, normalizeOptionalHexColor } from "@/lib/color";
 import { slugify } from "@/lib/slug";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
-import type { Testimonial, FAQ } from "@/types";
+import type {
+  Testimonial,
+  FAQ,
+  ProductTestingStatus,
+  ProductSourcingType,
+} from "@/types";
 import { revalidatePath } from "next/cache";
 
 export type ProductPayload = {
@@ -79,7 +84,19 @@ export type ProductPayload = {
   sticky_footer_cta_bg_color: string;
   sticky_footer_cta_text_color: string;
   sticky_footer_show_timer: boolean;
+  test_status: ProductTestingStatus;
+  sourcing_type: ProductSourcingType | null;
+  sourcing_link: string;
+  cost_price: number | null;
 };
+
+const TEST_STATUSES: ProductTestingStatus[] = [
+  "under_research",
+  "ready_for_test",
+  "testing",
+  "winner",
+  "failed",
+];
 
 function trimText(v: string): string {
   return v.trim();
@@ -136,6 +153,34 @@ function validateProductPayload(payload: ProductPayload) {
   if (trimList(payload.contact_lines_ar).length < 3) {
     throw new Error("Please provide at least 3 Arabic contact lines.");
   }
+
+  if (!TEST_STATUSES.includes(payload.test_status)) {
+    throw new Error("Invalid product test status.");
+  }
+
+  if (
+    payload.sourcing_type != null &&
+    payload.sourcing_type !== "local" &&
+    payload.sourcing_type !== "import"
+  ) {
+    throw new Error("Sourcing type must be local or import.");
+  }
+
+  if (
+    payload.cost_price != null &&
+    (!Number.isFinite(payload.cost_price) || payload.cost_price < 0)
+  ) {
+    throw new Error("Cost price must be a valid non-negative number.");
+  }
+}
+
+function pipelineFieldsFromPayload(payload: ProductPayload) {
+  return {
+    test_status: payload.test_status,
+    sourcing_type: payload.sourcing_type,
+    sourcing_link: payload.sourcing_link.trim(),
+    cost_price: payload.cost_price,
+  };
 }
 
 async function assertAdmin() {
@@ -267,12 +312,47 @@ export async function createProductAction(payload: ProductPayload) {
     sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
     sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
     sticky_footer_show_timer: payload.sticky_footer_show_timer,
+    ...pipelineFieldsFromPayload(payload),
   });
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
   revalidatePath(`/${candidate}`);
+  revalidatePath("/admin/products");
+}
+
+export async function updateProductTestStatusAction(
+  id: string,
+  test_status: ProductTestingStatus,
+) {
+  if (!TEST_STATUSES.includes(test_status)) {
+    throw new Error("Invalid product test status.");
+  }
+
+  const supabase = await assertAdmin();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("products")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    throw new Error("Product not found");
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({ test_status })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  if (existing.slug) {
+    revalidatePath(`/${existing.slug}`);
+  }
   revalidatePath("/admin/products");
 }
 
@@ -371,6 +451,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
       sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
       sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
       sticky_footer_show_timer: payload.sticky_footer_show_timer,
+      ...pipelineFieldsFromPayload(payload),
     })
     .eq("id", id);
 

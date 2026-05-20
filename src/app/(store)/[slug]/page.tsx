@@ -22,8 +22,15 @@ export default async function ProductPage({ params }: PageProps) {
   if (!found) {
     const legacy = await getProductByOldSlug(slug);
     if (legacy) {
+      if (legacy.test_status === "failed") {
+        notFound();
+      }
       redirect(`/${legacy.slug}`);
     }
+    notFound();
+  }
+
+  if (found.test_status === "failed") {
     notFound();
   }
 

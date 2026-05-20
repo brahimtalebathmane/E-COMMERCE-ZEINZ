@@ -12,6 +12,15 @@ export type FAQ = {
   a: string;
 };
 
+export type ProductTestingStatus =
+  | "under_research"
+  | "ready_for_test"
+  | "testing"
+  | "winner"
+  | "failed";
+
+export type ProductSourcingType = "local" | "import";
+
 export type ProductRow = {
   id: string;
   /** Default storefront language for this landing page. */
@@ -104,6 +113,10 @@ export type ProductRow = {
   contact_lines_ar: string[];
   contact_lines_fr: string[];
   meta_pixel_id: string | null;
+  test_status: ProductTestingStatus;
+  sourcing_type: ProductSourcingType | null;
+  sourcing_link: string;
+  cost_price: number | null;
   created_at: string;
 };
 

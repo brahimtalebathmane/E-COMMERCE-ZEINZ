@@ -1,9 +1,5 @@
 import "server-only";
 import crypto from "crypto";
-import {
-  META_PURCHASE_TRACKING_CURRENCY,
-  META_PURCHASE_TRACKING_VALUE,
-} from "@/lib/meta-purchase-tracking";
 
 type MetaUserDataInput = {
   name?: string | null;
@@ -280,14 +276,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
     headers: params.requestHeaders ?? undefined,
   });
 
-  const customDataForCapi =
-    params.eventName === "Purchase"
-      ? {
-          ...(params.customData ?? {}),
-          value: META_PURCHASE_TRACKING_VALUE,
-          currency: META_PURCHASE_TRACKING_CURRENCY,
-        }
-      : params.customData || undefined;
+  const customDataForCapi = params.customData || undefined;
 
   const dataRowBase: Record<string, unknown> = {
     event_name: params.eventName,

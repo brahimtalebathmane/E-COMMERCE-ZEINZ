@@ -1,4 +1,24 @@
-import type { ProductRow } from "@/types";
+import type { ProductRow, ProductSourcingType, ProductTestingStatus } from "@/types";
+
+const TEST_STATUSES: ProductTestingStatus[] = [
+  "under_research",
+  "ready_for_test",
+  "testing",
+  "winner",
+  "failed",
+];
+
+function parseTestStatus(raw: unknown): ProductTestingStatus {
+  if (typeof raw === "string" && (TEST_STATUSES as string[]).includes(raw)) {
+    return raw as ProductTestingStatus;
+  }
+  return "under_research";
+}
+
+function parseSourcingType(raw: unknown): ProductSourcingType | null {
+  if (raw === "local" || raw === "import") return raw;
+  return null;
+}
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -114,6 +134,13 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     contact_lines_ar: (row.contact_lines_ar as string[]) ?? [],
     contact_lines_fr: (row.contact_lines_fr as string[]) ?? [],
     meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
+    test_status: parseTestStatus(row.test_status),
+    sourcing_type: parseSourcingType(row.sourcing_type),
+    sourcing_link: (row.sourcing_link as string) ?? "",
+    cost_price:
+      row.cost_price === null || row.cost_price === undefined
+        ? null
+        : Number(row.cost_price),
     created_at: row.created_at as string,
   };
 }
