@@ -7,7 +7,7 @@ export default function NewProductPage() {
       <h1 className="text-2xl font-semibold">{a.newProduct.title}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">{a.newProduct.researchHint}</p>
       <div className="mt-8">
-        <ResearchProductForm />
+        <ResearchProductForm mode="create" />
       </div>
     </div>
   );

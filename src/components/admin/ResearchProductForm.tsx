@@ -2,25 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { createResearchProductAction } from "@/app/admin/(dashboard)/products/actions";
+import {
+  createResearchProductAction,
+  deleteProductAction,
+  updateResearchProductAction,
+} from "@/app/admin/(dashboard)/products/actions";
 import type { ResearchProductPayload } from "@/app/admin/(dashboard)/products/research-types";
 import { adminAr as a } from "@/locales/admin-ar";
-import type { ProductSourcingType } from "@/types";
+import type { ProductRow, ProductSourcingType } from "@/types";
 import { codMarginPercent } from "@/lib/product-pipeline";
 import { formatPrice } from "@/lib/currency";
 
-export function ResearchProductForm() {
+type Props = {
+  mode: "create" | "edit";
+  initial?: ProductRow;
+};
+
+export function ResearchProductForm({ mode, initial }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [nameAr, setNameAr] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
-  const [mediaType, setMediaType] = useState<"image" | "video">("image");
-  const [price, setPrice] = useState("");
-  const [costPrice, setCostPrice] = useState("");
-  const [sourcingType, setSourcingType] = useState<ProductSourcingType>("local");
-  const [sourcingLink, setSourcingLink] = useState("");
+  const [nameAr, setNameAr] = useState(initial?.name_ar ?? "");
+  const [mediaUrl, setMediaUrl] = useState(initial?.media_url ?? "");
+  const [mediaType, setMediaType] = useState<"image" | "video">(
+    initial?.media_type ?? "image",
+  );
+  const [price, setPrice] = useState(
+    initial?.price != null ? String(initial.price) : "",
+  );
+  const [costPrice, setCostPrice] = useState(
+    initial?.cost_price != null ? String(initial.cost_price) : "",
+  );
+  const [sourcingType, setSourcingType] = useState<ProductSourcingType>(
+    initial?.sourcing_type ?? "local",
+  );
+  const [sourcingLink, setSourcingLink] = useState(initial?.sourcing_link ?? "");
   const [uploading, setUploading] = useState(false);
 
   const priceNum = Number.parseFloat(price);
@@ -54,21 +71,29 @@ export function ResearchProductForm() {
     }
   }, []);
 
+  function buildPayload(): ResearchProductPayload {
+    return {
+      name_ar: nameAr.trim(),
+      media_url: mediaUrl.trim(),
+      media_type: mediaType,
+      price: Number.parseFloat(price),
+      cost_price: Number.parseFloat(costPrice),
+      sourcing_type: sourcingType,
+      sourcing_link: sourcingLink.trim(),
+    };
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const payload: ResearchProductPayload = {
-        name_ar: nameAr.trim(),
-        media_url: mediaUrl.trim(),
-        media_type: mediaType,
-        price: Number.parseFloat(price),
-        cost_price: Number.parseFloat(costPrice),
-        sourcing_type: sourcingType,
-        sourcing_link: sourcingLink.trim(),
-      };
-      await createResearchProductAction(payload);
+      const payload = buildPayload();
+      if (mode === "create") {
+        await createResearchProductAction(payload);
+      } else if (initial) {
+        await updateResearchProductAction(initial.id, payload);
+      }
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
@@ -78,11 +103,37 @@ export function ResearchProductForm() {
     }
   }
 
+  async function onDelete() {
+    if (!initial || mode !== "edit") return;
+    if (!confirm(a.researchForm.deleteConfirm)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteProductAction(initial.id);
+      router.push("/admin/products");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.researchForm.failedDelete);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-6 text-start" dir="rtl">
       <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-        <h2 className="text-base font-bold">{a.researchForm.title}</h2>
+        <h2 className="text-base font-bold">
+          {mode === "create" ? a.researchForm.title : a.editResearch.title}
+        </h2>
         <p className="mt-1 text-xs text-[var(--muted)]">{a.researchForm.hint}</p>
+        {mode === "edit" && initial ? (
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            {a.productForm.slugFixed}{" "}
+            <code className="font-mono" dir="ltr">
+              {initial.slug}
+            </code>
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -210,7 +261,11 @@ export function ResearchProductForm() {
           disabled={busy}
           className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-50"
         >
-          {busy ? a.researchForm.saving : a.researchForm.create}
+          {busy
+            ? a.researchForm.saving
+            : mode === "create"
+              ? a.researchForm.create
+              : a.researchForm.saveChanges}
         </button>
         <button
           type="button"
@@ -219,6 +274,16 @@ export function ResearchProductForm() {
         >
           {a.researchForm.cancel}
         </button>
+        {mode === "edit" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onDelete()}
+            className="rounded-xl border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-700 disabled:opacity-50"
+          >
+            {a.researchForm.delete}
+          </button>
+        ) : null}
       </div>
     </form>
   );

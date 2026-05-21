@@ -42,6 +42,14 @@ export const adminAr = {
     statusTesting: "قيد الاختبار",
     emptyTab: "لا توجد منتجات في هذه المرحلة.",
     statusUpdateFailed: "تعذر تحديث حالة المنتج",
+    delete: "حذف",
+    deleteConfirm:
+      "حذف هذا المنتج؟ تبقى الطلبات المرتبطة محفوظة، لكن صفحة الهبوط ستعيد 404.",
+    deleteFailed: "فشل حذف المنتج",
+    deleting: "جاري الحذف…",
+  },
+  editResearch: {
+    title: "تعديل بيانات البحث",
   },
   newProduct: {
     title: "منتج جديد (بحث وتقصي)",
@@ -64,6 +72,11 @@ export const adminAr = {
     saving: "جاري الحفظ…",
     cancel: "إلغاء",
     failedSave: "فشل إنشاء المنتج",
+    saveChanges: "حفظ التغييرات",
+    delete: "حذف المنتج",
+    deleteConfirm:
+      "حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.",
+    failedDelete: "فشل الحذف",
   },
   landingSetup: {
     title: "إعداد صفحة الهبوط",

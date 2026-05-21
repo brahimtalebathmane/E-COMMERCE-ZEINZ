@@ -351,6 +351,49 @@ export async function createResearchProductAction(payload: ResearchProductPayloa
   return { slug: candidate };
 }
 
+export async function updateResearchProductAction(
+  id: string,
+  payload: ResearchProductPayload,
+) {
+  validateResearchProductPayload(payload);
+  const supabase = await assertAdmin();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("products")
+    .select("slug, test_status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    throw new Error("Product not found");
+  }
+  if (existing.test_status !== "under_research") {
+    throw new Error("Research fields can only be edited while in research stage.");
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      name_ar: payload.name_ar.trim(),
+      media_type: payload.media_type,
+      media_url: payload.media_url.trim(),
+      price: payload.price,
+      cost_price: payload.cost_price,
+      sourcing_type: payload.sourcing_type,
+      sourcing_link: payload.sourcing_link.trim(),
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  if (existing.slug) {
+    revalidatePath(`/${existing.slug}`);
+  }
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}/edit`);
+}
+
 export async function createProductAction(payload: ProductPayload) {
   validateLandingProductPayload(payload);
   const supabase = await assertAdmin();

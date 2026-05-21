@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { updateProductTestStatusAction } from "./actions";
+import { deleteProductAction, updateProductTestStatusAction } from "./actions";
 import type { AdminProductPipelineRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
@@ -68,53 +68,20 @@ function ProductThumb({ row }: { row: AdminProductPipelineRow }) {
   );
 }
 
-function PipelineActions({
+function EditDeleteActions({
   row,
-  tab,
   busy,
-  onStatus,
+  deletingId,
+  onDelete,
 }: {
   row: AdminProductPipelineRow;
-  tab: PipelineTabId;
   busy: boolean;
-  onStatus: (id: string, status: ProductTestingStatus) => void;
+  deletingId: string | null;
+  onDelete: (id: string) => void;
 }) {
-  if (tab === "research") {
-    return (
-      <Link
-        href={`/admin/products/${row.id}/landing-setup`}
-        className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
-      >
-        {a.pipeline.setupLanding}
-      </Link>
-    );
-  }
-
-  if (tab === "ready") {
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onStatus(row.id, "winner")}
-          className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-900 disabled:opacity-50"
-        >
-          {a.pipeline.markWinner}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onStatus(row.id, "failed")}
-          className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-900 disabled:opacity-50"
-        >
-          {a.pipeline.markFailed}
-        </button>
-      </div>
-    );
-  }
-
+  const isDeleting = deletingId === row.id;
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <>
       <Link
         href={`/admin/products/${row.id}/edit`}
         className="text-[var(--accent)] underline text-xs"
@@ -122,9 +89,73 @@ function PipelineActions({
         {a.products.edit}
       </Link>
       <span className="text-[var(--muted)]">·</span>
-      <Link href={`/${row.slug}`} className="text-[var(--muted)] underline text-xs" target="_blank">
-        {a.products.view}
-      </Link>
+      <button
+        type="button"
+        disabled={busy || isDeleting}
+        onClick={() => onDelete(row.id)}
+        className="text-xs font-semibold text-red-700 underline disabled:opacity-50"
+      >
+        {isDeleting ? a.pipeline.deleting : a.pipeline.delete}
+      </button>
+    </>
+  );
+}
+
+function PipelineActions({
+  row,
+  tab,
+  busy,
+  deletingId,
+  onStatus,
+  onDelete,
+}: {
+  row: AdminProductPipelineRow;
+  tab: PipelineTabId;
+  busy: boolean;
+  deletingId: string | null;
+  onStatus: (id: string, status: ProductTestingStatus) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {tab === "research" ? (
+        <Link
+          href={`/admin/products/${row.id}/landing-setup`}
+          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
+        >
+          {a.pipeline.setupLanding}
+        </Link>
+      ) : null}
+      {tab === "ready" ? (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onStatus(row.id, "winner")}
+            className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-900 disabled:opacity-50"
+          >
+            {a.pipeline.markWinner}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onStatus(row.id, "failed")}
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-900 disabled:opacity-50"
+          >
+            {a.pipeline.markFailed}
+          </button>
+        </>
+      ) : null}
+      {(tab === "winner" || tab === "failed") && row.slug ? (
+        <Link
+          href={`/${row.slug}`}
+          className="text-[var(--muted)] underline text-xs"
+          target="_blank"
+        >
+          {a.products.view}
+        </Link>
+      ) : null}
+      <EditDeleteActions row={row} busy={busy} deletingId={deletingId} onDelete={onDelete} />
     </div>
   );
 }
@@ -133,6 +164,7 @@ export function ProductsAdminView({ products }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PipelineTabId>("research");
   const [pending, startTransition] = useTransition();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(
@@ -165,6 +197,23 @@ export function ProductsAdminView({ products }: Props) {
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : a.pipeline.statusUpdateFailed);
+      }
+    });
+  }
+
+  function handleDelete(id: string) {
+    if (deletingId) return;
+    if (!confirm(a.pipeline.deleteConfirm)) return;
+    setError(null);
+    setDeletingId(id);
+    startTransition(async () => {
+      try {
+        await deleteProductAction(id);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : a.pipeline.deleteFailed);
+      } finally {
+        setDeletingId(null);
       }
     });
   }
@@ -258,7 +307,9 @@ export function ProductsAdminView({ products }: Props) {
                       row={p}
                       tab={tab}
                       busy={pending}
+                      deletingId={deletingId}
                       onStatus={handleStatus}
+                      onDelete={handleDelete}
                     />
                   </td>
                 </tr>
@@ -285,7 +336,9 @@ export function ProductsAdminView({ products }: Props) {
                       row={p}
                       tab={tab}
                       busy={pending}
+                      deletingId={deletingId}
                       onStatus={handleStatus}
+                      onDelete={handleDelete}
                     />
                   </td>
                 </tr>
