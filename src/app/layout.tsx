@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Tajawal } from "next/font/google";
+import { BRAND_COLOR, BRAND_NAME } from "@/lib/site-branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,15 +20,56 @@ const tajawal = Tajawal({
   adjustFontFallback: true,
 });
 
+const APP_DESCRIPTION =
+  "ZEINZ e-commerce storefront, product landings, and secure checkout.";
+
 export const metadata: Metadata = {
-  title: "ZEINZ — Product",
-  description: "Single-product landing and checkout",
+  applicationName: BRAND_NAME,
+  title: {
+    default: `${BRAND_NAME} — Shop`,
+    template: `%s — ${BRAND_NAME}`,
+  },
+  description: APP_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: BRAND_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    type: "website",
+    siteName: BRAND_NAME,
+    title: {
+      default: `${BRAND_NAME} — Shop`,
+      template: `%s — ${BRAND_NAME}`,
+    },
+    description: APP_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: {
+      default: `${BRAND_NAME} — Shop`,
+      template: `%s — ${BRAND_NAME}`,
+    },
+    description: APP_DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: BRAND_COLOR,
 };
 
 export default function RootLayout({

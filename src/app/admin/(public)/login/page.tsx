@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { SiteLogo } from "@/components/SiteLogo";
 import { createClient } from "@/lib/supabase/client";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -35,6 +37,9 @@ function LoginForm() {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 text-start">
+      <Link href="/" className="mb-6 inline-flex">
+        <SiteLogo priority objectAlign="end" />
+      </Link>
       <h1 className="text-2xl font-semibold">{a.login.title}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">{a.login.subtitle}</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">

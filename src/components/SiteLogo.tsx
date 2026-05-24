@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { SITE_LOGO_FRAME_CLASS, SITE_LOGO_URL } from "@/lib/site-branding";
+import { BRAND_NAME, SITE_LOGO_FRAME_CLASS, SITE_LOGO_URL } from "@/lib/site-branding";
 
 type Props = {
   className?: string;
@@ -17,7 +17,7 @@ type Props = {
 export function SiteLogo({
   className,
   priority,
-  alt = "E-Commerce Zeina",
+  alt = BRAND_NAME,
   src = SITE_LOGO_URL,
   objectAlign = "start",
 }: Props) {

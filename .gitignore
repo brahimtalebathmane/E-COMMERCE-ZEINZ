@@ -41,5 +41,9 @@ next-env.d.ts
 # netlify
 .netlify
 
+# Serwist (generated service worker)
+public/sw*
+public/swe-worker*
+
 # whatsapp (baileys auth state)
 /baileys_auth/

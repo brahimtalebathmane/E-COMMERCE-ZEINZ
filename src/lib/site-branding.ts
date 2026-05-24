@@ -1,9 +1,15 @@
 /** Fixed brand identity across full website and all landing pages. */
 export const BRAND_COLOR = "#006B0C";
 
-/** Public site / admin header logo (PNG). */
-export const SITE_LOGO_URL =
-  "https://i.postimg.cc/LXVG0mdk/ughujgijk.png";
+/** Canonical brand name shown in metadata and accessibility labels. */
+export const BRAND_NAME = "ZEINZ";
+
+/**
+ * Public site / admin header logo (PNG).
+ * Hosted locally for reliability, offline PWA support, and consistent caching.
+ * Source asset: logo-zeina.png (zeina wordmark).
+ */
+export const SITE_LOGO_URL = "/icons/logo-zeina.png";
 
 /**
  * Same viewport-relative frame as the landing header so the storefront and admin

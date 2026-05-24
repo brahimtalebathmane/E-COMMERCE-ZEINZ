@@ -1,4 +1,24 @@
 import type { NextConfig } from "next";
+import { spawnSync } from "node:child_process";
+import withSerwistInit from "@serwist/next";
+
+const revision =
+  spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout?.trim() ||
+  crypto.randomUUID();
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+  additionalPrecacheEntries: [
+    { url: "/~offline", revision },
+    { url: "/icons/logo-zeina.png", revision },
+    { url: "/icons/icon-192.png", revision },
+    { url: "/icons/icon-512.png", revision },
+  ],
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -13,7 +33,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/favicon.ico",
-        destination: "/icon.svg",
+        destination: "/icon.png",
         permanent: false,
       },
     ];
@@ -23,9 +43,7 @@ const nextConfig: NextConfig = {
     deviceSizes: [390, 428, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24,
-    remotePatterns: [
-      { protocol: "https", hostname: "**" },
-    ],
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   experimental: {
     optimizePackageImports: [
@@ -37,4 +55,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

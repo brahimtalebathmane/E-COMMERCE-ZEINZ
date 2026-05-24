@@ -1,7 +1,8 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import Link from "next/link";
+import { SiteLogo } from "@/components/SiteLogo";
+import type { CSSProperties } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BRAND_COLOR } from "@/lib/site-branding";
 
@@ -25,7 +26,10 @@ export function StoreSiteFooter() {
     >
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <Link href="/" className="inline-flex">
+              <SiteLogo />
+            </Link>
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
               {t("siteFooter.brand")}
             </p>
