@@ -116,6 +116,8 @@ function PipelineActions({
   onStatus: (id: string, status: ProductTestingStatus) => void;
   onDelete: (id: string) => void;
 }) {
+  const canViewLanding = Boolean(row.slug) && row.test_status !== "failed";
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {tab === "research" ? (
@@ -146,11 +148,12 @@ function PipelineActions({
           </button>
         </>
       ) : null}
-      {(tab === "winner" || tab === "failed") && row.slug ? (
+      {canViewLanding ? (
         <Link
           href={`/${row.slug}`}
           className="text-[var(--muted)] underline text-xs"
           target="_blank"
+          rel="noopener noreferrer"
         >
           {a.products.view}
         </Link>
