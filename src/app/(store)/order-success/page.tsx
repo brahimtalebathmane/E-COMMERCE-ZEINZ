@@ -8,6 +8,8 @@ type Props = {
     order_id?: string;
     product_id?: string;
     total_price?: string;
+    completion_token?: string;
+    action_token?: string;
   }>;
 };
 
@@ -15,6 +17,8 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   const sp = searchParams ? await searchParams : undefined;
   const orderId = sp?.order_id?.trim() || null;
   const productId = sp?.product_id?.trim() || null;
+  const completionToken = sp?.completion_token?.trim() || null;
+  const actionToken = sp?.action_token?.trim() || null;
   const totalPriceRaw = sp?.total_price?.trim() || "";
   const totalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
 
@@ -29,6 +33,8 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
       <MetaPixel pixelId={product?.meta_pixel_id} />
       <OrderSuccessClient
         orderId={orderId}
+        completionToken={completionToken}
+        actionToken={actionToken}
         productId={productId}
         productName={product?.name_ar ?? null}
         totalPrice={typeof totalPrice === "number" && Number.isFinite(totalPrice) ? totalPrice : null}

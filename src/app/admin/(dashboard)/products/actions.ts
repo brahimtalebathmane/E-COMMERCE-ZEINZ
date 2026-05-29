@@ -5,6 +5,7 @@ import { normalizeHexColor, normalizeOptionalHexColor } from "@/lib/color";
 import { slugify } from "@/lib/slug";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
+import { assertAdminUser } from "@/lib/auth/admin";
 import type {
   Testimonial,
   FAQ,
@@ -205,22 +206,6 @@ function pipelineFieldsFromPayload(payload: ProductPayload) {
   };
 }
 
-async function assertAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (!profile || profile.role !== "admin") {
-    throw new Error("Forbidden");
-  }
-  return supabase;
-}
 
 async function slugExists(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
   const { data } = await supabase.from("products").select("id").eq("slug", slug).maybeSingle();
@@ -338,7 +323,7 @@ function researchInsertDefaults(payload: ResearchProductPayload, slug: string) {
 
 export async function createResearchProductAction(payload: ResearchProductPayload) {
   validateResearchProductPayload(payload);
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
   const { error } = await supabase
@@ -356,7 +341,7 @@ export async function updateResearchProductAction(
   payload: ResearchProductPayload,
 ) {
   validateResearchProductPayload(payload);
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -396,7 +381,7 @@ export async function updateResearchProductAction(
 
 export async function createProductAction(payload: ProductPayload) {
   validateLandingProductPayload(payload);
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
@@ -498,7 +483,7 @@ export async function updateProductTestStatusAction(
     throw new Error("Invalid product test status.");
   }
 
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -611,7 +596,7 @@ function landingFieldsFromPayload(payload: ProductPayload) {
 /** Saves full landing content and moves product from research to ready_for_test. */
 export async function completeLandingSetupAction(id: string, payload: ProductPayload) {
   validateLandingProductPayload(payload);
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -646,7 +631,7 @@ export async function completeLandingSetupAction(id: string, payload: ProductPay
 
 export async function updateProductAction(id: string, payload: ProductPayload) {
   validateLandingProductPayload(payload);
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -677,7 +662,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
 }
 
 export async function deleteProductAction(id: string) {
-  const supabase = await assertAdmin();
+  const { supabase } = await assertAdminUser();
 
   const { data: existing } = await supabase
     .from("products")

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireAdminApi } from "@/lib/auth/api-access";
 
 const FIVE_YEARS_SECONDS = 60 * 60 * 24 * 365 * 5;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -27,21 +27,9 @@ function extensionFromMime(mimeType: string): string {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (!profile || profile.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdminApi();
+  if (!admin.ok) {
+    return admin.response;
   }
 
   const formData = await request.formData();

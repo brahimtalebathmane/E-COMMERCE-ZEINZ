@@ -1,41 +1,32 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireAdminApi } from "@/lib/auth/api-access";
+import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile || profile.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdminApi();
+  if (!admin.ok) {
+    return admin.response;
   }
 
   const url = new URL(request.url);
   const path = url.searchParams.get("path");
   if (!path) {
-    return NextResponse.json({ error: "path required" }, { status: 400 });
+    return apiValidationError("path required");
   }
 
-  const service = createServiceClient();
-  const { data, error } = await service.storage
-    .from("user-assets")
-    .createSignedUrl(path, 3600);
+  try {
+    const service = createServiceClient();
+    const { data, error } = await service.storage
+      .from("user-assets")
+      .createSignedUrl(path, 3600);
 
-  if (error || !data?.signedUrl) {
-    return NextResponse.json({ error: error?.message ?? "Failed" }, { status: 500 });
+    if (error || !data?.signedUrl) {
+      return apiErrorResponse(error ?? new Error("Failed"), "[GET /api/admin/signed-url]");
+    }
+
+    return NextResponse.json({ signedUrl: data.signedUrl });
+  } catch (e) {
+    return apiErrorResponse(e, "[GET /api/admin/signed-url]");
   }
-
-  return NextResponse.json({ signedUrl: data.signedUrl });
 }

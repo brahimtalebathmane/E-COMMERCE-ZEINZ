@@ -4,15 +4,13 @@ import { useEffect } from "react";
 
 type Props = {
   orderId: string | null;
+  completionToken: string | null;
+  actionToken: string | null;
   productId: string | null;
   productName: string | null;
   totalPrice: number | null;
   currency: string;
 };
-
-function waHandledKey(orderId: string) {
-  return `whatsapp_handled:${orderId}`;
-}
 
 const WA_MAX_ATTEMPTS = 5;
 const WA_BACKOFF_MS = [0, 900, 2200, 4500, 9000];
@@ -30,8 +28,11 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-/** Whether to persist whatsapp_handled in localStorage (terminal outcome or non-retryable error). */
-async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
+async function sendOrderWhatsAppWithRetries(
+  orderId: string,
+  completionToken: string,
+  actionToken: string,
+): Promise<boolean> {
   let lastStatus = 0;
   let lastBody: WaResponse = {};
 
@@ -46,7 +47,11 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
       res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderId }),
+        body: JSON.stringify({
+          order_id: orderId,
+          completion_token: completionToken,
+          action_token: actionToken,
+        }),
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -60,6 +65,13 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
     const body = (await res.json().catch(() => ({}))) as WaResponse;
     lastBody = body;
 
+    if (res.status === 403) {
+      console.error("[order-success] WhatsApp forbidden — missing or invalid action token", {
+        orderId,
+      });
+      return true;
+    }
+
     if (body.handled) {
       if (body.sent) {
         console.log("[order-success] Message sent successfully", { orderId });
@@ -69,11 +81,6 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
           skipReason: body.skipReason,
           hint: body.hint,
         });
-        if (body.skipReason === "whatsapp_service_unconfigured") {
-          console.info(
-            "[order-success] Fix: Netlify → Site configuration → Environment variables → add WHATSAPP_SERVICE_URL = your Railway WhatsApp service URL, e.g. https://your-service.up.railway.app — then redeploy.",
-          );
-        }
       }
       return true;
     }
@@ -110,16 +117,10 @@ async function sendOrderWhatsAppWithRetries(orderId: string): Promise<boolean> {
 }
 
 export function OrderSuccessClient(props: Props) {
-  const { orderId } = props;
+  const { orderId, completionToken, actionToken } = props;
 
   useEffect(() => {
-    if (!orderId) return;
-
-    try {
-      if (localStorage.getItem(waHandledKey(orderId)) === "1") return;
-    } catch {
-      // ignore
-    }
+    if (!orderId || !completionToken || !actionToken) return;
 
     let cancelled = false;
 
@@ -127,15 +128,8 @@ export function OrderSuccessClient(props: Props) {
 
     (async () => {
       try {
-        const markHandled = await sendOrderWhatsAppWithRetries(orderId);
+        await sendOrderWhatsAppWithRetries(orderId, completionToken, actionToken);
         if (cancelled) return;
-        if (markHandled) {
-          try {
-            localStorage.setItem(waHandledKey(orderId), "1");
-          } catch {
-            // ignore
-          }
-        }
       } catch (e) {
         console.error("[order-success] WhatsApp unexpected error", e);
       }
@@ -144,7 +138,7 @@ export function OrderSuccessClient(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, completionToken, actionToken]);
 
   return null;
 }

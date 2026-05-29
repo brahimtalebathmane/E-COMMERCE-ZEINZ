@@ -1,42 +1,45 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
+import { signOrderActionToken } from "@/lib/auth/order-action-token";
+import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
+import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
-import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { createMetaEventId } from "@/utils/meta";
+import { createOrderPhoneSchema } from "@/lib/validation/phone";
 
-type Body = {
-  product_id: string;
-  customer_name: string;
-  phone: string;
-  meta_event_id?: string;
-  event_source_url?: string;
-  meta_fbp?: string;
-  meta_fbc?: string;
-};
+const createOrderSchema = z.object({
+  product_id: z.string().uuid("product_id required"),
+  customer_name: z.string().trim().min(1, "customer_name required"),
+  phone: createOrderPhoneSchema,
+  meta_event_id: z.string().trim().optional(),
+  event_source_url: z.string().trim().optional(),
+  meta_fbp: z.string().trim().optional(),
+  meta_fbc: z.string().trim().optional(),
+});
 
 export async function POST(request: Request) {
-  let data: Body;
+  let raw: unknown;
   try {
-    data = (await request.json()) as Body;
+    raw = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return apiValidationError("Invalid JSON");
   }
 
-  try {
-    if (!data.product_id || typeof data.product_id !== "string") {
-      return NextResponse.json({ error: "product_id required" }, { status: 400 });
-    }
-    if (!data.customer_name || typeof data.customer_name !== "string" || !data.customer_name.trim()) {
-      return NextResponse.json({ error: "customer_name required" }, { status: 400 });
-    }
-    if (!data.phone || typeof data.phone !== "string" || !data.phone.trim()) {
-      return NextResponse.json({ error: "phone required" }, { status: 400 });
-    }
+  const parsed = createOrderSchema.safeParse(raw);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0]?.message ?? "Invalid request";
+    return apiValidationError(first);
+  }
 
+  const data = parsed.data;
+
+  try {
     const supabase = createServiceClient();
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, discount_price, price, meta_pixel_id")
+      .select("id, discount_price, price, meta_pixel_id, test_status")
       .eq("id", data.product_id)
       .maybeSingle();
 
@@ -46,6 +49,9 @@ export async function POST(request: Request) {
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
+    if (product.test_status !== "winner") {
+      return NextResponse.json({ error: "Product not available for orders" }, { status: 403 });
+    }
 
     const total =
       product.discount_price != null
@@ -53,25 +59,22 @@ export async function POST(request: Request) {
         : Number(product.price);
 
     const orderEventId =
-      typeof data.meta_event_id === "string" && data.meta_event_id.trim()
-        ? data.meta_event_id.trim()
+      data.meta_event_id && data.meta_event_id.length > 0
+        ? data.meta_event_id
         : createMetaEventId();
     const fallbackPixelId =
       process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
     const orderPixelId = product.meta_pixel_id?.trim() || fallbackPixelId;
-    const eventSourceUrl =
-      typeof data.event_source_url === "string" && data.event_source_url.trim()
-        ? data.event_source_url.trim()
-        : null;
-    const metaFbp = typeof data.meta_fbp === "string" && data.meta_fbp.trim() ? data.meta_fbp.trim() : null;
-    const metaFbc = typeof data.meta_fbc === "string" && data.meta_fbc.trim() ? data.meta_fbc.trim() : null;
+    const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
+    const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
+    const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert({
         product_id: data.product_id,
-        customer_name: data.customer_name.trim(),
-        phone: data.phone.trim(),
+        customer_name: data.customer_name,
+        phone: data.phone,
         payment_method: null,
         payment_number: null,
         transaction_reference: null,
@@ -85,7 +88,7 @@ export async function POST(request: Request) {
         meta_fbp: metaFbp,
         meta_fbc: metaFbc,
       })
-      .select("id, total_price, meta_event_id, meta_event_source_url, meta_pixel_id")
+      .select("id, total_price, meta_event_id, completion_token")
       .single();
 
     if (orderErr) {
@@ -98,61 +101,38 @@ export async function POST(request: Request) {
     console.log("[POST /api/orders] Order created", {
       order_id: order.id,
       product_id: data.product_id,
-      phone: data.phone.trim(),
     });
 
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
     try {
-      const clientIpAddress = resolveClientIpAddress(request.headers);
-      const clientUserAgent = request.headers.get("user-agent");
-
-      let leadSent = false;
-      if (order.meta_event_id) {
-        const leadCapi = await sendMetaEvent({
-          pixelId: order.meta_pixel_id,
-          eventName: "Lead",
-          eventId: order.meta_event_id,
-          eventSourceUrl: order.meta_event_source_url,
-          requestHeaders: request.headers,
-          userData: {
-            name: data.customer_name,
-            phone: data.phone,
-            fbp: metaFbp,
-            fbc: metaFbc,
-            clientIpAddress,
-            clientUserAgent,
-          },
-          customData: {
-            value: Number(order.total_price),
-            currency: "MRU",
-          },
-        });
-        leadSent = leadCapi.ok;
-      }
-
-      if (leadSent) {
-        await supabase
-          .from("orders")
-          .update({ meta_lead_sent: true })
-          .eq("id", order.id)
-          .eq("meta_lead_sent", false);
-      }
+      await dispatchMetaEvent(supabase, order.id, "lead", {
+        requestHeaders: request.headers,
+      });
     } catch (error) {
-      console.error("[POST /api/orders] Lead CAPI send skipped", {
+      console.error("[POST /api/orders] Lead CAPI dispatch failed", {
         order_id: order.id,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+
+    const completionToken = String(order.completion_token);
+    let actionToken: string;
+    try {
+      actionToken = signOrderActionToken(order.id, completionToken);
+    } catch (tokenErr) {
+      console.error("[POST /api/orders] ORDER_ACTION_SECRET missing", tokenErr);
+      return apiErrorResponse(tokenErr, "[POST /api/orders] token");
     }
 
     return NextResponse.json({
       success: true,
       order_id: order.id,
       total_price: order.total_price,
+      completion_token: completionToken,
+      action_token: actionToken,
     });
   } catch (e) {
-    const err = e instanceof Error ? e : new Error(String(e));
-    console.error("[POST /api/orders]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return apiErrorResponse(e, "[POST /api/orders]");
   }
 }

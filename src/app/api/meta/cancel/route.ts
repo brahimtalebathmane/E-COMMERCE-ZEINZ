@@ -1,89 +1,43 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
-import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { requireAdminApi } from "@/lib/auth/api-access";
+import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
+import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 
-type Body = {
-  order_id: string;
-};
+const bodySchema = z.object({
+  order_id: z.string().uuid(),
+});
 
 export async function POST(request: Request) {
-  let data: Body;
-  try {
-    data = (await request.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  const admin = await requireAdminApi();
+  if (!admin.ok) {
+    return admin.response;
   }
 
-  if (!data.order_id || typeof data.order_id !== "string") {
-    return NextResponse.json({ error: "order_id required" }, { status: 400 });
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return apiValidationError("Invalid JSON");
+  }
+
+  const parsed = bodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return apiValidationError("order_id required");
   }
 
   try {
     const supabase = createServiceClient();
-    const { data: order, error } = await supabase
-      .from("orders")
-      .select(
-        "id, status, customer_name, phone, meta_event_id, meta_event_source_url, meta_pixel_id, meta_cancel_sent, meta_fbp, meta_fbc",
-      )
-      .eq("id", data.order_id)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    if (order.status !== "cancelled") {
-      return NextResponse.json({ sent: false, reason: "status_not_cancelled" }, { status: 200 });
-    }
-    if (order.meta_cancel_sent) {
-      return NextResponse.json({ sent: false, reason: "already_sent" }, { status: 200 });
-    }
-    const eventId = order.meta_event_id?.trim() || createMetaEventId();
-    const pixelId =
-      order.meta_pixel_id?.trim() ||
-      process.env.META_PIXEL_ID?.trim() ||
-      process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() ||
-      null;
-    if (!order.meta_event_id) {
-      await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
-    }
-    if (!order.meta_pixel_id && pixelId) {
-      await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
-    }
-    if (!pixelId) {
-      return NextResponse.json({ sent: false, reason: "missing_meta_data" }, { status: 200 });
-    }
-
-    const capi = await sendMetaEvent({
-      pixelId,
-      eventName: "CancelledLead",
-      eventId,
-      eventSourceUrl: order.meta_event_source_url,
+    const result = await dispatchMetaEvent(supabase, parsed.data.order_id, "cancel", {
       requestHeaders: request.headers,
-      userData: {
-        name: order.customer_name,
-        phone: order.phone,
-        fbp: order.meta_fbp,
-        fbc: order.meta_fbc,
-        clientIpAddress: resolveClientIpAddress(request.headers),
-        clientUserAgent: request.headers.get("user-agent"),
-      },
-      customData: {
-        value: 0,
-        currency: "MRU",
-        status: "cancelled",
-      },
     });
-
-    if (capi.ok) {
-      await supabase
-        .from("orders")
-        .update({ meta_cancel_sent: true })
-        .eq("id", order.id)
-        .eq("meta_cancel_sent", false);
-    }
-    return NextResponse.json({ sent: capi.ok });
+    return NextResponse.json({
+      sent: result.sent,
+      reason: "reason" in result ? result.reason : undefined,
+      skipped: "skipped" in result ? result.skipped : undefined,
+    });
   } catch (e) {
-    const err = e instanceof Error ? e : new Error(String(e));
-    console.error("[POST /api/meta/cancel]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return apiErrorResponse(e, "[POST /api/meta/cancel]");
   }
 }

@@ -25,7 +25,8 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "sonner": "^1.7.1",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
