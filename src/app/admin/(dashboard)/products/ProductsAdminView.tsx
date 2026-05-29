@@ -120,9 +120,13 @@ function PipelineActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {tab === "research" ? (
+      {tab === "research" || tab === "ready" ? (
         <Link
-          href={`/admin/products/${row.id}/landing-setup`}
+          href={
+            tab === "research"
+              ? `/admin/products/${row.id}/landing-setup`
+              : `/admin/products/${row.id}/edit`
+          }
           className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
         >
           {a.pipeline.setupLanding}

@@ -593,6 +593,46 @@ function landingFieldsFromPayload(payload: ProductPayload) {
   };
 }
 
+/** Saves full landing configuration without changing pipeline test_status. */
+export async function saveLandingConfigurationAction(id: string, payload: ProductPayload) {
+  validateLandingProductPayload(payload);
+  const { supabase } = await assertAdminUser();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("products")
+    .select("slug, test_status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchErr || !existing) {
+    throw new Error("Product not found");
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({
+      ...landingFieldsFromPayload(payload),
+      price: payload.price,
+      media_type: payload.media_type,
+      media_url: payload.media_url.trim(),
+      test_status: existing.test_status,
+      sourcing_type: payload.sourcing_type,
+      sourcing_link: payload.sourcing_link.trim(),
+      cost_price: payload.cost_price,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  if (existing.slug) {
+    revalidatePath(`/${existing.slug}`);
+  }
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}/edit`);
+  revalidatePath(`/admin/products/${id}/landing-setup`);
+}
+
 /** Saves full landing content and moves product from research to ready_for_test. */
 export async function completeLandingSetupAction(id: string, payload: ProductPayload) {
   validateLandingProductPayload(payload);

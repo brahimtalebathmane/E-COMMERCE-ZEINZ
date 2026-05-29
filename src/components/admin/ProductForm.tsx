@@ -11,6 +11,7 @@ import {
   completeLandingSetupAction,
   createProductAction,
   deleteProductAction,
+  saveLandingConfigurationAction,
   updateProductAction,
   type ProductPayload,
 } from "@/app/admin/(dashboard)/products/actions";
@@ -494,12 +495,31 @@ export function ProductForm({ mode, initial }: Props) {
         throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
       }
       if (mode === "landing-setup" && initial) {
-        await completeLandingSetupAction(initial.id, payload);
+        await saveLandingConfigurationAction(initial.id, payload);
       } else if (mode === "create") {
         await createProductAction(payload);
       } else if (initial) {
         await updateProductAction(initial.id, payload);
       }
+      router.push("/admin/products");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.productForm.failedSave);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCompleteResearch(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!initial || mode !== "landing-setup" || initial.test_status !== "under_research") {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const payload = buildPayload();
+      await completeLandingSetupAction(initial.id, payload);
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
@@ -529,12 +549,12 @@ export function ProductForm({ mode, initial }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-8 text-start" dir="rtl">
-      {!isLandingSetup ? (
-        <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
-          <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.introBody}</p>
-        </div>
-      ) : null}
+      <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+        <h2 className="text-base font-bold text-[var(--foreground)]">إعدادات صفحة الهبوط</h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          {isLandingSetup ? a.landingSetup.subtitle : a.productForm.introBody}
+        </p>
+      </div>
 
       {mode === "edit" && initial ? (
         <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
@@ -638,32 +658,28 @@ export function ProductForm({ mode, initial }: Props) {
           </div>
         </section>
 
-        {!isLandingSetup ? (
-          <>
-            <div>
-              <label className="text-sm font-medium">
-                {a.productForm.name} — {a.productForm.langArabic}
-              </label>
-              <input
-                required
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={nameAr}
-                onChange={(e) => setNameAr(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">
-                {a.productForm.name} — {a.productForm.langFrench}
-              </label>
-              <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={nameFr}
-                onChange={(e) => setNameFr(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-          </>
-        ) : null}
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.name} — {a.productForm.langArabic}
+          </label>
+          <input
+            required
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={nameAr}
+            onChange={(e) => setNameAr(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">
+            {a.productForm.name} — {a.productForm.langFrench}
+          </label>
+          <input
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={nameFr}
+            onChange={(e) => setNameFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">
             {a.productForm.description} — {a.productForm.langArabic}
@@ -824,7 +840,6 @@ export function ProductForm({ mode, initial }: Props) {
             dir="ltr"
           />
         </div>
-        {!isLandingSetup ? (
         <div className="sm:col-span-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
           <h3 className="text-sm font-semibold">{a.productForm.sectionPipeline}</h3>
           <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionPipelineHint}</p>
@@ -832,8 +847,9 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">{a.productForm.testStatus}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm disabled:opacity-60"
                 value={testStatus}
+                disabled={isLandingSetup}
                 onChange={(e) =>
                   setTestStatus(e.target.value as ProductTestingStatus)
                 }
@@ -890,60 +906,55 @@ export function ProductForm({ mode, initial }: Props) {
             </div>
           </div>
         </div>
-        ) : null}
-        {!isLandingSetup ? (
-          <>
-            <div>
-              <label className="text-sm font-medium">{a.productForm.price}</label>
-              <input
-                required
-                type="number"
-                step="0.01"
-                min="0"
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder={a.productForm.pricePlaceholder}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{a.productForm.discount}</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                placeholder={a.productForm.discountPlaceholder}
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{a.productForm.mediaType}</label>
-              <select
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={mediaType}
-                onChange={(e) => setMediaType(e.target.value as "image" | "video")}
-              >
-                <option value="image">{a.productForm.mediaImage}</option>
-                <option value="video">{a.productForm.mediaVideo}</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
-              <input
-                required
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-                value={mediaUrl}
-                onChange={(e) => setMediaUrl(e.target.value)}
-                placeholder="https://"
-                dir="ltr"
-              />
-            </div>
-          </>
-        ) : null}
+        <div>
+          <label className="text-sm font-medium">{a.productForm.price}</label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            min="0"
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder={a.productForm.pricePlaceholder}
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">{a.productForm.discount}</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            placeholder={a.productForm.discountPlaceholder}
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">{a.productForm.mediaType}</label>
+          <select
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={mediaType}
+            onChange={(e) => setMediaType(e.target.value as "image" | "video")}
+          >
+            <option value="image">{a.productForm.mediaImage}</option>
+            <option value="video">{a.productForm.mediaVideo}</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
+          <input
+            required
+            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            value={mediaUrl}
+            onChange={(e) => setMediaUrl(e.target.value)}
+            placeholder="https://"
+            dir="ltr"
+          />
+        </div>
         <div>
           <label className="text-sm font-medium">الوسيط الثاني: النوع</label>
           <select
@@ -1198,6 +1209,16 @@ export function ProductForm({ mode, initial }: Props) {
                 ? a.productForm.create
                 : a.productForm.saveChanges}
         </button>
+        {mode === "landing-setup" && initial?.test_status === "under_research" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={(e) => void onCompleteResearch(e)}
+            className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-6 py-3 text-sm font-semibold text-[var(--foreground)] disabled:opacity-60"
+          >
+            {a.landingSetup.completeResearch}
+          </button>
+        ) : null}
         {mode === "edit" ? (
           <button
             type="button"

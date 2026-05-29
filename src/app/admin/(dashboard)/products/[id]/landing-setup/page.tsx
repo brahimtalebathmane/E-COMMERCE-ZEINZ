@@ -6,7 +6,7 @@ import { mapProductRow } from "@/lib/products";
 import { formatPrice } from "@/lib/currency";
 import { codMarginPercent, sourcingTypeLabel } from "@/lib/product-pipeline";
 import { adminAr as a } from "@/locales/admin-ar";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -25,8 +25,8 @@ export default async function LandingSetupPage({ params }: PageProps) {
 
   const product = mapProductRow(data as Record<string, unknown>);
 
-  if (product.test_status !== "under_research") {
-    redirect("/admin/products");
+  if (product.test_status === "failed") {
+    notFound();
   }
 
   const margin = codMarginPercent(
