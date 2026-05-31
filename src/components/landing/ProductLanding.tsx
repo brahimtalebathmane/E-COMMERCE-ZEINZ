@@ -286,10 +286,12 @@ export function ProductLanding({ product }: Props) {
     };
   }, []);
 
+  const metaPixelId = resolvePublicMetaPixelId(product.meta_pixel_id);
+
   const openCheckout = () => {
     try {
       touchMetaFunnelActivity();
-      trackInitiateCheckout(ensureMetaFunnelSession());
+      trackInitiateCheckout(ensureMetaFunnelSession(), metaPixelId);
     } catch {
       // ignore
     }
@@ -310,8 +312,6 @@ export function ProductLanding({ product }: Props) {
   const testimonialsHeaderMotion = testimonialsSectionVisible
     ? "translate-y-0 opacity-100"
     : "translate-y-4 opacity-0";
-
-  const metaPixelId = resolvePublicMetaPixelId(product.meta_pixel_id);
 
   return (
     <div

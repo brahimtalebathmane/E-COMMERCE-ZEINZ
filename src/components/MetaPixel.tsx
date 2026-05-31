@@ -77,33 +77,37 @@ function callFbqWithRetry(
   }
 }
 
+/** Digits-only pixel id for every fbq call (Meta rejects quoted strings). */
+function fbqPixelId(raw: string): string {
+  return normalizeMetaPixelId(raw) ?? raw.replace(/\D/g, "");
+}
+
 /**
  * Init each pixel ID at most once per session.
- * Further user-data updates use fbq('set','userData') scoped with pixelID (no second init).
+ * Does not call fbq('set','userData') — Meta rejects pixel_id when updating after init.
  */
 async function ensurePixelInitialized(
   id: string,
   am?: MetaPixelAdvancedMatchingPayload,
 ): Promise<void> {
+  const pixelId = fbqPixelId(id);
+  if (!pixelId) return;
+
   await ensureFbeventsLoaded();
   if (typeof window === "undefined" || !window.fbq) return;
 
   window.__metaPixelInitialized = window.__metaPixelInitialized || {};
-  const hasAm = Boolean(am && Object.keys(am).length > 0);
-
-  if (window.__metaPixelInitialized[id]) {
-    if (hasAm) {
-      window.fbq("set", "userData", am as Record<string, unknown>, { pixelID: id });
-    }
+  if (window.__metaPixelInitialized[pixelId]) {
     return;
   }
 
+  const hasAm = Boolean(am && Object.keys(am).length > 0);
   if (hasAm) {
-    window.fbq("init", id, am as Record<string, unknown>);
+    window.fbq("init", pixelId, am as Record<string, unknown>);
   } else {
-    window.fbq("init", id);
+    window.fbq("init", pixelId);
   }
-  window.__metaPixelInitialized[id] = true;
+  window.__metaPixelInitialized[pixelId] = true;
 }
 
 export type MetaPixelAdvancedMatchingProps = {
@@ -132,7 +136,8 @@ function mergeAdvancedMatchingForInit(
 }
 
 /**
- * Apply Advanced Matching after init (e.g. right before Lead) so events include user data.
+ * Persist advanced matching for the next landing init (sessionStorage).
+ * CAPI still receives hashed phone/name from the order API.
  */
 export function syncMetaPixelAdvancedMatching(
   pixelId: string | null | undefined,
@@ -142,7 +147,11 @@ export function syncMetaPixelAdvancedMatching(
   if (!id || typeof window === "undefined") return;
   const am = buildMetaPixelAdvancedMatching(input);
   if (!am) return;
-  void ensurePixelInitialized(id, am);
+  try {
+    sessionStorage.setItem(metaPixelAmStorageKey(id), JSON.stringify(am));
+  } catch {
+    // ignore
+  }
 }
 
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
@@ -199,12 +208,13 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 
     let cancelled = false;
 
-    void ensurePixelInitialized(id, initAdvancedMatching).then(() => {
+    const pixelId = fbqPixelId(id);
+    void ensurePixelInitialized(pixelId, initAdvancedMatching).then(() => {
       if (cancelled || typeof window === "undefined" || !window.fbq) return;
 
-      if (lastPageViewPixelRef.current !== id) {
-        window.fbq("track", "PageView");
-        lastPageViewPixelRef.current = id;
+      if (lastPageViewPixelRef.current !== pixelId) {
+        window.fbq("trackSingle", pixelId, "PageView");
+        lastPageViewPixelRef.current = pixelId;
       }
     });
 
@@ -229,10 +239,15 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
   );
 }
 
-export function trackInitiateCheckout(eventId: string) {
+export function trackInitiateCheckout(eventId: string, pixelId?: string | null) {
+  const pid = pixelId ? fbqPixelId(pixelId) : "";
   callFbqWithRetry(() => {
     if (!window.fbq) return false;
-    window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
+    if (pid) {
+      window.fbq("trackSingle", pid, "InitiateCheckout", {}, { eventID: eventId });
+    } else {
+      window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
+    }
     return true;
   });
 }
@@ -260,19 +275,19 @@ export function trackLead(params: {
   value: number;
   currency: string;
   eventId: string;
+  pixelId?: string | null;
 }) {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
+  const pid = params.pixelId ? fbqPixelId(params.pixelId) : "";
   callFbqWithRetry(() => {
     if (!window.fbq) return false;
-    window.fbq(
-      "track",
-      "Lead",
-      {
-        value,
-        currency,
-      },
-      { eventID: params.eventId },
-    );
+    const payload = { value, currency };
+    const opts = { eventID: params.eventId };
+    if (pid) {
+      window.fbq("trackSingle", pid, "Lead", payload, opts);
+    } else {
+      window.fbq("track", "Lead", payload, opts);
+    }
     return true;
   });
 }

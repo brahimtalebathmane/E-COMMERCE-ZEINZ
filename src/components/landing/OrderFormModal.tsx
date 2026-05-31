@@ -172,6 +172,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         value: Number(json.total_price ?? product.discount_price ?? product.price),
         currency: "MRU",
         eventId,
+        pixelId: pid,
       });
 
       try {
