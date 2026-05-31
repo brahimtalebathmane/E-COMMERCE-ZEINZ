@@ -20,6 +20,7 @@ import {
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type Props = {
   product: ProductRow;
@@ -139,7 +140,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         phone: phoneE164,
         customerName: n,
       });
-      const pid = product.meta_pixel_id?.trim();
+      const pid = resolvePublicMetaPixelId(product.meta_pixel_id);
       if (am && pid) {
         try {
           sessionStorage.setItem(metaPixelAmStorageKey(pid), JSON.stringify(am));

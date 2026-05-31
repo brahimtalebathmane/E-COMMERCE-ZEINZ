@@ -5,6 +5,7 @@ import { signOrderActionToken } from "@/lib/auth/order-action-token";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { createMetaEventId } from "@/utils/meta";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 
@@ -62,9 +63,7 @@ export async function POST(request: Request) {
       data.meta_event_id && data.meta_event_id.length > 0
         ? data.meta_event_id
         : createMetaEventId();
-    const fallbackPixelId =
-      process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
-    const orderPixelId = product.meta_pixel_id?.trim() || fallbackPixelId;
+    const orderPixelId = resolveServerMetaPixelId(product.meta_pixel_id);
     const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
     const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
     const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
@@ -106,9 +105,16 @@ export async function POST(request: Request) {
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
     try {
-      await dispatchMetaEvent(supabase, order.id, "lead", {
+      const leadResult = await dispatchMetaEvent(supabase, order.id, "lead", {
         requestHeaders: request.headers,
       });
+      if (!leadResult.sent) {
+        console.warn("[POST /api/orders] Lead CAPI not sent", {
+          order_id: order.id,
+          skipped: "skipped" in leadResult ? leadResult.skipped : undefined,
+          reason: "reason" in leadResult ? leadResult.reason : undefined,
+        });
+      }
     } catch (error) {
       console.error("[POST /api/orders] Lead CAPI dispatch failed", {
         order_id: order.id,

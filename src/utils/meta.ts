@@ -335,6 +335,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
         console.error("[meta] CAPI event rejected by Meta", {
           eventName: params.eventName,
           eventIdPrefix: params.eventId?.slice(0, 12),
+          pixelIdPrefix: pixelId.slice(0, 6),
           status: res.status,
           body: body.slice(0, 500),
         });

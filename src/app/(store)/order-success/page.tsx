@@ -1,4 +1,5 @@
 import { MetaPixel } from "@/components/MetaPixel";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
 import { OrderSuccessContinueLink } from "./OrderSuccessContinueLink";
@@ -24,13 +25,15 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
 
   const product = productId ? await getProductById(productId) : null;
 
+  const metaPixelId = resolveServerMetaPixelId(product?.meta_pixel_id);
+
   return (
     <div
       className="mx-auto flex min-h-[70dvh] max-w-2xl flex-col items-center justify-center px-4 py-12 text-center"
       dir="rtl"
       lang="ar"
     >
-      <MetaPixel pixelId={product?.meta_pixel_id} />
+      <MetaPixel pixelId={metaPixelId} />
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}

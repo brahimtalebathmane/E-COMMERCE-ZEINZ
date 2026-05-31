@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
-
-/** Test push — safe to revert; no runtime behavior change. */
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -17,10 +16,6 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
   if (eventType === "lead") return "meta_lead_sent";
   if (eventType === "purchase") return "meta_purchase_sent";
   return "meta_cancel_sent";
-}
-
-function resolveFallbackPixelId(): string | null {
-  return process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
 }
 
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
@@ -95,7 +90,7 @@ export async function dispatchMetaEvent(
 
   let eventId = (order.meta_event_id as string | null)?.trim() || "";
   const pixelId =
-    (order.meta_pixel_id as string | null)?.trim() || resolveFallbackPixelId() || "";
+    resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
 
   if (!eventId) {
     eventId = createMetaEventId();
@@ -106,6 +101,10 @@ export async function dispatchMetaEvent(
   }
   if (!pixelId) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);
+    console.warn("[meta] CAPI skipped: no pixel id on order/product", {
+      orderId,
+      eventType,
+    });
     return { sent: false, skipped: true, reason: "missing_meta_data" };
   }
 
@@ -142,6 +141,12 @@ export async function dispatchMetaEvent(
 
     if (!capi.ok) {
       await releaseMetaDispatchClaim(supabase, orderId, eventType);
+      console.warn("[meta] CAPI dispatch failed", {
+        orderId,
+        eventType,
+        pixelIdPrefix: pixelId.slice(0, 6),
+        reason: capi.reason,
+      });
       return { sent: false, reason: capi.reason ?? "capi_failed" };
     }
 

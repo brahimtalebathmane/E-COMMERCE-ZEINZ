@@ -11,6 +11,7 @@ import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
@@ -310,6 +311,8 @@ export function ProductLanding({ product }: Props) {
     ? "translate-y-0 opacity-100"
     : "translate-y-4 opacity-0";
 
+  const metaPixelId = resolvePublicMetaPixelId(product.meta_pixel_id);
+
   return (
     <div
       className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
@@ -325,7 +328,7 @@ export function ProductLanding({ product }: Props) {
         } as CSSProperties
       }
     >
-      <MetaPixel pixelId={product.meta_pixel_id} />
+      <MetaPixel pixelId={metaPixelId} />
 
       <div className="sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         {copy.headerBarText.trim() ? (
