@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
 import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
+/** Test push — safe to revert; no runtime behavior change. */
+
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
 export type MetaDispatchResult =
