@@ -9,7 +9,9 @@
 #   ORDER_ACTION_SECRET         (min 16 chars; HMAC for post-checkout order actions — required for /api/orders)
 #   NEXT_PUBLIC_SITE_URL        (your live URL, e.g. https://yoursite.netlify.app)
 #   META_CAPI_ACCESS_TOKEN      (Business Manager system user token with access to ALL product pixels)
-#   Per-product meta_pixel_id   (set in Admin → Product → Integrations — one pixel per landing page)
+#   META_PIXEL_ID               (optional server fallback when a product has no meta_pixel_id)
+#   NEXT_PUBLIC_META_PIXEL_ID   (optional browser fallback; also used server-side if META_PIXEL_ID unset)
+#   Per-product meta_pixel_id   (preferred — Admin → Product → Integrations, one pixel per landing page)
 #
 [build]
   command = "npm run build"

@@ -27,14 +27,18 @@ type FbqFn = {
 
 let fbeventsLoadPromise: Promise<void> | null = null;
 
+function isFbeventsSdkReady(): boolean {
+  return typeof window !== "undefined" && typeof window.fbq?.callMethod === "function";
+}
+
 /** Load fbevents.js once; safe to call from every landing page / pixel id. */
 function ensureFbeventsLoaded(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
-  if (window.fbq?.loaded) return Promise.resolve();
+  if (isFbeventsSdkReady()) return Promise.resolve();
   if (fbeventsLoadPromise) return fbeventsLoadPromise;
 
   fbeventsLoadPromise = new Promise((resolve) => {
-    if (window.fbq) {
+    if (isFbeventsSdkReady()) {
       resolve();
       return;
     }
@@ -57,7 +61,11 @@ function ensureFbeventsLoaded(): Promise<void> {
     script.async = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
     script.onload = () => resolve();
-    script.onerror = () => resolve();
+    script.onerror = () => {
+      console.warn("[Meta Pixel] Failed to load fbevents.js — check ad blockers and CSP.");
+      fbeventsLoadPromise = null;
+      resolve();
+    };
     const first = document.getElementsByTagName("script")[0];
     first?.parentNode?.insertBefore(script, first);
   });
@@ -110,6 +118,16 @@ async function ensurePixelInitialized(
   window.__metaPixelInitialized[pixelId] = true;
 }
 
+/** Load SDK + init pixel before trackSingle (required by Meta). */
+async function ensurePixelReady(pixelId?: string | null): Promise<string | null> {
+  const pid = pixelId ? fbqPixelId(pixelId) : null;
+  await ensureFbeventsLoaded();
+  if (pid) {
+    await ensurePixelInitialized(pid);
+  }
+  return pid;
+}
+
 export type MetaPixelAdvancedMatchingProps = {
   phone?: string | null;
   customerName?: string | null;
@@ -160,6 +178,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     null,
   );
   const lastPageViewPixelRef = useRef<string | null>(null);
+  const missingPixelWarnedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -169,6 +188,12 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     const id = normalizeMetaPixelId(pixelId);
     if (!id) {
       setStorageAm({});
+      if (mounted && !missingPixelWarnedRef.current) {
+        missingPixelWarnedRef.current = true;
+        console.warn(
+          "[Meta Pixel] No pixel ID — set meta_pixel_id on the product in Admin → Integrations, or NEXT_PUBLIC_META_PIXEL_ID in env.",
+        );
+      }
       return;
     }
     try {
@@ -186,7 +211,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     } catch {
       setStorageAm({});
     }
-  }, [pixelId]);
+  }, [pixelId, mounted]);
 
   const propsAm = useMemo(() => {
     const phone = advancedMatching?.phone?.trim() ?? "";
@@ -208,13 +233,13 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 
     let cancelled = false;
 
-    const pixelId = fbqPixelId(id);
-    void ensurePixelInitialized(pixelId, initAdvancedMatching).then(() => {
+    const pixelIdForTrack = fbqPixelId(id);
+    void ensurePixelInitialized(pixelIdForTrack, initAdvancedMatching).then(() => {
       if (cancelled || typeof window === "undefined" || !window.fbq) return;
 
-      if (lastPageViewPixelRef.current !== pixelId) {
-        window.fbq("trackSingle", pixelId, "PageView");
-        lastPageViewPixelRef.current = pixelId;
+      if (lastPageViewPixelRef.current !== pixelIdForTrack) {
+        window.fbq("trackSingle", pixelIdForTrack, "PageView");
+        lastPageViewPixelRef.current = pixelIdForTrack;
       }
     });
 
@@ -240,15 +265,16 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 }
 
 export function trackInitiateCheckout(eventId: string, pixelId?: string | null) {
-  const pid = pixelId ? fbqPixelId(pixelId) : "";
-  callFbqWithRetry(() => {
-    if (!window.fbq) return false;
-    if (pid) {
-      window.fbq("trackSingle", pid, "InitiateCheckout", {}, { eventID: eventId });
-    } else {
-      window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
-    }
-    return true;
+  void ensurePixelReady(pixelId).then((pid) => {
+    callFbqWithRetry(() => {
+      if (!window.fbq) return false;
+      if (pid) {
+        window.fbq("trackSingle", pid, "InitiateCheckout", {}, { eventID: eventId });
+      } else {
+        window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
+      }
+      return true;
+    });
   });
 }
 
@@ -278,16 +304,17 @@ export function trackLead(params: {
   pixelId?: string | null;
 }) {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  const pid = params.pixelId ? fbqPixelId(params.pixelId) : "";
-  callFbqWithRetry(() => {
-    if (!window.fbq) return false;
-    const payload = { value, currency };
-    const opts = { eventID: params.eventId };
-    if (pid) {
-      window.fbq("trackSingle", pid, "Lead", payload, opts);
-    } else {
-      window.fbq("track", "Lead", payload, opts);
-    }
-    return true;
+  void ensurePixelReady(params.pixelId).then((pid) => {
+    callFbqWithRetry(() => {
+      if (!window.fbq) return false;
+      const payload = { value, currency };
+      const opts = { eventID: params.eventId };
+      if (pid) {
+        window.fbq("trackSingle", pid, "Lead", payload, opts);
+      } else {
+        window.fbq("track", "Lead", payload, opts);
+      }
+      return true;
+    });
   });
 }

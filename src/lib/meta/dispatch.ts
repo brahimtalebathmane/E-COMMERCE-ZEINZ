@@ -64,7 +64,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
+      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -89,8 +89,23 @@ export async function dispatchMetaEvent(
   }
 
   let eventId = (order.meta_event_id as string | null)?.trim() || "";
-  const pixelId =
-    resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
+  let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
+
+  if (!pixelId && order.product_id) {
+    const { data: product } = await supabase
+      .from("products")
+      .select("meta_pixel_id")
+      .eq("id", order.product_id as string)
+      .maybeSingle();
+    pixelId = resolveServerMetaPixelId(product?.meta_pixel_id as string | null) || "";
+  }
+
+  console.info("[meta] CAPI dispatch attempt", {
+    orderId,
+    eventType,
+    hasPixelId: Boolean(pixelId),
+    tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
+  });
 
   if (!eventId) {
     eventId = createMetaEventId();

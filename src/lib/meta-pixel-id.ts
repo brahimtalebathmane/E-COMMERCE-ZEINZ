@@ -22,18 +22,28 @@ export function normalizeMetaPixelId(raw?: string | null): string | null {
   return null;
 }
 
+function envFallbackPixelId(scope: "public" | "server"): string | null {
+  if (scope === "public") {
+    return normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
+  }
+  return (
+    normalizeMetaPixelId(process.env.META_PIXEL_ID) ??
+    normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID)
+  );
+}
+
 /**
  * Resolve Meta Pixel ID for the browser (client components).
- * Product-level ID takes priority — each landing page can have its own pixel.
+ * Product-level ID takes priority; falls back to NEXT_PUBLIC_META_PIXEL_ID.
  */
 export function resolvePublicMetaPixelId(productPixelId?: string | null): string | null {
-  return normalizeMetaPixelId(productPixelId);
+  return normalizeMetaPixelId(productPixelId) ?? envFallbackPixelId("public");
 }
 
 /**
  * Resolve Meta Pixel ID on the server (orders, CAPI).
- * Product/order ID takes priority over any env fallback.
+ * Product/order ID takes priority; falls back to META_PIXEL_ID / NEXT_PUBLIC_META_PIXEL_ID.
  */
 export function resolveServerMetaPixelId(productPixelId?: string | null): string | null {
-  return normalizeMetaPixelId(productPixelId);
+  return normalizeMetaPixelId(productPixelId) ?? envFallbackPixelId("server");
 }
