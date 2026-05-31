@@ -123,6 +123,14 @@ export function OrderFormModal({ product, open, onClose }: Props) {
             total_price: number;
             completion_token: string;
             action_token: string;
+            meta?: {
+              lead?: { state: string; reason?: string };
+              diagnostics?: {
+                product_has_pixel_id: boolean;
+                order_has_pixel_id: boolean;
+                capi_token_configured: boolean;
+              };
+            };
           }
         | { error?: string };
       if (!res.ok) {
@@ -133,6 +141,12 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       onClose();
       if (!("success" in json) || !json.order_id) {
         throw new Error("تعذر إرسال الطلب");
+      }
+
+      if (json.meta?.lead?.state && json.meta.lead.state !== "sent") {
+        console.warn("[Meta] Server Lead CAPI", json.meta.lead, json.meta.diagnostics);
+      } else if (json.meta?.lead?.state === "sent") {
+        console.info("[Meta] Server Lead CAPI sent", json.meta.diagnostics);
       }
 
       const phoneE164 = `+222${local}`;

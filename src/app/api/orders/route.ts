@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { signOrderActionToken } from "@/lib/auth/order-action-token";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
+import { mapLeadDispatchToApiPayload, metaLeadDiagnostics } from "@/lib/meta/api-payload";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
@@ -107,22 +108,17 @@ export async function POST(request: Request) {
 
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
+    let metaLead = mapLeadDispatchToApiPayload(null, "dispatch_not_run");
     try {
       const leadResult = await dispatchMetaEvent(supabase, order.id, "lead", {
         requestHeaders: request.headers,
       });
-      if (!leadResult.sent) {
-        console.warn("[POST /api/orders] Lead CAPI not sent", {
-          order_id: order.id,
-          skipped: "skipped" in leadResult ? leadResult.skipped : undefined,
-          reason: "reason" in leadResult ? leadResult.reason : undefined,
-        });
-      }
+      metaLead = mapLeadDispatchToApiPayload(leadResult);
     } catch (error) {
-      console.error("[POST /api/orders] Lead CAPI dispatch failed", {
-        order_id: order.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      metaLead = mapLeadDispatchToApiPayload(
+        null,
+        error instanceof Error ? error.message : String(error),
+      );
     }
 
     const completionToken = String(order.completion_token);
@@ -140,6 +136,13 @@ export async function POST(request: Request) {
       total_price: order.total_price,
       completion_token: completionToken,
       action_token: actionToken,
+      meta: {
+        lead: metaLead,
+        diagnostics: metaLeadDiagnostics({
+          productPixelId: product.meta_pixel_id as string | null,
+          orderPixelId,
+        }),
+      },
     });
   } catch (e) {
     return apiErrorResponse(e, "[POST /api/orders]");
