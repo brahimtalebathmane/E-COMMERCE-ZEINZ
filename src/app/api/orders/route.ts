@@ -6,7 +6,9 @@ import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { canAcceptStoreOrder } from "@/lib/product-test-status";
 import { createMetaEventId } from "@/utils/meta";
+import type { ProductTestingStatus } from "@/types";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 
 const createOrderSchema = z.object({
@@ -50,7 +52,8 @@ export async function POST(request: Request) {
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
-    if (product.test_status !== "winner") {
+    const testStatus = product.test_status as ProductTestingStatus;
+    if (!canAcceptStoreOrder(testStatus)) {
       return NextResponse.json({ error: "Product not available for orders" }, { status: 403 });
     }
 

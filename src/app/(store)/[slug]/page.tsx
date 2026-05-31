@@ -4,6 +4,8 @@ import {
   getProductByOldSlug,
   getProductBySlug,
 } from "@/lib/products";
+import { isLandingVisible } from "@/lib/product-test-status";
+import type { ProductTestingStatus } from "@/types";
 import { notFound, redirect } from "next/navigation";
 
 export const revalidate = 60;
@@ -22,7 +24,7 @@ export default async function ProductPage({ params }: PageProps) {
   if (!found) {
     const legacy = await getProductByOldSlug(slug);
     if (legacy) {
-      if (legacy.test_status === "failed") {
+      if (!isLandingVisible(legacy.test_status as ProductTestingStatus)) {
         notFound();
       }
       redirect(`/${legacy.slug}`);
@@ -30,7 +32,7 @@ export default async function ProductPage({ params }: PageProps) {
     notFound();
   }
 
-  if (found.test_status === "failed") {
+  if (!isLandingVisible(found.test_status)) {
     notFound();
   }
 
