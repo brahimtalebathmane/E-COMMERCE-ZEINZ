@@ -96,7 +96,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         toast.error(a.orders.metaPurchaseCapiFailed);
       } else if (
         purchaseMeta?.state === "skipped" &&
-        purchaseMeta.reason === "missing_order_meta"
+        purchaseMeta.reason === "missing_meta_data"
       ) {
         toast.warning(a.orders.metaPurchaseCapiMissingMeta);
       }

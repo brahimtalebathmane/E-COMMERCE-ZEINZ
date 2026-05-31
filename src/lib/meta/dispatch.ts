@@ -9,6 +9,14 @@ export type MetaDispatchResult =
   | { sent: false; skipped: true; reason: string }
   | { sent: false; skipped?: false; reason: string };
 
+type MetaSentFlagColumn = "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent";
+
+function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
+  if (eventType === "lead") return "meta_lead_sent";
+  if (eventType === "purchase") return "meta_purchase_sent";
+  return "meta_cancel_sent";
+}
+
 function resolveFallbackPixelId(): string | null {
   return process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
 }
@@ -54,16 +62,22 @@ export async function dispatchMetaEvent(
   eventType: MetaDispatchEventType,
   context: MetaClientContext = {},
 ): Promise<MetaDispatchResult> {
+  const flagColumn = sentFlagColumn(eventType);
+
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc",
+      "id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
     )
     .eq("id", orderId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   if (!order) return { sent: false, skipped: true, reason: "order_not_found" };
+
+  if (order[flagColumn] === true) {
+    return { sent: false, skipped: true, reason: "already_sent" };
+  }
 
   if (eventType === "purchase" && order.status !== "confirmed") {
     return { sent: false, skipped: true, reason: "status_not_confirmed" };
@@ -74,7 +88,7 @@ export async function dispatchMetaEvent(
 
   const claimed = await claimMetaDispatch(supabase, orderId, eventType);
   if (!claimed) {
-    return { sent: false, skipped: true, reason: "already_dispatched" };
+    return { sent: false, skipped: true, reason: "already_sent" };
   }
 
   let eventId = (order.meta_event_id as string | null)?.trim() || "";
@@ -97,18 +111,14 @@ export async function dispatchMetaEvent(
   const eventName =
     eventType === "lead" ? "Lead" : eventType === "purchase" ? "Purchase" : "CancelledLead";
 
+  const orderMoney = metaPurchaseMoneyFromOrderTotal(
+    Number(order.total_price),
+    (order.currency as string) ?? "MRU",
+  );
   const customData =
     eventType === "cancel"
       ? { value: 0, currency: "MRU", status: "cancelled" }
-      : eventType === "lead"
-        ? {
-            value: Number(order.total_price),
-            currency: (order.currency as string) ?? "MRU",
-          }
-        : metaPurchaseMoneyFromOrderTotal(
-            Number(order.total_price),
-            (order.currency as string) ?? "MRU",
-          );
+      : orderMoney;
 
   try {
     const capi = await sendMetaEvent({
@@ -133,17 +143,19 @@ export async function dispatchMetaEvent(
       return { sent: false, reason: capi.reason ?? "capi_failed" };
     }
 
-    const flagColumn =
-      eventType === "lead"
-        ? "meta_lead_sent"
-        : eventType === "purchase"
-          ? "meta_purchase_sent"
-          : "meta_cancel_sent";
-
-    await supabase
+    const { data: marked, error: markErr } = await supabase
       .from("orders")
       .update({ [flagColumn]: true })
-      .eq("id", order.id);
+      .eq("id", order.id)
+      .eq(flagColumn, false)
+      .select("id")
+      .maybeSingle();
+
+    if (markErr) throw new Error(markErr.message);
+    if (!marked) {
+      await releaseMetaDispatchClaim(supabase, orderId, eventType);
+      return { sent: false, skipped: true, reason: "already_sent" };
+    }
 
     return { sent: true };
   } catch (e) {

@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderStatus } from "@/types";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { assertValidOrderTransition } from "@/lib/order-state-machine";
-import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 
 const AGENT_ALLOWED_STATUSES: OrderStatus[] = [
   "confirmed",
@@ -53,14 +52,6 @@ export async function applyAgentOrderStatusUpdate(
   const event =
     status === "confirmed" ? "ai_agent_confirmed" : "ai_agent_human_escalation";
   await logOrderCommunicationEvent(supabase, orderId, event, detail ?? null);
-
-  if (status === "confirmed") {
-    try {
-      await dispatchMetaEvent(supabase, orderId, "purchase");
-    } catch (e) {
-      console.error("[ai-agent] Meta purchase after confirm failed", e);
-    }
-  }
 
   revalidatePath("/admin/orders");
   return { ok: true, status };

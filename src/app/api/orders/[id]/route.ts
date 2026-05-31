@@ -39,7 +39,7 @@ function mapDispatchToPurchasePayload(
 ): MetaPurchaseCapiPayload | undefined {
   if (result.sent) return { state: "sent" };
   if ("skipped" in result && result.skipped) {
-    if (result.reason === "already_dispatched") {
+    if (result.reason === "already_sent") {
       return { state: "skipped", reason: "already_sent" };
     }
     return { state: "skipped", reason: result.reason };
