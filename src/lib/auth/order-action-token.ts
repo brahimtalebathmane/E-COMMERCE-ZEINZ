@@ -1,11 +1,24 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { normalizeEnv } from "@/lib/supabase/service";
 
 function getOrderActionSecret(): string {
-  const secret = process.env.ORDER_ACTION_SECRET?.trim();
-  if (!secret || secret.length < 16) {
-    throw new Error("ORDER_ACTION_SECRET is not configured or too short");
+  const explicit = normalizeEnv(process.env.ORDER_ACTION_SECRET);
+  if (explicit.length >= 16) {
+    return explicit;
   }
-  return secret;
+
+  // Back-compat: Netlify may only have SUPABASE_SERVICE_ROLE_KEY set (pre–ORDER_ACTION_SECRET deploys).
+  const serviceKey = normalizeEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (serviceKey.length >= 16) {
+    if (!explicit) {
+      console.warn(
+        "[order-action-token] ORDER_ACTION_SECRET unset — using SUPABASE_SERVICE_ROLE_KEY fallback. Set ORDER_ACTION_SECRET in Netlify for production.",
+      );
+    }
+    return serviceKey;
+  }
+
+  throw new Error("ORDER_ACTION_SECRET is not configured or too short");
 }
 
 /** HMAC token bound to order id + completion_token (prevents order_id enumeration). */

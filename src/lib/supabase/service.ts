@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 /** Trims and strips wrapping quotes (common when pasting into Netlify / hosting UIs). */
-function normalizeEnv(value: string | undefined): string {
+export function normalizeEnv(value: string | undefined): string {
   if (value == null) return "";
   let v = value.trim();
   if (

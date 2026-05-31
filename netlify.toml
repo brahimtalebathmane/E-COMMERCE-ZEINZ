@@ -6,6 +6,7 @@
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   SUPABASE_SERVICE_ROLE_KEY   (server-only; required for /api/orders, uploads, etc.)
+#   ORDER_ACTION_SECRET         (min 16 chars; HMAC for post-checkout order actions — required for /api/orders)
 #   NEXT_PUBLIC_SITE_URL        (your live URL, e.g. https://yoursite.netlify.app)
 #
 [build]
