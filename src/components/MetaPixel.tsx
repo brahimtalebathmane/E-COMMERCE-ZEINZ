@@ -77,6 +77,35 @@ function callFbqWithRetry(
   }
 }
 
+/**
+ * Init each pixel ID at most once per session.
+ * Further user-data updates use fbq('set','userData') scoped with pixelID (no second init).
+ */
+async function ensurePixelInitialized(
+  id: string,
+  am?: MetaPixelAdvancedMatchingPayload,
+): Promise<void> {
+  await ensureFbeventsLoaded();
+  if (typeof window === "undefined" || !window.fbq) return;
+
+  window.__metaPixelInitialized = window.__metaPixelInitialized || {};
+  const hasAm = Boolean(am && Object.keys(am).length > 0);
+
+  if (window.__metaPixelInitialized[id]) {
+    if (hasAm) {
+      window.fbq("set", "userData", am as Record<string, unknown>, { pixelID: id });
+    }
+    return;
+  }
+
+  if (hasAm) {
+    window.fbq("init", id, am as Record<string, unknown>);
+  } else {
+    window.fbq("init", id);
+  }
+  window.__metaPixelInitialized[id] = true;
+}
+
 export type MetaPixelAdvancedMatchingProps = {
   phone?: string | null;
   customerName?: string | null;
@@ -112,9 +141,8 @@ export function syncMetaPixelAdvancedMatching(
   const id = normalizeMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return;
   const am = buildMetaPixelAdvancedMatching(input);
-  if (!am || !window.fbq) return;
-  // Re-init updates advanced matching for this pixel (avoids fbq('set','userData') pixel_id quirks)
-  window.fbq("init", id, am as Record<string, unknown>);
+  if (!am) return;
+  void ensurePixelInitialized(id, am);
 }
 
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
@@ -171,19 +199,8 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 
     let cancelled = false;
 
-    void ensureFbeventsLoaded().then(() => {
+    void ensurePixelInitialized(id, initAdvancedMatching).then(() => {
       if (cancelled || typeof window === "undefined" || !window.fbq) return;
-
-      window.__metaPixelInitialized = window.__metaPixelInitialized || {};
-      if (!window.__metaPixelInitialized[id]) {
-        const am = initAdvancedMatching;
-        if (am && Object.keys(am).length > 0) {
-          window.fbq("init", id, am as Record<string, unknown>);
-        } else {
-          window.fbq("init", id);
-        }
-        window.__metaPixelInitialized[id] = true;
-      }
 
       if (lastPageViewPixelRef.current !== id) {
         window.fbq("track", "PageView");
