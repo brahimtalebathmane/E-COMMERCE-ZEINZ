@@ -7,6 +7,7 @@ import {
   metaPixelAmStorageKey,
   type MetaPixelAdvancedMatchingPayload,
 } from "@/lib/meta-pixel-advanced-matching";
+import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 
 declare global {
   interface Window {
@@ -108,11 +109,12 @@ export function syncMetaPixelAdvancedMatching(
   pixelId: string | null | undefined,
   input: { phone: string; customerName: string },
 ) {
-  const id = pixelId?.trim();
+  const id = normalizeMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return;
   const am = buildMetaPixelAdvancedMatching(input);
   if (!am || !window.fbq) return;
-  window.fbq("set", "userData", am as Record<string, unknown>);
+  // Re-init updates advanced matching for this pixel (avoids fbq('set','userData') pixel_id quirks)
+  window.fbq("init", id, am as Record<string, unknown>);
 }
 
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
@@ -127,7 +129,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
   }, []);
 
   useEffect(() => {
-    const id = pixelId?.trim();
+    const id = normalizeMetaPixelId(pixelId);
     if (!id) {
       setStorageAm({});
       return;
@@ -161,7 +163,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     [storageAm, propsAm],
   );
 
-  const id = pixelId?.trim();
+  const id = normalizeMetaPixelId(pixelId);
   const storageReady = storageAm !== null;
 
   useEffect(() => {

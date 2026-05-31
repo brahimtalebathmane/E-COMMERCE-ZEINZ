@@ -19,6 +19,7 @@ function parseSourcingType(raw: unknown): ProductSourcingType | null {
   if (raw === "local" || raw === "import") return raw;
   return null;
 }
+import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -133,7 +134,7 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     stats_fr: (row.stats_fr as string[]) ?? [],
     contact_lines_ar: (row.contact_lines_ar as string[]) ?? [],
     contact_lines_fr: (row.contact_lines_fr as string[]) ?? [],
-    meta_pixel_id: (row.meta_pixel_id as string | null) ?? null,
+    meta_pixel_id: normalizeMetaPixelId(row.meta_pixel_id as string | null),
     test_status: parseTestStatus(row.test_status),
     sourcing_type: parseSourcingType(row.sourcing_type),
     sourcing_link: (row.sourcing_link as string) ?? "",

@@ -3,6 +3,7 @@
 import { RESERVED_SLUGS } from "@/lib/constants";
 import { normalizeHexColor, normalizeOptionalHexColor } from "@/lib/color";
 import { slugify } from "@/lib/slug";
+import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
 import { assertAdminUser } from "@/lib/auth/admin";
@@ -452,7 +453,7 @@ export async function createProductAction(payload: ProductPayload) {
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
-    meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+    meta_pixel_id: normalizeMetaPixelId(payload.meta_pixel_id),
     sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
     sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
     sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
@@ -572,7 +573,7 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
-    meta_pixel_id: payload.meta_pixel_id?.trim() || null,
+    meta_pixel_id: normalizeMetaPixelId(payload.meta_pixel_id),
     old_slugs: payload.old_slugs.filter(Boolean),
     sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
     sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,

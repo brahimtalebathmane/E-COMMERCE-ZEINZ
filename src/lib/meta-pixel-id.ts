@@ -1,12 +1,25 @@
 /**
- * Normalize a Meta Pixel ID from admin input (digits only; Meta IDs are numeric).
+ * Normalize a Meta Pixel ID from admin input.
+ * Strips quotes/spaces; Meta IDs must be numeric only (10–20 digits).
  */
 export function normalizeMetaPixelId(raw?: string | null): string | null {
-  const trimmed = raw?.trim();
-  if (!trimmed) return null;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length >= 10) return digits;
-  return trimmed;
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (!s) return null;
+
+  // Admin paste often includes '123' or "123" — strip repeatedly
+  for (let i = 0; i < 3; i++) {
+    const next = s.replace(/^['"`]+|['"`]+$/g, "").trim();
+    if (next === s) break;
+    s = next;
+  }
+
+  const digits = s.replace(/\D/g, "");
+  if (digits.length >= 10 && digits.length <= 20) return digits;
+
+  if (/^\d{10,20}$/.test(s)) return s;
+
+  return null;
 }
 
 /**
