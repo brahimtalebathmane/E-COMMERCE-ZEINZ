@@ -19,7 +19,7 @@ function parseSourcingType(raw: unknown): ProductSourcingType | null {
   if (raw === "local" || raw === "import") return raw;
   return null;
 }
-import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
+import { extractMetaPixelIdFromRow, normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -134,7 +134,7 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     stats_fr: (row.stats_fr as string[]) ?? [],
     contact_lines_ar: (row.contact_lines_ar as string[]) ?? [],
     contact_lines_fr: (row.contact_lines_fr as string[]) ?? [],
-    meta_pixel_id: normalizeMetaPixelId(row.meta_pixel_id as string | null),
+    meta_pixel_id: normalizeMetaPixelId(extractMetaPixelIdFromRow(row)),
     test_status: parseTestStatus(row.test_status),
     sourcing_type: parseSourcingType(row.sourcing_type),
     sourcing_link: (row.sourcing_link as string) ?? "",
@@ -158,7 +158,21 @@ export async function getProductBySlug(
     .maybeSingle();
 
   if (error || !data) return null;
-  return mapProductRow(data as Record<string, unknown>);
+
+  const row = data as Record<string, unknown>;
+  console.error("[DEBUG-ROUTING] Raw Supabase product pixel row", {
+    slug,
+    meta_pixel_id: row.meta_pixel_id,
+    extracted_raw: extractMetaPixelIdFromRow(row),
+    alternate_keys: {
+      pixel_id: row.pixel_id,
+      fb_pixel: row.fb_pixel,
+      facebook_pixel_id: row.facebook_pixel_id,
+      metaPixelId: row.metaPixelId,
+    },
+  });
+
+  return mapProductRow(row);
 }
 
 export async function getProductByOldSlug(

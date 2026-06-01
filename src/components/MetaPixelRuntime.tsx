@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { trackMetaPageView } from "@/lib/meta-pixel-client";
-import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type Props = {
   pixelId: string | null | undefined;
@@ -13,13 +13,21 @@ type Props = {
  * Client-side init + PageView (and route changes). fbq bootstrap loads from root layout Script.
  */
 export function MetaPixelRuntime({ pixelId }: Props) {
-  const id = normalizeMetaPixelId(pixelId);
+  const id = resolvePublicMetaPixelId(pixelId);
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!id) return;
+    console.error("[DEBUG-PIXEL] MetaPixelRuntime effect", {
+      pixelId,
+      resolvedId: id,
+      pathname,
+    });
+    if (!id) {
+      console.error("[DEBUG-PIXEL] Aborting: no pixel ID resolved for route", pathname);
+      return;
+    }
     void trackMetaPageView(id);
-  }, [id, pathname]);
+  }, [id, pathname, pixelId]);
 
   return null;
 }

@@ -22,6 +22,31 @@ export function normalizeMetaPixelId(raw?: string | null): string | null {
   return null;
 }
 
+/** Known DB/API keys that may hold a Meta Pixel ID (multi-tenant product rows). */
+const META_PIXEL_ROW_KEYS = [
+  "meta_pixel_id",
+  "pixel_id",
+  "fb_pixel",
+  "facebook_pixel_id",
+  "metaPixelId",
+] as const;
+
+/**
+ * Read a raw pixel ID string from a product row before normalization.
+ * Checks common column/property names in priority order.
+ */
+export function extractMetaPixelIdFromRow(
+  row: Record<string, unknown>,
+): string | null {
+  for (const key of META_PIXEL_ROW_KEYS) {
+    const value = row[key];
+    if (value == null) continue;
+    const trimmed = String(value).trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
 function envFallbackPixelId(scope: "public" | "server"): string | null {
   if (scope === "public") {
     return normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
