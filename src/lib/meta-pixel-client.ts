@@ -26,16 +26,28 @@ function devLog(message: string, data?: Record<string, unknown>): void {
   }
 }
 
-/** Minimal queue stub if root layout Script has not run yet. */
+/** Load official fbq bootstrap if root layout Script has not run yet. */
 function ensureFbqQueue(): void {
   if (typeof window === "undefined" || window.fbq) return;
 
-  const stub = function (this: FbqFn, ...args: unknown[]) {
-    stub.queue.push(args);
-  } as FbqFn;
-  stub.queue = [];
-  window.fbq = stub;
-  window._fbq = stub;
+  // Inject the full official Meta Pixel bootstrap to bypass the early-return guard bug
+  (function (f, b, e, v, n, t, s) {
+    if (f.fbq) return;
+    n = f.fbq = function (...args: unknown[]) {
+      n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+    };
+    if (!f._fbq) f._fbq = n;
+    n.push = n;
+    n.loaded = !0;
+    n.version = "2.0";
+    n.queue = [];
+    t = b.createElement(e);
+    t.async = !0;
+    t.src = v;
+    s = b.getElementsByTagName(e)[0];
+    if (s && s.parentNode) s.parentNode.insertBefore(t, s);
+    else (b.head || b.documentElement).appendChild(t);
+  })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
 }
 
 function ensurePixelInit(pixelId: string): string | null {
