@@ -24,6 +24,7 @@ import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type Props = {
   product: ProductRow;
+  metaPixelId?: string | null;
   open: boolean;
   onClose: () => void;
 };
@@ -42,7 +43,7 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
   return null;
 }
 
-export function OrderFormModal({ product, open, onClose }: Props) {
+export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
   const { locale, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -154,7 +155,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         phone: phoneE164,
         customerName: n,
       });
-      const pid = resolvePublicMetaPixelId(product.meta_pixel_id);
+      const pid =
+        metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
       if (am && pid) {
         try {
           sessionStorage.setItem(metaPixelAmStorageKey(pid), JSON.stringify(am));
@@ -168,7 +170,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       }
 
       // Keep browser Lead for marketing robustness; server sends Lead too with same event id.
-      trackLead({
+      await trackLead({
         value: Number(json.total_price ?? product.discount_price ?? product.price),
         currency: "MRU",
         eventId,

@@ -25,13 +25,17 @@ type FbqFn = {
   version?: string;
 };
 
+const FBEVENTS_SRC = "https://connect.facebook.net/en_US/fbevents.js";
+const SDK_WAIT_MS = 8_000;
+const LOAD_TIMEOUT_MS = 10_000;
+
 let fbeventsLoadPromise: Promise<void> | null = null;
 
 function isFbeventsSdkReady(): boolean {
   return typeof window !== "undefined" && typeof window.fbq?.callMethod === "function";
 }
 
-function waitForFbeventsSdk(maxMs = 4000): Promise<void> {
+function waitForFbeventsSdk(maxMs = SDK_WAIT_MS): Promise<void> {
   const start = Date.now();
   return new Promise((resolve) => {
     const tick = () => {
@@ -45,15 +49,33 @@ function waitForFbeventsSdk(maxMs = 4000): Promise<void> {
   });
 }
 
-/** Load fbevents.js once (Meta standard stub + script inject). */
+function injectFbeventsScript(script: HTMLScriptElement): void {
+  const first = document.getElementsByTagName("script")[0];
+  if (first?.parentNode) {
+    first.parentNode.insertBefore(script, first);
+    return;
+  }
+  document.head.appendChild(script);
+}
+
+/** Load fbevents.js once (Meta standard stub + script inject). Always resolves (never hangs). */
 function ensureFbeventsLoaded(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (isFbeventsSdkReady()) return Promise.resolve();
   if (fbeventsLoadPromise) return fbeventsLoadPromise;
 
   fbeventsLoadPromise = new Promise((resolve) => {
-    if (isFbeventsSdkReady()) {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
       resolve();
+    };
+
+    window.setTimeout(finish, LOAD_TIMEOUT_MS);
+
+    if (isFbeventsSdkReady()) {
+      finish();
       return;
     }
 
@@ -73,41 +95,85 @@ function ensureFbeventsLoaded(): Promise<void> {
     }
 
     const existing = document.querySelector<HTMLScriptElement>(
-      'script[src*="connect.facebook.net"][src*="fbevents.js"]',
+      `script[src*="connect.facebook.net"][src*="fbevents.js"]`,
     );
     if (existing) {
-      void waitForFbeventsSdk().then(resolve);
+      void waitForFbeventsSdk().then(finish);
       return;
     }
 
     const script = document.createElement("script");
     script.async = true;
-    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    script.src = FBEVENTS_SRC;
     script.onload = () => {
-      void waitForFbeventsSdk().then(resolve);
+      void waitForFbeventsSdk().then(finish);
     };
     script.onerror = () => {
       console.warn("[Meta Pixel] Failed to load fbevents.js — check ad blockers and CSP.");
       fbeventsLoadPromise = null;
-      resolve();
+      finish();
     };
-    const first = document.getElementsByTagName("script")[0];
-    first?.parentNode?.insertBefore(script, first);
+    injectFbeventsScript(script);
   });
 
   return fbeventsLoadPromise;
 }
 
-function callFbqWithRetry(
-  fire: () => boolean,
-  delaysMs = [0, 400, 1200, 2500],
-): void {
-  if (typeof window === "undefined") return;
-  for (const delay of delaysMs) {
-    window.setTimeout(() => {
-      fire();
-    }, delay);
+/** Wait until Meta SDK is callable (or timeout). */
+async function waitForPixelSdk(): Promise<boolean> {
+  await ensureFbeventsLoaded();
+  if (isFbeventsSdkReady()) return true;
+  await waitForFbeventsSdk();
+  if (!isFbeventsSdkReady()) {
+    console.warn(
+      "[Meta Pixel] fbevents.js did not become ready — events may not reach Meta (ad blocker / network).",
+    );
+    return false;
   }
+  return true;
+}
+
+function fireStandardEvent(
+  eventName: string,
+  payload?: Record<string, unknown>,
+  opts?: { eventID?: string },
+): boolean {
+  if (!window.fbq || !isFbeventsSdkReady()) return false;
+  if (payload && opts) {
+    window.fbq("track", eventName, payload, opts);
+  } else if (opts) {
+    window.fbq("track", eventName, {}, opts);
+  } else if (payload) {
+    window.fbq("track", eventName, payload);
+  } else {
+    window.fbq("track", eventName);
+  }
+  return true;
+}
+
+function fireStandardEventWithRetry(
+  eventName: string,
+  payload?: Record<string, unknown>,
+  opts?: { eventID?: string },
+  delaysMs = [0, 400, 1200, 2500, 5000],
+): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+
+  return new Promise((resolve) => {
+    let sent = false;
+    const tryFire = () => {
+      if (sent) return;
+      if (fireStandardEvent(eventName, payload, opts)) {
+        sent = true;
+        resolve(true);
+      }
+    };
+
+    for (const delay of delaysMs) {
+      window.setTimeout(tryFire, delay);
+    }
+    window.setTimeout(() => resolve(sent), delaysMs[delaysMs.length - 1]! + 200);
+  });
 }
 
 /**
@@ -140,27 +206,15 @@ async function ensurePixelInitialized(
 
 async function ensurePixelReady(pixelId?: string | null): Promise<string | null> {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
-  if (!id) return null;
-  await ensurePixelInitialized(id);
-  return id;
-}
-
-function fireStandardEvent(
-  eventName: string,
-  payload?: Record<string, unknown>,
-  opts?: { eventID?: string },
-): boolean {
-  if (!window.fbq) return false;
-  if (payload && opts) {
-    window.fbq("track", eventName, payload, opts);
-  } else if (opts) {
-    window.fbq("track", eventName, {}, opts);
-  } else if (payload) {
-    window.fbq("track", eventName, payload);
-  } else {
-    window.fbq("track", eventName);
+  if (!id) {
+    console.warn(
+      "[Meta Pixel] No pixel ID — set meta_pixel_id on the product in Admin, or NEXT_PUBLIC_META_PIXEL_ID (redeploy after env change).",
+    );
+    return null;
   }
-  return true;
+  await ensurePixelInitialized(id);
+  await waitForPixelSdk();
+  return id;
 }
 
 export type MetaPixelAdvancedMatchingProps = {
@@ -260,6 +314,9 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     [storageAm, propsAm],
   );
 
+  const initAmRef = useRef(initAdvancedMatching);
+  initAmRef.current = initAdvancedMatching;
+
   const storageReady = storageAm !== null;
 
   useEffect(() => {
@@ -267,19 +324,19 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 
     let cancelled = false;
 
-    void ensurePixelInitialized(resolvedPixelId, initAdvancedMatching).then(() => {
-      if (cancelled || typeof window === "undefined" || !window.fbq) return;
-      if (pageViewSentRef.current) return;
-      const ok = fireStandardEvent("PageView");
-      if (ok) {
+    void (async () => {
+      await ensurePixelInitialized(resolvedPixelId, initAmRef.current);
+      if (cancelled || pageViewSentRef.current) return;
+      const sent = await fireStandardEventWithRetry("PageView");
+      if (!cancelled && sent) {
         pageViewSentRef.current = true;
       }
-    });
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [resolvedPixelId, mounted, storageReady, initAdvancedMatching]);
+  }, [resolvedPixelId, mounted, storageReady]);
 
   if (!resolvedPixelId || !mounted || !storageReady) return null;
 
@@ -306,10 +363,11 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 }
 
 export function trackInitiateCheckout(eventId: string, pixelId?: string | null) {
-  void ensurePixelReady(pixelId).then((id) => {
+  void (async () => {
+    const id = await ensurePixelReady(pixelId);
     if (!id) return;
-    callFbqWithRetry(() => fireStandardEvent("InitiateCheckout", {}, { eventID: eventId }));
-  });
+    await fireStandardEventWithRetry("InitiateCheckout", {}, { eventID: eventId });
+  })();
 }
 
 export function trackPurchase(params: {
@@ -317,29 +375,25 @@ export function trackPurchase(params: {
   valueMru: number;
   currency?: string;
 }) {
-  if (typeof window === "undefined" || !window.fbq) return;
-  const { value, currency } = toMetaPixelPurchaseMoney(
-    params.valueMru,
-    params.currency ?? "MRU",
-  );
-  window.fbq(
-    "track",
-    "Purchase",
-    { value, currency },
-    { eventID: params.eventId },
-  );
+  void (async () => {
+    const ready = await waitForPixelSdk();
+    if (!ready || typeof window === "undefined" || !window.fbq) return;
+    const { value, currency } = toMetaPixelPurchaseMoney(
+      params.valueMru,
+      params.currency ?? "MRU",
+    );
+    fireStandardEvent("Purchase", { value, currency }, { eventID: params.eventId });
+  })();
 }
 
-export function trackLead(params: {
+export async function trackLead(params: {
   value: number;
   currency: string;
   eventId: string;
   pixelId?: string | null;
-}) {
+}): Promise<void> {
+  const id = await ensurePixelReady(params.pixelId);
+  if (!id) return;
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  void ensurePixelReady(params.pixelId).then((id) => {
-    if (!id) return;
-    const payload = { value, currency };
-    callFbqWithRetry(() => fireStandardEvent("Lead", payload, { eventID: params.eventId }));
-  });
+  await fireStandardEventWithRetry("Lead", { value, currency }, { eventID: params.eventId });
 }

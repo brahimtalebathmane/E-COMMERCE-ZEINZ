@@ -29,6 +29,8 @@ const OrderFormModal = dynamic(
 
 type Props = {
   product: ProductRow;
+  /** Server-resolved pixel ID (includes META_PIXEL_ID fallback). Prefer over client-only env. */
+  resolvedMetaPixelId?: string | null;
 };
 
 /** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
@@ -228,7 +230,7 @@ function FeatureIcon({ feature, color }: { feature: string; color: string }) {
   );
 }
 
-export function ProductLanding({ product }: Props) {
+export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
   const { locale, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
@@ -286,7 +288,8 @@ export function ProductLanding({ product }: Props) {
     };
   }, []);
 
-  const metaPixelId = resolvePublicMetaPixelId(product.meta_pixel_id);
+  const metaPixelId =
+    resolvedMetaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
 
   const openCheckout = () => {
     try {
@@ -597,7 +600,12 @@ export function ProductLanding({ product }: Props) {
         onCheckout={openCheckout}
       />
 
-      <OrderFormModal product={product} open={open} onClose={() => setOpen(false)} />
+      <OrderFormModal
+        product={product}
+        metaPixelId={metaPixelId}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </div>
   );
 }
