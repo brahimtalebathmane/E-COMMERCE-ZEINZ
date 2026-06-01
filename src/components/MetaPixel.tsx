@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 import {
   buildMetaPixelAdvancedMatching,
@@ -37,6 +38,7 @@ export function syncMetaPixelAdvancedMatching(
 /** Advanced matching + deduped PageView fallback (MetaPixelRuntime is primary). */
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
   const resolvedPixelId = useMemo(
     () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(null),
     [pixelId],
@@ -59,7 +61,13 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
       }
       await trackMetaPageView(resolvedPixelId);
     })();
-  }, [resolvedPixelId, mounted, advancedMatching?.phone, advancedMatching?.customerName]);
+  }, [
+    resolvedPixelId,
+    mounted,
+    pathname,
+    advancedMatching?.phone,
+    advancedMatching?.customerName,
+  ]);
 
   if (!resolvedPixelId || !mounted) return null;
 

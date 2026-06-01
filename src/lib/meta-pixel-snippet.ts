@@ -1,6 +1,6 @@
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 
-/** Meta’s standard bootstrap + init (in initial HTML for Pixel Helper). PageView fires on client. */
+/** Meta bootstrap + init in initial HTML (Pixel Helper detects the pixel). PageView is sent from MetaPixelRuntime. */
 export function buildMetaPixelFullSnippet(rawPixelId: string): string | null {
   const id = normalizeMetaPixelId(rawPixelId);
   if (!id) return null;
@@ -15,11 +15,8 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 if(s&&s.parentNode)s.parentNode.insertBefore(t,s);else b.head.appendChild(t)}
 (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','${id}');
-fbq('track','PageView');
 window.__metaPixelsInited=window.__metaPixelsInited||{};
 window.__metaPixelsInited['${id}']=true;
-window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
-window.__metaPixelPageViewSent['${id}:'+location.pathname]=true;
 `.trim();
 }
 
@@ -44,10 +41,7 @@ if(!window.fbq){
   }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 }
 fbq('init',id);
-fbq('track','PageView');
 window.__metaPixelsInited[id]=true;
-window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
-window.__metaPixelPageViewSent[id+':'+location.pathname]=true;
 })();
 `.trim();
 }

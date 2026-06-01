@@ -21,6 +21,28 @@ function isSdkReady(): boolean {
   return typeof window.fbq?.callMethod === "function";
 }
 
+function waitForSdkReady(timeoutMs = 10_000): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (isSdkReady()) {
+      resolve(true);
+      return;
+    }
+    const start = Date.now();
+    const tick = () => {
+      if (isSdkReady()) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() - start >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+      window.setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
 function bootstrapFbqStub(): void {
   if (window.fbq) return;
   const n = function (this: FbqFn, ...args: unknown[]) {
@@ -116,11 +138,19 @@ export async function trackMetaPageView(pixelId?: string | null): Promise<void> 
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id) return;
 
+  const key = pageViewKey(id);
+  window.__metaPixelPageViewSent = window.__metaPixelPageViewSent || {};
+  if (window.__metaPixelPageViewSent[key]) return;
+
   const ready = await ensureMetaPixelSdk(id);
   if (!ready || !window.fbq) return;
 
-  const key = pageViewKey(id);
-  window.__metaPixelPageViewSent = window.__metaPixelPageViewSent || {};
+  const sdkReady = await waitForSdkReady();
+  if (!sdkReady) {
+    console.warn("[Meta Pixel] SDK not ready — PageView not sent.");
+    return;
+  }
+
   if (window.__metaPixelPageViewSent[key]) return;
 
   window.fbq("track", "PageView");

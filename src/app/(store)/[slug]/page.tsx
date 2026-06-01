@@ -57,7 +57,9 @@ export default async function ProductPage({ params }: PageProps) {
       ) : siteNorm ? (
         <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
       ) : null}
-      {productNorm ? <MetaPixelRuntime pixelId={productNorm} /> : null}
+      {productNorm ?? siteNorm ? (
+        <MetaPixelRuntime pixelId={productNorm ?? siteNorm} />
+      ) : null}
       <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />
     </>
   );
