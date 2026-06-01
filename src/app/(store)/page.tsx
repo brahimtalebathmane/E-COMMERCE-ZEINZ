@@ -1,9 +1,11 @@
+import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
 import {
   createPublicClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/public";
 import { CatalogPageClient } from "@/components/store/CatalogPageClient";
 import type { CatalogProduct } from "@/components/store/CatalogProductCard";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 
 export const revalidate = 60;
 
@@ -29,7 +31,12 @@ function normalizeCatalogRow(row: Record<string, unknown>): CatalogProduct {
 
 export default async function HomePage() {
   if (!isSupabaseConfigured()) {
-    return <CatalogPageClient products={[]} configured={false} />;
+    return (
+      <>
+        <MetaPixelBaseScript pixelId={resolveServerMetaPixelId(null)} />
+        <CatalogPageClient products={[]} configured={false} />
+      </>
+    );
   }
 
   const supabase = createPublicClient();
@@ -45,5 +52,12 @@ export default async function HomePage() {
     normalizeCatalogRow(row as Record<string, unknown>),
   );
 
-  return <CatalogPageClient products={products} configured />;
+  const siteWidePixelId = resolveServerMetaPixelId(null);
+
+  return (
+    <>
+      <MetaPixelBaseScript pixelId={siteWidePixelId} />
+      <CatalogPageClient products={products} configured />
+    </>
+  );
 }

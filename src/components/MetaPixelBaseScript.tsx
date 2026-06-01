@@ -1,50 +1,35 @@
-import Script from "next/script";
+import {
+  buildMetaPixelFullSnippet,
+  buildMetaPixelInitOnlySnippet,
+} from "@/lib/meta-pixel-snippet";
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 
 type Props = {
   pixelId: string | null | undefined;
+  /** Use init-only when another script on the page already bootstrapped fbevents.js */
+  variant?: "full" | "init-only";
 };
 
-declare global {
-  interface Window {
-    __metaPixelsInited?: Record<string, boolean>;
-  }
-}
-
 /**
- * Meta’s official fbevents bootstrap + per-pixel init (via next/script).
- * Safe to call on every store page; duplicate pixel IDs are skipped.
- * Pixel Helper detects this — React-only injection does not.
+ * Server-rendered Meta base code in the initial HTML (not next/script afterInteractive).
+ * Required for Meta Pixel Helper on product landing pages.
  */
-export function MetaPixelBaseScript({ pixelId }: Props) {
+export function MetaPixelBaseScript({ pixelId, variant = "full" }: Props) {
   const id = normalizeMetaPixelId(pixelId);
   if (!id) return null;
 
-  const initSnippet = `
-(function(pixelId){
-  if(!window.fbq){
-    !function(f,b,e,v,n,t,s){
-      if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)
-    }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-  }
-  window.__metaPixelsInited=window.__metaPixelsInited||{};
-  if(window.__metaPixelsInited[pixelId])return;
-  fbq('init',pixelId);
-  fbq('track','PageView');
-  window.__metaPixelsInited[pixelId]=true;
-})('${id}');
-`.trim();
+  const html =
+    variant === "init-only"
+      ? buildMetaPixelInitOnlySnippet(id)
+      : buildMetaPixelFullSnippet(id);
+  if (!html) return null;
 
   return (
     <>
-      <Script id={`meta-pixel-${id}`} strategy="afterInteractive">
-        {initSnippet}
-      </Script>
+      <script
+        id={`meta-pixel-${id}`}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
       <noscript>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

@@ -1,6 +1,6 @@
 import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
 import { ProductLanding } from "@/components/landing/ProductLanding";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { normalizeMetaPixelId, resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   getAllProductSlugs,
   getProductByOldSlug,
@@ -38,12 +38,25 @@ export default async function ProductPage({ params }: PageProps) {
     notFound();
   }
 
-  const resolvedMetaPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
+  const siteWidePixelId = resolveServerMetaPixelId(null);
+  const productPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
+  const siteNorm = normalizeMetaPixelId(siteWidePixelId);
+  const productNorm = normalizeMetaPixelId(productPixelId);
 
   return (
     <>
-      <MetaPixelBaseScript pixelId={resolvedMetaPixelId} />
-      <ProductLanding product={found} resolvedMetaPixelId={resolvedMetaPixelId} />
+      {siteNorm && siteNorm !== productNorm ? (
+        <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
+      ) : null}
+      {productNorm ? (
+        <MetaPixelBaseScript
+          pixelId={productNorm}
+          variant={siteNorm && siteNorm !== productNorm ? "init-only" : "full"}
+        />
+      ) : siteNorm ? (
+        <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
+      ) : null}
+      <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />
     </>
   );
 }
