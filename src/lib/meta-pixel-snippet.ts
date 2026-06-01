@@ -15,7 +15,8 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 if(s&&s.parentNode)s.parentNode.insertBefore(t,s);else b.head.appendChild(t)}
 (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','${id}');
-fbq('track','PageView');
+window.__metaPixelsInited=window.__metaPixelsInited||{};
+window.__metaPixelsInited['${id}']=true;
 `.trim();
 }
 
@@ -40,7 +41,7 @@ if(!window.fbq){
   }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 }
 fbq('init',id);
-fbq('track','PageView');
+window.__metaPixelsInited=window.__metaPixelsInited||{};
 window.__metaPixelsInited[id]=true;
 })();
 `.trim();

@@ -15,6 +15,7 @@ declare global {
     _fbq?: FbqFn;
     __metaPixelInitialized?: Record<string, boolean>;
     __metaPixelsInited?: Record<string, boolean>;
+    __metaPixelPageViewSent?: Record<string, boolean>;
   }
 }
 
@@ -139,7 +140,7 @@ function fireStandardEvent(
   payload?: Record<string, unknown>,
   opts?: { eventID?: string },
 ): boolean {
-  if (!window.fbq || !isFbeventsSdkReady()) return false;
+  if (!window.fbq) return false;
   if (payload && opts) {
     window.fbq("track", eventName, payload, opts);
   } else if (opts) {
@@ -150,6 +151,28 @@ function fireStandardEvent(
     window.fbq("track", eventName);
   }
   return true;
+}
+
+function pageViewDedupKey(pixelId: string): string {
+  return `${pixelId}:${window.location.pathname}`;
+}
+
+/** Fire PageView once per pixel + pathname (covers client navigations from catalog). */
+export async function trackMetaPageView(pixelId?: string | null): Promise<void> {
+  const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
+  if (!id || typeof window === "undefined") return;
+
+  const key = pageViewDedupKey(id);
+  window.__metaPixelPageViewSent = window.__metaPixelPageViewSent || {};
+  if (window.__metaPixelPageViewSent[key]) return;
+
+  await ensurePixelInitialized(id);
+  await waitForPixelSdk();
+
+  const sent = await fireStandardEventWithRetry("PageView");
+  if (sent) {
+    window.__metaPixelPageViewSent[key] = true;
+  }
 }
 
 function fireStandardEventWithRetry(
@@ -351,25 +374,11 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     let cancelled = false;
 
     void (async () => {
-      let fromOfficialSnippet = false;
-      for (let i = 0; i < 30 && !cancelled; i++) {
-        if (hasOfficialBaseScript(resolvedPixelId)) {
-          fromOfficialSnippet = true;
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 100));
-      }
-
       await ensurePixelInitialized(resolvedPixelId, initAmRef.current);
       if (cancelled || pageViewSentRef.current) return;
 
-      if (fromOfficialSnippet) {
-        pageViewSentRef.current = true;
-        return;
-      }
-
-      const sent = await fireStandardEventWithRetry("PageView");
-      if (!cancelled && sent) {
+      await trackMetaPageView(resolvedPixelId);
+      if (!cancelled) {
         pageViewSentRef.current = true;
       }
     })();
@@ -407,6 +416,7 @@ export function trackInitiateCheckout(eventId: string, pixelId?: string | null) 
   void (async () => {
     const id = await ensurePixelReady(pixelId);
     if (!id) return;
+    await waitForPixelSdk();
     await fireStandardEventWithRetry("InitiateCheckout", {}, { eventID: eventId });
   })();
 }

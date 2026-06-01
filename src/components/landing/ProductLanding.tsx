@@ -10,7 +10,7 @@ import { LandingHeader } from "./LandingHeader";
 import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
+import { MetaPixel, trackInitiateCheckout, trackMetaPageView } from "@/components/MetaPixel";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   ensureMetaFunnelSession,
@@ -290,6 +290,11 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
 
   const metaPixelId =
     resolvedMetaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
+
+  useEffect(() => {
+    if (!metaPixelId) return;
+    void trackMetaPageView(metaPixelId);
+  }, [metaPixelId]);
 
   const openCheckout = () => {
     try {
