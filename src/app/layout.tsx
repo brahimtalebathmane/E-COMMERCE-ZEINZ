@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Tajawal } from "next/font/google";
+import Script from "next/script";
+import { META_PIXEL_BOOTSTRAP_JS } from "@/lib/meta-pixel-bootstrap";
 import { BRAND_COLOR, BRAND_NAME } from "@/lib/site-branding";
 import "./globals.css";
 
@@ -82,6 +84,11 @@ export default function RootLayout({
       <body
         className={`${tajawal.variable} ${geistSans.variable} min-h-screen font-sans antialiased`}
       >
+        <Script
+          id="meta-pixel"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: META_PIXEL_BOOTSTRAP_JS }}
+        />
         {children}
       </body>
     </html>

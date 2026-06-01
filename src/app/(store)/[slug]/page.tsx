@@ -1,4 +1,3 @@
-import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { normalizeMetaPixelId, resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
@@ -43,23 +42,11 @@ export default async function ProductPage({ params }: PageProps) {
   const productPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
   const siteNorm = normalizeMetaPixelId(siteWidePixelId);
   const productNorm = normalizeMetaPixelId(productPixelId);
+  const runtimePixelId = productNorm ?? siteNorm;
 
   return (
     <>
-      {siteNorm && siteNorm !== productNorm ? (
-        <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
-      ) : null}
-      {productNorm ? (
-        <MetaPixelBaseScript
-          pixelId={productNorm}
-          variant={siteNorm && siteNorm !== productNorm ? "init-only" : "full"}
-        />
-      ) : siteNorm ? (
-        <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
-      ) : null}
-      {productNorm ?? siteNorm ? (
-        <MetaPixelRuntime pixelId={productNorm ?? siteNorm} />
-      ) : null}
+      {runtimePixelId ? <MetaPixelRuntime pixelId={runtimePixelId} /> : null}
       <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />
     </>
   );

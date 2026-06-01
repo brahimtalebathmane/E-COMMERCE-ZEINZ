@@ -10,9 +10,7 @@ type Props = {
 };
 
 /**
- * Runs Meta Pixel on the client after hydration (all landing navigations).
- * Pair with MetaPixelBaseScript in HTML for Pixel Helper pixel detection.
- * Re-fires PageView on route change — inline scripts do not run on client navigations.
+ * Client-side init + PageView (and route changes). fbq bootstrap loads from root layout Script.
  */
 export function MetaPixelRuntime({ pixelId }: Props) {
   const id = normalizeMetaPixelId(pixelId);

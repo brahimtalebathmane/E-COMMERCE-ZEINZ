@@ -1,7 +1,5 @@
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
-const FBEVENTS_SRC = "https://connect.facebook.net/en_US/fbevents.js";
-
 type FbqFn = {
   (...args: unknown[]): void;
   callMethod?: (...args: unknown[]) => void;
@@ -28,74 +26,32 @@ function devLog(message: string, data?: Record<string, unknown>): void {
   }
 }
 
-function isSdkReady(): boolean {
-  return typeof window.fbq?.callMethod === "function";
-}
+/** Minimal queue stub if root layout Script has not run yet. */
+function ensureFbqQueue(): void {
+  if (typeof window === "undefined" || window.fbq) return;
 
-function bootstrapFbqStub(): void {
-  if (window.fbq) return;
-  const n = function (this: FbqFn, ...args: unknown[]) {
-    if (n.callMethod) {
-      n.callMethod(...args);
-    } else {
-      n.queue.push(args);
-    }
+  const stub = function (this: FbqFn, ...args: unknown[]) {
+    stub.queue.push(args);
   } as FbqFn;
-  n.queue = [];
-  window.fbq = n;
-  window._fbq = n;
+  stub.queue = [];
+  window.fbq = stub;
+  window._fbq = stub;
 }
 
-/** Start loading fbevents.js in the background; never blocks event queueing. */
-function injectFbeventsScript(): void {
-  if (typeof window === "undefined") return;
-  if (isSdkReady()) return;
-
-  const existing = document.querySelector<HTMLScriptElement>(
-    'script[src*="connect.facebook.net"][src*="fbevents.js"]',
-  );
-  if (existing) return;
-
-  bootstrapFbqStub();
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = FBEVENTS_SRC;
-  script.onerror = () => {
-    if (isDev) {
-      console.warn("[Meta Pixel] fbevents.js blocked — disable ad blockers for this site.");
-    }
-  };
-  const first = document.getElementsByTagName("script")[0];
-  if (first?.parentNode) {
-    first.parentNode.insertBefore(script, first);
-  } else {
-    document.head.appendChild(script);
-  }
-}
-
-/**
- * Ensures fbq stub + pixel init exist, starts SDK load. Does not wait for callMethod.
- * Events should be queued via fbq() immediately after this returns.
- */
-export function ensureMetaPixelSdk(pixelId: string): string | null {
+function ensurePixelInit(pixelId: string): string | null {
   const id = normalizeMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return null;
 
-  bootstrapFbqStub();
-  injectFbeventsScript();
+  ensureFbqQueue();
 
   window.__metaPixelsInited = window.__metaPixelsInited || {};
   if (!window.__metaPixelsInited[id]) {
     window.fbq!("init", id);
     window.__metaPixelsInited[id] = true;
-    devLog("init queued", { pixelId: id, sdkReady: isSdkReady() });
+    devLog("init queued", { pixelId: id });
   }
 
   return id;
-}
-
-function pageViewKey(pixelId: string): string {
-  return `${pixelId}:${window.location.pathname}`;
 }
 
 function pushFbqTrack(
@@ -116,36 +72,42 @@ function pushFbqTrack(
   }
 }
 
-/**
- * Queue PageView on fbq immediately (processed when fbevents.js loads).
- * Dedup flag is set only after the track call is pushed to fbq.
- */
+/** @deprecated Use trackMetaPageView / trackMetaEvent; kept for callers that awaited init. */
+export function ensureMetaPixelSdk(pixelId: string): string | null {
+  return ensurePixelInit(pixelId);
+}
+
 export function trackMetaPageView(pixelId?: string | null): void {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
-  const key = pageViewKey(id);
-  window.__metaPixelPageViewSent = window.__metaPixelPageViewSent || {};
-  if (window.__metaPixelPageViewSent[key]) {
+  ensureFbqQueue();
+
+  if (!window.__metaPixelsInited) window.__metaPixelsInited = {};
+  if (!window.__metaPixelsInited[id]) {
+    window.fbq!("init", id);
+    window.__metaPixelsInited[id] = true;
+    devLog("init queued", { pixelId: id });
+  }
+
+  const key = `${id}:${window.location.pathname}`;
+  if (window.__metaPixelPageViewSent?.[key]) {
     devLog("PageView skipped (already queued for route)", { pixelId: id, key });
     return;
   }
 
-  const ready = ensureMetaPixelSdk(id);
-  if (!ready || !window.fbq) return;
+  window.fbq!("track", "PageView");
 
-  pushFbqTrack("PageView");
+  if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
   window.__metaPixelPageViewSent[key] = true;
 
   devLog("PageView queued", {
     pixelId: id,
     key,
-    sdkReady: isSdkReady(),
-    queueLength: window.fbq.queue?.length ?? 0,
+    queueLength: window.fbq?.queue?.length ?? 0,
   });
 }
 
-/** Queue a standard/custom Meta event on fbq (no wait for SDK readiness). */
 export function trackMetaEvent(
   pixelId: string | null | undefined,
   eventName: string,
@@ -155,14 +117,13 @@ export function trackMetaEvent(
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
-  const ready = ensureMetaPixelSdk(id);
+  const ready = ensurePixelInit(id);
   if (!ready || !window.fbq) return;
 
   pushFbqTrack(eventName, payload, opts);
 
   devLog(`${eventName} queued`, {
     pixelId: id,
-    sdkReady: isSdkReady(),
     queueLength: window.fbq.queue?.length ?? 0,
     eventID: opts?.eventID,
     hasPayload: Boolean(payload && Object.keys(payload).length > 0),
