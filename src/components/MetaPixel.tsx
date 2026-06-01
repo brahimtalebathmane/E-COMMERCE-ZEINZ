@@ -55,12 +55,10 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     const customerName = advancedMatching?.customerName?.trim() ?? "";
     const am = buildMetaPixelAdvancedMatching({ phone, customerName });
 
-    void (async () => {
-      if (am && typeof window !== "undefined" && window.fbq) {
-        window.fbq("set", "userData", am as Record<string, unknown>);
-      }
-      await trackMetaPageView(resolvedPixelId);
-    })();
+    if (am && typeof window !== "undefined" && window.fbq) {
+      window.fbq("set", "userData", am as Record<string, unknown>);
+    }
+    trackMetaPageView(resolvedPixelId);
   }, [
     resolvedPixelId,
     mounted,
@@ -103,7 +101,7 @@ export async function trackLead(params: {
   pixelId?: string | null;
 }): Promise<void> {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  await trackMetaEvent(
+  trackMetaEvent(
     params.pixelId,
     "Lead",
     { value, currency },

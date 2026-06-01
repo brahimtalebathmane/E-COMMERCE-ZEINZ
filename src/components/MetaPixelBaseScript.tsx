@@ -1,3 +1,4 @@
+import Script from "next/script";
 import {
   buildMetaPixelFullSnippet,
   buildMetaPixelInitOnlySnippet,
@@ -11,8 +12,8 @@ type Props = {
 };
 
 /**
- * Server-rendered Meta base code in the initial HTML (not next/script afterInteractive).
- * Required for Meta Pixel Helper on product landing pages.
+ * Injects Meta base code via beforeInteractive so it runs from document head
+ * before React hydrates. Events queue on fbq until fbevents.js loads.
  */
 export function MetaPixelBaseScript({ pixelId, variant = "full" }: Props) {
   const id = normalizeMetaPixelId(pixelId);
@@ -26,8 +27,9 @@ export function MetaPixelBaseScript({ pixelId, variant = "full" }: Props) {
 
   return (
     <>
-      <script
+      <Script
         id={`meta-pixel-${id}`}
+        strategy="beforeInteractive"
         dangerouslySetInnerHTML={{ __html: html }}
       />
       <noscript>

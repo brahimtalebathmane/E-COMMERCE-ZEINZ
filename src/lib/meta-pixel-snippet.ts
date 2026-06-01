@@ -1,6 +1,16 @@
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 
-/** Meta bootstrap + init in initial HTML (Pixel Helper detects the pixel). PageView is sent from MetaPixelRuntime. */
+/** Mark PageView dedup only after fbq('track') is pushed (queue-safe). */
+function pageViewDedupAfterTrack(id: string): string {
+  return `
+window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
+window.__metaPixelPageViewSent['${id}:'+location.pathname]=true;`;
+}
+
+/**
+ * Meta bootstrap + init + PageView in initial HTML (beforeInteractive).
+ * All calls queue on fbq; fbevents.js processes them when it loads.
+ */
 export function buildMetaPixelFullSnippet(rawPixelId: string): string | null {
   const id = normalizeMetaPixelId(rawPixelId);
   if (!id) return null;
@@ -15,12 +25,14 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 if(s&&s.parentNode)s.parentNode.insertBefore(t,s);else b.head.appendChild(t)}
 (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','${id}');
+fbq('track','PageView');
 window.__metaPixelsInited=window.__metaPixelsInited||{};
 window.__metaPixelsInited['${id}']=true;
+${pageViewDedupAfterTrack(id)}
 `.trim();
 }
 
-/** Additional pixel when fbq already loaded. */
+/** Additional pixel when fbq already loaded on the page. */
 export function buildMetaPixelInitOnlySnippet(rawPixelId: string): string | null {
   const id = normalizeMetaPixelId(rawPixelId);
   if (!id) return null;
@@ -41,7 +53,9 @@ if(!window.fbq){
   }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 }
 fbq('init',id);
+fbq('track','PageView');
 window.__metaPixelsInited[id]=true;
+${pageViewDedupAfterTrack(id)}
 })();
 `.trim();
 }
