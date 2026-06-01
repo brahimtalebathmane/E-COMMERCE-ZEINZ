@@ -14,6 +14,7 @@ declare global {
     fbq?: FbqFn;
     _fbq?: FbqFn;
     __metaPixelInitialized?: Record<string, boolean>;
+    __metaPixelsInited?: Record<string, boolean>;
   }
 }
 
@@ -181,6 +182,8 @@ function metaPixelBaseScriptId(pixelId: string): string {
 }
 
 function hasOfficialBaseScript(pixelId: string): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.__metaPixelsInited?.[pixelId]) return true;
   if (typeof document === "undefined") return false;
   return Boolean(document.getElementById(metaPixelBaseScriptId(pixelId)));
 }
@@ -202,8 +205,9 @@ async function ensurePixelInitialized(
   if (!id) return;
 
   window.__metaPixelInitialized = window.__metaPixelInitialized || {};
-  if (window.__metaPixelInitialized[id]) {
+  if (window.__metaPixelInitialized[id] || window.__metaPixelsInited?.[id]) {
     applyAdvancedMatching(am);
+    window.__metaPixelInitialized[id] = true;
     return;
   }
 
