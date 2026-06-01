@@ -1,4 +1,5 @@
 import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
+import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { normalizeMetaPixelId, resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
@@ -56,6 +57,7 @@ export default async function ProductPage({ params }: PageProps) {
       ) : siteNorm ? (
         <MetaPixelBaseScript pixelId={siteNorm} variant="full" />
       ) : null}
+      {productNorm ? <MetaPixelRuntime pixelId={productNorm} /> : null}
       <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />
     </>
   );

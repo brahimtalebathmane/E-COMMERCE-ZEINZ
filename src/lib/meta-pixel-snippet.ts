@@ -1,6 +1,6 @@
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 
-/** Meta’s standard bootstrap + init + PageView (Pixel Helper expects this shape in HTML). */
+/** Meta’s standard bootstrap + init (in initial HTML for Pixel Helper). PageView fires on client. */
 export function buildMetaPixelFullSnippet(rawPixelId: string): string | null {
   const id = normalizeMetaPixelId(rawPixelId);
   if (!id) return null;
@@ -15,12 +15,15 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 if(s&&s.parentNode)s.parentNode.insertBefore(t,s);else b.head.appendChild(t)}
 (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','${id}');
+fbq('track','PageView');
 window.__metaPixelsInited=window.__metaPixelsInited||{};
 window.__metaPixelsInited['${id}']=true;
+window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
+window.__metaPixelPageViewSent['${id}:'+location.pathname]=true;
 `.trim();
 }
 
-/** Additional pixel when fbq already loaded (e.g. site-wide + product pixel). */
+/** Additional pixel when fbq already loaded. */
 export function buildMetaPixelInitOnlySnippet(rawPixelId: string): string | null {
   const id = normalizeMetaPixelId(rawPixelId);
   if (!id) return null;
@@ -41,8 +44,10 @@ if(!window.fbq){
   }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 }
 fbq('init',id);
-window.__metaPixelsInited=window.__metaPixelsInited||{};
+fbq('track','PageView');
 window.__metaPixelsInited[id]=true;
+window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
+window.__metaPixelPageViewSent[id+':'+location.pathname]=true;
 })();
 `.trim();
 }

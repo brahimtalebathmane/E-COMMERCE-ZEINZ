@@ -1,4 +1,5 @@
 import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
+import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -34,6 +35,7 @@ export default async function HomePage() {
     return (
       <>
         <MetaPixelBaseScript pixelId={resolveServerMetaPixelId(null)} />
+        <MetaPixelRuntime pixelId={resolveServerMetaPixelId(null)} />
         <CatalogPageClient products={[]} configured={false} />
       </>
     );
@@ -57,6 +59,7 @@ export default async function HomePage() {
   return (
     <>
       <MetaPixelBaseScript pixelId={siteWidePixelId} />
+      <MetaPixelRuntime pixelId={siteWidePixelId} />
       <CatalogPageClient products={products} configured />
     </>
   );

@@ -1,5 +1,6 @@
 import { MetaPixel } from "@/components/MetaPixel";
 import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
+import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
@@ -35,6 +36,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
       lang="ar"
     >
       <MetaPixelBaseScript pixelId={metaPixelId} />
+      <MetaPixelRuntime pixelId={metaPixelId} />
       <MetaPixel pixelId={metaPixelId} />
       <OrderSuccessClient
         orderId={orderId}
