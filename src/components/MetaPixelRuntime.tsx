@@ -10,24 +10,16 @@ type Props = {
 };
 
 /**
- * Client-side init + PageView (and route changes). fbq bootstrap loads from root layout Script.
+ * Client-side init + PageView (and route changes). fbq bootstrap loads from root layout.
  */
 export function MetaPixelRuntime({ pixelId }: Props) {
   const id = resolvePublicMetaPixelId(pixelId);
   const pathname = usePathname();
 
   useEffect(() => {
-    console.error("[DEBUG-PIXEL] MetaPixelRuntime effect", {
-      pixelId,
-      resolvedId: id,
-      pathname,
-    });
-    if (!id) {
-      console.error("[DEBUG-PIXEL] Aborting: no pixel ID resolved for route", pathname);
-      return;
-    }
+    if (!id) return;
     void trackMetaPageView(id);
-  }, [id, pathname, pixelId]);
+  }, [id, pathname]);
 
   return null;
 }

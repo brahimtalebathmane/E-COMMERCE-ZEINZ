@@ -1,9 +1,6 @@
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { ProductLanding } from "@/components/landing/ProductLanding";
-import {
-  extractMetaPixelIdFromRow,
-  resolveServerMetaPixelId,
-} from "@/lib/meta-pixel-id";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   getAllProductSlugs,
   getProductByOldSlug,
@@ -41,19 +38,7 @@ export default async function ProductPage({ params }: PageProps) {
     notFound();
   }
 
-  console.error("[DEBUG-ROUTING] Product Pixel ID from DB is:", found.meta_pixel_id);
-  console.error("[DEBUG-ROUTING] Alternate pixel keys on product row:", {
-    meta_pixel_id: found.meta_pixel_id,
-    extracted_raw: extractMetaPixelIdFromRow(
-      found as unknown as Record<string, unknown>,
-    ),
-    slug: found.slug,
-    product_id: found.id,
-  });
-
   const productPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
-
-  console.error("[DEBUG-ROUTING] Resolved product pixel ID:", productPixelId);
 
   return (
     <>

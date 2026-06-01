@@ -79,11 +79,7 @@ export function ensureMetaPixelSdk(pixelId: string): string | null {
 
 export function trackMetaPageView(pixelId?: string | null): void {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
-  console.error("[DEBUG-PIXEL] trackMetaPageView invoked", { pixelId, resolvedId: id });
-  if (!id || typeof window === "undefined") {
-    console.error("[DEBUG-PIXEL] trackMetaPageView aborted — missing pixel ID or not in browser");
-    return;
-  }
+  if (!id || typeof window === "undefined") return;
 
   ensureFbqQueue();
 

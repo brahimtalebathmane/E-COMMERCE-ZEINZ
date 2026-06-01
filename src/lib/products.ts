@@ -158,21 +158,7 @@ export async function getProductBySlug(
     .maybeSingle();
 
   if (error || !data) return null;
-
-  const row = data as Record<string, unknown>;
-  console.error("[DEBUG-ROUTING] Raw Supabase product pixel row", {
-    slug,
-    meta_pixel_id: row.meta_pixel_id,
-    extracted_raw: extractMetaPixelIdFromRow(row),
-    alternate_keys: {
-      pixel_id: row.pixel_id,
-      fb_pixel: row.fb_pixel,
-      facebook_pixel_id: row.facebook_pixel_id,
-      metaPixelId: row.metaPixelId,
-    },
-  });
-
-  return mapProductRow(row);
+  return mapProductRow(data as Record<string, unknown>);
 }
 
 export async function getProductByOldSlug(
