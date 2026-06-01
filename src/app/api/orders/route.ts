@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       throw new Error("Create failed: no order returned");
     }
 
-    console.log("[POST /api/orders] Order created", {
+    console.warn("[POST /api/orders] Order created", {
       order_id: order.id,
       product_id: data.product_id,
     });
@@ -114,6 +114,14 @@ export async function POST(request: Request) {
         requestHeaders: request.headers,
       });
       metaLead = mapLeadDispatchToApiPayload(leadResult);
+      console.warn("[POST /api/orders] Meta Lead CAPI", {
+        order_id: order.id,
+        lead: metaLead,
+        diagnostics: metaLeadDiagnostics({
+          productPixelId: product.meta_pixel_id as string | null,
+          orderPixelId,
+        }),
+      });
     } catch (error) {
       metaLead = mapLeadDispatchToApiPayload(
         null,

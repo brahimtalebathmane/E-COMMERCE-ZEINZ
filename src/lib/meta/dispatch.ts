@@ -100,7 +100,7 @@ export async function dispatchMetaEvent(
     pixelId = resolveServerMetaPixelId(product?.meta_pixel_id as string | null) || "";
   }
 
-  console.info("[meta] CAPI dispatch attempt", {
+  console.warn("[meta] CAPI dispatch attempt", {
     orderId,
     eventType,
     hasPixelId: Boolean(pixelId),

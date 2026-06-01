@@ -322,7 +322,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
               : 0;
 
         if (eventsReceived > 0) {
-          console.info("[meta] CAPI event accepted", {
+          console.warn("[meta] CAPI event accepted", {
             eventName: params.eventName,
             eventIdPrefix: params.eventId?.slice(0, 12),
             eventsReceived,

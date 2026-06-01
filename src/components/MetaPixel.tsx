@@ -7,7 +7,7 @@ import {
   metaPixelAmStorageKey,
   type MetaPixelAdvancedMatchingPayload,
 } from "@/lib/meta-pixel-advanced-matching";
-import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
+import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 declare global {
   interface Window {
@@ -31,7 +31,21 @@ function isFbeventsSdkReady(): boolean {
   return typeof window !== "undefined" && typeof window.fbq?.callMethod === "function";
 }
 
-/** Load fbevents.js once; safe to call from every landing page / pixel id. */
+function waitForFbeventsSdk(maxMs = 4000): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (isFbeventsSdkReady() || Date.now() - start >= maxMs) {
+        resolve();
+        return;
+      }
+      window.setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+/** Load fbevents.js once (Meta standard stub + script inject). */
 function ensureFbeventsLoaded(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (isFbeventsSdkReady()) return Promise.resolve();
@@ -43,24 +57,35 @@ function ensureFbeventsLoaded(): Promise<void> {
       return;
     }
 
-    const n = function (this: FbqFn, ...args: unknown[]) {
-      if (n.callMethod) {
-        n.callMethod(...args);
-      } else {
-        n.queue.push(args);
-      }
-    } as FbqFn;
+    if (!window.fbq) {
+      const n = function (this: FbqFn, ...args: unknown[]) {
+        if (n.callMethod) {
+          n.callMethod(...args);
+        } else {
+          n.queue.push(args);
+        }
+      } as FbqFn;
+      n.queue = [];
+      n.loaded = true;
+      n.version = "2.0";
+      window.fbq = n;
+      window._fbq = n;
+    }
 
-    n.queue = [];
-    n.loaded = true;
-    n.version = "2.0";
-    window.fbq = n;
-    window._fbq = n;
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src*="connect.facebook.net"][src*="fbevents.js"]',
+    );
+    if (existing) {
+      void waitForFbeventsSdk().then(resolve);
+      return;
+    }
 
     const script = document.createElement("script");
     script.async = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
-    script.onload = () => resolve();
+    script.onload = () => {
+      void waitForFbeventsSdk().then(resolve);
+    };
     script.onerror = () => {
       console.warn("[Meta Pixel] Failed to load fbevents.js — check ad blockers and CSP.");
       fbeventsLoadPromise = null;
@@ -85,47 +110,57 @@ function callFbqWithRetry(
   }
 }
 
-/** Digits-only pixel id for every fbq call (Meta rejects quoted strings). */
-function fbqPixelId(raw: string): string {
-  return normalizeMetaPixelId(raw) ?? raw.replace(/\D/g, "");
-}
-
 /**
  * Init each pixel ID at most once per session.
- * Does not call fbq('set','userData') — Meta rejects pixel_id when updating after init.
+ * Single-pixel pages use fbq('track', …) after init (Pixel Helper compatible).
  */
 async function ensurePixelInitialized(
-  id: string,
+  pixelId: string,
   am?: MetaPixelAdvancedMatchingPayload,
 ): Promise<void> {
-  const pixelId = fbqPixelId(id);
-  if (!pixelId) return;
+  const id = normalizeMetaPixelId(pixelId);
+  if (!id) return;
 
   await ensureFbeventsLoaded();
   if (typeof window === "undefined" || !window.fbq) return;
 
   window.__metaPixelInitialized = window.__metaPixelInitialized || {};
-  if (window.__metaPixelInitialized[pixelId]) {
+  if (window.__metaPixelInitialized[id]) {
     return;
   }
 
   const hasAm = Boolean(am && Object.keys(am).length > 0);
   if (hasAm) {
-    window.fbq("init", pixelId, am as Record<string, unknown>);
+    window.fbq("init", id, am as Record<string, unknown>);
   } else {
-    window.fbq("init", pixelId);
+    window.fbq("init", id);
   }
-  window.__metaPixelInitialized[pixelId] = true;
+  window.__metaPixelInitialized[id] = true;
 }
 
-/** Load SDK + init pixel before trackSingle (required by Meta). */
 async function ensurePixelReady(pixelId?: string | null): Promise<string | null> {
-  const pid = pixelId ? fbqPixelId(pixelId) : null;
-  await ensureFbeventsLoaded();
-  if (pid) {
-    await ensurePixelInitialized(pid);
+  const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
+  if (!id) return null;
+  await ensurePixelInitialized(id);
+  return id;
+}
+
+function fireStandardEvent(
+  eventName: string,
+  payload?: Record<string, unknown>,
+  opts?: { eventID?: string },
+): boolean {
+  if (!window.fbq) return false;
+  if (payload && opts) {
+    window.fbq("track", eventName, payload, opts);
+  } else if (opts) {
+    window.fbq("track", eventName, {}, opts);
+  } else if (payload) {
+    window.fbq("track", eventName, payload);
+  } else {
+    window.fbq("track", eventName);
   }
-  return pid;
+  return true;
 }
 
 export type MetaPixelAdvancedMatchingProps = {
@@ -153,15 +188,11 @@ function mergeAdvancedMatchingForInit(
   return Object.keys(pruned).length > 0 ? pruned : undefined;
 }
 
-/**
- * Persist advanced matching for the next landing init (sessionStorage).
- * CAPI still receives hashed phone/name from the order API.
- */
 export function syncMetaPixelAdvancedMatching(
   pixelId: string | null | undefined,
   input: { phone: string; customerName: string },
 ) {
-  const id = normalizeMetaPixelId(pixelId);
+  const id = resolvePublicMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return;
   const am = buildMetaPixelAdvancedMatching(input);
   if (!am) return;
@@ -177,27 +208,31 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
   const [storageAm, setStorageAm] = useState<MetaPixelAdvancedMatchingPayload | null>(
     null,
   );
-  const lastPageViewPixelRef = useRef<string | null>(null);
+  const pageViewSentRef = useRef(false);
   const missingPixelWarnedRef = useRef(false);
+
+  const resolvedPixelId = useMemo(
+    () => resolvePublicMetaPixelId(pixelId),
+    [pixelId],
+  );
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    const id = normalizeMetaPixelId(pixelId);
-    if (!id) {
+    if (!resolvedPixelId) {
       setStorageAm({});
       if (mounted && !missingPixelWarnedRef.current) {
         missingPixelWarnedRef.current = true;
         console.warn(
-          "[Meta Pixel] No pixel ID — set meta_pixel_id on the product in Admin → Integrations, or NEXT_PUBLIC_META_PIXEL_ID in env.",
+          "[Meta Pixel] No pixel ID — set meta_pixel_id in Admin → Integrations, or NEXT_PUBLIC_META_PIXEL_ID on Netlify (then redeploy).",
         );
       }
       return;
     }
     try {
-      const raw = sessionStorage.getItem(metaPixelAmStorageKey(id));
+      const raw = sessionStorage.getItem(metaPixelAmStorageKey(resolvedPixelId));
       if (!raw) {
         setStorageAm({});
         return;
@@ -211,7 +246,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     } catch {
       setStorageAm({});
     }
-  }, [pixelId, mounted]);
+  }, [resolvedPixelId, mounted]);
 
   const propsAm = useMemo(() => {
     const phone = advancedMatching?.phone?.trim() ?? "";
@@ -225,60 +260,58 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     [storageAm, propsAm],
   );
 
-  const id = normalizeMetaPixelId(pixelId);
   const storageReady = storageAm !== null;
 
   useEffect(() => {
-    if (!id || !mounted || !storageReady) return;
+    if (!resolvedPixelId || !mounted || !storageReady || pageViewSentRef.current) return;
 
     let cancelled = false;
 
-    const pixelIdForTrack = fbqPixelId(id);
-    void ensurePixelInitialized(pixelIdForTrack, initAdvancedMatching).then(() => {
+    void ensurePixelInitialized(resolvedPixelId, initAdvancedMatching).then(() => {
       if (cancelled || typeof window === "undefined" || !window.fbq) return;
-
-      if (lastPageViewPixelRef.current !== pixelIdForTrack) {
-        window.fbq("trackSingle", pixelIdForTrack, "PageView");
-        lastPageViewPixelRef.current = pixelIdForTrack;
+      if (pageViewSentRef.current) return;
+      const ok = fireStandardEvent("PageView");
+      if (ok) {
+        pageViewSentRef.current = true;
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [id, mounted, storageReady, initAdvancedMatching]);
+  }, [resolvedPixelId, mounted, storageReady, initAdvancedMatching]);
 
-  if (!id || !mounted || !storageReady) return null;
+  if (!resolvedPixelId || !mounted || !storageReady) return null;
 
   return (
-    <noscript>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        height="1"
-        width="1"
-        style={{ display: "none" }}
-        src={`https://www.facebook.com/tr?id=${encodeURIComponent(id)}&ev=PageView&noscript=1`}
-        alt=""
+    <>
+      <div
+        data-meta-pixel-id={resolvedPixelId}
+        data-meta-pixel-ready={pageViewSentRef.current ? "true" : "false"}
+        aria-hidden
+        className="hidden"
       />
-    </noscript>
+      <noscript>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          height="1"
+          width="1"
+          style={{ display: "none" }}
+          src={`https://www.facebook.com/tr?id=${encodeURIComponent(resolvedPixelId)}&ev=PageView&noscript=1`}
+          alt=""
+        />
+      </noscript>
+    </>
   );
 }
 
 export function trackInitiateCheckout(eventId: string, pixelId?: string | null) {
-  void ensurePixelReady(pixelId).then((pid) => {
-    callFbqWithRetry(() => {
-      if (!window.fbq) return false;
-      if (pid) {
-        window.fbq("trackSingle", pid, "InitiateCheckout", {}, { eventID: eventId });
-      } else {
-        window.fbq("track", "InitiateCheckout", {}, { eventID: eventId });
-      }
-      return true;
-    });
+  void ensurePixelReady(pixelId).then((id) => {
+    if (!id) return;
+    callFbqWithRetry(() => fireStandardEvent("InitiateCheckout", {}, { eventID: eventId }));
   });
 }
 
-/** Purchase Pixel payload matches CAPI: MRU order total converted to USD. */
 export function trackPurchase(params: {
   eventId: string;
   valueMru: number;
@@ -304,17 +337,9 @@ export function trackLead(params: {
   pixelId?: string | null;
 }) {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  void ensurePixelReady(params.pixelId).then((pid) => {
-    callFbqWithRetry(() => {
-      if (!window.fbq) return false;
-      const payload = { value, currency };
-      const opts = { eventID: params.eventId };
-      if (pid) {
-        window.fbq("trackSingle", pid, "Lead", payload, opts);
-      } else {
-        window.fbq("track", "Lead", payload, opts);
-      }
-      return true;
-    });
+  void ensurePixelReady(params.pixelId).then((id) => {
+    if (!id) return;
+    const payload = { value, currency };
+    callFbqWithRetry(() => fireStandardEvent("Lead", payload, { eventID: params.eventId }));
   });
 }
