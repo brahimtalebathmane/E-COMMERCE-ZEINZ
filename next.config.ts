@@ -9,7 +9,8 @@ const revision =
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  cacheOnNavigation: true,
+  // Off: precaching App Router navigations breaks dynamic routes (e.g. /order-success?tokens).
+  cacheOnNavigation: false,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
   additionalPrecacheEntries: [
