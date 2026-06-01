@@ -1,4 +1,3 @@
-import { META_PIXEL_BOOTSTRAP_JS } from "@/lib/meta-pixel-bootstrap";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type FbqFn = {
@@ -27,13 +26,16 @@ function devLog(message: string, data?: Record<string, unknown>): void {
   }
 }
 
-/** Load official fbq bootstrap if root layout Script has not run yet. */
+/** Minimal queue stub if root layout Script has not run yet. */
 function ensureFbqQueue(): void {
   if (typeof window === "undefined" || window.fbq) return;
 
-  const script = document.createElement("script");
-  script.textContent = META_PIXEL_BOOTSTRAP_JS;
-  (document.head || document.documentElement).appendChild(script);
+  const stub = function (this: FbqFn, ...args: unknown[]) {
+    stub.queue.push(args);
+  } as FbqFn;
+  stub.queue = [];
+  window.fbq = stub;
+  window._fbq = stub;
 }
 
 function ensurePixelInit(pixelId: string): string | null {
