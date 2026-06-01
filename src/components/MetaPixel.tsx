@@ -176,9 +176,23 @@ function fireStandardEventWithRetry(
   });
 }
 
+function metaPixelBaseScriptId(pixelId: string): string {
+  return `meta-pixel-${pixelId}`;
+}
+
+function hasOfficialBaseScript(pixelId: string): boolean {
+  if (typeof document === "undefined") return false;
+  return Boolean(document.getElementById(metaPixelBaseScriptId(pixelId)));
+}
+
+function applyAdvancedMatching(am?: MetaPixelAdvancedMatchingPayload): void {
+  if (!window.fbq || !am || Object.keys(am).length === 0) return;
+  window.fbq("set", "userData", am as Record<string, unknown>);
+}
+
 /**
  * Init each pixel ID at most once per session.
- * Single-pixel pages use fbq('track', …) after init (Pixel Helper compatible).
+ * When MetaPixelBaseScript is on the page, init + PageView already ran via Meta’s official snippet.
  */
 async function ensurePixelInitialized(
   pixelId: string,
@@ -187,13 +201,21 @@ async function ensurePixelInitialized(
   const id = normalizeMetaPixelId(pixelId);
   if (!id) return;
 
-  await ensureFbeventsLoaded();
-  if (typeof window === "undefined" || !window.fbq) return;
-
   window.__metaPixelInitialized = window.__metaPixelInitialized || {};
   if (window.__metaPixelInitialized[id]) {
+    applyAdvancedMatching(am);
     return;
   }
+
+  if (hasOfficialBaseScript(id)) {
+    await waitForPixelSdk();
+    applyAdvancedMatching(am);
+    window.__metaPixelInitialized[id] = true;
+    return;
+  }
+
+  await ensureFbeventsLoaded();
+  if (typeof window === "undefined" || !window.fbq) return;
 
   const hasAm = Boolean(am && Object.keys(am).length > 0);
   if (hasAm) {
@@ -266,7 +288,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
   const missingPixelWarnedRef = useRef(false);
 
   const resolvedPixelId = useMemo(
-    () => resolvePublicMetaPixelId(pixelId),
+    () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(null),
     [pixelId],
   );
 
@@ -325,8 +347,23 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     let cancelled = false;
 
     void (async () => {
+      let fromOfficialSnippet = false;
+      for (let i = 0; i < 30 && !cancelled; i++) {
+        if (hasOfficialBaseScript(resolvedPixelId)) {
+          fromOfficialSnippet = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
       await ensurePixelInitialized(resolvedPixelId, initAmRef.current);
       if (cancelled || pageViewSentRef.current) return;
+
+      if (fromOfficialSnippet) {
+        pageViewSentRef.current = true;
+        return;
+      }
+
       const sent = await fireStandardEventWithRetry("PageView");
       if (!cancelled && sent) {
         pageViewSentRef.current = true;

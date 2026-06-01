@@ -1,3 +1,4 @@
+import { MetaPixelBaseScript } from "@/components/MetaPixelBaseScript";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
@@ -40,6 +41,9 @@ export default async function ProductPage({ params }: PageProps) {
   const resolvedMetaPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
 
   return (
-    <ProductLanding product={found} resolvedMetaPixelId={resolvedMetaPixelId} />
+    <>
+      <MetaPixelBaseScript pixelId={resolvedMetaPixelId} />
+      <ProductLanding product={found} resolvedMetaPixelId={resolvedMetaPixelId} />
+    </>
   );
 }
