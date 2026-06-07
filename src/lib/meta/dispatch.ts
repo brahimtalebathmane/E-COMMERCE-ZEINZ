@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
-import { createMetaEventId, resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { createMetaEventId, sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -46,8 +46,27 @@ async function releaseMetaDispatchClaim(
 }
 
 type MetaClientContext = {
+  /** Fallback only when order has no stored shopper IP (legacy rows). */
   requestHeaders?: Headers;
 };
+
+function orderCustomerSessionContext(order: Record<string, unknown>): {
+  clientIpAddress: string | null;
+  clientUserAgent: string | null;
+  fbp: string | null;
+  fbc: string | null;
+} {
+  const ip = (order.meta_client_ip_address as string | null)?.trim() || null;
+  const ua = (order.meta_client_user_agent as string | null)?.trim() || null;
+  const fbp = (order.meta_fbp as string | null)?.trim() || null;
+  const fbc = (order.meta_fbc as string | null)?.trim() || null;
+  return {
+    clientIpAddress: ip,
+    clientUserAgent: ua,
+    fbp,
+    fbc,
+  };
+}
 
 /**
  * Single-path Meta CAPI dispatcher with idempotency ledger.
@@ -64,7 +83,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
+      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -131,10 +150,15 @@ export async function dispatchMetaEvent(
     Number(order.total_price),
     (order.currency as string) ?? "MRU",
   );
+
   const customData =
-    eventType === "cancel"
-      ? { value: 0, currency: "MRU", status: "cancelled" }
-      : orderMoney;
+    eventType === "purchase"
+      ? { ...orderMoney, content_type: "product" }
+      : eventType === "lead"
+        ? orderMoney
+        : undefined;
+
+  const session = orderCustomerSessionContext(order);
 
   try {
     const capi = await sendMetaEvent({
@@ -146,10 +170,10 @@ export async function dispatchMetaEvent(
       userData: {
         name: order.customer_name as string | null,
         phone: order.phone as string | null,
-        fbp: order.meta_fbp as string | null,
-        fbc: order.meta_fbc as string | null,
-        clientIpAddress: resolveClientIpAddress(headers),
-        clientUserAgent: headers.get("user-agent"),
+        fbp: session.fbp,
+        fbc: session.fbc,
+        clientIpAddress: session.clientIpAddress,
+        clientUserAgent: session.clientUserAgent,
       },
       customData,
     });

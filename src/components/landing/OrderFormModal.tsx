@@ -154,6 +154,8 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       const am = buildMetaPixelAdvancedMatching({
         phone: phoneE164,
         customerName: n,
+        fbp: metaCookies.fbp,
+        fbc: metaCookies.fbc,
       });
       const pid =
         metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
@@ -175,6 +177,8 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         currency: "MRU",
         eventId,
         pixelId: pid,
+        phone: phoneE164,
+        customerName: n,
       });
 
       try {

@@ -8,7 +8,7 @@ import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { canAcceptStoreOrder } from "@/lib/product-test-status";
-import { createMetaEventId } from "@/utils/meta";
+import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
 import type { ProductTestingStatus } from "@/types";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 
@@ -71,6 +71,8 @@ export async function POST(request: Request) {
     const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
     const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
     const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
+    const metaClientIp = resolveClientIpAddress(request.headers);
+    const metaClientUa = request.headers.get("user-agent")?.trim() || null;
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")
@@ -90,6 +92,8 @@ export async function POST(request: Request) {
         meta_pixel_id: orderPixelId,
         meta_fbp: metaFbp,
         meta_fbc: metaFbc,
+        meta_client_ip_address: metaClientIp,
+        meta_client_user_agent: metaClientUa,
       })
       .select("id, total_price, meta_event_id, completion_token")
       .single();

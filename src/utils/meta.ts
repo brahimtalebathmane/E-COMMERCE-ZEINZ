@@ -1,5 +1,9 @@
 import "server-only";
 import crypto from "crypto";
+import {
+  parseCustomerFullName,
+  sanitizePhoneForMetaE164,
+} from "@/lib/meta-user-data";
 
 type MetaUserDataInput = {
   name?: string | null;
@@ -14,6 +18,8 @@ type MetaCustomData = {
   value?: number;
   currency?: string;
   status?: string;
+  content_type?: string;
+  content_name?: string;
 };
 
 type SendMetaEventParams = {
@@ -41,21 +47,7 @@ function hash(value: string): string {
 }
 
 function normalizePhoneForMeta(value: string): string | null {
-  const digitsAndPlus = value.trim().replace(/[^\d+]/g, "");
-  if (!digitsAndPlus) return null;
-  const normalized = digitsAndPlus.startsWith("+")
-    ? digitsAndPlus
-    : `+${digitsAndPlus}`;
-  return /^\+\d{8,15}$/.test(normalized) ? normalized : null;
-}
-
-function splitNameParts(name: string): { firstName: string; lastName: string | null } {
-  const normalized = name.trim().replace(/\s+/g, " ");
-  const [firstName, ...rest] = normalized.split(" ");
-  return {
-    firstName,
-    lastName: rest.length ? rest.join(" ") : null,
-  };
+  return sanitizePhoneForMetaE164(value);
 }
 
 function buildUserData(input?: MetaUserDataInput) {
@@ -71,9 +63,9 @@ function buildUserData(input?: MetaUserDataInput) {
   if (input.clientUserAgent) data.client_user_agent = input.clientUserAgent;
 
   if (input.name?.trim()) {
-    const { firstName, lastName } = splitNameParts(input.name);
-    if (firstName) data.fn = [hash(firstName)];
-    if (lastName) data.ln = [hash(lastName)];
+    const { fn, ln } = parseCustomerFullName(input.name);
+    if (fn) data.fn = [hash(fn)];
+    if (ln) data.ln = [hash(ln)];
   }
 
   if (input.phone?.trim()) {

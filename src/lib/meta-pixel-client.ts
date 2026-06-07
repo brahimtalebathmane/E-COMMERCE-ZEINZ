@@ -1,3 +1,4 @@
+import { buildMetaPixelSessionUserData } from "@/lib/meta-browser-session";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type FbqFn = {
@@ -38,6 +39,14 @@ function ensureFbqQueue(): void {
   window._fbq = stub;
 }
 
+/** Apply fbp/fbc session metadata before each tracked event (EMQ). */
+function applyMetaBrowserSessionUserData(): void {
+  if (typeof window === "undefined" || !window.fbq) return;
+  const sessionData = buildMetaPixelSessionUserData();
+  if (!sessionData) return;
+  window.fbq("set", "userData", sessionData);
+}
+
 function ensurePixelInit(pixelId: string): string | null {
   const id = normalizeMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return null;
@@ -46,9 +55,14 @@ function ensurePixelInit(pixelId: string): string | null {
 
   window.__metaPixelsInited = window.__metaPixelsInited || {};
   if (!window.__metaPixelsInited[id]) {
-    window.fbq!("init", id);
+    const sessionData = buildMetaPixelSessionUserData();
+    if (sessionData) {
+      window.fbq!("init", id, sessionData);
+    } else {
+      window.fbq!("init", id);
+    }
     window.__metaPixelsInited[id] = true;
-    devLog("init queued", { pixelId: id });
+    devLog("init queued", { pixelId: id, hasSessionData: Boolean(sessionData) });
   }
 
   return id;
@@ -60,6 +74,8 @@ function pushFbqTrack(
   opts?: { eventID?: string },
 ): void {
   if (!window.fbq) return;
+
+  applyMetaBrowserSessionUserData();
 
   if (payload && opts) {
     window.fbq("track", eventName, payload, opts);
@@ -85,9 +101,14 @@ export function trackMetaPageView(pixelId?: string | null): void {
 
   if (!window.__metaPixelsInited) window.__metaPixelsInited = {};
   if (!window.__metaPixelsInited[id]) {
-    window.fbq!("init", id);
+    const sessionData = buildMetaPixelSessionUserData();
+    if (sessionData) {
+      window.fbq!("init", id, sessionData);
+    } else {
+      window.fbq!("init", id);
+    }
     window.__metaPixelsInited[id] = true;
-    devLog("init queued", { pixelId: id });
+    devLog("init queued", { pixelId: id, hasSessionData: Boolean(sessionData) });
   }
 
   const key = `${id}:${window.location.pathname}`;
@@ -96,6 +117,7 @@ export function trackMetaPageView(pixelId?: string | null): void {
     return;
   }
 
+  applyMetaBrowserSessionUserData();
   window.fbq!("track", "PageView");
 
   if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
