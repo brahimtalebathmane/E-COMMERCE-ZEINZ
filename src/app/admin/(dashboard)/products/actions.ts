@@ -6,7 +6,7 @@ import { slugify } from "@/lib/slug";
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { createClient } from "@/lib/supabase/server";
-import { assertAdminUser } from "@/lib/auth/admin";
+import { assertAdminUser, isAuthError } from "@/lib/auth/admin";
 import type {
   Testimonial,
   FAQ,
@@ -15,6 +15,18 @@ import type {
 } from "@/types";
 import { revalidatePath } from "next/cache";
 import type { ResearchProductPayload } from "./research-types";
+
+export type ProductActionResult = { ok: true } | { ok: false; error: string };
+
+function productActionFailure(error: unknown): ProductActionResult {
+  if (isAuthError(error)) {
+    return { ok: false, error: error.message };
+  }
+  if (error instanceof Error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: false, error: "Save failed." };
+}
 
 export type ProductPayload = {
   /** Default storefront language for this landing page. */
@@ -595,79 +607,102 @@ function landingFieldsFromPayload(payload: ProductPayload) {
 }
 
 /** Saves full landing configuration without changing pipeline test_status. */
-export async function saveLandingConfigurationAction(id: string, payload: ProductPayload) {
-  validateLandingProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+export async function saveLandingConfigurationAction(
+  id: string,
+  payload: ProductPayload,
+): Promise<ProductActionResult> {
+  try {
+    validateLandingProductPayload(payload);
+    const { supabase } = await assertAdminUser();
 
-  const { data: existing, error: fetchErr } = await supabase
-    .from("products")
-    .select("slug, test_status")
-    .eq("id", id)
-    .maybeSingle();
+    const { data: existing, error: fetchErr } = await supabase
+      .from("products")
+      .select("slug, test_status")
+      .eq("id", id)
+      .maybeSingle();
 
-  if (fetchErr || !existing) {
-    throw new Error("Product not found");
+    if (fetchErr || !existing) {
+      return { ok: false, error: "Product not found" };
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        ...landingFieldsFromPayload(payload),
+        price: payload.price,
+        media_type: payload.media_type,
+        media_url: payload.media_url.trim(),
+        test_status: existing.test_status,
+        sourcing_type: payload.sourcing_type,
+        sourcing_link: payload.sourcing_link.trim(),
+        cost_price: payload.cost_price,
+      })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidatePath("/");
+    if (existing.slug) {
+      revalidatePath(`/${existing.slug}`);
+    }
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${id}/edit`);
+    revalidatePath(`/admin/products/${id}/landing-setup`);
+    return { ok: true };
+  } catch (error) {
+    return productActionFailure(error);
   }
-
-  const { error } = await supabase
-    .from("products")
-    .update({
-      ...landingFieldsFromPayload(payload),
-      price: payload.price,
-      media_type: payload.media_type,
-      media_url: payload.media_url.trim(),
-      test_status: existing.test_status,
-      sourcing_type: payload.sourcing_type,
-      sourcing_link: payload.sourcing_link.trim(),
-      cost_price: payload.cost_price,
-    })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/");
-  if (existing.slug) {
-    revalidatePath(`/${existing.slug}`);
-  }
-  revalidatePath("/admin/products");
-  revalidatePath(`/admin/products/${id}/edit`);
-  revalidatePath(`/admin/products/${id}/landing-setup`);
 }
 
 /** Saves full landing content and moves product from research to ready_for_test. */
-export async function completeLandingSetupAction(id: string, payload: ProductPayload) {
-  validateLandingProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+export async function completeLandingSetupAction(
+  id: string,
+  payload: ProductPayload,
+): Promise<ProductActionResult> {
+  try {
+    validateLandingProductPayload(payload);
+    const { supabase } = await assertAdminUser();
 
-  const { data: existing, error: fetchErr } = await supabase
-    .from("products")
-    .select("slug, test_status")
-    .eq("id", id)
-    .maybeSingle();
+    const { data: existing, error: fetchErr } = await supabase
+      .from("products")
+      .select("slug, test_status")
+      .eq("id", id)
+      .maybeSingle();
 
-  if (fetchErr || !existing) {
-    throw new Error("Product not found");
+    if (fetchErr || !existing) {
+      return { ok: false, error: "Product not found" };
+    }
+    if (existing.test_status !== "under_research") {
+      return {
+        ok: false,
+        error: "Landing setup is only available for products in research.",
+      };
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        ...landingFieldsFromPayload(payload),
+        test_status: "ready_for_test",
+      })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidatePath("/");
+    if (existing.slug) {
+      revalidatePath(`/${existing.slug}`);
+    }
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${id}/landing-setup`);
+    return { ok: true };
+  } catch (error) {
+    return productActionFailure(error);
   }
-  if (existing.test_status !== "under_research") {
-    throw new Error("Landing setup is only available for products in research.");
-  }
-
-  const { error } = await supabase
-    .from("products")
-    .update({
-      ...landingFieldsFromPayload(payload),
-      test_status: "ready_for_test",
-    })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/");
-  if (existing.slug) {
-    revalidatePath(`/${existing.slug}`);
-  }
-  revalidatePath("/admin/products");
-  revalidatePath(`/admin/products/${id}/landing-setup`);
 }
 
 export async function updateProductAction(id: string, payload: ProductPayload) {

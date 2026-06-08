@@ -495,7 +495,10 @@ export function ProductForm({ mode, initial }: Props) {
         throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
       }
       if (mode === "landing-setup" && initial) {
-        await saveLandingConfigurationAction(initial.id, payload);
+        const result = await saveLandingConfigurationAction(initial.id, payload);
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
       } else if (mode === "create") {
         await createProductAction(payload);
       } else if (initial) {
@@ -519,7 +522,10 @@ export function ProductForm({ mode, initial }: Props) {
     setError(null);
     try {
       const payload = buildPayload();
-      await completeLandingSetupAction(initial.id, payload);
+      const result = await completeLandingSetupAction(initial.id, payload);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
