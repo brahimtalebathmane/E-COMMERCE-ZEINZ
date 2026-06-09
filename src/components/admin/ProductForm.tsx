@@ -479,20 +479,22 @@ export function ProductForm({ mode, initial }: Props) {
     setError(null);
     try {
       const payload = buildPayload();
-      if (payload.features_ar.length < 4) {
-        throw new Error("الرجاء إدخال 4 مميزات عربية على الأقل.");
-      }
-      if (payload.testimonials_ar.length < 4) {
-        throw new Error("الرجاء إدخال 4 شهادات عربية على الأقل.");
-      }
-      if (payload.faqs_ar.length < 4) {
-        throw new Error("الرجاء إدخال 4 أسئلة شائعة عربية على الأقل.");
-      }
-      if (payload.stats_ar.length < 3) {
-        throw new Error("الرجاء إدخال 3 أسطر على الأقل في إحصائيات الشريط.");
-      }
-      if (payload.contact_lines_ar.length < 3) {
-        throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
+      if (!isLandingSetup) {
+        if (payload.features_ar.length < 4) {
+          throw new Error("الرجاء إدخال 4 مميزات عربية على الأقل.");
+        }
+        if (payload.testimonials_ar.length < 4) {
+          throw new Error("الرجاء إدخال 4 شهادات عربية على الأقل.");
+        }
+        if (payload.faqs_ar.length < 4) {
+          throw new Error("الرجاء إدخال 4 أسئلة شائعة عربية على الأقل.");
+        }
+        if (payload.stats_ar.length < 3) {
+          throw new Error("الرجاء إدخال 3 أسطر على الأقل في إحصائيات الشريط.");
+        }
+        if (payload.contact_lines_ar.length < 3) {
+          throw new Error("الرجاء إدخال 3 أسطر على الأقل في قسم التواصل.");
+        }
       }
       if (mode === "landing-setup" && initial) {
         const result = await saveLandingConfigurationAction(initial.id, payload);
@@ -669,7 +671,7 @@ export function ProductForm({ mode, initial }: Props) {
             {a.productForm.name} — {a.productForm.langArabic}
           </label>
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={nameAr}
             onChange={(e) => setNameAr(e.target.value)}
@@ -690,9 +692,11 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             {a.productForm.description} — {a.productForm.langArabic}
           </label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي: السطر الأول يُستخدم كوصف أساسي في الهبوط.</p>
+          {!isLandingSetup ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">إلزامي: السطر الأول يُستخدم كوصف أساسي في الهبوط.</p>
+          ) : null}
           <textarea
-            required
+            required={!isLandingSetup}
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={descriptionAr}
@@ -715,11 +719,13 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             العنوان الفرعي أعلى الصفحة — {a.productForm.langArabic}
           </label>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            إلزامي — اضغط Enter للانتقال إلى سطر جديد
-          </p>
+          {!isLandingSetup ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              إلزامي — اضغط Enter للانتقال إلى سطر جديد
+            </p>
+          ) : null}
           <textarea
-            required
+            required={!isLandingSetup}
             rows={3}
             className="mt-1 w-full resize-y whitespace-pre-wrap rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm leading-relaxed"
             value={heroSubtitleAr}
@@ -743,9 +749,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">نص زر الشراء — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={ctaTextAr}
             onChange={(e) => setCtaTextAr(e.target.value)}
@@ -762,9 +768,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم المميزات — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={featuresTitleAr}
             onChange={(e) => setFeaturesTitleAr(e.target.value)}
@@ -800,9 +806,11 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             إحصائيات الشريط الأخضر (سطر لكل عنصر) — {a.productForm.langArabic}
           </label>
-          <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
+          {!isLandingSetup ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
+          ) : null}
           <textarea
-            required
+            required={!isLandingSetup}
             rows={3}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={statsArText}
@@ -825,9 +833,11 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">
             وسائل التواصل (سطر لكل عنصر) — {a.productForm.langArabic}
           </label>
-          <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
+          {!isLandingSetup ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">حد أدنى 3 أسطر</p>
+          ) : null}
           <textarea
-            required
+            required={!isLandingSetup}
             rows={4}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={contactArText}
@@ -915,7 +925,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">{a.productForm.price}</label>
           <input
-            required
+            required={!isLandingSetup}
             type="number"
             step="0.01"
             min="0"
@@ -953,7 +963,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={mediaUrl}
             onChange={(e) => setMediaUrl(e.target.value)}
@@ -1026,9 +1036,9 @@ export function ProductForm({ mode, initial }: Props) {
 
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التقييمات — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={testimonialsTitleAr}
             onChange={(e) => setTestimonialsTitleAr(e.target.value)}
@@ -1045,9 +1055,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم الوسائط — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={mediaCaptionAr}
             onChange={(e) => setMediaCaptionAr(e.target.value)}
@@ -1064,9 +1074,9 @@ export function ProductForm({ mode, initial }: Props) {
         </div>
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان الأسئلة الشائعة — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={faqTitleAr}
             onChange={(e) => setFaqTitleAr(e.target.value)}
@@ -1119,9 +1129,9 @@ export function ProductForm({ mode, initial }: Props) {
 
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">عنوان قسم التواصل — {a.productForm.langArabic}</label>
-          <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p>
+          {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
-            required
+            required={!isLandingSetup}
             className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
             value={contactTitleAr}
             onChange={(e) => setContactTitleAr(e.target.value)}

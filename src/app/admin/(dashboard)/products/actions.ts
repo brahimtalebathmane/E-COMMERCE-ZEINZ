@@ -190,6 +190,26 @@ function validateLandingProductPayload(payload: ProductPayload) {
     throw new Error("Please provide at least 3 Arabic contact lines.");
   }
 
+  validateLandingProductPayloadFormats(payload);
+}
+
+/** Landing setup: all content fields optional; only validate formats when provided. */
+function validateLandingSetupPayload(payload: ProductPayload) {
+  if (Number.isFinite(payload.price) && payload.price <= 0) {
+    throw new Error("Price must be greater than zero.");
+  }
+
+  validateLandingProductPayloadFormats(payload);
+}
+
+function validateLandingProductPayloadFormats(payload: ProductPayload) {
+  if (
+    payload.discount_price != null &&
+    (!Number.isFinite(payload.discount_price) || payload.discount_price <= 0)
+  ) {
+    throw new Error("Discount price must be a valid positive number.");
+  }
+
   if (!TEST_STATUSES.includes(payload.test_status)) {
     throw new Error("Invalid product test status.");
   }
@@ -612,12 +632,12 @@ export async function saveLandingConfigurationAction(
   payload: ProductPayload,
 ): Promise<ProductActionResult> {
   try {
-    validateLandingProductPayload(payload);
+    validateLandingSetupPayload(payload);
     const { supabase } = await assertAdminUser();
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
-      .select("slug, test_status")
+      .select("slug, test_status, price, media_type, media_url")
       .eq("id", id)
       .maybeSingle();
 
@@ -625,13 +645,23 @@ export async function saveLandingConfigurationAction(
       return { ok: false, error: "Product not found" };
     }
 
+    const price =
+      Number.isFinite(payload.price) && payload.price > 0
+        ? payload.price
+        : Number(existing.price);
+    const mediaUrl = payload.media_url.trim() || String(existing.media_url ?? "");
+    const mediaType =
+      payload.media_type === "image" || payload.media_type === "video"
+        ? payload.media_type
+        : (existing.media_type as "image" | "video");
+
     const { error } = await supabase
       .from("products")
       .update({
         ...landingFieldsFromPayload(payload),
-        price: payload.price,
-        media_type: payload.media_type,
-        media_url: payload.media_url.trim(),
+        price,
+        media_type: mediaType,
+        media_url: mediaUrl,
         test_status: existing.test_status,
         sourcing_type: payload.sourcing_type,
         sourcing_link: payload.sourcing_link.trim(),
@@ -662,7 +692,7 @@ export async function completeLandingSetupAction(
   payload: ProductPayload,
 ): Promise<ProductActionResult> {
   try {
-    validateLandingProductPayload(payload);
+    validateLandingSetupPayload(payload);
     const { supabase } = await assertAdminUser();
 
     const { data: existing, error: fetchErr } = await supabase
