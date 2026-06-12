@@ -10,7 +10,7 @@ import { LandingHeader } from "./LandingHeader";
 import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { MetaPixel, trackInitiateCheckout } from "@/components/MetaPixel";
+import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   ensureMetaFunnelSession,
@@ -331,8 +331,6 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
         } as CSSProperties
       }
     >
-      <MetaPixel pixelId={metaPixelId} />
-
       <div className="sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
         {copy.headerBarText.trim() ? (
           <LandingTopBanner text={copy.headerBarText} bleedClassName={fullBleedStripClass} />

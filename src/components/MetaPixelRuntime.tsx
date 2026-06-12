@@ -10,7 +10,8 @@ type Props = {
 };
 
 /**
- * Client-side init + PageView (and route changes). fbq bootstrap loads from root layout.
+ * Client-side init + PageView for every store route and pixel ID.
+ * Resolves per-product meta_pixel_id (or env fallback) and applies manual advanced matching.
  */
 export function MetaPixelRuntime({ pixelId }: Props) {
   const id = resolvePublicMetaPixelId(pixelId);

@@ -1,4 +1,7 @@
-import { buildMetaPixelSessionUserData } from "@/lib/meta-browser-session";
+import {
+  buildMetaPixelInitUserData,
+  type MetaPixelAdvancedMatchingPayload,
+} from "@/lib/meta-pixel-advanced-matching";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type FbqFn = {
@@ -12,6 +15,8 @@ declare global {
     fbq?: FbqFn;
     _fbq?: FbqFn;
     __metaPixelsInited?: Record<string, boolean>;
+    /** Pixel IDs that received manual AM (ph/fn/ln) on fbq init — per pixel, site-wide. */
+    __metaPixelInitHadPii?: Record<string, boolean>;
     __metaPixelPageViewSent?: Record<string, boolean>;
   }
 }
@@ -39,43 +44,92 @@ function ensureFbqQueue(): void {
   window._fbq = stub;
 }
 
-/** Apply fbp/fbc session metadata before each tracked event (EMQ). */
-function applyMetaBrowserSessionUserData(): void {
-  if (typeof window === "undefined" || !window.fbq) return;
-  const sessionData = buildMetaPixelSessionUserData();
-  if (!sessionData) return;
-  window.fbq("set", "userData", sessionData);
+function initUserDataHasPii(userData?: Record<string, string>): boolean {
+  return Boolean(userData?.ph || userData?.fn || userData?.ln || userData?.em);
 }
 
-function ensurePixelInit(pixelId: string): string | null {
+/** Apply stored + cookie user data for a specific pixel before tracked events. */
+function applyMetaPixelUserData(pixelId: string): void {
+  if (typeof window === "undefined" || !window.fbq) return;
+  const id = normalizeMetaPixelId(pixelId);
+  if (!id) return;
+  const userData = buildMetaPixelInitUserData(id);
+  if (!userData) return;
+  window.fbq("set", "userData", userData);
+}
+
+function queueMetaPixelInit(
+  id: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): void {
+  const userData = buildMetaPixelInitUserData(id, extra);
+  if (userData) {
+    window.fbq!("init", id, userData);
+  } else {
+    window.fbq!("init", id);
+  }
+  window.__metaPixelsInited = window.__metaPixelsInited || {};
+  window.__metaPixelsInited[id] = true;
+  if (initUserDataHasPii(userData)) {
+    window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
+    window.__metaPixelInitHadPii[id] = true;
+  }
+  devLog("init queued", {
+    pixelId: id,
+    hasInitUserData: Boolean(userData),
+    hasPii: initUserDataHasPii(userData),
+  });
+}
+
+/**
+ * Init each pixel once; re-init when manual AM (ph/fn/ln) becomes available.
+ * Each product landing uses its own meta_pixel_id from admin (keyed separately in sessionStorage).
+ */
+function syncMetaPixelInit(
+  pixelId: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): string | null {
   const id = normalizeMetaPixelId(pixelId);
   if (!id || typeof window === "undefined") return null;
 
   ensureFbqQueue();
 
-  window.__metaPixelsInited = window.__metaPixelsInited || {};
-  if (!window.__metaPixelsInited[id]) {
-    const sessionData = buildMetaPixelSessionUserData();
-    if (sessionData) {
-      window.fbq!("init", id, sessionData);
-    } else {
-      window.fbq!("init", id);
-    }
-    window.__metaPixelsInited[id] = true;
-    devLog("init queued", { pixelId: id, hasSessionData: Boolean(sessionData) });
+  const initData = buildMetaPixelInitUserData(id, extra);
+  const hasPii = initUserDataHasPii(initData);
+  const wasInited = window.__metaPixelsInited?.[id];
+  const hadPiiInit = window.__metaPixelInitHadPii?.[id];
+
+  if (!wasInited || extra || (hasPii && !hadPiiInit)) {
+    queueMetaPixelInit(id, extra);
   }
 
   return id;
 }
 
+function ensurePixelInit(
+  pixelId: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): string | null {
+  return syncMetaPixelInit(pixelId, extra);
+}
+
+/** Re-run init with manual advanced matching (Meta requires PII in the init third argument). */
+export function refreshMetaPixelInitWithUserData(
+  pixelId: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): void {
+  syncMetaPixelInit(pixelId, extra);
+}
+
 function pushFbqTrack(
+  pixelId: string,
   eventName: string,
   payload?: Record<string, unknown>,
   opts?: { eventID?: string },
 ): void {
   if (!window.fbq) return;
 
-  applyMetaBrowserSessionUserData();
+  applyMetaPixelUserData(pixelId);
 
   if (payload && opts) {
     window.fbq("track", eventName, payload, opts);
@@ -97,19 +151,8 @@ export function trackMetaPageView(pixelId?: string | null): void {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
-  ensureFbqQueue();
-
-  if (!window.__metaPixelsInited) window.__metaPixelsInited = {};
-  if (!window.__metaPixelsInited[id]) {
-    const sessionData = buildMetaPixelSessionUserData();
-    if (sessionData) {
-      window.fbq!("init", id, sessionData);
-    } else {
-      window.fbq!("init", id);
-    }
-    window.__metaPixelsInited[id] = true;
-    devLog("init queued", { pixelId: id, hasSessionData: Boolean(sessionData) });
-  }
+  const ready = syncMetaPixelInit(id);
+  if (!ready || !window.fbq) return;
 
   const key = `${id}:${window.location.pathname}`;
   if (window.__metaPixelPageViewSent?.[key]) {
@@ -117,7 +160,7 @@ export function trackMetaPageView(pixelId?: string | null): void {
     return;
   }
 
-  applyMetaBrowserSessionUserData();
+  applyMetaPixelUserData(id);
   window.fbq!("track", "PageView");
 
   if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
@@ -134,15 +177,16 @@ export function trackMetaEvent(
   pixelId: string | null | undefined,
   eventName: string,
   payload?: Record<string, unknown>,
-  opts?: { eventID?: string },
+  opts?: { eventID?: string; advancedMatching?: MetaPixelAdvancedMatchingPayload | null },
 ): void {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
-  const ready = ensurePixelInit(id);
+  const ready = syncMetaPixelInit(id, opts?.advancedMatching);
   if (!ready || !window.fbq) return;
 
-  pushFbqTrack(eventName, payload, opts);
+  const { advancedMatching: _am, ...trackOpts } = opts ?? {};
+  pushFbqTrack(id, eventName, payload, trackOpts.eventID ? { eventID: trackOpts.eventID } : undefined);
 
   devLog(`${eventName} queued`, {
     pixelId: id,

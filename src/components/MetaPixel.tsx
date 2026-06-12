@@ -3,12 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
-import { buildMetaPixelSessionUserData } from "@/lib/meta-browser-session";
 import {
   buildMetaPixelAdvancedMatching,
+  type MetaPixelAdvancedMatchingPayload,
+  buildMetaPixelInitUserData,
+  loadStoredMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
 } from "@/lib/meta-pixel-advanced-matching";
-import { trackMetaEvent, trackMetaPageView } from "@/lib/meta-pixel-client";
+import {
+  refreshMetaPixelInitWithUserData,
+  trackMetaEvent,
+  trackMetaPageView,
+} from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
@@ -40,6 +46,7 @@ export function syncMetaPixelAdvancedMatching(
   } catch {
     // ignore
   }
+  refreshMetaPixelInitWithUserData(id, am);
 }
 
 /** Advanced matching + deduped PageView fallback (MetaPixelRuntime is primary). */
@@ -61,19 +68,18 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
     const phone = advancedMatching?.phone?.trim() ?? "";
     const customerName = advancedMatching?.customerName?.trim() ?? "";
     const metaCookies = getMetaBrowserCookies();
-    const am = buildMetaPixelAdvancedMatching({
-      phone,
-      customerName,
-      fbp: metaCookies.fbp,
-      fbc: metaCookies.fbc,
-    });
-    const sessionData = buildMetaPixelSessionUserData();
+    const storedAm = loadStoredMetaPixelAdvancedMatching(resolvedPixelId);
+    const am =
+      buildMetaPixelAdvancedMatching({
+        phone,
+        customerName,
+        fbp: metaCookies.fbp,
+        fbc: metaCookies.fbc,
+      }) ?? storedAm;
+    const initUserData = buildMetaPixelInitUserData(resolvedPixelId, am);
 
-    if (typeof window !== "undefined" && window.fbq) {
-      const merged = { ...sessionData, ...am };
-      if (Object.keys(merged).length > 0) {
-        window.fbq("set", "userData", merged as Record<string, unknown>);
-      }
+    if (typeof window !== "undefined" && window.fbq && initUserData) {
+      window.fbq("set", "userData", initUserData as Record<string, unknown>);
     }
     trackMetaPageView(resolvedPixelId);
   }, [
@@ -132,20 +138,27 @@ export async function trackLead(params: {
   customerName?: string;
 }): Promise<void> {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
-  const metaCookies = getMetaBrowserCookies();
-  const am = buildMetaPixelAdvancedMatching({
-    phone: params.phone ?? "",
-    customerName: params.customerName ?? "",
-    fbp: metaCookies.fbp,
-    fbc: metaCookies.fbc,
-  });
-  if (am && typeof window !== "undefined" && window.fbq) {
-    window.fbq("set", "userData", am as Record<string, unknown>);
+  const pid = resolvePublicMetaPixelId(params.pixelId);
+  let am: MetaPixelAdvancedMatchingPayload | undefined;
+
+  if (pid && params.phone?.trim() && params.customerName?.trim()) {
+    syncMetaPixelAdvancedMatching(pid, {
+      phone: params.phone,
+      customerName: params.customerName,
+    });
+    const metaCookies = getMetaBrowserCookies();
+    am = buildMetaPixelAdvancedMatching({
+      phone: params.phone,
+      customerName: params.customerName,
+      fbp: metaCookies.fbp,
+      fbc: metaCookies.fbc,
+    });
   }
+
   trackMetaEvent(
     params.pixelId,
     "Lead",
     { value, currency },
-    { eventID: params.eventId },
+    { eventID: params.eventId, advancedMatching: am },
   );
 }

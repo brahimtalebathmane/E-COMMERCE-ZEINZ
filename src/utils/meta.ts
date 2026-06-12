@@ -1,9 +1,16 @@
 import "server-only";
 import crypto from "crypto";
 import {
+  META_STORE_COUNTRY_CODE,
   parseCustomerFullName,
   sanitizePhoneForMetaE164,
 } from "@/lib/meta-user-data";
+import {
+  hashMetaExternalId,
+  hashMetaMatchingCountry,
+  hashMetaMatchingPhone,
+  hashMetaMatchingTextField,
+} from "@/lib/meta-capi-hash";
 
 type MetaUserDataInput = {
   name?: string | null;
@@ -12,6 +19,8 @@ type MetaUserDataInput = {
   fbc?: string | null;
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
+  /** Order id or other stable id — hashed for CAPI external_id. */
+  externalId?: string | null;
 };
 
 type MetaCustomData = {
@@ -38,18 +47,6 @@ function normalizeEnv(value: string | undefined): string {
   return value.trim().replace(/^['"]|['"]$/g, "");
 }
 
-function normalizeHashInput(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function hash(value: string): string {
-  return crypto.createHash("sha256").update(normalizeHashInput(value)).digest("hex");
-}
-
-function normalizePhoneForMeta(value: string): string | null {
-  return sanitizePhoneForMetaE164(value);
-}
-
 function buildUserData(input?: MetaUserDataInput) {
   const data: Record<string, unknown> = {};
   if (!input) return data;
@@ -62,17 +59,24 @@ function buildUserData(input?: MetaUserDataInput) {
   if (input.clientIpAddress) data.client_ip_address = input.clientIpAddress;
   if (input.clientUserAgent) data.client_user_agent = input.clientUserAgent;
 
+  data.country = [hashMetaMatchingCountry(META_STORE_COUNTRY_CODE)];
+
   if (input.name?.trim()) {
     const { fn, ln } = parseCustomerFullName(input.name);
-    if (fn) data.fn = [hash(fn)];
-    if (ln) data.ln = [hash(ln)];
+    if (fn) data.fn = [hashMetaMatchingTextField(fn)];
+    if (ln) data.ln = [hashMetaMatchingTextField(ln)];
   }
 
   if (input.phone?.trim()) {
-    const normalizedPhone = normalizePhoneForMeta(input.phone);
+    const normalizedPhone = sanitizePhoneForMetaE164(input.phone);
     if (normalizedPhone) {
-      data.ph = [hash(normalizedPhone)];
+      data.ph = [hashMetaMatchingPhone(normalizedPhone)];
     }
+  }
+
+  const externalId = input.externalId?.trim();
+  if (externalId) {
+    data.external_id = [hashMetaExternalId(externalId)];
   }
 
   return data;

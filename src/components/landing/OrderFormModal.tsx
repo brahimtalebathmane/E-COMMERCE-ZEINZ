@@ -6,14 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import {
-  syncMetaPixelAdvancedMatching,
-  trackLead,
-} from "@/components/MetaPixel";
-import {
-  buildMetaPixelAdvancedMatching,
-  metaPixelAmStorageKey,
-} from "@/lib/meta-pixel-advanced-matching";
+import { syncMetaPixelAdvancedMatching, trackLead } from "@/components/MetaPixel";
 import {
   clearMetaSessionEventId,
   ensureMetaFunnelSession,
@@ -151,20 +144,9 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       }
 
       const phoneE164 = `+222${local}`;
-      const am = buildMetaPixelAdvancedMatching({
-        phone: phoneE164,
-        customerName: n,
-        fbp: metaCookies.fbp,
-        fbc: metaCookies.fbc,
-      });
       const pid =
         metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
-      if (am && pid) {
-        try {
-          sessionStorage.setItem(metaPixelAmStorageKey(pid), JSON.stringify(am));
-        } catch {
-          // ignore
-        }
+      if (pid) {
         syncMetaPixelAdvancedMatching(pid, {
           phone: phoneE164,
           customerName: n,

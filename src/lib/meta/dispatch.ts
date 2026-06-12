@@ -174,6 +174,7 @@ export async function dispatchMetaEvent(
         fbc: session.fbc,
         clientIpAddress: session.clientIpAddress,
         clientUserAgent: session.clientUserAgent,
+        externalId: order.id as string,
       },
       customData,
     });

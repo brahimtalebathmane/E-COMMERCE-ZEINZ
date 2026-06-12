@@ -1,17 +1,25 @@
 import {
+  META_STORE_COUNTRY_CODE,
+  normalizeMetaMatchingCountry,
+  normalizeMetaMatchingNamePart,
   parseCustomerFullName,
   sanitizePhoneForMetaE164,
 } from "@/lib/meta-user-data";
+import { getMetaBrowserSessionData } from "@/lib/meta-browser-session";
 
 /**
  * Meta Pixel Advanced Matching helpers (browser pixel only).
- * Values are sent in plain text; Meta hashes client-side.
+ *
+ * Send normalized plain text in fbq("init", pixelId, { ph, fn, ln, … }).
+ * Meta hashes ph/fn/ln client-side with SHA-256 — do not pre-hash here (double-hash breaks matching).
+ * Server CAPI hashes the same normalized values in src/utils/meta.ts.
  */
 
 export type MetaPixelAdvancedMatchingPayload = {
   ph?: string;
   fn?: string;
   ln?: string;
+  country?: string;
   fbp?: string;
   fbc?: string;
 };
@@ -32,6 +40,7 @@ export function buildMetaPixelAdvancedMatching(input: {
   if (ph) out.ph = ph;
   if (fn) out.fn = fn;
   if (ln) out.ln = ln;
+  out.country = normalizeMetaMatchingCountry(META_STORE_COUNTRY_CODE);
   const fbp = input.fbp?.trim();
   const fbc = input.fbc?.trim();
   if (fbp) out.fbp = fbp;
@@ -41,4 +50,50 @@ export function buildMetaPixelAdvancedMatching(input: {
 
 export function metaPixelAmStorageKey(pixelId: string): string {
   return `meta_pixel_am:${pixelId}`;
+}
+
+/** Read phone/name advanced matching saved after a prior order on this device. */
+export function loadStoredMetaPixelAdvancedMatching(
+  pixelId: string,
+): MetaPixelAdvancedMatchingPayload | undefined {
+  if (typeof sessionStorage === "undefined") return undefined;
+  try {
+    const raw = sessionStorage.getItem(metaPixelAmStorageKey(pixelId))?.trim();
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as MetaPixelAdvancedMatchingPayload;
+    const out: MetaPixelAdvancedMatchingPayload = {};
+    const ph = parsed.ph?.trim() ? sanitizePhoneForMetaE164(parsed.ph) : null;
+    if (ph) out.ph = ph;
+    if (parsed.fn?.trim()) out.fn = normalizeMetaMatchingNamePart(parsed.fn);
+    if (parsed.ln?.trim()) out.ln = normalizeMetaMatchingNamePart(parsed.ln);
+    out.country = normalizeMetaMatchingCountry(parsed.country);
+    if (parsed.fbp?.trim()) out.fbp = parsed.fbp.trim();
+    if (parsed.fbc?.trim()) out.fbc = parsed.fbc.trim();
+    return Object.keys(out).length > 0 ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Third `fbq("init", …)` parameter: stored PII + live fbp/fbc cookies. */
+export function buildMetaPixelInitUserData(
+  pixelId: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): Record<string, string> | undefined {
+  const cookies = getMetaBrowserSessionData();
+  const stored = loadStoredMetaPixelAdvancedMatching(pixelId);
+  const merged: MetaPixelAdvancedMatchingPayload = {
+    fbp: cookies.fbp,
+    fbc: cookies.fbc,
+    ...stored,
+    ...extra,
+  };
+  const out: Record<string, string> = {};
+  if (merged.ph?.trim()) out.ph = merged.ph.trim();
+  if (merged.fn?.trim()) out.fn = merged.fn.trim();
+  if (merged.ln?.trim()) out.ln = merged.ln.trim();
+  out.country = normalizeMetaMatchingCountry(merged.country);
+  if (merged.fbp?.trim()) out.fbp = merged.fbp.trim();
+  if (merged.fbc?.trim()) out.fbc = merged.fbc.trim();
+  return out;
 }
