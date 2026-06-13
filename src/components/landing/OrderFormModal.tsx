@@ -6,12 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { syncMetaPixelAdvancedMatching, trackLead } from "@/components/MetaPixel";
+import { syncMetaPixelAdvancedMatching } from "@/components/MetaPixel";
 import {
-  clearMetaSessionEventId,
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { storePendingBrowserLead } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
@@ -153,26 +153,20 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         });
       }
 
-      // Keep browser Lead for marketing robustness; server sends Lead too with same event id.
-      await trackLead({
+      storePendingBrowserLead({
+        eventId,
         value: Number(json.total_price ?? product.discount_price ?? product.price),
         currency: "MRU",
-        eventId,
         pixelId: pid,
         phone: phoneE164,
         customerName: n,
       });
 
-      try {
-        clearMetaSessionEventId();
-      } catch {
-        // ignore
-      }
-
       const qs = new URLSearchParams({
         order_id: json.order_id,
         product_id: product.id,
         total_price: String(json.total_price ?? ""),
+        meta_event_id: eventId,
         completion_token: json.completion_token,
         action_token: json.action_token,
       });

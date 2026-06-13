@@ -131,12 +131,15 @@ function pushFbqTrack(
 
   applyMetaPixelUserData(pixelId);
 
-  if (payload && opts) {
-    window.fbq("track", eventName, payload, opts);
-  } else if (opts) {
-    window.fbq("track", eventName, {}, opts);
+  const trackPayload = payload ?? {};
+  if (opts?.eventID) {
+    window.fbq("trackSingle", pixelId, eventName, trackPayload, { eventID: opts.eventID });
+    return;
+  }
+  if (payload && Object.keys(trackPayload).length > 0) {
+    window.fbq("track", eventName, trackPayload);
   } else if (payload) {
-    window.fbq("track", eventName, payload);
+    window.fbq("track", eventName, trackPayload);
   } else {
     window.fbq("track", eventName);
   }
