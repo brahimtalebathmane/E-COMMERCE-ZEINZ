@@ -1,18 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { clearMetaSessionEventId } from "@/lib/meta-client";
+const WHATSAPP_HREF = "https://wa.me/22233713957";
 
 export function OrderSuccessContinueLink() {
   return (
-    <p className="mt-6 text-center text-sm text-[var(--muted)]">
-      <Link
-        href="/"
-        onClick={() => clearMetaSessionEventId()}
-        className="font-semibold text-[var(--accent)] underline underline-offset-2 hover:opacity-90"
+    <div className="mt-8 flex justify-center">
+      <a
+        href={WHATSAPP_HREF}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="store-btn-whatsapp max-w-sm"
       >
-        تصفح المزيد من المنتجات
-      </Link>
-    </p>
+        تواصل معنا عبر واتساب
+      </a>
+    </div>
   );
 }
