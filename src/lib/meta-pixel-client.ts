@@ -188,8 +188,12 @@ export function trackMetaEvent(
   const ready = syncMetaPixelInit(id, opts?.advancedMatching);
   if (!ready || !window.fbq) return;
 
-  const { advancedMatching: _am, ...trackOpts } = opts ?? {};
-  pushFbqTrack(id, eventName, payload, trackOpts.eventID ? { eventID: trackOpts.eventID } : undefined);
+  pushFbqTrack(
+    id,
+    eventName,
+    payload,
+    opts?.eventID ? { eventID: opts.eventID } : undefined,
+  );
 
   devLog(`${eventName} queued`, {
     pixelId: id,
