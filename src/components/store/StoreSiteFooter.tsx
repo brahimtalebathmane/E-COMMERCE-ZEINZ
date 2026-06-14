@@ -6,9 +6,9 @@ import type { CSSProperties } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BRAND_COLOR } from "@/lib/site-branding";
 
-const PHONE_DISPLAY = "33713957";
-const PHONE_TEL = "+96133713957";
-const WHATSAPP_HREF = "https://wa.me/96133713957";
+const PHONE_DISPLAY = "+222 33713957";
+const PHONE_TEL = "+22233713957";
+const WHATSAPP_HREF = "https://wa.me/22233713957";
 const EMAIL = "support@zeinaa.net";
 
 export function StoreSiteFooter() {
