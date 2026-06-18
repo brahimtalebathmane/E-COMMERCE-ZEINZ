@@ -1,5 +1,6 @@
 import { MetaPixel } from "@/components/MetaPixel";
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
+import { HeroMediaPreload } from "@/components/landing/HeroMediaPreload";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
@@ -43,6 +44,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <>
+      <HeroMediaPreload mediaType={found.media_type} mediaUrl={found.media_url} />
       <MetaPixelRuntime pixelId={productPixelId} />
       <MetaPixel pixelId={productPixelId} />
       <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />

@@ -13,6 +13,7 @@ import {
 } from "react";
 import type MuxPlayerElement from "@mux/mux-player";
 import type { ProductRow } from "@/types";
+import { LANDING_HERO_IMAGE } from "@/lib/landing-hero-image";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -277,14 +278,18 @@ export function LandingMedia({
   if (treatAsImage && primaryHero) {
     return (
       <div className="relative w-full min-w-0 bg-[var(--accent-muted)]">
-        {/* Hero product image: intrinsic dimensions (any aspect ratio). Next/Image `fill` needs a sized box; img avoids a forced 16:9 frame. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {/* Hero: responsive width + natural height via style; width/height props drive Next/Image srcset only. */}
+        <Image
           src={url}
           alt={displayName}
+          width={LANDING_HERO_IMAGE.width}
+          height={LANDING_HERO_IMAGE.height}
+          sizes={LANDING_HERO_IMAGE.sizes}
+          quality={LANDING_HERO_IMAGE.quality}
           className="mx-auto block h-auto w-full max-h-[min(92vh,56rem)] object-contain"
-          loading={priority ? "eager" : "lazy"}
-          {...(priority ? { fetchPriority: "high" as const } : {})}
+          style={{ width: "100%", height: "auto" }}
+          priority={priority}
+          fetchPriority={priority ? "high" : "auto"}
         />
       </div>
     );
