@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/SiteLogo";
+import { OneSignalAdminInit } from "@/components/admin/OneSignalAdminInit";
 import { adminAr as a } from "@/locales/admin-ar";
 
 export default function AdminDashboardLayout({
@@ -9,6 +10,7 @@ export default function AdminDashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-[var(--background)] font-sans" dir="rtl" lang="ar">
+      <OneSignalAdminInit />
       <header className="border-b border-[var(--accent-muted)] bg-[var(--card)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <Link href="/admin" className="min-w-0 shrink">

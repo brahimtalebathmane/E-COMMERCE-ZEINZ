@@ -8,7 +8,10 @@ export type OrderCommunicationEvent =
   | "whatsapp_failed"
   | "ai_agent_replied"
   | "ai_agent_confirmed"
-  | "ai_agent_human_escalation";
+  | "ai_agent_human_escalation"
+  | "onesignal_sent"
+  | "onesignal_skipped"
+  | "onesignal_failed";
 
 export async function logOrderCommunicationEvent(
   supabase: SupabaseClient,

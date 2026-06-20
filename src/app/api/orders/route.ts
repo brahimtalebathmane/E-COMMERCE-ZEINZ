@@ -6,6 +6,10 @@ import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { mapLeadDispatchToApiPayload, metaLeadDiagnostics } from "@/lib/meta/api-payload";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import {
+  notifyAdminsOfNewOrder,
+  resolveOrderProductName,
+} from "@/lib/onesignal/post-order-notify";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { canAcceptStoreOrder } from "@/lib/product-test-status";
 import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, discount_price, price, meta_pixel_id, test_status")
+      .select("id, discount_price, price, meta_pixel_id, test_status, name_ar, name_fr")
       .eq("id", data.product_id)
       .maybeSingle();
 
@@ -111,6 +115,32 @@ export async function POST(request: Request) {
     });
 
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
+
+    try {
+      const oneSignalResult = await notifyAdminsOfNewOrder({
+        orderId: order.id,
+        productName: resolveOrderProductName(product),
+      });
+      if (oneSignalResult.sent) {
+        await logOrderCommunicationEvent(supabase, order.id, "onesignal_sent", null);
+      } else if ("skipped" in oneSignalResult && oneSignalResult.skipped) {
+        await logOrderCommunicationEvent(
+          supabase,
+          order.id,
+          "onesignal_skipped",
+          oneSignalResult.reason,
+        );
+      } else if ("error" in oneSignalResult) {
+        await logOrderCommunicationEvent(
+          supabase,
+          order.id,
+          "onesignal_failed",
+          oneSignalResult.error,
+        );
+      }
+    } catch (oneSignalErr) {
+      console.warn("[POST /api/orders] OneSignal notify failed", oneSignalErr);
+    }
 
     let metaLead = mapLeadDispatchToApiPayload(null, "dispatch_not_run");
     try {
