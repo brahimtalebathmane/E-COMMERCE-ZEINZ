@@ -4,6 +4,16 @@ import { resolveWhatsAppServiceBase } from "@/lib/whatsapp-service-url";
 
 const DOWNSTREAM_TIMEOUT_MS = 60_000;
 
+/** Prepends a personalized Arabic greeting when the customer name is present. */
+function buildPostOrderWhatsAppMessage(
+  customerName: string | null | undefined,
+  template: string,
+): string {
+  const name = (customerName ?? "").trim();
+  if (!name) return template;
+  return `مرحبا ${name}\n${template}`;
+}
+
 export type WhatsAppDispatchResult =
   | { handled: true; sent: true }
   | { handled: true; sent: false; skipReason: string; hint?: string }
@@ -87,7 +97,7 @@ export async function dispatchPostOrderWhatsApp(
   try {
     const { data: order, error: oErr } = await supabase
       .from("orders")
-      .select("id, phone, product_id")
+      .select("id, phone, product_id, customer_name")
       .eq("id", orderId)
       .maybeSingle();
     if (oErr) throw new Error(oErr.message);
@@ -119,12 +129,17 @@ export async function dispatchPostOrderWhatsApp(
       return { handled: true, sent: false, skipReason: "product_not_found" };
     }
 
-    const text = ((product.whatsapp_message_template as string | null) ?? "").trim();
-    if (!text) {
+    const template = ((product.whatsapp_message_template as string | null) ?? "").trim();
+    if (!template) {
       await logOrderCommunicationEvent(supabase, orderId, "whatsapp_skipped", "no_whatsapp_template");
       await releaseWhatsAppClaim(supabase, orderId);
       return { handled: true, sent: false, skipReason: "no_whatsapp_template" };
     }
+
+    const text = buildPostOrderWhatsAppMessage(
+      order.customer_name as string | null | undefined,
+      template,
+    );
 
     const base = resolveWhatsAppServiceBase();
     if (!base) {
