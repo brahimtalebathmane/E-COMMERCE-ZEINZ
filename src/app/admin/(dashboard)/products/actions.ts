@@ -1,11 +1,12 @@
 "use server";
 
-import { RESERVED_SLUGS } from "@/lib/constants";
 import { normalizeHexColor, normalizeOptionalHexColor } from "@/lib/color";
-import { slugify } from "@/lib/slug";
+import {
+  allocateUniqueSlug,
+  resolveProductSlugFields,
+} from "@/lib/product-slug";
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import { BRAND_COLOR } from "@/lib/site-branding";
-import { createClient } from "@/lib/supabase/server";
 import { assertAdminUser, isAuthError } from "@/lib/auth/admin";
 import type {
   Testimonial,
@@ -86,6 +87,8 @@ export type ProductPayload = {
   contact_lines_ar: string[];
   contact_lines_fr: string[];
   meta_pixel_id: string | null;
+  /** URL path segment for the landing page (editable in admin). */
+  slug: string;
   old_slugs: string[];
   sticky_footer_offer_ends_at: string | null;
   sticky_footer_timer_label_ar: string;
@@ -240,30 +243,15 @@ function pipelineFieldsFromPayload(payload: ProductPayload) {
 }
 
 
-async function slugExists(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
-  const { data } = await supabase.from("products").select("id").eq("slug", slug).maybeSingle();
-  return !!data;
-}
-
-async function allocateUniqueSlug(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  nameAr: string,
-): Promise<string> {
-  const base = slugify(nameAr);
-  if (!base || RESERVED_SLUGS.has(base)) {
-    throw new Error("Choose a different product name (reserved or empty slug).");
+function revalidateProductPaths(previousSlug: string | null, newSlug: string | null) {
+  revalidatePath("/");
+  if (previousSlug) {
+    revalidatePath(`/${previousSlug}`);
   }
-
-  let candidate = base;
-  for (let i = 0; i < 80; i += 1) {
-    const taken = await slugExists(supabase, candidate);
-    if (!taken && !RESERVED_SLUGS.has(candidate)) {
-      return candidate;
-    }
-    candidate = `${base}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  if (newSlug && newSlug !== previousSlug) {
+    revalidatePath(`/${newSlug}`);
   }
-
-  throw new Error("Could not allocate a unique slug — try again.");
+  revalidatePath("/admin/products");
 }
 
 function researchInsertDefaults(payload: ResearchProductPayload, slug: string) {
@@ -416,7 +404,11 @@ export async function createProductAction(payload: ProductPayload) {
   validateLandingProductPayload(payload);
   const { supabase } = await assertAdminUser();
 
-  const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
+  const { slug: candidate, old_slugs } = await resolveProductSlugFields(
+    supabase,
+    payload.slug,
+    payload.name_ar,
+  );
 
   const { error } = await supabase.from("products").insert({
     default_language: payload.default_language,
@@ -465,7 +457,7 @@ export async function createProductAction(payload: ProductPayload) {
     contact_title_fr: payload.contact_title_fr,
     whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
     slug: candidate,
-    old_slugs: payload.old_slugs.filter(Boolean),
+    old_slugs,
     price: payload.price,
     discount_price: payload.discount_price,
     media_type: payload.media_type,
@@ -503,9 +495,7 @@ export async function createProductAction(payload: ProductPayload) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/");
-  revalidatePath(`/${candidate}`);
-  revalidatePath("/admin/products");
+  revalidateProductPaths(null, candidate);
 }
 
 export async function updateProductTestStatusAction(
@@ -606,7 +596,6 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
     meta_pixel_id: normalizeMetaPixelId(payload.meta_pixel_id),
-    old_slugs: payload.old_slugs.filter(Boolean),
     sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
     sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
     sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
@@ -637,13 +626,24 @@ export async function saveLandingConfigurationAction(
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
-      .select("slug, test_status, price, media_type, media_url")
+      .select("id, slug, old_slugs, test_status, price, media_type, media_url")
       .eq("id", id)
       .maybeSingle();
 
     if (fetchErr || !existing) {
       return { ok: false, error: "Product not found" };
     }
+
+    const { slug, old_slugs } = await resolveProductSlugFields(
+      supabase,
+      payload.slug,
+      payload.name_ar,
+      {
+        id,
+        slug: String(existing.slug),
+        old_slugs: (existing.old_slugs as string[]) ?? [],
+      },
+    );
 
     const price =
       Number.isFinite(payload.price) && payload.price > 0
@@ -659,6 +659,8 @@ export async function saveLandingConfigurationAction(
       .from("products")
       .update({
         ...landingFieldsFromPayload(payload),
+        slug,
+        old_slugs,
         price,
         media_type: mediaType,
         media_url: mediaUrl,
@@ -673,11 +675,7 @@ export async function saveLandingConfigurationAction(
       return { ok: false, error: error.message };
     }
 
-    revalidatePath("/");
-    if (existing.slug) {
-      revalidatePath(`/${existing.slug}`);
-    }
-    revalidatePath("/admin/products");
+    revalidateProductPaths(String(existing.slug), slug);
     revalidatePath(`/admin/products/${id}/edit`);
     revalidatePath(`/admin/products/${id}/landing-setup`);
     return { ok: true };
@@ -697,7 +695,7 @@ export async function completeLandingSetupAction(
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
-      .select("slug, test_status")
+      .select("id, slug, old_slugs, test_status")
       .eq("id", id)
       .maybeSingle();
 
@@ -711,10 +709,23 @@ export async function completeLandingSetupAction(
       };
     }
 
+    const { slug, old_slugs } = await resolveProductSlugFields(
+      supabase,
+      payload.slug,
+      payload.name_ar,
+      {
+        id,
+        slug: String(existing.slug),
+        old_slugs: (existing.old_slugs as string[]) ?? [],
+      },
+    );
+
     const { error } = await supabase
       .from("products")
       .update({
         ...landingFieldsFromPayload(payload),
+        slug,
+        old_slugs,
         test_status: "ready_for_test",
       })
       .eq("id", id);
@@ -723,11 +734,7 @@ export async function completeLandingSetupAction(
       return { ok: false, error: error.message };
     }
 
-    revalidatePath("/");
-    if (existing.slug) {
-      revalidatePath(`/${existing.slug}`);
-    }
-    revalidatePath("/admin/products");
+    revalidateProductPaths(String(existing.slug), slug);
     revalidatePath(`/admin/products/${id}/landing-setup`);
     return { ok: true };
   } catch (error) {
@@ -741,7 +748,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
-    .select("slug")
+    .select("id, slug, old_slugs")
     .eq("id", id)
     .maybeSingle();
 
@@ -749,10 +756,23 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
     throw new Error("Product not found");
   }
 
+  const { slug, old_slugs } = await resolveProductSlugFields(
+    supabase,
+    payload.slug,
+    payload.name_ar,
+    {
+      id,
+      slug: String(existing.slug),
+      old_slugs: (existing.old_slugs as string[]) ?? [],
+    },
+  );
+
   const { error } = await supabase
     .from("products")
     .update({
       ...landingFieldsFromPayload(payload),
+      slug,
+      old_slugs,
       price: payload.price,
       media_type: payload.media_type,
       media_url: payload.media_url.trim(),
@@ -762,9 +782,7 @@ export async function updateProductAction(id: string, payload: ProductPayload) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/");
-  revalidatePath(`/${existing.slug}`);
-  revalidatePath("/admin/products");
+  revalidateProductPaths(String(existing.slug), slug);
 }
 
 export async function deleteProductAction(id: string) {

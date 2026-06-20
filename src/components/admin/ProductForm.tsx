@@ -29,8 +29,10 @@ import {
 } from "@/components/admin/product-form-shared";
 import { adminAr as a } from "@/locales/admin-ar";
 import { BRAND_COLOR } from "@/lib/site-branding";
+import { normalizeProductSlug } from "@/lib/product-slug";
+import { getPublicSiteUrlClient } from "@/lib/site-url";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 function stickyEndsAtToDatetimeLocal(iso: string | null | undefined): string {
   if (!iso?.trim()) return "";
@@ -214,6 +216,18 @@ export function ProductForm({ mode, initial }: Props) {
       : [],
   );
   const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
+  const [slugInput, setSlugInput] = useState(initial?.slug ?? "");
+
+  const siteBase = getPublicSiteUrlClient();
+  const previewSlug = useMemo(() => {
+    const normalized = normalizeProductSlug(slugInput);
+    if (normalized) return normalized;
+    if (mode === "create") {
+      return normalizeProductSlug(nameAr) || "your-slug";
+    }
+    return initial?.slug ?? "your-slug";
+  }, [slugInput, nameAr, mode, initial?.slug]);
+  const landingPreviewUrl = `${siteBase}/${previewSlug}`;
 
   const [brandColor, setBrandColor] = useState(initial?.brand_color ?? BRAND_COLOR);
   const [logoUrl, setLogoUrl] = useState(initial?.logo_url ?? "");
@@ -375,10 +389,8 @@ export function ProductForm({ mode, initial }: Props) {
         .map((s) => s.trim())
         .filter(Boolean),
       meta_pixel_id: metaPixel.trim() || null,
-      old_slugs:
-        mode === "edit" && initial?.old_slugs?.length
-          ? initial.old_slugs.map((s) => s.trim()).filter(Boolean)
-          : [],
+      slug: slugInput.trim(),
+      old_slugs: [],
       sticky_footer_offer_ends_at: parseStickyEndsAtLocal(stickyFooterEndsAt),
       sticky_footer_timer_label_ar: stickyFooterTimerLabelAr.trim(),
       sticky_footer_timer_label_fr: stickyFooterTimerLabelFr.trim(),
@@ -564,16 +576,40 @@ export function ProductForm({ mode, initial }: Props) {
         </p>
       </div>
 
-      {mode === "edit" && initial ? (
-        <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
-          <p>
-            <span className="text-[var(--muted)]">{a.productForm.slugFixed}</span>{" "}
-            <code className="font-mono" dir="ltr">
-              {initial.slug}
-            </code>
+      <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
+          <label className="text-sm font-medium">{a.productForm.slugLabel}</label>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.slugHint}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2" dir="ltr">
+            <span className="shrink-0 text-[var(--muted)]">{siteBase}/</span>
+            <input
+              className="min-w-[12rem] flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 font-mono text-sm"
+              value={slugInput}
+              onChange={(e) => setSlugInput(e.target.value)}
+              placeholder={previewSlug}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
+          <p className="mt-3 text-xs text-[var(--muted)]">
+            {a.productForm.slugPreviewLabel}{" "}
+            <a
+              href={landingPreviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[var(--accent)] underline"
+            >
+              {landingPreviewUrl}
+            </a>
           </p>
-        </div>
-      ) : null}
+          {initial?.old_slugs?.length ? (
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              {a.productForm.slugLegacyNote}{" "}
+              <span className="font-mono" dir="ltr">
+                {initial.old_slugs.join(", ")}
+              </span>
+            </p>
+          ) : null}
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">

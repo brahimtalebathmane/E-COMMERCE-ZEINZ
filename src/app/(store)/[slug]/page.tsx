@@ -10,7 +10,7 @@ import {
 } from "@/lib/products";
 import { isLandingVisible } from "@/lib/product-test-status";
 import type { ProductTestingStatus } from "@/types";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 export const revalidate = 60;
 
@@ -31,7 +31,7 @@ export default async function ProductPage({ params }: PageProps) {
       if (!isLandingVisible(legacy.test_status as ProductTestingStatus)) {
         notFound();
       }
-      redirect(`/${legacy.slug}`);
+      permanentRedirect(`/${legacy.slug}`);
     }
     notFound();
   }
