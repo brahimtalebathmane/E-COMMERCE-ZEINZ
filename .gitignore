@@ -41,8 +41,8 @@ next-env.d.ts
 # netlify
 .netlify
 
-# Serwist (generated service worker)
-public/sw*
+# Serwist (generated service worker bundle — gateway lives in public/sw.js)
+public/sw-serwist.js
 public/swe-worker*
 
 # whatsapp (baileys auth state)

@@ -31,8 +31,7 @@ function queueOneSignalInit() {
         notifyButton: {
           enable: true,
         },
-        serviceWorkerPath: "/admin/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/admin/" },
+        serviceWorkerPath: "/sw.js",
         ...(process.env.NODE_ENV === "development"
           ? { allowLocalhostAsSecureOrigin: true }
           : {}),

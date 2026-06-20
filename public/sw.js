@@ -1,3 +1,2 @@
-// Legacy admin-scoped worker URL — forwards to the merged site service worker.
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 importScripts("/sw-serwist.js");
