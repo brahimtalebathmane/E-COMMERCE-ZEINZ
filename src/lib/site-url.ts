@@ -1,4 +1,4 @@
-export const DEFAULT_PUBLIC_SITE_URL = "http://zeinee.com";
+export const DEFAULT_PUBLIC_SITE_URL = "https://zeinee.com";
 
 export function getPublicSiteUrl(): string {
   const raw =

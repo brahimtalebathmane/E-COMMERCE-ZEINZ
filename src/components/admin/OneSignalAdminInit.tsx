@@ -8,22 +8,40 @@ import {
   ONESIGNAL_APP_ID,
   ONESIGNAL_SAFARI_WEB_ID,
 } from "@/lib/onesignal/constants";
+import {
+  ONESIGNAL_CONFIGURED_HOSTNAME,
+  isOneSignalAllowedOrigin,
+} from "@/lib/onesignal/is-allowed-origin";
 
 function queueOneSignalInit() {
+  if (!isOneSignalAllowedOrigin()) {
+    console.warn(
+      "[OneSignal] Skipped on this domain. Use an allowed hostname or add it in OneSignal → Settings → Platforms → Web.",
+      { hostname: window.location.hostname, configured: ONESIGNAL_CONFIGURED_HOSTNAME },
+    );
+    return;
+  }
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async (OneSignal) => {
-    await OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
-      notifyButton: {
-        enable: true,
-      },
-      serviceWorkerPath: "/sw.js",
-      ...(process.env.NODE_ENV === "development"
-        ? { allowLocalhostAsSecureOrigin: true }
-        : {}),
-    });
-    OneSignal.User.addTag(ONESIGNAL_ADMIN_TAG_KEY, ONESIGNAL_ADMIN_TAG_VALUE);
+    try {
+      await OneSignal.init({
+        appId: ONESIGNAL_APP_ID,
+        safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
+        notifyButton: {
+          enable: true,
+        },
+        serviceWorkerPath: "/admin/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/admin/" },
+        ...(process.env.NODE_ENV === "development"
+          ? { allowLocalhostAsSecureOrigin: true }
+          : {}),
+      });
+      OneSignal.User.addTag(ONESIGNAL_ADMIN_TAG_KEY, ONESIGNAL_ADMIN_TAG_VALUE);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("[OneSignal] Init failed:", message);
+    }
   });
 }
 
