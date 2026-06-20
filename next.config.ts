@@ -8,8 +8,7 @@ const revision =
 
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
-  // Bundled separately; public/sw.js merges OneSignal + Serwist (see OneSignal docs).
-  swDest: "public/sw-serwist.js",
+  swDest: "public/sw.js",
   // Off: precaching App Router navigations breaks dynamic routes (e.g. /order-success?tokens).
   cacheOnNavigation: false,
   reloadOnOnline: true,

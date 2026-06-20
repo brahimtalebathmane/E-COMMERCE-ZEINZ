@@ -17,11 +17,6 @@ function isNetworkOnlyDocument(url: URL): boolean {
   return false;
 }
 
-/** Tokenized checkout pages must not be cached — bypass SW when network fails. */
-function isBypassDocument(url: URL): boolean {
-  return url.pathname === "/order-success";
-}
-
 const networkOnlyPages = [
   {
     matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
@@ -41,28 +36,14 @@ const serwist = new Serwist({
       {
         url: "/~offline",
         matcher({ request }) {
-          const url = new URL(request.url);
           return (
             request.destination === "document" &&
-            !isNetworkOnlyDocument(url) &&
-            !isBypassDocument(url)
+            !isNetworkOnlyDocument(new URL(request.url))
           );
         },
       },
     ],
   },
-});
-
-/** Pass tokenized checkout navigations straight to the network (no Workbox no-response). */
-self.addEventListener("fetch", (event) => {
-  if (event.request.mode !== "navigate") return;
-  const url = new URL(event.request.url);
-  if (!isBypassDocument(url)) return;
-  event.respondWith(
-    fetch(event.request).catch(
-      () => new Response("Unable to reach checkout page.", { status: 503 }),
-    ),
-  );
 });
 
 serwist.addEventListeners();
