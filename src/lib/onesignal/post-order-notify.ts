@@ -1,10 +1,6 @@
 import { normalizeEnv } from "@/lib/supabase/service";
 import { getPublicSiteUrl } from "@/lib/site-url";
-import {
-  ONESIGNAL_ADMIN_TAG_KEY,
-  ONESIGNAL_ADMIN_TAG_VALUE,
-  ONESIGNAL_APP_ID,
-} from "@/lib/onesignal/constants";
+import { ONESIGNAL_APP_ID } from "@/lib/onesignal/constants";
 
 const ONESIGNAL_TIMEOUT_MS = 15_000;
 
@@ -43,16 +39,23 @@ export async function notifyAdminsOfNewOrder(params: {
   const siteUrl = getPublicSiteUrl();
   const payload: Record<string, unknown> = {
     app_id: ONESIGNAL_APP_ID,
-    filters: [
-      {
-        field: "tag",
-        key: ONESIGNAL_ADMIN_TAG_KEY,
-        relation: "=",
-        value: ONESIGNAL_ADMIN_TAG_VALUE,
-      },
-    ],
-    headings: { ar: "إشعار بطلب جديد" },
-    contents: { ar: `تم استلام طلب جديد لمنتج: ${productName}` },
+    // This PWA is admin-only — installation and push opt-in happen exclusively inside the
+    // /admin dashboard, so every active subscription already belongs to an admin. Target the
+    // built-in "Subscribed Users" segment instead of a custom role-tag filter: on a fresh
+    // mobile opt-in the role tag is often not yet synced, which made the tag filter resolve
+    // to zero recipients even though the device was subscribed (the welcome notification
+    // still showed because OneSignal sends that one itself). The segment maps directly to
+    // every deliverable subscription, so order pushes reach the same devices reliably.
+    included_segments: ["Subscribed Users"],
+    // OneSignal REST requires the English (`en`) key in `contents`; a payload with only `ar`
+    // is rejected with HTTP 400, which is exactly why server-side order dispatch failed while
+    // client-side activation worked. `en` is the mandatory default; `ar` stays the displayed
+    // copy for the Arabic admin UI.
+    headings: { en: "New order received", ar: "إشعار بطلب جديد" },
+    contents: {
+      en: `New order received for: ${productName}`,
+      ar: `تم استلام طلب جديد لمنتج: ${productName}`,
+    },
     data: { order_id: params.orderId },
   };
   if (siteUrl) {
@@ -65,18 +68,23 @@ export async function notifyAdminsOfNewOrder(params: {
     const res = await fetch("https://api.onesignal.com/notifications", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
         Authorization: `Key ${restApiKey}`,
       },
       body: JSON.stringify(payload),
       signal: ac.signal,
     });
 
-    const json = (await res.json().catch(() => ({}))) as {
-      id?: string;
-      recipients?: number;
-      errors?: unknown;
-    };
+    // Read the raw body first so the COMPLETE OneSignal response is always available for
+    // logging — including 400/403 error arrays and invalid-subscription diagnostics — even
+    // when the body is empty or not valid JSON. This guarantees no failure is swallowed.
+    const rawBody = await res.text();
+    let json: { id?: string; recipients?: number; errors?: unknown } = {};
+    try {
+      json = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      json = {};
+    }
 
     // Surface the raw OneSignal REST response natively in the backend console so silent
     // failures, dropped pushes, and "invalid/unsubscribed token" diagnostics are visible.
@@ -87,27 +95,28 @@ export async function notifyAdminsOfNewOrder(params: {
       notification_id: json.id ?? null,
       recipients: json.recipients ?? null,
       errors: typeof json.errors !== "undefined" ? json.errors : null,
+      raw_response: rawBody.slice(0, 1000),
     });
 
     if (!res.ok) {
       const detail =
         typeof json.errors !== "undefined"
-          ? JSON.stringify(json.errors).slice(0, 200)
-          : res.statusText;
+          ? JSON.stringify(json.errors).slice(0, 300)
+          : rawBody.slice(0, 300) || res.statusText;
       console.error(
         `[OneSignal] delivery failed (${res.status}) for order ${params.orderId}: ${detail}`,
       );
       return { sent: false, error: `${res.status}: ${detail}` };
     }
 
-    // OneSignal returns 200 with no id / zero recipients when no device matches the admin tag.
+    // OneSignal returns 200 with no id / zero recipients when no device is subscribed.
     if (!json.id || json.recipients === 0) {
       const reason =
         typeof json.errors !== "undefined"
           ? `no_recipients: ${JSON.stringify(json.errors).slice(0, 160)}`
           : "no_recipients";
       console.warn(
-        `[OneSignal] no recipients for order ${params.orderId} — no device is currently subscribed under tag ${ONESIGNAL_ADMIN_TAG_KEY}=${ONESIGNAL_ADMIN_TAG_VALUE}. Detail: ${reason}`,
+        `[OneSignal] no recipients for order ${params.orderId} — no device is currently subscribed (segment "Subscribed Users" is empty). Detail: ${reason}`,
       );
       return { sent: false, skipped: true, reason };
     }
