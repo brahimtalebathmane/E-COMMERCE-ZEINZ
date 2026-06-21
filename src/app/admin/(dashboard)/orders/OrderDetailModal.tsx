@@ -7,6 +7,7 @@ import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
 import type { OrderStatus } from "@/types";
 import { toast } from "sonner";
+import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 
 type Props = {
   order: AdminOrderRow | null;
@@ -87,8 +88,6 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
   }, [order]);
 
   if (!open || !order) return null;
-  const product = normalizeProduct(order.products);
-  const dateStr = formatDetailDate(order.created_at);
   const currentOrder = order;
   const hasChanges = draftStatus !== order.status;
 
@@ -179,137 +178,209 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-          <div className="space-y-6">
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionMeta}
-              </h3>
-              <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.orderDate}</dt>
-                  <dd className="break-words">{dateStr}</dd>
+          <ErrorBoundary
+            resetKeys={[currentOrder.id]}
+            fallback={({ reset }) => (
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-3 rounded-xl border border-red-400/30 bg-red-400/5 px-4 py-8 text-center"
+              >
+                <p className="text-sm font-semibold text-[var(--foreground)]">
+                  {a.common.errorTitle}
+                </p>
+                <p className="max-w-sm text-xs text-[var(--muted)]">{a.common.errorBody}</p>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="min-h-[40px] rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20"
+                  >
+                    {a.common.retry}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="min-h-[40px] rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20"
+                  >
+                    {a.orders.closeDetail}
+                  </button>
                 </div>
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.customer}</dt>
-                  <dd className="break-words">{order.customer_name ?? "—"}</dd>
-                </div>
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.phone}</dt>
-                  <dd className="break-all" dir="ltr">
-                    {order.phone ?? "—"}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionProduct}
-              </h3>
-              {product ? (
-                <div className="mt-3 space-y-2 text-sm">
-                  <p className="font-medium text-[var(--foreground)]">
-                    {product.name_ar ?? a.orders.productUnknown}
-                  </p>
-                  {product.slug ? (
-                    <p className="text-[var(--muted)]">
-                      <Link
-                        href={`/${product.slug}`}
-                        className="text-[var(--accent)] underline underline-offset-2 hover:opacity-90"
-                      >
-                        {a.orders.viewStoreProduct}
-                      </Link>
-                    </p>
-                  ) : null}
-                  <dl className="mt-2 space-y-1.5 text-sm">
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt className="text-[var(--muted)]">{a.orders.productPrice}</dt>
-                      <dd dir="ltr">{formatPrice(toFiniteNumber(product.price))}</dd>
-                    </div>
-                    {product.discount_price != null ? (
-                      <div className="flex flex-wrap justify-between gap-2">
-                        <dt className="text-[var(--muted)]">{a.orders.productDiscount}</dt>
-                        <dd dir="ltr">{formatPrice(toFiniteNumber(product.discount_price))}</dd>
-                      </div>
-                    ) : null}
-                    {product.media_url ? (
-                      <div className="text-xs text-[var(--muted)]">
-                        {product.media_type === "video"
-                          ? a.orders.mediaVideo
-                          : a.orders.mediaImage}
-                        :{" "}
-                        <span className="break-all font-mono" dir="ltr">
-                          {product.media_url}
-                        </span>
-                      </div>
-                    ) : null}
-                  </dl>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-[var(--muted)]">—</p>
-              )}
-            </section>
-
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionTotal}
-              </h3>
-              <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-                  <dt className="text-[var(--muted)]">{a.orders.total}</dt>
-                  <dd dir="ltr">
-                    {formatPrice(toFiniteNumber(order.total_price))}{" "}
-                    <span className="text-[var(--muted)]">({order.currency ?? "—"})</span>
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {a.orders.sectionActions}
-              </h3>
-              <div className="mt-3 flex flex-col gap-3">
-                <select
-                  disabled={saving}
-                  className="min-h-[44px] w-full max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm disabled:opacity-60"
-                  value={draftStatus}
-                  onChange={(e) => setDraftStatus(e.target.value as OrderStatus)}
-                >
-                  <option value="pending">{a.orderStatus.pending}</option>
-                  <option value="confirmed">{a.orderStatus.confirmed}</option>
-                  <option value="shipped">{a.orderStatus.shipped}</option>
-                  <option value="cancelled">{a.orderStatus.cancelled}</option>
-                  <option value="requires_human_intervention">
-                    {a.orderStatus.requires_human_intervention}
-                  </option>
-                  <option value="internal_return">
-                    {a.orderStatus.internal_return}
-                  </option>
-                </select>
-                <button
-                  type="button"
-                  disabled={saving || !hasChanges}
-                  onClick={() => void onSaveChanges()}
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? a.orders.savingChanges : a.orders.saveChanges}
-                </button>
               </div>
-              <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
-                <button
-                  type="button"
-                  disabled={saving}
-                  className="min-h-[44px] w-full rounded-xl border border-red-400/40 bg-red-400/5 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-400/15"
-                  onClick={() => onDeleted(order.id)}
-                >
-                  {a.orders.delete}
-                </button>
-              </div>
-            </section>
-          </div>
+            )}
+          >
+            <OrderDetailSections
+              order={currentOrder}
+              draftStatus={draftStatus}
+              onDraftStatusChange={setDraftStatus}
+              saving={saving}
+              hasChanges={hasChanges}
+              onSaveChanges={() => void onSaveChanges()}
+              onDeleted={onDeleted}
+            />
+          </ErrorBoundary>
         </div>
       </div>
+    </div>
+  );
+}
+
+type SectionsProps = {
+  order: AdminOrderRow;
+  draftStatus: OrderStatus;
+  onDraftStatusChange: (status: OrderStatus) => void;
+  saving: boolean;
+  hasChanges: boolean;
+  onSaveChanges: () => void;
+  onDeleted: (orderId: string) => void;
+};
+
+/**
+ * Pure presentation of a single order's details. Kept as a separate component
+ * (rather than inline JSX) so that any throw while deriving/displaying order
+ * fields is caught by the surrounding `ErrorBoundary` instead of crashing the
+ * whole modal and leaving the dashboard stuck behind a frozen backdrop.
+ */
+function OrderDetailSections({
+  order,
+  draftStatus,
+  onDraftStatusChange,
+  saving,
+  hasChanges,
+  onSaveChanges,
+  onDeleted,
+}: SectionsProps) {
+  const product = normalizeProduct(order?.products);
+  const dateStr = formatDetailDate(order?.created_at);
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          {a.orders.sectionMeta}
+        </h3>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="text-[var(--muted)]">{a.orders.orderDate}</dt>
+            <dd className="break-words">{dateStr}</dd>
+          </div>
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="text-[var(--muted)]">{a.orders.customer}</dt>
+            <dd className="break-words">{order?.customer_name ?? "—"}</dd>
+          </div>
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="text-[var(--muted)]">{a.orders.phone}</dt>
+            <dd className="break-all" dir="ltr">
+              {order?.phone ?? "—"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          {a.orders.sectionProduct}
+        </h3>
+        {product ? (
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="font-medium text-[var(--foreground)]">
+              {product?.name_ar ?? a.orders.productUnknown}
+            </p>
+            {product?.slug ? (
+              <p className="text-[var(--muted)]">
+                <Link
+                  href={`/${product.slug}`}
+                  className="text-[var(--accent)] underline underline-offset-2 hover:opacity-90"
+                >
+                  {a.orders.viewStoreProduct}
+                </Link>
+              </p>
+            ) : null}
+            <dl className="mt-2 space-y-1.5 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt className="text-[var(--muted)]">{a.orders.productPrice}</dt>
+                <dd dir="ltr">{formatPrice(toFiniteNumber(product?.price))}</dd>
+              </div>
+              {product?.discount_price != null ? (
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-[var(--muted)]">{a.orders.productDiscount}</dt>
+                  <dd dir="ltr">{formatPrice(toFiniteNumber(product.discount_price))}</dd>
+                </div>
+              ) : null}
+              {product?.media_url ? (
+                <div className="text-xs text-[var(--muted)]">
+                  {product.media_type === "video"
+                    ? a.orders.mediaVideo
+                    : a.orders.mediaImage}
+                  :{" "}
+                  <span className="break-all font-mono" dir="ltr">
+                    {product.media_url}
+                  </span>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[var(--muted)]">—</p>
+        )}
+      </section>
+
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          {a.orders.sectionTotal}
+        </h3>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="text-[var(--muted)]">{a.orders.total}</dt>
+            <dd dir="ltr">
+              {formatPrice(toFiniteNumber(order?.total_price))}{" "}
+              <span className="text-[var(--muted)]">({order?.currency ?? "—"})</span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          {a.orders.sectionActions}
+        </h3>
+        <div className="mt-3 flex flex-col gap-3">
+          <select
+            disabled={saving}
+            className="min-h-[44px] w-full max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm disabled:opacity-60"
+            value={draftStatus}
+            onChange={(e) => onDraftStatusChange(e.target.value as OrderStatus)}
+          >
+            <option value="pending">{a.orderStatus.pending}</option>
+            <option value="confirmed">{a.orderStatus.confirmed}</option>
+            <option value="shipped">{a.orderStatus.shipped}</option>
+            <option value="cancelled">{a.orderStatus.cancelled}</option>
+            <option value="requires_human_intervention">
+              {a.orderStatus.requires_human_intervention}
+            </option>
+            <option value="internal_return">
+              {a.orderStatus.internal_return}
+            </option>
+          </select>
+          <button
+            type="button"
+            disabled={saving || !hasChanges}
+            onClick={onSaveChanges}
+            className="min-h-[44px] w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? a.orders.savingChanges : a.orders.saveChanges}
+          </button>
+        </div>
+        <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
+          <button
+            type="button"
+            disabled={saving}
+            className="min-h-[44px] w-full rounded-xl border border-red-400/40 bg-red-400/5 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-400/15"
+            onClick={() => onDeleted(order.id)}
+          >
+            {a.orders.delete}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
