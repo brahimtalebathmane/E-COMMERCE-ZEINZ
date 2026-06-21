@@ -67,6 +67,15 @@ export function OneSignalAdminInit() {
         OneSignal.User.addTag(ONESIGNAL_ADMIN_TAG_KEY, ONESIGNAL_ADMIN_TAG_VALUE);
         OneSignal.Notifications.addEventListener("permissionChange", () => refresh(OneSignal));
         OneSignal.User.PushSubscription.addEventListener("change", () => refresh(OneSignal));
+        // Mobile-side delivery tracking hooks: confirm in the device console that transactional
+        // pushes actually reach this client (foreground) and that taps route correctly. These
+        // surface the final leg of the server-to-client chain so no step resolves silently.
+        OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+          console.info("[OneSignal] push received while app in foreground", event);
+        });
+        OneSignal.Notifications.addEventListener("click", (event) => {
+          console.info("[OneSignal] notification clicked", event);
+        });
         refresh(OneSignal);
         console.info(
           "[OneSignal] Initialized on",

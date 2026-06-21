@@ -117,9 +117,20 @@ export async function POST(request: Request) {
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
     try {
+      const oneSignalProductName = resolveOrderProductName(product);
+      console.warn("[POST /api/orders] OneSignal dispatch begin", {
+        order_id: order.id,
+        product_name: oneSignalProductName,
+      });
+      // Awaited inline (not fire-and-forget) so the serverless runtime cannot garbage-collect
+      // the request before OneSignal confirms a status — the result is logged before responding.
       const oneSignalResult = await notifyAdminsOfNewOrder({
         orderId: order.id,
-        productName: resolveOrderProductName(product),
+        productName: oneSignalProductName,
+      });
+      console.warn("[POST /api/orders] OneSignal dispatch result", {
+        order_id: order.id,
+        result: oneSignalResult,
       });
       if (oneSignalResult.sent) {
         await logOrderCommunicationEvent(supabase, order.id, "onesignal_sent", null);
@@ -139,7 +150,7 @@ export async function POST(request: Request) {
         );
       }
     } catch (oneSignalErr) {
-      console.warn("[POST /api/orders] OneSignal notify failed", oneSignalErr);
+      console.error("[POST /api/orders] OneSignal notify threw", oneSignalErr);
     }
 
     let metaLead = mapLeadDispatchToApiPayload(null, "dispatch_not_run");

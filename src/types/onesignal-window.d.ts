@@ -13,6 +13,10 @@ type OneSignalNotifications = {
   isPushSupported(): boolean;
   requestPermission(): Promise<void>;
   addEventListener(event: "permissionChange", cb: (granted: boolean) => void): void;
+  addEventListener(
+    event: "foregroundWillDisplay" | "click" | "dismiss",
+    cb: (event: unknown) => void,
+  ): void;
 };
 
 type OneSignalUser = {
