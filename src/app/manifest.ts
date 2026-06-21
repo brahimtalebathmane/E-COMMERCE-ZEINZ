@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: `${BRAND_NAME} — Shop`,
     short_name: BRAND_NAME,
-    description: "ZEINZ e-commerce storefront, product landings, and checkout.",
+    description: "ZAINE e-commerce storefront, product landings, and checkout.",
     start_url: "/",
     scope: "/",
     display: "standalone",

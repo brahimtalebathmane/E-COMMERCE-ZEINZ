@@ -2,7 +2,7 @@
 export const BRAND_COLOR = "#006B0C";
 
 /** Canonical brand name shown in metadata and accessibility labels. */
-export const BRAND_NAME = "ZEINZ";
+export const BRAND_NAME = "ZAINE";
 
 /**
  * Public site / admin header logo (PNG).

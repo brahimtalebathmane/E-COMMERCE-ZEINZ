@@ -22,7 +22,7 @@ const tajawal = Tajawal({
 });
 
 const APP_DESCRIPTION =
-  "ZEINZ e-commerce storefront, product landings, and secure checkout.";
+  "ZAINE e-commerce storefront, product landings, and secure checkout.";
 
 export const metadata: Metadata = {
   applicationName: BRAND_NAME,

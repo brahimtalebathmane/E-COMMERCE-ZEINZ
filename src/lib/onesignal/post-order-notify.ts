@@ -26,7 +26,7 @@ export function resolveOrderProductName(product: {
   if (nameAr) return nameAr;
   const nameFr = (product.name_fr ?? "").trim();
   if (nameFr) return nameFr;
-  return "Unknown Product";
+  return "منتج غير معروف";
 }
 
 /** Sends a push notification to admin subscribers tagged in the dashboard. */
@@ -39,7 +39,7 @@ export async function notifyAdminsOfNewOrder(params: {
     return { sent: false, skipped: true, reason: "onesignal_unconfigured" };
   }
 
-  const productName = params.productName.trim() || "Unknown Product";
+  const productName = params.productName.trim() || "منتج غير معروف";
   const siteUrl = getPublicSiteUrl();
   const payload: Record<string, unknown> = {
     app_id: ONESIGNAL_APP_ID,
@@ -51,8 +51,8 @@ export async function notifyAdminsOfNewOrder(params: {
         value: ONESIGNAL_ADMIN_TAG_VALUE,
       },
     ],
-    headings: { en: "New Order Received" },
-    contents: { en: `New Order Received for: ${productName}` },
+    headings: { ar: "إشعار بطلب جديد" },
+    contents: { ar: `تم استلام طلب جديد لمنتج: ${productName}` },
     data: { order_id: params.orderId },
   };
   if (siteUrl) {

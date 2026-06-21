@@ -1,4 +1,4 @@
--- Align stored landing header logos with the canonical ZEINZ logo.
+-- Align stored landing header logos with the canonical ZAINE logo.
 update public.products
 set logo_url = '/icons/logo-zeina.png'
 where logo_url in (

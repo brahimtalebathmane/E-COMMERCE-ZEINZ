@@ -1,4 +1,4 @@
-# E-COMMERCE-ZEINZ
+# E-COMMERCE-ZAINE
 
 Single-product landing pages with Supabase-backed checkout, private file uploads, Meta Pixel per product, and a password-protected admin area.
 

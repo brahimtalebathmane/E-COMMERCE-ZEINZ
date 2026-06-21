@@ -5,7 +5,7 @@ export type Locale = "ar" | "fr";
 
 export const LOCALES: Locale[] = ["ar", "fr"];
 
-export const LOCALE_STORAGE_KEY = "zeinz-locale";
+export const LOCALE_STORAGE_KEY = "zaine-locale";
 
 const messages: Record<Locale, Record<string, unknown>> = {
   ar: ar as Record<string, unknown>,

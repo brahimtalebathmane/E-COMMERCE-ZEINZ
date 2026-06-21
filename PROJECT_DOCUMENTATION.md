@@ -1,4 +1,4 @@
-# E-COMMERCE-ZEINZ — Complete Technical Documentation
+# E-COMMERCE-ZAINE — Complete Technical Documentation
 
 > Single-product landing-page e-commerce platform for the Mauritanian market.
 > Built on Next.js 15 (App Router) + Supabase + a separate Node/Express service that drives WhatsApp Web (Baileys) for OTP and order confirmation messages.
@@ -783,7 +783,7 @@ The project deliberately reports every Purchase as **25 USD** rather than the ac
 - JSON files in `src/locales/`: `ar.json` (default) and `fr.json`.
 - Loaded synchronously by `src/lib/i18n.ts` (`getNested`, `translate`).
 - `LanguageProvider` (`src/contexts/LanguageContext.tsx`) chooses the initial locale:
-  - On mount, reads `localStorage["zeinz-locale"]`. If `"ar"` or `"fr"`, use it; otherwise default to `"ar"`.
+  - On mount, reads `localStorage["zaine-locale"]`. If `"ar"` or `"fr"`, use it; otherwise default to `"ar"`.
   - Whenever the locale changes, it mutates `document.documentElement.lang` and `dir` (`rtl` for Arabic, `ltr` for French).
 - `useLanguage()` exposes `{ locale, setLocale, dir, t }` where `t(key, vars)` interpolates `{{var}}` placeholders.
 - `LanguageSwitcher` is a tiny segmented control (AR / FR) — visible in the storefront header and in the landing header.

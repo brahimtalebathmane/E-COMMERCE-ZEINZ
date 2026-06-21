@@ -50,7 +50,7 @@ if (!key) {
 
 const openai = new OpenAI({ apiKey: key });
 const assistant = await openai.beta.assistants.create({
-  name: "ZEINZ WhatsApp Order Agent",
+  name: "ZAINE WhatsApp Order Agent",
   model: "gpt-4o",
   instructions,
   tools,
