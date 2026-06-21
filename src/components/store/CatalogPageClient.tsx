@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   CatalogProductCard,
@@ -63,12 +62,6 @@ export function CatalogPageClient({ products, configured }: Props) {
           ))}
         </ul>
       )}
-
-      <p className="mt-12 text-center text-xs text-[var(--muted)] sm:mt-16">
-        <Link href="/admin" className="underline underline-offset-2 transition hover:text-[var(--foreground)]">
-          {t("catalog.adminLink")}
-        </Link>
-      </p>
     </div>
   );
 }

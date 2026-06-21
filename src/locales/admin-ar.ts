@@ -6,6 +6,9 @@ export const adminAr = {
     orders: "الطلبات",
     storefront: "المتجر",
   },
+  common: {
+    loading: "جاري التحميل…",
+  },
   login: {
     title: "تسجيل دخول الإدارة",
     subtitle: "استخدم حساب Supabase المخصص لهذا المشروع.",
