@@ -21,31 +21,33 @@ export default function manifest(): MetadataRoute.Manifest {
     display_override: ["standalone", "minimal-ui", "browser"],
     orientation: "portrait-primary",
     theme_color: BRAND_COLOR,
-    background_color: "#ffffff",
+    // Black to match the new black-background app icon so the install splash stays cohesive.
+    background_color: "#000000",
     lang: "ar",
     dir: "rtl",
     categories: ["business", "productivity"],
+    // The ?v= query busts stale OS/browser icon caches whenever the asset is rebranded.
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/icon-192.png?v=2",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/icon-192.png?v=2",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

@@ -16,8 +16,9 @@ const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [
     { url: "/~offline", revision },
     { url: "/icons/logo-zeina.png", revision },
-    { url: "/icons/icon-192.png", revision },
-    { url: "/icons/icon-512.png", revision },
+    // ?v=2 keeps the precached URLs in lockstep with the rebranded manifest/metadata icon refs.
+    { url: "/icons/icon-192.png?v=2", revision },
+    { url: "/icons/icon-512.png?v=2", revision },
   ],
 });
 
