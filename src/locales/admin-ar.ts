@@ -137,6 +137,17 @@ export const adminAr = {
       "تعذر إرسال حدث الشراء إلى Meta. تحقق من META_CAPI_ACCESS_TOKEN في Netlify وسجلات الدالة.",
     metaPurchaseCapiMissingMeta:
       "لم يُرسل حدث الشراء: الطلب يفتقد بيانات التتبع (معرّف الحدث أو البكسل).",
+    allProducts: "كل المنتجات",
+    productUnknown: "منتج غير معروف",
+    today: "اليوم",
+    yesterday: "أمس",
+    ordersCountLabel: "طلب",
+    metricPending: "قيد الانتظار",
+    metricConfirmed: "مؤكد",
+    metricShipped: "تم الشحن",
+    metricCancelled: "ملغى",
+    metricNeedsAttention: "متابعة بشرية",
+    segmentSummaryTitle: "ملخص الطلبات",
   },
   orderStatus: {
     pending: "قيد الانتظار",
