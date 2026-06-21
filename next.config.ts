@@ -39,6 +39,24 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        // The OneSignal push worker lives in the nested /push/ subdirectory. iOS Safari
+        // and Android Chrome only let a worker control a scope at or below its own path,
+        // so without this header strict browsers reject any broader registration and the
+        // background push listener never activates. Allowing root scope keeps registration
+        // resilient regardless of the scope OneSignal requests, while no-cache guarantees a
+        // deploy ships a fresh worker instead of a stale one that silently drops pushes.
+        source: "/push/OneSignalSDKWorker.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        ],
+      },
+    ];
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [390, 428, 640, 750, 828, 1080, 1200, 1920],
