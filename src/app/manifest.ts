@@ -3,12 +3,13 @@ import { BRAND_COLOR, BRAND_NAME } from "@/lib/site-branding";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/",
-    name: `${BRAND_NAME} — Shop`,
-    short_name: BRAND_NAME,
-    description: "ZAINE e-commerce storefront, product landings, and checkout.",
-    start_url: "/",
-    scope: "/",
+    // Admin-only utility app: installs and launches straight into the dashboard.
+    id: "/admin",
+    name: `${BRAND_NAME} — Admin`,
+    short_name: `${BRAND_NAME} Admin`,
+    description: "ZAINE admin dashboard — manage products, orders, and landings.",
+    start_url: "/admin",
+    scope: "/admin",
     display: "standalone",
     display_override: ["standalone", "minimal-ui", "browser"],
     orientation: "portrait-primary",
@@ -16,7 +17,7 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     lang: "ar",
     dir: "rtl",
-    categories: ["shopping", "business"],
+    categories: ["business", "productivity"],
     icons: [
       {
         src: "/icons/icon-192.png",

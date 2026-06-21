@@ -31,7 +31,8 @@ export const metadata: Metadata = {
     template: `%s — ${BRAND_NAME}`,
   },
   description: APP_DESCRIPTION,
-  manifest: "/manifest.webmanifest",
+  // The web app manifest is intentionally scoped to /admin (see src/app/admin/layout.tsx)
+  // so the installable PWA is an admin-only utility and never prompts on the storefront.
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

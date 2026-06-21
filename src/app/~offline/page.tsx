@@ -13,11 +13,11 @@ export default function OfflinePage() {
       <div className="space-y-2">
         <h1 className="text-xl font-semibold">You&apos;re offline</h1>
         <p className="text-sm text-[var(--muted)]">
-          Check your connection, then reload to continue shopping on {BRAND_NAME}.
+          Check your connection, then reload to continue managing {BRAND_NAME}.
         </p>
       </div>
       <Link
-        href="/"
+        href="/admin"
         className="rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-foreground)]"
       >
         Try again

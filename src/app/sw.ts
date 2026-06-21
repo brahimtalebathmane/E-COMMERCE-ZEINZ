@@ -10,10 +10,15 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
+/** This PWA is an admin utility: the dashboard and its dynamic views are the app surface. */
+function isAdminDocument(url: URL): boolean {
+  return url.pathname === "/admin" || url.pathname.startsWith("/admin/");
+}
+
 /** Dynamic / tokenized pages must always hit the network (App Router + query strings). */
 function isNetworkOnlyDocument(url: URL): boolean {
   if (url.pathname === "/order-success") return true;
-  if (url.pathname.startsWith("/admin")) return true;
+  if (isAdminDocument(url)) return true;
   return false;
 }
 
@@ -35,11 +40,13 @@ const serwist = new Serwist({
     entries: [
       {
         url: "/~offline",
+        // Serve the offline shell for any document navigation that errors offline,
+        // including the network-only admin dashboard views (the PWA's core scope).
         matcher({ request }) {
-          return (
-            request.destination === "document" &&
-            !isNetworkOnlyDocument(new URL(request.url))
-          );
+          if (request.destination !== "document") return false;
+          const url = new URL(request.url);
+          // The tokenized order-success page is intentionally excluded.
+          return isAdminDocument(url) || !isNetworkOnlyDocument(url);
         },
       },
     ],
