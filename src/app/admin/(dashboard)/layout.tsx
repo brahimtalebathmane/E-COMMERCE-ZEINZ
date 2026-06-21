@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/SiteLogo";
 import { OneSignalAdminInit } from "@/components/admin/OneSignalAdminInit";
+import { AdminAssistant } from "@/components/admin/AdminAssistant";
 import { adminAr as a } from "@/locales/admin-ar";
 
 export default function AdminDashboardLayout({
@@ -37,6 +38,7 @@ export default function AdminDashboardLayout({
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 text-start">{children}</main>
+      <AdminAssistant />
     </div>
   );
 }

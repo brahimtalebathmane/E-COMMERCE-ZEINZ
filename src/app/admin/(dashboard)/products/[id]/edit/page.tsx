@@ -21,7 +21,6 @@ export default async function EditProductPage({ params }: PageProps) {
   }
 
   const product = mapProductRow(data as Record<string, unknown>);
-  const showAiAgent = product.test_status !== "failed";
 
   return (
     <div>
@@ -34,14 +33,6 @@ export default async function EditProductPage({ params }: PageProps) {
               className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20"
             >
               {a.pipeline.setupLanding}
-            </Link>
-          ) : null}
-          {showAiAgent ? (
-            <Link
-              href={`/admin/products/${id}/ai-agent`}
-              className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-muted)]/20"
-            >
-              {a.aiAgent.openManager}
             </Link>
           ) : null}
         </div>

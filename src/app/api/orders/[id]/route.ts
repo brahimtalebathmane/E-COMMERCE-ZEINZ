@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { OrderStatus } from "@/types";
 import { assertAdminUser, AuthError } from "@/lib/auth/admin";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
-import { assertValidOrderTransition } from "@/lib/order-state-machine";
-import { dispatchMetaEvent } from "@/lib/meta/dispatch";
-
-const ORDER_STATUSES: OrderStatus[] = [
-  "pending",
-  "confirmed",
-  "shipped",
-  "cancelled",
-  "requires_human_intervention",
-];
+import {
+  updateOrderStatusWithEffects,
+  type MetaSideEffect,
+} from "@/lib/orders/update-status";
 
 const patchBodySchema = z.object({
   status: z.enum([
@@ -24,28 +17,6 @@ const patchBodySchema = z.object({
     "requires_human_intervention",
   ]),
 });
-
-/** Returned on PATCH when status becomes `confirmed` so the admin UI can confirm CAPI delivery. */
-type MetaPurchaseCapiPayload =
-  | { state: "sent" }
-  | { state: "skipped"; reason: string }
-  | {
-      state: "failed";
-      reason: string;
-    };
-
-function mapDispatchToPurchasePayload(
-  result: Awaited<ReturnType<typeof dispatchMetaEvent>>,
-): MetaPurchaseCapiPayload | undefined {
-  if (result.sent) return { state: "sent" };
-  if ("skipped" in result && result.skipped) {
-    if (result.reason === "already_sent") {
-      return { state: "skipped", reason: "already_sent" };
-    }
-    return { state: "skipped", reason: result.reason };
-  }
-  return { state: "failed", reason: "reason" in result ? result.reason : "capi_failed" };
-}
 
 export async function PATCH(
   request: Request,
@@ -71,68 +42,39 @@ export async function PATCH(
       return apiValidationError("Invalid status");
     }
 
-    const nextStatus = parsed.data.status;
-    if (!ORDER_STATUSES.includes(nextStatus)) {
-      return apiValidationError("Invalid status");
-    }
-
     const supabase = createServiceClient();
 
-    const { data: existing, error: fetchErr } = await supabase
-      .from("orders")
-      .select("id, status")
-      .eq("id", orderId)
-      .maybeSingle();
+    const result = await updateOrderStatusWithEffects(
+      supabase,
+      orderId,
+      parsed.data.status,
+      { requestHeaders: request.headers },
+    );
 
-    if (fetchErr) throw new Error(fetchErr.message);
-    if (!existing) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    const fromStatus = existing.status as OrderStatus;
-    const transition = assertValidOrderTransition(fromStatus, nextStatus);
-    if (!transition.ok) {
-      return NextResponse.json({ error: "Invalid status transition" }, { status: 409 });
-    }
-
-    const { data: updated, error: updateError } = await supabase
-      .from("orders")
-      .update({ status: nextStatus })
-      .eq("id", orderId)
-      .select("id, status")
-      .maybeSingle();
-
-    if (updateError) throw new Error(updateError.message);
-    if (!updated) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    let meta: { purchase?: MetaPurchaseCapiPayload } = {};
-    try {
-      if (updated.status === "confirmed") {
-        const purchaseResult = await dispatchMetaEvent(supabase, orderId, "purchase", {
-          requestHeaders: request.headers,
-        });
-        meta = { purchase: mapDispatchToPurchasePayload(purchaseResult) };
-      } else if (updated.status === "cancelled") {
-        await dispatchMetaEvent(supabase, orderId, "cancel", {
-          requestHeaders: request.headers,
-        });
+    if (!result.ok) {
+      if (result.code === "not_found") {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
-    } catch (error) {
-      console.error("[PATCH /api/orders/[id]] Meta processing failed", {
-        orderId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (result.code === "invalid_transition") {
+        return NextResponse.json(
+          { error: "Invalid status transition" },
+          { status: 409 },
+        );
+      }
+      throw new Error(result.error);
     }
 
     const responsePayload: {
       success: true;
-      order: typeof updated;
-      meta?: { purchase?: MetaPurchaseCapiPayload };
-    } = { success: true, order: updated };
-    if (updated.status === "confirmed" && meta.purchase) {
-      responsePayload.meta = { purchase: meta.purchase };
+      order: { id: string; status: string };
+      meta?: { purchase?: MetaSideEffect };
+    } = {
+      success: true,
+      order: { id: result.orderId, status: result.toStatus },
+    };
+
+    if (result.toStatus === "confirmed" && result.metaPurchase) {
+      responsePayload.meta = { purchase: result.metaPurchase };
     }
 
     return NextResponse.json(responsePayload);
