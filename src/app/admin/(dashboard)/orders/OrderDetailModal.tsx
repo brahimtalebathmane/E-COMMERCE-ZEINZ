@@ -241,6 +241,9 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
                   <option value="requires_human_intervention">
                     {a.orderStatus.requires_human_intervention}
                   </option>
+                  <option value="internal_return">
+                    {a.orderStatus.internal_return}
+                  </option>
                 </select>
                 <button
                   type="button"

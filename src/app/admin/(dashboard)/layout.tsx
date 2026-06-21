@@ -31,6 +31,12 @@ export default function AdminDashboardLayout({
             >
               {a.nav.orders}
             </Link>
+            <Link
+              href="/admin/analytics"
+              className="text-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              {a.nav.analytics}
+            </Link>
             <Link href="/" className="text-[var(--muted)] hover:text-[var(--foreground)]">
               {a.nav.storefront}
             </Link>

@@ -153,6 +153,7 @@ export const ADMIN_ASSISTANT_TOOLS = [
               "shipped",
               "cancelled",
               "requires_human_intervention",
+              "internal_return",
             ],
             description: "Optional status filter.",
           },
@@ -183,7 +184,7 @@ export const ADMIN_ASSISTANT_TOOLS = [
     function: {
       name: "update_order_status",
       description:
-        "Change an order's status across the state machine (pending → confirmed/cancelled/requires_human_intervention, confirmed → shipped/cancelled). Setting it to 'confirmed' fires the Meta CAPI Purchase event and 'cancelled' fires CancelledLead. Invalid transitions are rejected.",
+        "Change an order's status across the state machine (pending → confirmed/cancelled/requires_human_intervention, confirmed → shipped/cancelled/internal_return, shipped → internal_return). Setting it to 'confirmed' fires the Meta CAPI Purchase event and 'cancelled' fires CancelledLead. 'internal_return' is a bookkeeping-only return that removes the order from profit metrics and NEVER fires any Meta CAPI event. Invalid transitions are rejected.",
       parameters: {
         type: "object",
         properties: {
@@ -196,6 +197,7 @@ export const ADMIN_ASSISTANT_TOOLS = [
               "shipped",
               "cancelled",
               "requires_human_intervention",
+              "internal_return",
             ],
           },
         },

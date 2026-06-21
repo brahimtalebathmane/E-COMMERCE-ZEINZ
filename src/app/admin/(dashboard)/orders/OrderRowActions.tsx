@@ -50,6 +50,7 @@ export function OrderRowActions({
         <option value="requires_human_intervention">
           {a.orderStatus.requires_human_intervention}
         </option>
+        <option value="internal_return">{a.orderStatus.internal_return}</option>
       </select>
     </div>
   );

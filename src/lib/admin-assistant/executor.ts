@@ -20,6 +20,7 @@ const ORDER_STATUSES: OrderStatus[] = [
   "shipped",
   "cancelled",
   "requires_human_intervention",
+  "internal_return",
 ];
 
 export type AdminToolContext = {

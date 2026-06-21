@@ -111,6 +111,10 @@ export async function updateOrderStatusWithEffects(
       });
       result.metaCancel = mapDispatch(cancel);
     }
+    // `internal_return` (and every other status) intentionally dispatches no
+    // Meta CAPI event. Internal returns are a bookkeeping-only adjustment, so a
+    // previously sent Purchase is left untouched and NO CancelledLead/refund is
+    // emitted — Meta optimization data stays clean.
   } catch (error) {
     console.error("[updateOrderStatusWithEffects] Meta processing failed", {
       orderId,

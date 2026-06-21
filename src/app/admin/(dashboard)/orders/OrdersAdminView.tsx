@@ -57,6 +57,7 @@ type ProductTab = {
   shipped: number;
   cancelled: number;
   needsAttention: number;
+  internalReturn: number;
 };
 
 type DayGroup = {
@@ -73,6 +74,7 @@ function emptyCounts() {
     shipped: 0,
     cancelled: 0,
     needsAttention: 0,
+    internalReturn: 0,
   };
 }
 
@@ -94,6 +96,9 @@ function tallyStatus(counts: ReturnType<typeof emptyCounts>, status: OrderStatus
     case "requires_human_intervention":
       counts.needsAttention += 1;
       break;
+    case "internal_return":
+      counts.internalReturn += 1;
+      break;
   }
 }
 
@@ -109,6 +114,8 @@ function statusBadgeClass(status: OrderStatus): string {
       return "border-red-500/40 bg-red-500/10 text-red-900";
     case "requires_human_intervention":
       return "border-violet-500/40 bg-violet-500/10 text-violet-900";
+    case "internal_return":
+      return "border-slate-500/40 bg-slate-500/10 text-slate-900";
     default:
       return "border-[var(--accent-muted)] bg-[var(--card)] text-[var(--foreground)]";
   }
@@ -136,7 +143,13 @@ function MetricPill({
 }: {
   label: string;
   value: number;
-  tone: "pending" | "confirmed" | "shipped" | "cancelled" | "attention";
+  tone:
+    | "pending"
+    | "confirmed"
+    | "shipped"
+    | "cancelled"
+    | "attention"
+    | "return";
 }) {
   const toneClass = {
     pending: "border-amber-500/40 bg-amber-500/10 text-amber-900",
@@ -144,6 +157,7 @@ function MetricPill({
     shipped: "border-sky-500/40 bg-sky-500/10 text-sky-900",
     cancelled: "border-red-500/40 bg-red-500/10 text-red-900",
     attention: "border-violet-500/40 bg-violet-500/10 text-violet-900",
+    return: "border-slate-500/40 bg-slate-500/10 text-slate-900",
   }[tone];
   return (
     <span
@@ -322,6 +336,13 @@ export function OrdersAdminView({ orders }: Props) {
               label={a.orders.metricNeedsAttention}
               value={segmentCounts.needsAttention}
               tone="attention"
+            />
+          ) : null}
+          {segmentCounts.internalReturn > 0 ? (
+            <MetricPill
+              label={a.orders.metricInternalReturn}
+              value={segmentCounts.internalReturn}
+              tone="return"
             />
           ) : null}
         </div>

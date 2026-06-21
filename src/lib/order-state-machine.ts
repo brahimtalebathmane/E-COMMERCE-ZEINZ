@@ -2,14 +2,19 @@ import type { OrderStatus } from "@/types";
 
 /**
  * Allowed order status transitions.
- * Maps product spec to existing enum (no delivered/returned columns yet).
+ *
+ * `internal_return` is a bookkeeping-only terminal state reachable from realized
+ * sales (`confirmed` / `shipped`). It removes the order from profit metrics
+ * WITHOUT firing any Meta CAPI event (see `update-status.ts`), so Meta pixel
+ * optimization models are never polluted with cancellation/refund signals.
  */
 export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   pending: ["confirmed", "cancelled", "requires_human_intervention"],
-  confirmed: ["shipped", "cancelled"],
-  shipped: [],
+  confirmed: ["shipped", "cancelled", "internal_return"],
+  shipped: ["internal_return"],
   cancelled: [],
   requires_human_intervention: ["confirmed", "cancelled"],
+  internal_return: [],
 };
 
 export function assertValidOrderTransition(

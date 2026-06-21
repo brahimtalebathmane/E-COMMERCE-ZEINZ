@@ -171,7 +171,8 @@ export type OrderStatus =
   | "confirmed"
   | "shipped"
   | "cancelled"
-  | "requires_human_intervention";
+  | "requires_human_intervention"
+  | "internal_return";
 
 export type OrderRow = {
   id: string;

@@ -15,6 +15,7 @@ const patchBodySchema = z.object({
     "shipped",
     "cancelled",
     "requires_human_intervention",
+    "internal_return",
   ]),
 });
 
