@@ -5,14 +5,27 @@ import { toast } from "sonner";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
 import {
+  buildProductProfitRows,
   netProfit,
   sumProfitTotals,
-  type ProductProfitRow,
+  type ProfitOrderInput,
 } from "@/lib/analytics/profit";
-import { updateAdSpendAction } from "./actions";
+import {
+  updateAdSpendAction,
+  updateCalculationStartDateAction,
+} from "./actions";
+
+export type ProductMetaInput = {
+  productId: string;
+  name: string;
+  costPrice: number | null;
+  calculationStartDate: string | null;
+};
 
 type Props = {
-  rows: ProductProfitRow[];
+  orders: ProfitOrderInput[];
+  products: ProductMetaInput[];
+  adSpend: Record<string, number>;
 };
 
 function profitToneClass(value: number): string {
@@ -21,18 +34,41 @@ function profitToneClass(value: number): string {
   return "text-[var(--foreground)]";
 }
 
-export function AnalyticsView({ rows: initialRows }: Props) {
-  const [rows, setRows] = useState<ProductProfitRow[]>(initialRows);
-  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
-    Object.fromEntries(initialRows.map((r) => [r.productId, String(r.adSpend)])),
+export function AnalyticsView({ orders, products, adSpend }: Props) {
+  const [adSpendMap, setAdSpendMap] = useState<Record<string, number>>(adSpend);
+  const [startDates, setStartDates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      products.map((p) => [p.productId, p.calculationStartDate ?? ""]),
+    ),
   );
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingDateId, setSavingDateId] = useState<string | null>(null);
+
+  // Pure, deterministic recompute: the same engine that backs the server render
+  // also powers instant client-side updates when ad spend or a start date change.
+  const rows = useMemo(() => {
+    const productsMap = new Map(
+      products.map((p) => [
+        p.productId,
+        {
+          name: p.name,
+          costPrice: p.costPrice,
+          calculationStartDate: startDates[p.productId] || null,
+        },
+      ]),
+    );
+    const adSpendByProduct = new Map(
+      Object.entries(adSpendMap).map(([id, amount]) => [id, amount]),
+    );
+    return buildProductProfitRows({ orders, products: productsMap, adSpendByProduct });
+  }, [orders, products, startDates, adSpendMap]);
 
   const totals = useMemo(() => sumProfitTotals(rows), [rows]);
 
   async function onSaveAdSpend(productId: string) {
     if (savingId) return;
-    const raw = drafts[productId] ?? "";
+    const raw = drafts[productId] ?? String(adSpendMap[productId] ?? 0);
     const parsed = Number(raw);
     if (!Number.isFinite(parsed) || parsed < 0) {
       toast.error(a.analytics.saveFailed);
@@ -41,28 +77,51 @@ export function AnalyticsView({ rows: initialRows }: Props) {
     const amount = Math.round(parsed * 100) / 100;
 
     setSavingId(productId);
-    const prev = rows;
-    setRows((cur) =>
-      cur.map((r) => (r.productId === productId ? { ...r, adSpend: amount } : r)),
-    );
+    const prev = adSpendMap;
+    setAdSpendMap((cur) => ({ ...cur, [productId]: amount }));
 
     try {
       const res = await updateAdSpendAction(productId, amount);
       if (!res.ok) {
         throw new Error(res.error);
       }
-      setRows((cur) =>
-        cur.map((r) =>
-          r.productId === productId ? { ...r, adSpend: res.amount } : r,
-        ),
-      );
+      setAdSpendMap((cur) => ({ ...cur, [productId]: res.amount }));
       setDrafts((d) => ({ ...d, [productId]: String(res.amount) }));
       toast.success(a.analytics.saved);
     } catch (error) {
-      setRows(prev);
+      setAdSpendMap(prev);
       toast.error(error instanceof Error ? error.message : a.analytics.saveFailed);
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function onChangeStartDate(productId: string, nextDate: string) {
+    if (savingDateId) return;
+    const value = nextDate || "";
+    const prev = startDates;
+    if ((prev[productId] ?? "") === value) return;
+
+    setSavingDateId(productId);
+    setStartDates((cur) => ({ ...cur, [productId]: value }));
+
+    try {
+      const res = await updateCalculationStartDateAction(
+        productId,
+        value === "" ? null : value,
+      );
+      if (!res.ok) {
+        throw new Error(res.error);
+      }
+      setStartDates((cur) => ({ ...cur, [productId]: res.startDate ?? "" }));
+      toast.success(value === "" ? a.analytics.startDateCleared : a.analytics.startDateSaved);
+    } catch (error) {
+      setStartDates(prev);
+      toast.error(
+        error instanceof Error ? error.message : a.analytics.startDateSaveFailed,
+      );
+    } finally {
+      setSavingDateId(null);
     }
   }
 
@@ -149,14 +208,26 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                         {a.analytics.colAdSpend}
                       </label>
                       <AdSpendEditor
-                        productId={row.productId}
-                        value={drafts[row.productId] ?? ""}
+                        value={drafts[row.productId] ?? String(row.adSpend)}
                         saving={savingId === row.productId}
                         onChange={(v) =>
                           setDrafts((d) => ({ ...d, [row.productId]: v }))
                         }
                         onSave={() => void onSaveAdSpend(row.productId)}
                       />
+                    </div>
+                    <div className="mt-3">
+                      <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.analytics.colStartDate}
+                      </label>
+                      <StartDateEditor
+                        value={startDates[row.productId] ?? ""}
+                        saving={savingDateId === row.productId}
+                        onChange={(v) => void onChangeStartDate(row.productId, v)}
+                      />
+                      <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">
+                        {a.analytics.startDateHint}
+                      </p>
                     </div>
                   </div>
                 );
@@ -173,6 +244,7 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                     <th className="px-4 py-3 text-start">{a.analytics.colRevenue}</th>
                     <th className="px-4 py-3 text-start">{a.analytics.colCogs}</th>
                     <th className="px-4 py-3 text-start">{a.analytics.colAdSpend}</th>
+                    <th className="px-4 py-3 text-start">{a.analytics.colStartDate}</th>
                     <th className="px-4 py-3 text-start">{a.analytics.colNetProfit}</th>
                   </tr>
                 </thead>
@@ -211,13 +283,19 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                         </td>
                         <td className="px-4 py-3">
                           <AdSpendEditor
-                            productId={row.productId}
-                            value={drafts[row.productId] ?? ""}
+                            value={drafts[row.productId] ?? String(row.adSpend)}
                             saving={savingId === row.productId}
                             onChange={(v) =>
                               setDrafts((d) => ({ ...d, [row.productId]: v }))
                             }
                             onSave={() => void onSaveAdSpend(row.productId)}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <StartDateEditor
+                            value={startDates[row.productId] ?? ""}
+                            saving={savingDateId === row.productId}
+                            onChange={(v) => void onChangeStartDate(row.productId, v)}
                           />
                         </td>
                         <td className={`px-4 py-3 font-bold tabular-nums ${profitToneClass(profit)}`} dir="ltr">
@@ -303,7 +381,6 @@ function AdSpendEditor({
   onChange,
   onSave,
 }: {
-  productId: string;
   value: string;
   saving: boolean;
   onChange: (value: string) => void;
@@ -337,6 +414,39 @@ function AdSpendEditor({
       >
         {saving ? a.analytics.saving : a.analytics.save}
       </button>
+    </div>
+  );
+}
+
+function StartDateEditor({
+  value,
+  saving,
+  onChange,
+}: {
+  value: string;
+  saving: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="date"
+        dir="ltr"
+        disabled={saving}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-[40px] w-40 max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+      />
+      {value ? (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onChange("")}
+          className="min-h-[40px] shrink-0 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {a.analytics.startDateClear}
+        </button>
+      ) : null}
     </div>
   );
 }

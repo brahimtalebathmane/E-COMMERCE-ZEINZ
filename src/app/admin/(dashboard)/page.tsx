@@ -27,7 +27,11 @@ export default async function AdminHomePage() {
         "id, product_id, phone, total_price, status, created_at, products(name_ar)",
       )
       .order("created_at", { ascending: false }),
-    supabase.from("products").select("id, name_ar, cost_price, test_status"),
+    supabase
+      .from("products")
+      .select(
+        "id, name_ar, cost_price, test_status, profit_calculation_start_date",
+      ),
     supabase.from("product_ad_spend").select("product_id, amount"),
   ]);
 
@@ -52,6 +56,9 @@ export default async function AdminHomePage() {
       {
         name: String(p.name_ar ?? "—"),
         costPrice: p.cost_price == null ? null : Number(p.cost_price),
+        calculationStartDate: p.profit_calculation_start_date
+          ? String(p.profit_calculation_start_date).slice(0, 10)
+          : null,
       },
     ]),
   );
@@ -62,6 +69,7 @@ export default async function AdminHomePage() {
     product_id: String(o.product_id),
     total_price: Number(o.total_price) || 0,
     status: o.status as OrderStatus,
+    created_at: String(o.created_at ?? ""),
   }));
   const totals = sumProfitTotals(
     buildProductProfitRows({ orders: profitOrders, products, adSpendByProduct }),

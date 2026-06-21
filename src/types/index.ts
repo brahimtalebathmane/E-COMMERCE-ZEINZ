@@ -117,6 +117,8 @@ export type ProductRow = {
   sourcing_type: ProductSourcingType | null;
   sourcing_link: string;
   cost_price: number | null;
+  /** Optional inclusive cutoff for profit analytics (YYYY-MM-DD). Null = life-to-date. */
+  profit_calculation_start_date: string | null;
   created_at: string;
 };
 

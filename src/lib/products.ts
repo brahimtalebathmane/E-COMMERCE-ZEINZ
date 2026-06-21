@@ -142,6 +142,10 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
       row.cost_price === null || row.cost_price === undefined
         ? null
         : Number(row.cost_price),
+    profit_calculation_start_date:
+      row.profit_calculation_start_date == null
+        ? null
+        : String(row.profit_calculation_start_date).slice(0, 10),
     created_at: row.created_at as string,
   };
 }

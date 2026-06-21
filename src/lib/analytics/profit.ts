@@ -17,7 +17,27 @@ export type ProfitOrderInput = {
   product_id: string;
   total_price: number;
   status: OrderStatus;
+  /** ISO timestamp the order was created; used for the per-product cutoff. */
+  created_at: string;
 };
+
+/**
+ * Returns true when an order should be counted given a product's optional
+ * profit calculation start date. A null/empty/invalid cutoff means "no filter"
+ * (life-to-date). The comparison is inclusive of the start calendar date.
+ */
+export function isOrderOnOrAfterStartDate(
+  createdAt: string,
+  startDate: string | null | undefined,
+): boolean {
+  if (!startDate) return true;
+  const start = new Date(startDate).getTime();
+  if (!Number.isFinite(start)) return true;
+  const created = new Date(createdAt).getTime();
+  // Never silently drop an order we cannot parse.
+  if (!Number.isFinite(created)) return true;
+  return created >= start;
+}
 
 /** Per-product profit breakdown rendered by the analytics dashboard. */
 export type ProductProfitRow = {
@@ -37,6 +57,8 @@ export type ProductProfitRow = {
   internalReturns: number;
   /** Whether a cost price has been configured for this product. */
   hasCost: boolean;
+  /** Inclusive cutoff date (YYYY-MM-DD) or null for life-to-date metrics. */
+  calculationStartDate: string | null;
 };
 
 /** Net Profit = Gross Revenue - (COGS + Ad Spend). */
@@ -77,7 +99,11 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
   return totals;
 }
 
-type ProductMeta = { name: string; costPrice: number | null };
+type ProductMeta = {
+  name: string;
+  costPrice: number | null;
+  calculationStartDate?: string | null;
+};
 
 /**
  * Builds per-product profit rows from raw orders, product metadata, and the
@@ -107,6 +133,7 @@ export function buildProductProfitRows(params: {
         adSpend: adSpendByProduct.get(productId) ?? 0,
         internalReturns: 0,
         hasCost: cost != null && Number.isFinite(cost),
+        calculationStartDate: meta?.calculationStartDate ?? null,
       };
       byProduct.set(productId, row);
     }
@@ -115,6 +142,8 @@ export function buildProductProfitRows(params: {
 
   for (const order of orders) {
     if (!order.product_id) continue;
+    const startDate = products.get(order.product_id)?.calculationStartDate;
+    if (!isOrderOnOrAfterStartDate(order.created_at, startDate)) continue;
     const row = ensureRow(order.product_id);
     if (order.status === "internal_return") {
       row.internalReturns += 1;
