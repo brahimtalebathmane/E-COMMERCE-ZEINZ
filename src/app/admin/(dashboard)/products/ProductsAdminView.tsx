@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import { deleteProductAction, updateProductTestStatusAction } from "./actions";
 import type { AdminProductPipelineRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
@@ -21,7 +21,19 @@ type Props = {
   products: AdminProductPipelineRow[];
 };
 
-function MarginBadge({ row }: { row: AdminProductPipelineRow }) {
+/**
+ * Rows committed on first paint and per follow-up chunk. Keeps tab switching
+ * instant even when a pipeline stage holds hundreds of products: the first
+ * page renders synchronously, the remainder streams in idle frames.
+ */
+const INITIAL_RENDER = 40;
+const RENDER_CHUNK = 40;
+
+const MarginBadge = memo(function MarginBadge({
+  row,
+}: {
+  row: AdminProductPipelineRow;
+}) {
   const pct = codMarginPercent(row.price, row.discount_price, row.cost_price);
   if (pct == null) {
     return (
@@ -44,9 +56,13 @@ function MarginBadge({ row }: { row: AdminProductPipelineRow }) {
       {a.pipeline.marginLabel}: {rounded}%
     </span>
   );
-}
+});
 
-function ProductThumb({ row }: { row: AdminProductPipelineRow }) {
+const ProductThumb = memo(function ProductThumb({
+  row,
+}: {
+  row: AdminProductPipelineRow;
+}) {
   if (row.media_type === "video" || !row.media_url.trim()) {
     return (
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-[var(--accent-muted)] bg-[var(--card)] text-xs text-[var(--muted)]">
@@ -66,7 +82,7 @@ function ProductThumb({ row }: { row: AdminProductPipelineRow }) {
       />
     </div>
   );
-}
+});
 
 function EditDeleteActions({
   row,
@@ -178,6 +194,23 @@ export function ProductsAdminView({ products }: Props) {
     () => filterProductsByTab(products, tab),
     [products, tab],
   );
+
+  const [renderCount, setRenderCount] = useState(INITIAL_RENDER);
+
+  useEffect(() => {
+    setRenderCount(Math.min(INITIAL_RENDER, filtered.length));
+  }, [filtered]);
+
+  useEffect(() => {
+    if (renderCount >= filtered.length) return;
+    const id = requestAnimationFrame(() => {
+      setRenderCount((c) => Math.min(filtered.length, c + RENDER_CHUNK));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [renderCount, filtered.length]);
+
+  const visible =
+    filtered.length <= renderCount ? filtered : filtered.slice(0, renderCount);
 
   const counts = useMemo(() => {
     const c: Record<PipelineTabId, number> = {
@@ -293,7 +326,7 @@ export function ProductsAdminView({ products }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--accent-muted)]">
-            {filtered.map((p) =>
+            {visible.map((p) =>
               tab === "research" ? (
                 <tr key={p.id}>
                   <td className="px-4 py-3">

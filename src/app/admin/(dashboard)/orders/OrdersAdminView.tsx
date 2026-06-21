@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
 import { deleteOrderAction } from "./actions";
+
+/**
+ * How many rows are committed to the DOM on first paint, plus the size of each
+ * follow-up chunk. Small datasets (the common case) render fully in one frame;
+ * large order histories paint the first page instantly and then stream the rest
+ * in idle frames so the main thread is never blocked.
+ */
+const INITIAL_RENDER = 30;
+const RENDER_CHUNK = 30;
 
 function statusBadgeClass(status: OrderStatus): string {
   switch (status) {
@@ -24,7 +33,11 @@ function statusBadgeClass(status: OrderStatus): string {
   }
 }
 
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
+const OrderStatusBadge = memo(function OrderStatusBadge({
+  status,
+}: {
+  status: OrderStatus;
+}) {
   return (
     <span
       className={`inline-flex max-w-full truncate rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(status)}`}
@@ -32,7 +45,7 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
       {a.orderStatus[status]}
     </span>
   );
-}
+});
 
 type Props = {
   orders: AdminOrderRow[];
@@ -42,6 +55,19 @@ export function OrdersAdminView({ orders }: Props) {
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renderCount, setRenderCount] = useState(() =>
+    Math.min(INITIAL_RENDER, orders.length),
+  );
+
+  useEffect(() => {
+    if (renderCount >= rows.length) return;
+    const id = requestAnimationFrame(() => {
+      setRenderCount((c) => Math.min(rows.length, c + RENDER_CHUNK));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [renderCount, rows.length]);
+
+  const visibleRows = rows.length <= renderCount ? rows : rows.slice(0, renderCount);
 
   function patchOrder(orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) {
     setRows((prev) => prev.map((row) => (row.id === orderId ? { ...row, ...patch } : row)));
@@ -68,7 +94,7 @@ export function OrdersAdminView({ orders }: Props) {
   return (
     <>
       <div className="mt-8 space-y-3 md:hidden">
-        {rows.map((o) => (
+        {visibleRows.map((o) => (
           <div
             key={o.id}
             role="button"
@@ -128,7 +154,7 @@ export function OrdersAdminView({ orders }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--accent-muted)]">
-            {rows.map((o) => (
+            {visibleRows.map((o) => (
               <tr
                 key={o.id}
                 tabIndex={0}
