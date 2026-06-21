@@ -95,6 +95,131 @@ body {
   }
 }
 
+/* ==========================================================================
+   ADMIN DASHBOARD — premium dark design system
+   Scoped to `.admin-shell` so the storefront tokens stay untouched. Every
+   existing admin component reads var(--background/--card/--accent-muted/...),
+   so overriding those here re-skins the whole dashboard with zero churn.
+   ========================================================================== */
+.admin-shell {
+  color-scheme: dark;
+
+  /* Core tokens (override storefront values within the admin only) */
+  --background: #0a0e0c;
+  --foreground: #e8f1ec;
+  --accent: #1faa50;
+  --accent-foreground: #ffffff;
+  --accent-muted: #232f29;
+  --card: #121916;
+  --muted: #8b9b91;
+
+  /* Extended premium tokens */
+  --admin-surface: #0d1311;
+  --admin-elevated: #151d19;
+  --admin-glass: rgba(16, 22, 19, 0.72);
+  --admin-border: rgba(255, 255, 255, 0.07);
+  --admin-border-strong: rgba(255, 255, 255, 0.13);
+  --admin-accent-soft: rgba(31, 170, 80, 0.14);
+  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --admin-shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
+
+  color: var(--foreground);
+  background:
+    radial-gradient(1100px 520px at 100% -8%, rgba(31, 170, 80, 0.1), transparent 62%),
+    radial-gradient(900px 480px at -10% 110%, rgba(31, 170, 80, 0.06), transparent 60%),
+    var(--background);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .admin-card {
+    border-radius: 1rem;
+    border: 1px solid var(--admin-border);
+    background: var(--card);
+    box-shadow: var(--admin-shadow);
+  }
+
+  .admin-glass {
+    background: var(--admin-glass);
+    border-color: var(--admin-border);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  .admin-nav-link {
+    @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition-colors duration-200;
+  }
+  .admin-nav-link:hover {
+    color: var(--foreground);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .admin-nav-link[data-active="true"] {
+    color: var(--foreground);
+    background: var(--admin-accent-soft);
+  }
+  .admin-nav-link[data-active="true"]::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block: 0.4rem;
+    width: 3px;
+    border-radius: 9999px;
+    background: var(--accent);
+  }
+
+  .admin-bottom-link {
+    @apply relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-semibold text-[var(--muted)] transition-colors duration-200;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .admin-bottom-link[data-active="true"] {
+    color: var(--accent);
+  }
+
+  .admin-btn-primary {
+    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_8px_20px_-8px_rgba(31,170,80,0.6)] transition hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .admin-btn-ghost {
+    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl border border-[var(--admin-border-strong)] bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .admin-input {
+    @apply w-full min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface)] px-3.5 py-2.5 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(31,170,80,0.35)];
+  }
+}
+
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-fade-in {
+    animation: admin-fade-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* Slimmer, theme-matched scrollbars inside the admin shell. */
+.admin-shell ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.admin-shell ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.admin-shell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+  background-clip: padding-box;
+}
+
 /* Landing video: intrinsic aspect from --ar-w / --ar-h (set in LandingMedia). */
 .landing-mux-shell {
   position: relative;

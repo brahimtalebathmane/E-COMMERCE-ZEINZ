@@ -16,8 +16,8 @@ type Props = {
 };
 
 function profitToneClass(value: number): string {
-  if (value > 0) return "text-emerald-600 dark:text-emerald-400";
-  if (value < 0) return "text-red-600 dark:text-red-400";
+  if (value > 0) return "text-emerald-400";
+  if (value < 0) return "text-red-400";
   return "text-[var(--foreground)]";
 }
 
@@ -98,8 +98,8 @@ export function AnalyticsView({ rows: initialRows }: Props) {
       </div>
 
       {/* Per-product breakdown */}
-      <section className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)]/40">
-        <div className="border-b border-[var(--accent-muted)] px-4 py-4 sm:px-5">
+      <section className="admin-card overflow-hidden">
+        <div className="border-b border-[var(--admin-border)] px-4 py-4 sm:px-5">
           <h2 className="text-base font-semibold text-[var(--foreground)]">
             {a.analytics.tableTitle}
           </h2>
@@ -119,7 +119,7 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                 return (
                   <div
                     key={row.productId}
-                    className="rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4"
+                    className="rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <p className="min-w-0 break-words font-semibold text-[var(--foreground)]">
@@ -166,7 +166,7 @@ export function AnalyticsView({ rows: initialRows }: Props) {
             {/* Desktop table */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full border-collapse text-sm">
-                <thead className="bg-[var(--card)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
                     <th className="px-4 py-3 text-start">{a.analytics.colProduct}</th>
                     <th className="px-4 py-3 text-start">{a.analytics.colUnits}</th>
@@ -176,7 +176,7 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                     <th className="px-4 py-3 text-start">{a.analytics.colNetProfit}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--accent-muted)]">
+                <tbody className="divide-y divide-[var(--admin-border)]">
                   {rows.map((row) => {
                     const profit = netProfit(row);
                     return (
@@ -187,7 +187,7 @@ export function AnalyticsView({ rows: initialRows }: Props) {
                           </span>
                           {row.internalReturns > 0 ? (
                             <span
-                              className="ms-2 inline-flex items-center rounded-full border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300"
+                              className="ms-2 inline-flex items-center rounded-full border border-slate-400/30 bg-slate-400/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300"
                               title={a.analytics.returnsNote}
                             >
                               {a.analytics.colReturns}: {row.internalReturns}
@@ -257,7 +257,7 @@ function KpiCard({
   }[accent];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-5 shadow-sm">
+    <div className="admin-card relative overflow-hidden p-5">
       <span className={`absolute inset-y-0 start-0 w-1.5 ${accentBar}`} aria-hidden />
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
         {label}

@@ -105,19 +105,19 @@ function tallyStatus(counts: ReturnType<typeof emptyCounts>, status: OrderStatus
 function statusBadgeClass(status: OrderStatus): string {
   switch (status) {
     case "pending":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-900";
+      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
     case "confirmed":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-900";
+      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300";
     case "shipped":
-      return "border-sky-500/40 bg-sky-500/10 text-sky-900";
+      return "border-sky-400/30 bg-sky-400/10 text-sky-300";
     case "cancelled":
-      return "border-red-500/40 bg-red-500/10 text-red-900";
+      return "border-red-400/30 bg-red-400/10 text-red-300";
     case "requires_human_intervention":
-      return "border-violet-500/40 bg-violet-500/10 text-violet-900";
+      return "border-violet-400/30 bg-violet-400/10 text-violet-300";
     case "internal_return":
-      return "border-slate-500/40 bg-slate-500/10 text-slate-900";
+      return "border-slate-400/30 bg-slate-400/10 text-slate-300";
     default:
-      return "border-[var(--accent-muted)] bg-[var(--card)] text-[var(--foreground)]";
+      return "border-[var(--admin-border-strong)] bg-white/[0.04] text-[var(--foreground)]";
   }
 }
 
@@ -152,12 +152,12 @@ function MetricPill({
     | "return";
 }) {
   const toneClass = {
-    pending: "border-amber-500/40 bg-amber-500/10 text-amber-900",
-    confirmed: "border-emerald-500/40 bg-emerald-500/10 text-emerald-900",
-    shipped: "border-sky-500/40 bg-sky-500/10 text-sky-900",
-    cancelled: "border-red-500/40 bg-red-500/10 text-red-900",
-    attention: "border-violet-500/40 bg-violet-500/10 text-violet-900",
-    return: "border-slate-500/40 bg-slate-500/10 text-slate-900",
+    pending: "border-amber-400/30 bg-amber-400/10 text-amber-300",
+    confirmed: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+    shipped: "border-sky-400/30 bg-sky-400/10 text-sky-300",
+    cancelled: "border-red-400/30 bg-red-400/10 text-red-300",
+    attention: "border-violet-400/30 bg-violet-400/10 text-violet-300",
+    return: "border-slate-400/30 bg-slate-400/10 text-slate-300",
   }[tone];
   return (
     <span
@@ -315,7 +315,7 @@ export function OrdersAdminView({ orders }: Props) {
         </div>
 
         {/* Aggregate metrics for the active segment */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)]/40 px-3 py-3">
+        <div className="admin-card mt-3 flex flex-wrap items-center gap-2 px-3 py-3">
           <span className="me-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             {a.orders.segmentSummaryTitle}
           </span>
@@ -379,7 +379,7 @@ export function OrdersAdminView({ orders }: Props) {
                       setActive(o);
                     }
                   }}
-                  className="w-full cursor-pointer rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-start shadow-sm transition hover:border-[var(--accent-muted)]/80 hover:bg-[var(--background)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  className="admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   <div className="flex gap-4">
                     <div className="min-w-0 flex-1 space-y-3">
@@ -405,7 +405,7 @@ export function OrdersAdminView({ orders }: Props) {
                           <button
                             type="button"
                             disabled={deletingId === o.id}
-                            className="min-h-[40px] rounded-lg border border-red-300 bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
+                            className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -423,9 +423,9 @@ export function OrdersAdminView({ orders }: Props) {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden overflow-hidden rounded-2xl border border-[var(--accent-muted)] md:block">
+            <div className="admin-card hidden overflow-hidden md:block">
               <table className="w-full table-fixed border-collapse text-sm">
-                <thead className="bg-[var(--card)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
                     <th className="w-[28%] px-4 py-3 text-start">{a.orders.phone}</th>
                     <th className="w-[48%] px-4 py-3 text-start">{a.orders.status}</th>
@@ -433,12 +433,12 @@ export function OrdersAdminView({ orders }: Props) {
                     <th className="w-[12%] px-4 py-3 text-start">{a.orders.actions}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--accent-muted)]">
+                <tbody className="divide-y divide-[var(--admin-border)]">
                   {group.rows.map((o) => (
                     <tr
                       key={o.id}
                       tabIndex={0}
-                      className="cursor-pointer transition-colors hover:bg-[var(--card)]/60 focus-visible:bg-[var(--card)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                      className="cursor-pointer transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                       onClick={() => setActive(o)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -469,7 +469,7 @@ export function OrdersAdminView({ orders }: Props) {
                         <button
                           type="button"
                           disabled={deletingId === o.id}
-                          className="min-h-[40px] rounded-xl border border-red-300 bg-[var(--card)] px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50/40 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
+                          className="min-h-[40px] rounded-xl border border-red-400/40 bg-red-400/5 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();

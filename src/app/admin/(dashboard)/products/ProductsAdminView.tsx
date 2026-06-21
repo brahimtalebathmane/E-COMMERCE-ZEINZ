@@ -7,6 +7,7 @@ import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import { deleteProductAction, updateProductTestStatusAction } from "./actions";
 import type { AdminProductPipelineRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
+import { PlusIcon } from "@/components/admin/AdminIcons";
 import { formatPrice } from "@/lib/currency";
 import {
   PIPELINE_TABS,
@@ -37,7 +38,7 @@ const MarginBadge = memo(function MarginBadge({
   const pct = codMarginPercent(row.price, row.discount_price, row.cost_price);
   if (pct == null) {
     return (
-      <span className="rounded-full border border-[var(--accent-muted)] px-2.5 py-1 text-xs text-[var(--muted)]">
+      <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-xs text-[var(--muted)]">
         {a.pipeline.marginUnset}
       </span>
     );
@@ -48,8 +49,8 @@ const MarginBadge = memo(function MarginBadge({
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
         good
-          ? "bg-emerald-500/15 text-emerald-800 border border-emerald-500/30"
-          : "bg-amber-500/15 text-amber-900 border border-amber-500/30"
+          ? "bg-emerald-400/10 text-emerald-300 border border-emerald-400/30"
+          : "bg-amber-400/10 text-amber-300 border border-amber-400/30"
       }`}
       dir="ltr"
     >
@@ -65,13 +66,13 @@ const ProductThumb = memo(function ProductThumb({
 }) {
   if (row.media_type === "video" || !row.media_url.trim()) {
     return (
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-[var(--accent-muted)] bg-[var(--card)] text-xs text-[var(--muted)]">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] text-xs text-[var(--muted)]">
         {row.media_type === "video" ? "▶" : "—"}
       </div>
     );
   }
   return (
-    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[var(--accent-muted)]">
+    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[var(--admin-border)]">
       <Image
         src={row.media_url}
         alt=""
@@ -109,7 +110,7 @@ function EditDeleteActions({
         type="button"
         disabled={busy || isDeleting}
         onClick={() => onDelete(row.id)}
-        className="text-xs font-semibold text-red-700 underline disabled:opacity-50"
+        className="text-xs font-semibold text-red-400 underline disabled:opacity-50"
       >
         {isDeleting ? a.pipeline.deleting : a.pipeline.delete}
       </button>
@@ -143,7 +144,7 @@ function PipelineActions({
               ? `/admin/products/${row.id}/landing-setup`
               : `/admin/products/${row.id}/edit`
           }
-          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
+          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] transition hover:brightness-110"
         >
           {a.pipeline.setupLanding}
         </Link>
@@ -154,7 +155,7 @@ function PipelineActions({
             type="button"
             disabled={busy}
             onClick={() => onStatus(row.id, "winner")}
-            className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-900 disabled:opacity-50"
+            className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
           >
             {a.pipeline.markWinner}
           </button>
@@ -162,7 +163,7 @@ function PipelineActions({
             type="button"
             disabled={busy}
             onClick={() => onStatus(row.id, "failed")}
-            className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-900 disabled:opacity-50"
+            className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-50"
           >
             {a.pipeline.markFailed}
           </button>
@@ -258,20 +259,23 @@ export function ProductsAdminView({ products }: Props) {
     });
   }
 
+  const price = (p: AdminProductPipelineRow) =>
+    formatPrice(p.discount_price != null ? Number(p.discount_price) : Number(p.price));
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{a.products.title}</h1>
-        <Link
-          href="/admin/products/new"
-          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-foreground)]"
-        >
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">{a.products.title}</h1>
+        </div>
+        <Link href="/admin/products/new" className="admin-btn-primary">
+          <PlusIcon size={18} />
           {a.products.newProduct}
         </Link>
       </div>
 
       <div
-        className="mt-6 flex flex-wrap gap-2 border-b border-[var(--accent-muted)] pb-3"
+        className="mt-5 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2"
         role="tablist"
       >
         {PIPELINE_TABS.map((t) => (
@@ -281,116 +285,169 @@ export function ProductsAdminView({ products }: Props) {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
               tab === t.id
-                ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
-                : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent-muted)]"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_8px_20px_-8px_rgba(31,170,80,0.6)]"
+                : "border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--foreground)] hover:bg-white/[0.06]"
             }`}
           >
             {t.label}
-            <span className="ms-2 opacity-80">({counts[t.id]})</span>
+            <span
+              className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
+                tab === t.id ? "bg-white/20" : "bg-white/[0.06] text-[var(--muted)]"
+              }`}
+            >
+              {counts[t.id]}
+            </span>
           </button>
         ))}
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-600" role="alert">
+        <p className="mt-4 text-sm text-red-400" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-[var(--accent-muted)]">
-        <table className="min-w-full divide-y divide-[var(--accent-muted)] text-sm">
-          <thead className="bg-[var(--card)] text-start text-xs uppercase text-[var(--muted)]">
-            <tr>
-              {tab === "research" ? (
-                <>
-                  <th className="px-4 py-3">{a.pipeline.image}</th>
-                  <th className="px-4 py-3">{a.products.name}</th>
-                  <th className="px-4 py-3">{a.pipeline.priceColumn}</th>
-                  <th className="px-4 py-3">{a.pipeline.sourcingType}</th>
-                  <th className="px-4 py-3">{a.pipeline.codMargin}</th>
-                  <th className="px-4 py-3" />
-                </>
-              ) : (
-                <>
-                  <th className="px-4 py-3">{a.products.name}</th>
-                  <th className="px-4 py-3">{a.products.slug}</th>
-                  <th className="px-4 py-3">{a.products.price}</th>
-                  {tab === "ready" ? (
-                    <th className="px-4 py-3">{a.pipeline.stage}</th>
-                  ) : null}
-                  <th className="px-4 py-3" />
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--accent-muted)]">
-            {visible.map((p) =>
-              tab === "research" ? (
-                <tr key={p.id}>
-                  <td className="px-4 py-3">
-                    <ProductThumb row={p} />
-                  </td>
-                  <td className="px-4 py-3 font-medium">{p.name_ar}</td>
-                  <td className="px-4 py-3 whitespace-nowrap" dir="ltr">
-                    {formatPrice(
-                      p.discount_price != null ? Number(p.discount_price) : Number(p.price),
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{sourcingTypeLabel(p.sourcing_type)}</td>
-                  <td className="px-4 py-3">
-                    <MarginBadge row={p} />
-                  </td>
-                  <td className="px-4 py-3 text-end">
-                    <PipelineActions
-                      row={p}
-                      tab={tab}
-                      busy={pending}
-                      deletingId={deletingId}
-                      onStatus={handleStatus}
-                      onDelete={handleDelete}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 font-medium">{p.name_ar}</td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">
-                    {p.slug}
-                  </td>
-                  <td className="px-4 py-3" dir="ltr">
-                    {formatPrice(
-                      p.discount_price != null ? Number(p.discount_price) : Number(p.price),
-                    )}
-                  </td>
-                  {tab === "ready" ? (
-                    <td className="px-4 py-3 text-xs">
-                      {p.test_status === "testing"
-                        ? a.pipeline.statusTesting
-                        : a.pipeline.statusReady}
-                    </td>
-                  ) : null}
-                  <td className="px-4 py-3 text-end">
-                    <PipelineActions
-                      row={p}
-                      tab={tab}
-                      busy={pending}
-                      deletingId={deletingId}
-                      onStatus={handleStatus}
-                      onDelete={handleDelete}
-                    />
-                  </td>
-                </tr>
-              ),
-            )}
-          </tbody>
-        </table>
-      </div>
-
       {filtered.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--muted)]">{a.pipeline.emptyTab}</p>
-      ) : null}
+        <p className="mt-10 text-center text-sm text-[var(--muted)]">{a.pipeline.emptyTab}</p>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="mt-5 grid gap-3 md:hidden">
+            {visible.map((p) => (
+              <div key={p.id} className="admin-card p-4">
+                <div className="flex gap-3">
+                  <ProductThumb row={p} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-[var(--foreground)]">{p.name_ar}</p>
+                    {tab === "research" ? (
+                      <p className="mt-0.5 text-xs text-[var(--muted)]">
+                        {sourcingTypeLabel(p.sourcing_type)}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--muted)]" dir="ltr">
+                        {p.slug}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold tabular-nums text-[var(--foreground)]" dir="ltr">
+                        {price(p)}
+                      </span>
+                      {tab === "research" ? <MarginBadge row={p} /> : null}
+                      {tab === "ready" ? (
+                        <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-[11px] text-[var(--muted)]">
+                          {p.test_status === "testing"
+                            ? a.pipeline.statusTesting
+                            : a.pipeline.statusReady}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 border-t border-[var(--admin-border)] pt-3">
+                  <PipelineActions
+                    row={p}
+                    tab={tab}
+                    busy={pending}
+                    deletingId={deletingId}
+                    onStatus={handleStatus}
+                    onDelete={handleDelete}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="admin-card mt-5 hidden overflow-hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-[var(--admin-border)] text-sm">
+                <thead className="bg-white/[0.02] text-start text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  <tr>
+                    {tab === "research" ? (
+                      <>
+                        <th className="px-4 py-3 text-start">{a.pipeline.image}</th>
+                        <th className="px-4 py-3 text-start">{a.products.name}</th>
+                        <th className="px-4 py-3 text-start">{a.pipeline.priceColumn}</th>
+                        <th className="px-4 py-3 text-start">{a.pipeline.sourcingType}</th>
+                        <th className="px-4 py-3 text-start">{a.pipeline.codMargin}</th>
+                        <th className="px-4 py-3" />
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-3 text-start">{a.products.name}</th>
+                        <th className="px-4 py-3 text-start">{a.products.slug}</th>
+                        <th className="px-4 py-3 text-start">{a.products.price}</th>
+                        {tab === "ready" ? (
+                          <th className="px-4 py-3 text-start">{a.pipeline.stage}</th>
+                        ) : null}
+                        <th className="px-4 py-3" />
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--admin-border)]">
+                  {visible.map((p) =>
+                    tab === "research" ? (
+                      <tr key={p.id} className="transition hover:bg-white/[0.02]">
+                        <td className="px-4 py-3">
+                          <ProductThumb row={p} />
+                        </td>
+                        <td className="px-4 py-3 font-medium">{p.name_ar}</td>
+                        <td className="px-4 py-3 whitespace-nowrap tabular-nums" dir="ltr">
+                          {price(p)}
+                        </td>
+                        <td className="px-4 py-3">{sourcingTypeLabel(p.sourcing_type)}</td>
+                        <td className="px-4 py-3">
+                          <MarginBadge row={p} />
+                        </td>
+                        <td className="px-4 py-3 text-end">
+                          <PipelineActions
+                            row={p}
+                            tab={tab}
+                            busy={pending}
+                            deletingId={deletingId}
+                            onStatus={handleStatus}
+                            onDelete={handleDelete}
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={p.id} className="transition hover:bg-white/[0.02]">
+                        <td className="px-4 py-3 font-medium">{p.name_ar}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-[var(--muted)]" dir="ltr">
+                          {p.slug}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums" dir="ltr">
+                          {price(p)}
+                        </td>
+                        {tab === "ready" ? (
+                          <td className="px-4 py-3 text-xs text-[var(--muted)]">
+                            {p.test_status === "testing"
+                              ? a.pipeline.statusTesting
+                              : a.pipeline.statusReady}
+                          </td>
+                        ) : null}
+                        <td className="px-4 py-3 text-end">
+                          <PipelineActions
+                            row={p}
+                            tab={tab}
+                            busy={pending}
+                            deletingId={deletingId}
+                            onStatus={handleStatus}
+                            onDelete={handleDelete}
+                          />
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

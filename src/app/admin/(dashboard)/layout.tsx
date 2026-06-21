@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { SiteLogo } from "@/components/SiteLogo";
+import { Toaster } from "sonner";
 import { OneSignalAdminInit } from "@/components/admin/OneSignalAdminInit";
 import { AdminAssistant } from "@/components/admin/AdminAssistant";
-import { adminAr as a } from "@/locales/admin-ar";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 export default function AdminDashboardLayout({
   children,
@@ -10,41 +9,11 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[var(--background)] font-sans" dir="rtl" lang="ar">
+    <div className="admin-shell min-h-screen font-sans" dir="rtl" lang="ar">
       <OneSignalAdminInit />
-      <header className="border-b border-[var(--accent-muted)] bg-[var(--card)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <Link href="/admin" className="min-w-0 shrink">
-            <span className="sr-only">{a.nav.title}</span>
-            <SiteLogo alt="" objectAlign="end" />
-          </Link>
-          <nav className="flex flex-wrap gap-4 text-sm">
-            <Link
-              href="/admin/products"
-              className="text-[var(--muted)] hover:text-[var(--foreground)]"
-            >
-              {a.nav.products}
-            </Link>
-            <Link
-              href="/admin/orders"
-              className="text-[var(--muted)] hover:text-[var(--foreground)]"
-            >
-              {a.nav.orders}
-            </Link>
-            <Link
-              href="/admin/analytics"
-              className="text-[var(--muted)] hover:text-[var(--foreground)]"
-            >
-              {a.nav.analytics}
-            </Link>
-            <Link href="/" className="text-[var(--muted)] hover:text-[var(--foreground)]">
-              {a.nav.storefront}
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 text-start">{children}</main>
+      <AdminShell>{children}</AdminShell>
       <AdminAssistant />
+      <Toaster position="top-center" richColors theme="dark" dir="rtl" />
     </div>
   );
 }

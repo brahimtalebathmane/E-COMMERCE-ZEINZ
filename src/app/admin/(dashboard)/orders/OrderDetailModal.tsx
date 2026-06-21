@@ -122,7 +122,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col rounded-t-2xl border border-[var(--accent-muted)] bg-[var(--background)] shadow-xl sm:max-h-[90vh] sm:rounded-2xl"
+        className="relative flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col rounded-t-2xl border border-[var(--admin-border-strong)] bg-[var(--admin-elevated)] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-h-[90vh] sm:rounded-2xl"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-4 sm:px-5">
           <div className="min-w-0">
@@ -258,7 +258,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
                 <button
                   type="button"
                   disabled={saving}
-                  className="min-h-[44px] w-full rounded-xl border border-red-300 bg-[var(--card)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50/40 dark:border-red-800 dark:text-red-400"
+                  className="min-h-[44px] w-full rounded-xl border border-red-400/40 bg-red-400/5 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-400/15"
                   onClick={() => onDeleted(order.id)}
                 >
                   {a.orders.delete}

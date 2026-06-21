@@ -146,7 +146,7 @@ export function AdminAssistant() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label={a.assistant.openButton}
-          className="fixed bottom-4 end-4 z-50 flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+          className="fixed bottom-20 end-4 z-40 flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 lg:bottom-4"
         >
           <span aria-hidden>💬</span>
           <span>{a.assistant.openButton}</span>
