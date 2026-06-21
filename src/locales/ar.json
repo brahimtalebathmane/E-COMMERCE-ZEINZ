@@ -8,9 +8,15 @@
     "configureSuffix": "لتحميل المنتجات.",
     "noProducts": "لا توجد منتجات بعد. أضف منتجاً من لوحة التحكم.",
     "adminLink": "الإدارة",
-    "viewProduct": "عرض",
+    "viewProduct": "عرض المنتج",
     "reviewsCount": "({{count}} تقييم)",
-    "noReviewsYet": "لا توجد تقييمات بعد"
+    "noReviewsYet": "لا توجد تقييمات بعد",
+    "badge": "متجر موثوق",
+    "trustCod": "الدفع عند الاستلام",
+    "trustDelivery": "توصيل سريع",
+    "trustSupport": "دعم عبر واتساب",
+    "trustSecure": "تسوّق آمن",
+    "saveBadge": "وفّر {{percent}}%"
   },
   "product": {
     "buyNow": "شراء الآن",

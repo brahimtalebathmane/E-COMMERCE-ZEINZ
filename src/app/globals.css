@@ -3,24 +3,49 @@
 @tailwind utilities;
 
 :root {
-  --background: #f0fff0;
-  --foreground: #0f1a0f;
+  --background: #f3f8f3;
+  --foreground: #0e1a0e;
   --accent: #006B0C;
-  --accent-foreground: #0a0f0a;
-  --accent-muted: #c5e8c5;
-  --card: #f0fff0;
-  --muted: #4a5c4a;
+  --accent-foreground: #f3fff3;
+  --accent-strong: #00580a;
+  --accent-muted: #d6efd6;
+  --accent-soft: #eaf7ea;
+  --card: #ffffff;
+  --card-muted: #f7fbf7;
+  --muted: #54684f;
+  --border: rgba(15, 40, 15, 0.1);
+  --border-strong: rgba(15, 40, 15, 0.16);
+  --ring: rgba(0, 107, 12, 0.35);
+
+  /* Elevation system (premium soft shadows) */
+  --shadow-xs: 0 1px 2px rgba(13, 38, 13, 0.06);
+  --shadow-sm: 0 2px 6px rgba(13, 38, 13, 0.07), 0 1px 2px rgba(13, 38, 13, 0.05);
+  --shadow-md: 0 8px 24px -10px rgba(13, 38, 13, 0.18), 0 2px 6px rgba(13, 38, 13, 0.06);
+  --shadow-lg: 0 24px 48px -22px rgba(13, 38, 13, 0.32), 0 6px 16px -8px rgba(13, 38, 13, 0.12);
+  --shadow-accent: 0 16px 34px -14px rgba(0, 107, 12, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0c120c;
+    --background: #0b110b;
     --foreground: #e8f5e8;
-    --accent: #006B0C;
-    --accent-foreground: #0a0f0a;
-    --accent-muted: #1e331e;
-    --card: #111811;
+    --accent: #18a02b;
+    --accent-foreground: #04140a;
+    --accent-strong: #0f8a22;
+    --accent-muted: #1d331d;
+    --accent-soft: #142414;
+    --card: #121a12;
+    --card-muted: #0f160f;
     --muted: #9aaa9a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --ring: rgba(24, 160, 43, 0.45);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 10px 26px -10px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 28px 56px -22px rgba(0, 0, 0, 0.8), 0 8px 18px -8px rgba(0, 0, 0, 0.5);
+    --shadow-accent: 0 18px 38px -16px rgba(24, 160, 43, 0.55);
   }
 }
 
@@ -73,25 +98,99 @@ body {
   }
 }
 
+/* ==========================================================================
+   STOREFRONT — premium micro-interactions & reveal animations
+   ========================================================================== */
+@keyframes store-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes store-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .store-fade-up {
+    animation: store-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-fade-up {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer components {
   /* Store / checkout: 16px+ text on inputs reduces iOS zoom; 48px min touch targets */
   .store-input {
-    @apply w-full min-h-[48px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-normal text-start text-[var(--foreground)] outline-none ring-[var(--accent)] focus:ring-2;
+    @apply w-full min-h-[48px] rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-3 text-base leading-normal text-start text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)];
   }
   .store-select {
-    @apply w-full min-h-[48px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-normal text-start text-[var(--foreground)];
+    @apply w-full min-h-[48px] rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-3 text-base leading-normal text-start text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)];
   }
   .store-textarea {
-    @apply w-full min-h-[120px] rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-3 text-base leading-relaxed text-start text-[var(--foreground)] outline-none ring-[var(--accent)] focus:ring-2;
+    @apply w-full min-h-[120px] rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-3 text-base leading-relaxed text-start text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)];
   }
   .store-btn-primary {
-    @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-semibold text-[var(--accent-foreground)] transition-[transform,filter,box-shadow] duration-200 hover:-translate-y-0.5 hover:brightness-[1.06] active:translate-y-0 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 [-webkit-tap-highlight-color:transparent];
+    background-image: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    box-shadow: var(--shadow-accent);
+  }
+  .store-btn-secondary {
+    @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-4 py-3 text-base font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-soft)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 [-webkit-tap-highlight-color:transparent];
   }
   .store-btn-whatsapp {
     @apply inline-flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-xl bg-[#25D366] px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-[#128C7E]/30 ring-2 ring-white/30 transition hover:brightness-[0.97] active:brightness-[0.93] [-webkit-tap-highlight-color:transparent];
   }
   .store-file-input {
     @apply w-full max-w-full touch-manipulation text-base file:mr-3 file:inline-flex file:min-h-[48px] file:cursor-pointer file:items-center file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--background)] file:px-4 file:py-3 file:text-sm file:font-medium file:text-[var(--foreground)];
+  }
+
+  /* Premium surfaces */
+  .store-card {
+    @apply rounded-2xl border border-[var(--border)] bg-[var(--card)];
+    box-shadow: var(--shadow-sm);
+  }
+  .store-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--foreground)];
+    box-shadow: var(--shadow-xs);
+  }
+  .store-chip-accent {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent-strong)];
+  }
+}
+
+/* Shimmer skeleton (image/media placeholders) */
+.store-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.store-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .store-shimmer::after {
+    animation: store-shimmer 1.6s ease-in-out infinite;
   }
 }
 

@@ -93,21 +93,31 @@ export function CatalogProductCard({ product, index }: Props) {
       ? parseTestimonialList(product.testimonials_fr)
       : parseTestimonialList(product.testimonials_ar);
   const rating = ratingSummaryFromTestimonials(list);
-  const priceValue =
-    product.discount_price != null
-      ? Number(product.discount_price)
-      : Number(product.price);
+  const hasDiscount =
+    product.discount_price != null &&
+    Number(product.discount_price) < Number(product.price);
+  const priceValue = hasDiscount
+    ? Number(product.discount_price)
+    : Number(product.price);
+  const discountPct =
+    hasDiscount && Number(product.price) > 0
+      ? Math.round(
+          ((Number(product.price) - Number(product.discount_price)) /
+            Number(product.price)) *
+            100,
+        )
+      : 0;
 
   return (
     <li className="min-w-0 list-none">
       <article
-        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-sm transition duration-150 ease-out hover:border-[var(--accent)] hover:shadow-md motion-reduce:transition-none"
+        className="store-card group flex h-full flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-1 hover:border-[var(--accent)]/40 hover:[box-shadow:var(--shadow-lg)] motion-reduce:transform-none motion-reduce:transition-none"
         dir={dir}
       >
         <Link
           href={`/${product.slug}`}
           aria-label={primary}
-          className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--accent-muted)]/30 outline-none ring-[var(--accent)] transition-opacity hover:opacity-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
+          className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--accent-muted)]/30 outline-none ring-[var(--accent)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
           prefetch
         >
           <CatalogProductMedia
@@ -116,14 +126,23 @@ export function CatalogProductCard({ product, index }: Props) {
             alt={primary}
             priority={index < 3}
           />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          />
+          {discountPct > 0 ? (
+            <span className="absolute start-3 top-3 inline-flex items-center rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-extrabold text-[var(--accent-foreground)] shadow-md ring-1 ring-black/10">
+              {t("catalog.saveBadge", { percent: discountPct })}
+            </span>
+          ) : null}
         </Link>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 p-4 sm:p-5">
           <div className="min-w-0 space-y-1">
-            <h2 className="text-lg font-semibold leading-snug tracking-tight text-[var(--foreground)] sm:text-xl">
+            <h2 className="text-lg font-bold leading-snug tracking-tight text-[var(--foreground)] sm:text-xl">
               <Link
                 href={`/${product.slug}`}
-                className="rounded-sm outline-none ring-[var(--accent)] hover:text-[var(--accent)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
+                className="rounded-sm outline-none ring-[var(--accent)] transition-colors hover:text-[var(--accent)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)]"
                 prefetch
               >
                 {primary}
@@ -150,16 +169,35 @@ export function CatalogProductCard({ product, index }: Props) {
             )}
           </div>
 
-          <div className="mt-auto flex flex-col gap-3 border-t border-[var(--accent-muted)]/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-lg font-bold tabular-nums text-[var(--foreground)]" dir="ltr">
-              {formatPrice(priceValue)}
-            </p>
+          <div className="mt-auto flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-baseline gap-2" dir="ltr">
+              <p className="text-xl font-extrabold tabular-nums tracking-tight text-[var(--foreground)]">
+                {formatPrice(priceValue)}
+              </p>
+              {hasDiscount ? (
+                <p className="text-sm font-semibold tabular-nums text-[var(--muted)] line-through decoration-[1.5px]">
+                  {formatPrice(Number(product.price))}
+                </p>
+              ) : null}
+            </div>
             <Link
               href={`/${product.slug}`}
               prefetch
-              className="inline-flex min-h-[48px] shrink-0 touch-manipulation items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-center text-sm font-semibold text-[var(--accent-foreground)] shadow-sm transition duration-150 hover:opacity-90 active:opacity-[0.88] sm:min-w-[7.5rem]"
+              className="store-btn-primary min-h-[46px] w-full sm:w-auto sm:min-w-[8rem]"
             >
               {t("catalog.viewProduct")}
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 rtl:rotate-180"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
             </Link>
           </div>
         </div>

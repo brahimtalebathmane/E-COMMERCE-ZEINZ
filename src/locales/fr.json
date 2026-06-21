@@ -8,9 +8,15 @@
     "configureSuffix": "pour charger les produits.",
     "noProducts": "Aucun produit pour l’instant. Ajoutez-en un depuis l’administration.",
     "adminLink": "Administration",
-    "viewProduct": "Voir",
+    "viewProduct": "Voir le produit",
     "reviewsCount": "({{count}} avis)",
-    "noReviewsYet": "Pas encore d’avis"
+    "noReviewsYet": "Pas encore d’avis",
+    "badge": "Boutique de confiance",
+    "trustCod": "Paiement à la livraison",
+    "trustDelivery": "Livraison rapide",
+    "trustSupport": "Support WhatsApp",
+    "trustSecure": "Achat sécurisé",
+    "saveBadge": "-{{percent}}%"
   },
   "product": {
     "buyNow": "Achetez maintenant",

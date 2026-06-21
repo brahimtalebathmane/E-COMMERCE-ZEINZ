@@ -55,11 +55,11 @@ const preContactCtaButtonClass =
 const preContactCtaBandClass =
   "relative min-h-[3.25rem] overflow-hidden border-y border-[var(--accent-muted)]/40 shadow-[0_8px_24px_rgba(12,28,12,0.08)] sm:min-h-[3.5rem]";
 
-const sectionPadClass = "px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-10";
+const sectionPadClass = "px-4 py-9 sm:px-6 sm:py-12 md:px-8 lg:px-10";
 const softCardClass =
   "rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] shadow-[0_14px_28px_rgba(12,28,12,0.08)] sm:rounded-[24px]";
 const sectionTitleClass =
-  "text-center text-lg font-bold leading-snug tracking-tight text-[var(--foreground)] sm:text-xl md:text-2xl md:leading-tight";
+  "text-center text-xl font-extrabold leading-snug tracking-tight text-[var(--foreground)] sm:text-2xl md:text-[1.75rem] md:leading-tight";
 const bodyTextClass = "text-sm leading-relaxed text-[var(--muted)] sm:text-base sm:leading-relaxed";
 const heroTitleClass =
   "whitespace-pre-line break-words font-extrabold leading-[1.15] tracking-tight text-[var(--accent)] [font-size:clamp(1.4rem,3.6vw+0.7rem,2rem)]";
@@ -230,6 +230,118 @@ function FeatureIcon({ feature, color }: { feature: string; color: string }) {
   );
 }
 
+function TrustGlyph({ kind }: { kind: "cod" | "delivery" | "guarantee" | "secure" }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    className: "h-5 w-5 text-[var(--accent)]",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.9,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  if (kind === "cod") {
+    return (
+      <svg {...common}>
+        <rect x="2.5" y="6" width="19" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2.6" />
+        <path d="M6 9.5h.01M18 14.5h.01" />
+      </svg>
+    );
+  }
+  if (kind === "delivery") {
+    return (
+      <svg {...common}>
+        <path d="M3 7h10v8H3zM13 10h4l3 3v2h-7z" />
+        <circle cx="7" cy="18" r="1.6" />
+        <circle cx="17" cy="18" r="1.6" />
+      </svg>
+    );
+  }
+  if (kind === "secure") {
+    return (
+      <svg {...common}>
+        <rect x="5" y="10" width="14" height="10" rx="2" />
+        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+function LandingTrustBadges({ locale }: { locale: "ar" | "fr" }) {
+  const items =
+    locale === "fr"
+      ? ([
+          { kind: "cod", label: "Paiement à la livraison" },
+          { kind: "delivery", label: "Livraison rapide" },
+          { kind: "guarantee", label: "Satisfait ou remboursé" },
+          { kind: "secure", label: "Commande sécurisée" },
+        ] as const)
+      : ([
+          { kind: "cod", label: "الدفع عند الاستلام" },
+          { kind: "delivery", label: "توصيل سريع" },
+          { kind: "guarantee", label: "ضمان الاسترجاع" },
+          { kind: "secure", label: "طلب آمن" },
+        ] as const);
+
+  return (
+    <div className="mx-auto mt-5 grid max-w-lg grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
+      {items.map((item) => (
+        <div
+          key={item.kind}
+          className="flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] px-2 py-3 text-center shadow-[0_8px_18px_rgba(12,28,12,0.06)]"
+        >
+          <TrustGlyph kind={item.kind} />
+          <span className="text-[0.7rem] font-semibold leading-tight text-[var(--foreground)] sm:text-xs">
+            {item.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GuaranteeStrip({ locale }: { locale: "ar" | "fr" }) {
+  const title =
+    locale === "fr" ? "Garantie satisfait ou remboursé" : "ضمان الرضا أو استرجاع المال";
+  const body =
+    locale === "fr"
+      ? "Commandez en toute confiance. Vous ne payez qu'à la réception de votre commande."
+      : "اطلب بثقة تامة. لا تدفع إلا عند استلام طلبك بين يديك.";
+  return (
+    <div className="mx-auto flex max-w-lg items-center gap-3 rounded-3xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--card)_0%,var(--background)_100%)] p-4 text-start shadow-[0_14px_28px_rgba(12,28,12,0.08)] sm:gap-4 sm:p-5">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent-muted)] text-[var(--accent)] sm:h-14 sm:w-14">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-6 w-6 sm:h-7 sm:w-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-bold leading-snug text-[var(--foreground)] sm:text-base">
+          {title}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)] sm:text-sm">{body}</p>
+      </div>
+    </div>
+  );
+}
+
 export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
   const { locale, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -248,6 +360,13 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
   const heroTestimonial = testimonials[0] ?? null;
   /** Full reviews section: every admin testimonial once, same order (no wrap-around padding). */
   const sectionTestimonials = testimonials;
+  const ratingValues = testimonials
+    .map((tItem) => tItem.rating)
+    .filter((r): r is number => typeof r === "number" && r > 0);
+  const avgRating = ratingValues.length
+    ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
+    : 5;
+  const reviewCount = testimonials.length;
 
   const featureItems = fixedSlots(copy.features, 4);
   const statItems = fixedSlots(stats, 3);
@@ -378,6 +497,8 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
           {ctaText}
         </button>
         <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
+
+        <LandingTrustBadges locale={locale} />
       </section>
 
       <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
@@ -454,6 +575,21 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
         >
           {copy.testimonialsBadge}
         </p>
+        {reviewCount > 0 ? (
+          <div className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 shadow-[0_8px_18px_rgba(12,28,12,0.06)]">
+            <span className="text-base leading-none text-[var(--accent)]" dir="ltr">
+              {starText(avgRating)}
+            </span>
+            <span className="text-sm font-bold tabular-nums text-[var(--foreground)]" dir="ltr">
+              {avgRating.toFixed(1)}
+            </span>
+            <span className="text-xs font-medium text-[var(--muted)]">
+              {locale === "fr"
+                ? `${reviewCount} avis vérifiés`
+                : `${reviewCount} تقييم موثّق`}
+            </span>
+          </div>
+        ) : null}
         <div className="mt-5 space-y-3">
           {sectionTestimonials.map((testimonial, idx) => (
             <TestimonialReveal
@@ -486,6 +622,10 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
         </div>
       </section>
 
+      <section className={`bg-[var(--background)] ${sectionPadClass}`}>
+        <GuaranteeStrip locale={locale} />
+      </section>
+
       {product.tertiary_media_url ? (
         <section className="w-full bg-[var(--background)] py-8 sm:py-10">
           <div className="w-full">
@@ -506,14 +646,31 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
           {faqItems.map((faq, i) => {
             const opened = openFaqIndex === i;
             return (
-              <div key={`${faq?.q ?? "empty"}-${i}`} className="overflow-hidden rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] shadow-sm">
+              <div
+                key={`${faq?.q ?? "empty"}-${i}`}
+                className={`overflow-hidden rounded-2xl border bg-[var(--background)] transition-colors duration-200 ${opened ? "border-[var(--accent)]/40 shadow-[0_12px_24px_rgba(12,28,12,0.08)]" : "border-[var(--accent-muted)] shadow-sm"}`}
+              >
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5"
+                  aria-expanded={opened}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-4 text-start sm:px-5 sm:py-5"
                   onClick={() => setOpenFaqIndex((prev) => (prev === i ? null : i))}
                 >
                   <span className="break-words text-start text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-base">{faq?.q ?? ""}</span>
-                  <span className="shrink-0 text-lg font-semibold text-[var(--accent)] sm:text-xl">{opened ? "−" : "+"}</span>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent-muted)] text-[var(--accent)]">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`h-4 w-4 transition-transform duration-300 ${opened ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </span>
                 </button>
                 <div
                   className={`grid transition-all duration-[400ms] ease-out ${opened ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}

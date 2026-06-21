@@ -14,6 +14,7 @@ import {
 import { storePendingBrowserLead } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import { formatPrice } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
@@ -180,12 +181,28 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
 
   if (!open) return null;
 
+  const isFr = locale === "fr";
+  const title = isFr ? "Finaliser la commande" : "إتمام الطلب";
+  const nameLabel = isFr ? "Nom complet" : "الاسم الكامل";
+  const closeLabel = isFr ? "Fermer" : "إغلاق";
+  const submitLabel = isFr ? "Commander maintenant" : "اطلب الآن";
+  const submittingLabel = isFr ? "Envoi en cours..." : "جارٍ الإرسال...";
+  const codNote = isFr
+    ? "Paiement à la livraison — vous payez à la réception"
+    : "الدفع عند الاستلام — تدفع عند وصول الطلب";
+  const priceLabel = isFr ? "Total à payer" : "المبلغ الإجمالي";
+
+  const priceValue =
+    product.discount_price != null
+      ? Number(product.discount_price)
+      : Number(product.price);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 [backdrop-filter:blur(4px)] sm:items-center sm:p-4">
       <button
         type="button"
         className="absolute inset-0"
-        aria-label="Close"
+        aria-label={closeLabel}
         onClick={() => {
           reset();
           onClose();
@@ -194,13 +211,18 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="relative max-h-[min(90dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 shadow-xl sm:p-6"
+        className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
         dir="ltr"
       >
-        <div className="flex items-start justify-between gap-3">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--accent-muted)]/60 bg-[var(--card)] px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold sm:text-xl">طلب شراء</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">{copy.name}</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--accent)]">
+              {title}
+            </p>
+            <h2 className="mt-1 truncate text-lg font-extrabold leading-snug text-[var(--foreground)] sm:text-xl">
+              {copy.name}
+            </h2>
           </div>
           <button
             type="button"
@@ -208,72 +230,110 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
               reset();
               onClose();
             }}
-            className="min-h-[44px] min-w-[44px] shrink-0 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-3 text-sm font-medium text-[var(--muted)] hover:bg-[var(--accent-muted)]/20"
+            aria-label={closeLabel}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--accent-muted)] bg-[var(--background)] text-[var(--muted)] transition hover:bg-[var(--accent-muted)]/30"
           >
-            إغلاق
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
           </button>
         </div>
 
-        <div className="mt-6 space-y-4 sm:mt-8">
-          <div>
-            <label className="block text-sm font-medium">
-              الاسم الكامل <span className="text-red-500">*</span>
-            </label>
-            <input
-              className="store-input mt-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onFocus={() => touchMetaFunnelActivityThrottled()}
-              onBlur={() => setTouched((p) => ({ ...p, name: true }))}
-              autoComplete="name"
-              aria-invalid={Boolean(nameError)}
-            />
-            {nameError ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{nameError}</p>
-            ) : null}
+        <div className="px-4 sm:px-6">
+          {/* Price summary */}
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
+            <span className="text-sm font-semibold text-[var(--muted)]">{priceLabel}</span>
+            <span className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]" dir="ltr">
+              {formatPrice(priceValue)}
+            </span>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium">
-              {t("orderForm.whatsappNumber")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="mt-2 flex items-stretch gap-2" dir="ltr">
-              <span className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 text-sm font-mono text-[var(--foreground)]">
-                +222
-              </span>
+          <div className="mt-5 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-[var(--foreground)]">
+                {nameLabel} <span className="text-red-500">*</span>
+              </label>
               <input
-                className="store-input flex-1"
-                value={phoneLocal}
-                onChange={(e) => {
-                  const next = onlyDigits(e.target.value);
-                  setPhoneLocal(next.slice(0, 8));
-                }}
+                className="store-input mt-2"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 onFocus={() => touchMetaFunnelActivityThrottled()}
-                onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="XXXXXXXX"
-                aria-invalid={Boolean(phoneError)}
+                onBlur={() => setTouched((p) => ({ ...p, name: true }))}
+                autoComplete="name"
+                aria-invalid={Boolean(nameError)}
               />
+              {nameError ? (
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                  <span aria-hidden>⚠</span>
+                  {nameError}
+                </p>
+              ) : null}
             </div>
-            {phoneError ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{phoneError}</p>
-            ) : (
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4
-              </p>
-            )}
-          </div>
 
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void submit()}
-            className="store-btn-primary mt-2 w-full rounded-xl font-bold shadow-lg shadow-[var(--accent)]/25 disabled:opacity-60"
-          >
-            {busy ? "جارٍ الإرسال..." : "طلب"}
-          </button>
+            <div>
+              <label className="block text-sm font-semibold text-[var(--foreground)]">
+                {t("orderForm.whatsappNumber")} <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-2 flex items-stretch gap-2" dir="ltr">
+                <span className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 text-sm font-mono font-semibold text-[var(--foreground)]">
+                  +222
+                </span>
+                <input
+                  className="store-input flex-1"
+                  value={phoneLocal}
+                  onChange={(e) => {
+                    const next = onlyDigits(e.target.value);
+                    setPhoneLocal(next.slice(0, 8));
+                  }}
+                  onFocus={() => touchMetaFunnelActivityThrottled()}
+                  onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder="XXXXXXXX"
+                  aria-invalid={Boolean(phoneError)}
+                />
+              </div>
+              {phoneError ? (
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                  <span aria-hidden>⚠</span>
+                  {phoneError}
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-[var(--muted)]">
+                  {isFr
+                    ? "Entrez 8 chiffres commençant par 2, 3 ou 4"
+                    : "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4"}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submit()}
+              className="store-btn-primary mt-1 w-full text-base font-bold disabled:opacity-60"
+            >
+              {busy ? (
+                <>
+                  <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+                  </svg>
+                  {submittingLabel}
+                </>
+              ) : (
+                submitLabel
+              )}
+            </button>
+
+            <div className="flex items-center justify-center gap-1.5 text-center text-xs font-medium text-[var(--muted)]">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              {codNote}
+            </div>
+          </div>
         </div>
       </div>
     </div>

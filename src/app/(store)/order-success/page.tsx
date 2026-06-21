@@ -49,9 +49,19 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         totalPrice={typeof totalPrice === "number" && Number.isFinite(totalPrice) ? totalPrice : null}
         currency="MRU"
       />
-      <div className="w-full rounded-2xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 shadow-sm sm:p-10">
-        <p className="text-lg font-semibold text-[var(--foreground)] sm:text-xl">
-          تم إرسال طلبكم بنجاح، سيتواصل معكم فريقنا الآن لإتمام الطلب
+      <div className="store-fade-up w-full overflow-hidden rounded-3xl border border-[var(--accent-muted)] bg-[var(--card)] p-6 shadow-[var(--shadow-md)] sm:p-10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-soft)] sm:h-20 sm:w-20">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--shadow-accent)] sm:h-14 sm:w-14">
+            <svg viewBox="0 0 24 24" className="h-7 w-7 sm:h-8 sm:w-8" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
+        </div>
+        <h1 className="mt-5 text-xl font-extrabold leading-snug text-[var(--foreground)] sm:text-2xl">
+          تم استلام طلبكم بنجاح
+        </h1>
+        <p className="mt-2 text-base font-medium leading-relaxed text-[var(--muted)] sm:text-lg">
+          سيتواصل معكم فريقنا الآن لتأكيد طلبكم وإتمامه
         </p>
         <OrderSuccessContinueLink />
       </div>

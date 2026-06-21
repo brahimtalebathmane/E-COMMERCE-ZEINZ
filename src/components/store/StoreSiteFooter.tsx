@@ -16,7 +16,7 @@ export function StoreSiteFooter() {
 
   return (
     <footer
-      className="mt-auto border-t border-[var(--accent-muted)]/70 bg-[var(--card)]/90 text-[var(--foreground)] backdrop-blur-sm"
+      className="mt-auto border-t border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
       style={
         {
           "--accent": BRAND_COLOR,
@@ -24,6 +24,14 @@ export function StoreSiteFooter() {
         } as CSSProperties
       }
     >
+      <div
+        aria-hidden
+        className="h-0.5 w-full"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 60%, transparent), transparent)",
+        }}
+      />
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
           <div className="space-y-3">
