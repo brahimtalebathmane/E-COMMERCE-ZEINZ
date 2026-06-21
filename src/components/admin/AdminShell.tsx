@@ -6,8 +6,10 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { SiteLogo } from "@/components/SiteLogo";
 import { createClient } from "@/lib/supabase/client";
 import { adminAr as a } from "@/locales/admin-ar";
+import { useAdminAssistant } from "./AdminAssistantContext";
 import {
   AnalyticsIcon,
+  AssistantIcon,
   CloseIcon,
   HomeIcon,
   LogoutIcon,
@@ -39,6 +41,7 @@ function isActive(pathname: string, item: NavItem): boolean {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const router = useRouter();
+  const { open: assistantOpen, openAssistant } = useAdminAssistant();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -107,6 +110,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => {
+              setDrawerOpen(false);
+              openAssistant();
+            }}
+            className="admin-nav-link w-full justify-start text-start"
+            data-active={assistantOpen}
+          >
+            <AssistantIcon size={20} className="shrink-0" />
+            <span className="truncate">{a.nav.assistant}</span>
+          </button>
         </div>
 
         <div className="space-y-1">
@@ -227,6 +242,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => {
+              setDrawerOpen(false);
+              openAssistant();
+            }}
+            className="admin-bottom-link"
+            data-active={assistantOpen}
+            aria-label={a.nav.assistant}
+          >
+            <AssistantIcon size={22} />
+            <span className="truncate">{a.nav.assistant}</span>
+          </button>
         </div>
       </nav>
     </div>

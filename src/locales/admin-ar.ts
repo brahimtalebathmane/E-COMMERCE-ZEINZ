@@ -6,6 +6,7 @@ export const adminAr = {
     products: "المنتجات",
     orders: "الطلبات",
     analytics: "الأرباح",
+    assistant: "المساعد الذكي",
     storefront: "المتجر",
   },
   shell: {

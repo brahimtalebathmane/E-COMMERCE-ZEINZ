@@ -124,3 +124,12 @@ export function ArrowIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function AssistantIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5v-3.5H5.5A1.5 1.5 0 0 1 4 14.5v-9Z" />
+      <path d="M12 7l.9 2.1L15 10l-2.1.9L12 13l-.9-2.1L9 10l2.1-.9L12 7Z" />
+    </Base>
+  );
+}

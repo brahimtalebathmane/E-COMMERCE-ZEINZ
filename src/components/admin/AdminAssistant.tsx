@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminAr as a } from "@/locales/admin-ar";
+import { useAdminAssistant } from "./AdminAssistantContext";
 
 type ChatMessage = {
   id: string;
@@ -18,7 +19,7 @@ function makeId(): string {
 }
 
 export function AdminAssistant() {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen } = useAdminAssistant();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -139,124 +140,110 @@ export function AdminAssistant() {
     [send],
   );
 
+  if (!open) return null;
+
   return (
-    <>
-      {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={a.assistant.openButton}
-          className="fixed bottom-20 end-4 z-40 flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 lg:bottom-4"
-        >
-          <span aria-hidden>💬</span>
-          <span>{a.assistant.openButton}</span>
-        </button>
-      )}
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex justify-start"
-          role="dialog"
-          aria-modal="true"
-          aria-label={a.assistant.title}
-        >
-          <button
-            type="button"
-            aria-label={a.assistant.close}
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/40"
-          />
-          <div className="relative flex h-full w-full max-w-md flex-col bg-[var(--card)] shadow-2xl">
-            <header className="flex items-center justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{a.assistant.title}</p>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {a.assistant.subtitle}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={startNewChat}
-                  disabled={sending}
-                  className="rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:opacity-50"
-                >
-                  {a.assistant.newChat}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label={a.assistant.close}
-                  className="rounded-lg px-2 py-1.5 text-lg leading-none text-[var(--muted)] transition hover:text-[var(--foreground)]"
-                >
-                  ✕
-                </button>
-              </div>
-            </header>
-
-            <div
-              ref={scrollRef}
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+    <div
+      className="fixed inset-0 z-50 flex justify-start"
+      role="dialog"
+      aria-modal="true"
+      aria-label={a.assistant.title}
+    >
+      <button
+        type="button"
+        aria-label={a.assistant.close}
+        onClick={() => setOpen(false)}
+        className="absolute inset-0 bg-black/40"
+      />
+      <div className="relative flex h-full w-full max-w-md flex-col bg-[var(--card)] shadow-2xl">
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{a.assistant.title}</p>
+            <p className="truncate text-xs text-[var(--muted)]">
+              {a.assistant.subtitle}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={startNewChat}
+              disabled={sending}
+              className="rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:opacity-50"
             >
-              {messages.length === 0 ? (
-                <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-4 text-sm">
-                  <p className="font-semibold">{a.assistant.emptyTitle}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-                    {a.assistant.emptyBody}
-                  </p>
-                </div>
-              ) : (
-                messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={
-                      m.role === "user"
-                        ? "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-[var(--accent)] px-4 py-2.5 text-sm text-white"
-                        : m.role === "error"
-                          ? "me-auto max-w-[90%] rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-300"
-                          : "me-auto max-w-[90%] rounded-2xl rounded-ss-sm border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm"
-                    }
-                  >
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">
-                      {m.role === "user"
-                        ? a.assistant.youLabel
-                        : a.assistant.assistantLabel}
-                    </p>
-                    <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
-                  </div>
-                ))
-              )}
-              {sending && (
-                <div className="me-auto max-w-[90%] rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--muted)]">
-                  {a.assistant.sending}
-                </div>
-              )}
-            </div>
+              {a.assistant.newChat}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label={a.assistant.close}
+              className="rounded-lg px-2 py-1.5 text-lg leading-none text-[var(--muted)] transition hover:text-[var(--foreground)]"
+            >
+              ✕
+            </button>
+          </div>
+        </header>
 
-            <div className="border-t border-[var(--accent-muted)] p-3">
-              <div className="flex items-end gap-2">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  rows={2}
-                  dir="auto"
-                  placeholder={a.assistant.placeholder}
-                  className="min-h-[44px] flex-1 resize-none rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => void send()}
-                  disabled={sending || input.trim().length === 0}
-                  className="min-h-[44px] rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                >
-                  {sending ? a.assistant.sending : a.assistant.send}
-                </button>
-              </div>
+        <div
+          ref={scrollRef}
+          className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+        >
+          {messages.length === 0 ? (
+            <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-4 text-sm">
+              <p className="font-semibold">{a.assistant.emptyTitle}</p>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+                {a.assistant.emptyBody}
+              </p>
             </div>
+          ) : (
+            messages.map((m) => (
+              <div
+                key={m.id}
+                className={
+                  m.role === "user"
+                    ? "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-[var(--accent)] px-4 py-2.5 text-sm text-white"
+                    : m.role === "error"
+                      ? "me-auto max-w-[90%] rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-300"
+                      : "me-auto max-w-[90%] rounded-2xl rounded-ss-sm border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm"
+                }
+              >
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">
+                  {m.role === "user"
+                    ? a.assistant.youLabel
+                    : a.assistant.assistantLabel}
+                </p>
+                <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
+              </div>
+            ))
+          )}
+          {sending && (
+            <div className="me-auto max-w-[90%] rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--muted)]">
+              {a.assistant.sending}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[var(--accent-muted)] p-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={2}
+              dir="auto"
+              placeholder={a.assistant.placeholder}
+              className="min-h-[44px] flex-1 resize-none rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={sending || input.trim().length === 0}
+              className="min-h-[44px] rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {sending ? a.assistant.sending : a.assistant.send}
+            </button>
           </div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }
