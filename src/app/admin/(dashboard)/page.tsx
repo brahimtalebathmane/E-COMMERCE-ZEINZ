@@ -30,7 +30,7 @@ export default async function AdminHomePage() {
     supabase
       .from("products")
       .select(
-        "id, name_ar, cost_price, test_status, profit_calculation_start_date",
+        "id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at",
       ),
     supabase.from("product_ad_spend").select("product_id, amount"),
   ]);
@@ -85,6 +85,9 @@ export default async function AdminHomePage() {
 
   const pipeline = { research: 0, ready: 0, winner: 0, failed: 0 };
   for (const p of productRows) {
+    // Archived (soft-deleted) products are excluded from the active pipeline
+    // counts; their orders still contribute to revenue/profit above.
+    if (p.deleted_at != null) continue;
     const st = p.test_status;
     if (st === "winner") pipeline.winner += 1;
     else if (st === "failed") pipeline.failed += 1;

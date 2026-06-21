@@ -33,6 +33,7 @@ import { normalizeProductSlug } from "@/lib/product-slug";
 import { getPublicSiteUrlClient } from "@/lib/site-url";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 function stickyEndsAtToDatetimeLocal(iso: string | null | undefined): string {
   if (!iso?.trim()) return "";
@@ -513,15 +514,23 @@ export function ProductForm({ mode, initial }: Props) {
         if (!result.ok) {
           throw new Error(result.error);
         }
+        toast.success(a.productForm.saved);
       } else if (mode === "create") {
         await createProductAction(payload);
+        toast.success(a.productForm.created);
       } else if (initial) {
-        await updateProductAction(initial.id, payload);
+        const result = await updateProductAction(initial.id, payload);
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+        toast.success(a.productForm.saved);
       }
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : a.productForm.failedSave);
+      const message = err instanceof Error ? err.message : a.productForm.failedSave;
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -557,11 +566,19 @@ export function ProductForm({ mode, initial }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await deleteProductAction(initial.id);
+      const result = await deleteProductAction(initial.id);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
+        return;
+      }
+      toast.success(a.productForm.deleted);
       router.push("/admin/products");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : a.productForm.failedDelete);
+      const message = err instanceof Error ? err.message : a.productForm.failedDelete;
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }

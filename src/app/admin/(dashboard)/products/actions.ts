@@ -742,64 +742,153 @@ export async function completeLandingSetupAction(
   }
 }
 
-export async function updateProductAction(id: string, payload: ProductPayload) {
-  validateLandingProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+export async function updateProductAction(
+  id: string,
+  payload: ProductPayload,
+): Promise<ProductActionResult> {
+  try {
+    validateLandingProductPayload(payload);
+    const { supabase } = await assertAdminUser();
 
-  const { data: existing, error: fetchErr } = await supabase
-    .from("products")
-    .select("id, slug, old_slugs")
-    .eq("id", id)
-    .maybeSingle();
+    const { data: existing, error: fetchErr } = await supabase
+      .from("products")
+      .select("id, slug, old_slugs")
+      .eq("id", id)
+      .maybeSingle();
 
-  if (fetchErr || !existing) {
-    throw new Error("Product not found");
+    if (fetchErr || !existing) {
+      return { ok: false, error: "Product not found" };
+    }
+
+    const { slug, old_slugs } = await resolveProductSlugFields(
+      supabase,
+      payload.slug,
+      payload.name_ar,
+      {
+        id,
+        slug: String(existing.slug),
+        old_slugs: (existing.old_slugs as string[]) ?? [],
+      },
+    );
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        ...landingFieldsFromPayload(payload),
+        slug,
+        old_slugs,
+        price: payload.price,
+        media_type: payload.media_type,
+        media_url: payload.media_url.trim(),
+        ...pipelineFieldsFromPayload(payload),
+      })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidateProductPaths(String(existing.slug), slug);
+    revalidatePath(`/admin/products/${id}/edit`);
+    return { ok: true };
+  } catch (error) {
+    return productActionFailure(error);
   }
-
-  const { slug, old_slugs } = await resolveProductSlugFields(
-    supabase,
-    payload.slug,
-    payload.name_ar,
-    {
-      id,
-      slug: String(existing.slug),
-      old_slugs: (existing.old_slugs as string[]) ?? [],
-    },
-  );
-
-  const { error } = await supabase
-    .from("products")
-    .update({
-      ...landingFieldsFromPayload(payload),
-      slug,
-      old_slugs,
-      price: payload.price,
-      media_type: payload.media_type,
-      media_url: payload.media_url.trim(),
-      ...pipelineFieldsFromPayload(payload),
-    })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-
-  revalidateProductPaths(String(existing.slug), slug);
 }
 
-export async function deleteProductAction(id: string) {
-  const { supabase } = await assertAdminUser();
+/** Postgres foreign-key violation (e.g. orders still reference this product). */
+const FK_VIOLATION_CODE = "23503";
 
-  const { data: existing } = await supabase
-    .from("products")
-    .select("slug")
-    .eq("id", id)
-    .maybeSingle();
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === FK_VIOLATION_CODE
+  );
+}
 
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+/**
+ * Removes a product safely.
+ *
+ * Products with linked customer orders cannot be hard-deleted because
+ * `orders.product_id` uses `on delete restrict` (orders are preserved for
+ * bookkeeping). For those we soft-delete (archive) by stamping `deleted_at`,
+ * which hides the product from the storefront, sitemap, and active admin
+ * pipeline. Products with no orders are hard-deleted (dependent ad-spend /
+ * AI-agent rows cascade away). All database access is wrapped so a runtime
+ * exception never escapes as a raw 500.
+ */
+export async function deleteProductAction(
+  id: string,
+): Promise<ProductActionResult> {
+  try {
+    const { supabase } = await assertAdminUser();
 
-  if (existing?.slug) {
-    revalidatePath(`/${existing.slug}`);
+    const { data: existing, error: fetchErr } = await supabase
+      .from("products")
+      .select("slug")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return { ok: false, error: fetchErr.message };
+    }
+    if (!existing) {
+      return { ok: false, error: "Product not found" };
+    }
+
+    const { count, error: countErr } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", id);
+
+    if (countErr) {
+      return { ok: false, error: countErr.message };
+    }
+
+    const hasOrders = (count ?? 0) > 0;
+
+    if (hasOrders) {
+      const { error: archiveErr } = await supabase
+        .from("products")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (archiveErr) {
+        return { ok: false, error: archiveErr.message };
+      }
+    } else {
+      const { error: deleteErr } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
+
+      if (deleteErr) {
+        // Safety net: if a relation we did not anticipate still references the
+        // row, archive it instead of crashing so the admin flow never 500s.
+        if (isForeignKeyViolation(deleteErr)) {
+          const { error: archiveErr } = await supabase
+            .from("products")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", id);
+
+          if (archiveErr) {
+            return { ok: false, error: archiveErr.message };
+          }
+        } else {
+          return { ok: false, error: deleteErr.message };
+        }
+      }
+    }
+
+    if (existing.slug) {
+      revalidatePath(`/${existing.slug}`);
+    }
+    revalidatePath("/");
+    revalidatePath("/admin/products");
+    return { ok: true };
+  } catch (error) {
+    return productActionFailure(error);
   }
-  revalidatePath("/");
-  revalidatePath("/admin/products");
 }

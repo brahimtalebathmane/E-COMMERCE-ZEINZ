@@ -47,14 +47,14 @@ export async function POST(request: Request) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, discount_price, price, meta_pixel_id, test_status, name_ar, name_fr")
+      .select("id, discount_price, price, meta_pixel_id, test_status, name_ar, name_fr, deleted_at")
       .eq("id", data.product_id)
       .maybeSingle();
 
     if (pErr) {
       throw new Error(pErr.message);
     }
-    if (!product) {
+    if (!product || product.deleted_at != null) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
     const testStatus = product.test_status as ProductTestingStatus;

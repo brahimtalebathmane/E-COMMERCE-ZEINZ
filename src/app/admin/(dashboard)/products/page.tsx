@@ -42,6 +42,7 @@ export default async function AdminProductsPage() {
     .select(
       "id, name_ar, slug, price, discount_price, cost_price, media_url, media_type, sourcing_type, sourcing_link, test_status, created_at",
     )
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const rows: AdminProductPipelineRow[] = (products ?? []).map((p) =>

@@ -109,7 +109,11 @@ export function ResearchProductForm({ mode, initial }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await deleteProductAction(initial.id);
+      const result = await deleteProductAction(initial.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.push("/admin/products");
       router.refresh();
     } catch (err) {

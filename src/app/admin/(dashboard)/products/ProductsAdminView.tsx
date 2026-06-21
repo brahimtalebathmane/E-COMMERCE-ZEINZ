@@ -249,7 +249,11 @@ export function ProductsAdminView({ products }: Props) {
     setDeletingId(id);
     startTransition(async () => {
       try {
-        await deleteProductAction(id);
+        const result = await deleteProductAction(id);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : a.pipeline.deleteFailed);

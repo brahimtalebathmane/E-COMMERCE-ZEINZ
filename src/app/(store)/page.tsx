@@ -46,6 +46,7 @@ export default async function HomePage() {
       "name_ar, name_fr, hero_subtitle_ar, hero_subtitle_fr, slug, discount_price, price, media_type, media_url, testimonials_ar, testimonials_fr",
     )
     .eq("test_status", "winner")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const products = (data ?? []).map((row) =>

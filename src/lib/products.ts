@@ -159,6 +159,7 @@ export async function getProductBySlug(
     .from("products")
     .select("*")
     .eq("slug", slug)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -174,6 +175,7 @@ export async function getProductByOldSlug(
     .from("products")
     .select("*")
     .contains("old_slugs", [slug])
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -191,7 +193,10 @@ export async function getProductById(id: string): Promise<ProductRow | null> {
 export async function getAllProductSlugs(): Promise<{ slug: string }[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createPublicClient();
-  const { data, error } = await supabase.from("products").select("slug");
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug")
+    .is("deleted_at", null);
 
   if (error || !data) return [];
   return data.map((r) => ({ slug: (r as { slug: string }).slug }));
