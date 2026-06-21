@@ -72,12 +72,27 @@ export async function notifyAdminsOfNewOrder(params: {
       signal: ac.signal,
     });
 
+    const json = (await res.json().catch(() => ({}))) as {
+      id?: string;
+      recipients?: number;
+      errors?: unknown;
+    };
+
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return {
-        sent: false,
-        error: `${res.status}: ${body.slice(0, 200) || res.statusText}`,
-      };
+      const detail =
+        typeof json.errors !== "undefined"
+          ? JSON.stringify(json.errors).slice(0, 200)
+          : res.statusText;
+      return { sent: false, error: `${res.status}: ${detail}` };
+    }
+
+    // OneSignal returns 200 with no id / zero recipients when no device matches the admin tag.
+    if (!json.id || json.recipients === 0) {
+      const reason =
+        typeof json.errors !== "undefined"
+          ? `no_recipients: ${JSON.stringify(json.errors).slice(0, 160)}`
+          : "no_recipients";
+      return { sent: false, skipped: true, reason };
     }
 
     return { sent: true };
