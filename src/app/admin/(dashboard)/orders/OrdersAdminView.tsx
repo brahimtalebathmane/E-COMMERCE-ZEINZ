@@ -41,9 +41,35 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
   minute: "2-digit",
 });
 
+/**
+ * Parse a DB timestamp into a valid `Date`, or `null` when it is missing or
+ * unparseable. Centralizing this keeps `Intl` formatters from throwing
+ * `RangeError: Invalid time value` mid-render — a throw there crashes the whole
+ * orders panel and leaves it stuck on the loading skeleton.
+ */
+function safeDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /** Stable YYYY-MM-DD key for a date, evaluated in the operational time zone. */
 function dayKey(date: Date): string {
   return DAY_KEY_FORMATTER.format(date);
+}
+
+const UNKNOWN_DAY_KEY = "__unknown__";
+
+/** `dayKey` for a raw DB value, with a safe bucket for invalid dates. */
+function rowDayKey(value: string | null | undefined): string {
+  const date = safeDate(value);
+  return date ? dayKey(date) : UNKNOWN_DAY_KEY;
+}
+
+/** Format a row time for display, never throwing on bad input. */
+function formatRowTime(value: string | null | undefined): string {
+  const date = safeDate(value);
+  return date ? TIME_FORMATTER.format(date) : "—";
 }
 
 const ALL_PRODUCTS = "__all__";
@@ -256,13 +282,17 @@ export function OrdersAdminView({ orders }: Props) {
     const yesterdayKey = dayKey(new Date(Date.now() - 86_400_000));
     const map = new Map<string, AdminOrderRow[]>();
     for (const row of visibleRows) {
-      const key = dayKey(new Date(row.created_at));
+      const key = rowDayKey(row.created_at);
       const bucket = map.get(key);
       if (bucket) bucket.push(row);
       else map.set(key, [row]);
     }
     return Array.from(map.entries()).map(([key, groupRows]) => {
-      const dateLabel = DAY_LABEL_FORMATTER.format(new Date(groupRows[0].created_at));
+      if (key === UNKNOWN_DAY_KEY) {
+        return { key, label: a.common.invalidDate, rows: groupRows };
+      }
+      const groupDate = safeDate(groupRows[0].created_at);
+      const dateLabel = groupDate ? DAY_LABEL_FORMATTER.format(groupDate) : a.common.invalidDate;
       let label = dateLabel;
       if (key === todayKey) label = `${a.orders.today} — ${dateLabel}`;
       else if (key === yesterdayKey) label = `${a.orders.yesterday} — ${dateLabel}`;
@@ -393,7 +423,7 @@ export function OrdersAdminView({ orders }: Props) {
                           </p>
                         </div>
                         <span className="shrink-0 font-mono text-[11px] text-[var(--muted)]" dir="ltr">
-                          {TIME_FORMATTER.format(new Date(o.created_at))}
+                          {formatRowTime(o.created_at)}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -462,7 +492,7 @@ export function OrdersAdminView({ orders }: Props) {
                       </td>
                       <td className="px-4 py-4 align-middle">
                         <span className="font-mono text-xs text-[var(--muted)]" dir="ltr">
-                          {TIME_FORMATTER.format(new Date(o.created_at))}
+                          {formatRowTime(o.created_at)}
                         </span>
                       </td>
                       <td className="px-4 py-4 align-middle">

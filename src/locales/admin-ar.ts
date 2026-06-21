@@ -22,6 +22,11 @@ export const adminAr = {
   },
   common: {
     loading: "جاري التحميل…",
+    errorTitle: "حدث خطأ غير متوقع",
+    errorBody:
+      "تعذر عرض هذا القسم. يمكنك إعادة المحاولة، وإذا استمرت المشكلة أعد تحميل الصفحة.",
+    retry: "إعادة المحاولة",
+    invalidDate: "تاريخ غير متوفر",
   },
   dashboard: {
     title: "نظرة عامة",

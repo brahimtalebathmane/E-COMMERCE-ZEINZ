@@ -16,6 +16,46 @@ type Props = {
   onOrderUpdated: (orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) => void;
 };
 
+const DETAIL_DATE_FORMATTER = new Intl.DateTimeFormat("ar", {
+  dateStyle: "full",
+  timeStyle: "short",
+});
+
+/**
+ * `Intl.DateTimeFormat.format` throws `RangeError: Invalid time value` when the
+ * underlying date is invalid (e.g. a null/garbled `created_at`). A throw here
+ * happens mid-render and crashes the modal, which surfaces as a frozen/blank
+ * "Order Details" panel. Guard it so the modal always renders.
+ */
+function formatDetailDate(value: string | null | undefined): string {
+  if (!value) return a.common.invalidDate;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return a.common.invalidDate;
+  try {
+    return DETAIL_DATE_FORMATTER.format(date);
+  } catch {
+    return a.common.invalidDate;
+  }
+}
+
+/** Coerce a possibly-missing/string numeric DB field into a finite number. */
+function toFiniteNumber(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Supabase relational selects can hydrate a to-one relation as either an object
+ * or a single-element array depending on FK detection. Normalize to one product
+ * (or null) so field access never lands on `undefined`.
+ */
+function normalizeProduct(
+  products: AdminOrderRow["products"] | AdminOrderRow["products"][],
+): AdminOrderRow["products"] {
+  if (Array.isArray(products)) return products[0] ?? null;
+  return products ?? null;
+}
+
 export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdated }: Props) {
   const titleId = useId();
   const [draftStatus, setDraftStatus] = useState<OrderStatus>("pending");
@@ -47,12 +87,8 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
   }, [order]);
 
   if (!open || !order) return null;
-  const product = order.products;
-  const created = new Date(order.created_at);
-  const dateStr = new Intl.DateTimeFormat("ar", {
-    dateStyle: "full",
-    timeStyle: "short",
-  }).format(created);
+  const product = normalizeProduct(order.products);
+  const dateStr = formatDetailDate(order.created_at);
   const currentOrder = order;
   const hasChanges = draftStatus !== order.status;
 
@@ -172,35 +208,41 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
               </h3>
               {product ? (
                 <div className="mt-3 space-y-2 text-sm">
-                  <p className="font-medium text-[var(--foreground)]">{product.name_ar}</p>
-                  <p className="text-[var(--muted)]">
-                    <Link
-                      href={`/${product.slug}`}
-                      className="text-[var(--accent)] underline underline-offset-2 hover:opacity-90"
-                    >
-                      {a.orders.viewStoreProduct}
-                    </Link>
+                  <p className="font-medium text-[var(--foreground)]">
+                    {product.name_ar ?? a.orders.productUnknown}
                   </p>
+                  {product.slug ? (
+                    <p className="text-[var(--muted)]">
+                      <Link
+                        href={`/${product.slug}`}
+                        className="text-[var(--accent)] underline underline-offset-2 hover:opacity-90"
+                      >
+                        {a.orders.viewStoreProduct}
+                      </Link>
+                    </p>
+                  ) : null}
                   <dl className="mt-2 space-y-1.5 text-sm">
                     <div className="flex flex-wrap justify-between gap-2">
                       <dt className="text-[var(--muted)]">{a.orders.productPrice}</dt>
-                      <dd dir="ltr">{formatPrice(Number(product.price))}</dd>
+                      <dd dir="ltr">{formatPrice(toFiniteNumber(product.price))}</dd>
                     </div>
                     {product.discount_price != null ? (
                       <div className="flex flex-wrap justify-between gap-2">
                         <dt className="text-[var(--muted)]">{a.orders.productDiscount}</dt>
-                        <dd dir="ltr">{formatPrice(Number(product.discount_price))}</dd>
+                        <dd dir="ltr">{formatPrice(toFiniteNumber(product.discount_price))}</dd>
                       </div>
                     ) : null}
-                    <div className="text-xs text-[var(--muted)]">
-                      {product.media_type === "video"
-                        ? a.orders.mediaVideo
-                        : a.orders.mediaImage}
-                      :{" "}
-                      <span className="break-all font-mono" dir="ltr">
-                        {product.media_url}
-                      </span>
-                    </div>
+                    {product.media_url ? (
+                      <div className="text-xs text-[var(--muted)]">
+                        {product.media_type === "video"
+                          ? a.orders.mediaVideo
+                          : a.orders.mediaImage}
+                        :{" "}
+                        <span className="break-all font-mono" dir="ltr">
+                          {product.media_url}
+                        </span>
+                      </div>
+                    ) : null}
                   </dl>
                 </div>
               ) : (
@@ -216,8 +258,8 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
                   <dt className="text-[var(--muted)]">{a.orders.total}</dt>
                   <dd dir="ltr">
-                    {formatPrice(Number(order.total_price))}{" "}
-                    <span className="text-[var(--muted)]">({order.currency})</span>
+                    {formatPrice(toFiniteNumber(order.total_price))}{" "}
+                    <span className="text-[var(--muted)]">({order.currency ?? "—"})</span>
                   </dd>
                 </div>
               </dl>
