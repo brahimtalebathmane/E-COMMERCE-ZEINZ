@@ -97,11 +97,20 @@ export function OneSignalAdminInit() {
       try {
         // Must run inside this user gesture for iOS 16.4+ installed PWAs.
         await OneSignal.Notifications.requestPermission();
-        if (OneSignal.User?.PushSubscription?.optedIn === false) {
+        // Explicitly opt in unless already subscribed. On a fresh mobile grant `optedIn`
+        // is often `undefined` (not `false`), so a `=== false` check would skip opt-in and
+        // never register a subscription/Player ID — leaving OneSignal with no recipients.
+        if (OneSignal.User?.PushSubscription?.optedIn !== true) {
           await OneSignal.User.PushSubscription.optIn();
         }
         OneSignal.User.addTag(ONESIGNAL_ADMIN_TAG_KEY, ONESIGNAL_ADMIN_TAG_VALUE);
         refresh(OneSignal);
+        console.info(
+          "[OneSignal] opt-in complete | optedIn:",
+          OneSignal.User?.PushSubscription?.optedIn,
+          "| subscriptionId:",
+          OneSignal.User?.PushSubscription?.id ?? null,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error("[OneSignal] requestPermission failed:", message);
