@@ -378,12 +378,12 @@ export function StaffAdminView({ initialStaff }: Props) {
             aria-modal="true"
             className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-2xl flex-col rounded-t-2xl border border-[var(--admin-border-strong)] bg-[var(--admin-elevated)] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-h-[90vh] sm:rounded-2xl"
           >
-            <div className="border-b border-[var(--admin-border)] px-4 py-4 sm:px-6">
+            <div className="shrink-0 border-b border-[var(--admin-border)] px-4 py-4 sm:px-6">
               <h2 className="text-lg font-bold">
                 {editingRow ? a.staff.editEmployee : a.staff.newEmployee}
               </h2>
             </div>
-            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
               {!editingId ? (
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">{a.login.email}</label>
@@ -438,7 +438,7 @@ export function StaffAdminView({ initialStaff }: Props) {
                 />
               </div>
             </div>
-            <div className="flex flex-col-reverse gap-2 border-t border-[var(--admin-border)] px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--admin-border)] px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button type="button" onClick={closeForm} className="min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] px-4 py-2 text-sm font-semibold">
                 {a.staff.cancel}
               </button>
