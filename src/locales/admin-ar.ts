@@ -192,6 +192,8 @@ export const adminAr = {
     metricNeedsAttention: "متابعة بشرية",
     metricInternalReturn: "مرتجع داخلي",
     segmentSummaryTitle: "ملخص الطلبات",
+    newOrderBadge: "جديد",
+    noOrdersHint: "ستظهر الطلبات الجديدة هنا فور وصولها — لا حاجة لتحديث الصفحة.",
   },
   orderStatus: {
     pending: "قيد الانتظار",

@@ -6,6 +6,7 @@ import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
 import { deleteOrderAction } from "./actions";
+import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
 
 /**
  * How many rows are committed to the DOM on first paint, plus the size of each
@@ -161,6 +162,14 @@ const OrderStatusBadge = memo(function OrderStatusBadge({
   );
 });
 
+const NewOrderBadge = memo(function NewOrderBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--accent)]">
+      {a.orders.newOrderBadge}
+    </span>
+  );
+});
+
 /** Compact metric pill used in the per-segment summary strip. */
 function MetricPill({
   label,
@@ -207,6 +216,12 @@ export function OrdersAdminView({ orders }: Props) {
   const [renderCount, setRenderCount] = useState(() =>
     Math.min(INITIAL_RENDER, orders.length),
   );
+
+  const { highlightedIds, trackRows } = useOrdersRealtime({ setRows, setActive });
+
+  useEffect(() => {
+    trackRows(rows);
+  }, [rows, trackRows]);
 
   // Aggregate per-product metrics. Order of appearance mirrors `rows` (newest
   // first), so the most recently active products surface at the front.
@@ -324,7 +339,12 @@ export function OrdersAdminView({ orders }: Props) {
 
   return (
     <>
+      {rows.length === 0 ? (
+        <p className="mt-8 text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
+      ) : null}
+
       {/* Product isolation tabs */}
+      {rows.length > 0 ? (
       <div className="mt-8">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
           <ProductTabButton
@@ -377,8 +397,10 @@ export function OrdersAdminView({ orders }: Props) {
           ) : null}
         </div>
       </div>
+      ) : null}
 
       {/* Day-by-day chronological sections */}
+      {rows.length > 0 ? (
       <div className="mt-6 space-y-8">
         {dayGroups.map((group) => (
           <section key={group.key}>
@@ -397,7 +419,9 @@ export function OrdersAdminView({ orders }: Props) {
 
             {/* Mobile cards */}
             <div className="space-y-3 md:hidden">
-              {group.rows.map((o) => (
+              {group.rows.map((o) => {
+                const isNew = highlightedIds.has(o.id);
+                return (
                 <div
                   key={o.id}
                   role="button"
@@ -409,7 +433,7 @@ export function OrdersAdminView({ orders }: Props) {
                       setActive(o);
                     }
                   }}
-                  className="admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  className={`admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                 >
                   <div className="flex gap-4">
                     <div className="min-w-0 flex-1 space-y-3">
@@ -422,9 +446,12 @@ export function OrdersAdminView({ orders }: Props) {
                             {o.phone ?? "—"}
                           </p>
                         </div>
-                        <span className="shrink-0 font-mono text-[11px] text-[var(--muted)]" dir="ltr">
-                          {formatRowTime(o.created_at)}
-                        </span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {isNew ? <NewOrderBadge /> : null}
+                          <span className="font-mono text-[11px] text-[var(--muted)]" dir="ltr">
+                            {formatRowTime(o.created_at)}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <OrderStatusBadge status={o.status} />
@@ -449,7 +476,8 @@ export function OrdersAdminView({ orders }: Props) {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             {/* Desktop table */}
@@ -464,11 +492,13 @@ export function OrdersAdminView({ orders }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--admin-border)]">
-                  {group.rows.map((o) => (
+                  {group.rows.map((o) => {
+                    const isNew = highlightedIds.has(o.id);
+                    return (
                     <tr
                       key={o.id}
                       tabIndex={0}
-                      className="cursor-pointer transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                      className={`cursor-pointer transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                       onClick={() => setActive(o)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -478,9 +508,12 @@ export function OrdersAdminView({ orders }: Props) {
                       }}
                     >
                       <td className="px-4 py-4 align-middle">
-                        <span className="break-all font-mono text-sm" dir="ltr">
-                          {o.phone ?? "—"}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="break-all font-mono text-sm" dir="ltr">
+                            {o.phone ?? "—"}
+                          </span>
+                          {isNew ? <NewOrderBadge /> : null}
+                        </div>
                       </td>
                       <td className="px-4 py-4 align-middle">
                         <div className="flex flex-wrap items-center gap-2">
@@ -510,13 +543,15 @@ export function OrdersAdminView({ orders }: Props) {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
           </section>
         ))}
       </div>
+      ) : null}
 
       <OrderDetailModal
         order={active}
