@@ -5,10 +5,13 @@ alter table public.profiles
   add column if not exists is_active boolean not null default true,
   add column if not exists display_name text;
 
+-- Drop the legacy single-role constraint FIRST so the migration of existing
+-- rows to `owner` isn't rejected by the old `role in ('admin')` check.
+alter table public.profiles drop constraint if exists profiles_role_check;
+
 -- Legacy `admin` rows become `owner` (full access).
 update public.profiles set role = 'owner' where role = 'admin';
 
-alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles
   add constraint profiles_role_check check (role in ('owner', 'staff'));
 
