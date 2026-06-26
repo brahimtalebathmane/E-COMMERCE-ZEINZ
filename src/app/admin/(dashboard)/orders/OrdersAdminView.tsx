@@ -6,6 +6,8 @@ import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
 import { deleteOrderAction } from "./actions";
+import { useHasPermission } from "@/components/admin/AdminPermissionsContext";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
 
 /**
@@ -209,6 +211,7 @@ type Props = {
 };
 
 export function OrdersAdminView({ orders }: Props) {
+  const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -459,6 +462,7 @@ export function OrdersAdminView({ orders }: Props) {
                           <span className="text-xs font-medium text-[var(--accent)]">
                             {a.orders.tapForDetails}
                           </span>
+                          {canDeleteOrders ? (
                           <button
                             type="button"
                             disabled={deletingId === o.id}
@@ -471,6 +475,7 @@ export function OrdersAdminView({ orders }: Props) {
                           >
                             {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
                           </button>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -529,6 +534,7 @@ export function OrdersAdminView({ orders }: Props) {
                         </span>
                       </td>
                       <td className="px-4 py-4 align-middle">
+                        {canDeleteOrders ? (
                         <button
                           type="button"
                           disabled={deletingId === o.id}
@@ -541,6 +547,9 @@ export function OrdersAdminView({ orders }: Props) {
                         >
                           {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
                         </button>
+                        ) : (
+                          <span className="text-xs text-[var(--muted)]">—</span>
+                        )}
                       </td>
                     </tr>
                   );

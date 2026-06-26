@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
-import { assertAdminUser, AuthError } from "@/lib/auth/admin";
+import { assertPermission, AuthError } from "@/lib/auth/admin";
+import {
+  canChangeOrderStatus,
+  PERMISSIONS,
+} from "@/lib/auth/permissions";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import {
   updateOrderStatusWithEffects,
@@ -24,7 +28,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await assertAdminUser();
+    const session = await assertPermission(PERMISSIONS.view_orders);
     const { id } = await context.params;
     const orderId = id?.trim();
     if (!orderId) {
@@ -41,6 +45,10 @@ export async function PATCH(
     const parsed = patchBodySchema.safeParse(raw);
     if (!parsed.success) {
       return apiValidationError("Invalid status");
+    }
+
+    if (!canChangeOrderStatus(session.access, parsed.data.status)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const supabase = createServiceClient();

@@ -9,6 +9,11 @@ import { formatPrice } from "@/lib/currency";
 import type { OrderStatus } from "@/types";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
+import { useAdminAccess, useHasPermission } from "@/components/admin/AdminPermissionsContext";
+import {
+  canChangeOrderStatus,
+  PERMISSIONS,
+} from "@/lib/auth/permissions";
 
 type Props = {
   order: AdminOrderRow | null;
@@ -260,6 +265,12 @@ function OrderDetailSections({
   onSaveChanges,
   onDeleted,
 }: SectionsProps) {
+  const access = useAdminAccess();
+  const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
+  const canEditStatus =
+    canChangeOrderStatus(access, draftStatus) ||
+    canChangeOrderStatus(access, "confirmed") ||
+    canChangeOrderStatus(access, "cancelled");
   const product = normalizeProduct(order?.products);
   const dateStr = formatDetailDate(order?.created_at);
 
@@ -350,6 +361,7 @@ function OrderDetailSections({
         </dl>
       </section>
 
+      {canEditStatus ? (
       <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           {a.orders.sectionActions}
@@ -361,26 +373,34 @@ function OrderDetailSections({
             value={draftStatus}
             onChange={(e) => onDraftStatusChange(e.target.value as OrderStatus)}
           >
-            <option value="pending">{a.orderStatus.pending}</option>
-            <option value="confirmed">{a.orderStatus.confirmed}</option>
-            <option value="shipped">{a.orderStatus.shipped}</option>
-            <option value="cancelled">{a.orderStatus.cancelled}</option>
-            <option value="requires_human_intervention">
-              {a.orderStatus.requires_human_intervention}
-            </option>
-            <option value="internal_return">
-              {a.orderStatus.internal_return}
-            </option>
+            {(
+              [
+                "pending",
+                "confirmed",
+                "shipped",
+                "cancelled",
+                "requires_human_intervention",
+                "internal_return",
+              ] as OrderStatus[]
+            ).map((value) => {
+              if (!canChangeOrderStatus(access, value) && value !== order?.status) return null;
+              return (
+                <option key={value} value={value}>
+                  {a.orderStatus[value]}
+                </option>
+              );
+            })}
           </select>
           <button
             type="button"
-            disabled={saving || !hasChanges}
+            disabled={saving || !hasChanges || !canChangeOrderStatus(access, draftStatus)}
             onClick={onSaveChanges}
             className="min-h-[44px] w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? a.orders.savingChanges : a.orders.saveChanges}
           </button>
         </div>
+        {canDeleteOrders ? (
         <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
           <button
             type="button"
@@ -391,7 +411,9 @@ function OrderDetailSections({
             {a.orders.delete}
           </button>
         </div>
+        ) : null}
       </section>
+      ) : null}
     </div>
   );
 }

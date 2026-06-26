@@ -1,5 +1,36 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  canAccessRoute,
+  parsePermissions,
+  type AdminAccess,
+} from "@/lib/auth/permissions";
+
+type ProfileGateRow = {
+  role: string;
+  permissions: unknown;
+  is_active: boolean;
+};
+
+function buildAccess(userId: string, profile: ProfileGateRow): AdminAccess {
+  const role = profile.role === "staff" ? "staff" : "owner";
+  return {
+    userId,
+    role,
+    isOwner: role === "owner",
+    permissions: parsePermissions(profile.permissions),
+    isActive: profile.is_active !== false,
+    displayName: null,
+    email: null,
+  };
+}
+
+function forbiddenRedirect(request: NextRequest, reason: "forbidden" | "suspended" = "forbidden") {
+  const url = request.nextUrl.clone();
+  url.pathname = "/admin/login";
+  url.searchParams.set("error", reason);
+  return NextResponse.redirect(url);
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -54,13 +85,22 @@ export async function middleware(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, permissions, is_active")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || !["owner", "staff"].includes(profile.role)) {
+      return forbiddenRedirect(request, "forbidden");
+    }
+
+    if (profile.is_active === false) {
+      return forbiddenRedirect(request, "suspended");
+    }
+
+    const access = buildAccess(user.id, profile as ProfileGateRow);
+    if (!canAccessRoute(access, path)) {
       const url = request.nextUrl.clone();
-      url.pathname = "/admin/login";
+      url.pathname = "/admin";
       url.searchParams.set("error", "forbidden");
       return NextResponse.redirect(url);
     }
@@ -69,10 +109,14 @@ export async function middleware(request: NextRequest) {
   if (path === "/admin/login" && user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_active")
       .eq("id", user.id)
       .maybeSingle();
-    if (profile?.role === "admin") {
+    if (
+      profile &&
+      ["owner", "staff"].includes(profile.role) &&
+      profile.is_active !== false
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);

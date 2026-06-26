@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { assertAdminUser, AuthError } from "@/lib/auth/admin";
+import {
+  assertAdminUser,
+  assertAnyPermission,
+  assertOwnerUser,
+  assertPermission,
+  AuthError,
+} from "@/lib/auth/admin";
+import type { PermissionKey } from "@/lib/auth/permissions";
 import { verifyOrderActionToken } from "@/lib/auth/order-action-token";
 import { FORBIDDEN_RESPONSE } from "@/lib/api/errors";
 
@@ -14,6 +21,61 @@ export async function requireAdminApi(): Promise<
 > {
   try {
     const session = await assertAdminUser();
+    return { ok: true, session };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+    return { ok: false, response: FORBIDDEN_RESPONSE };
+  }
+}
+
+export async function requirePermissionApi(
+  permission: PermissionKey,
+): Promise<
+  { ok: true; session: Awaited<ReturnType<typeof assertPermission>> } | { ok: false; response: NextResponse }
+> {
+  try {
+    const session = await assertPermission(permission);
+    return { ok: true, session };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+    return { ok: false, response: FORBIDDEN_RESPONSE };
+  }
+}
+
+export async function requireAnyPermissionApi(
+  permissions: PermissionKey[],
+): Promise<
+  { ok: true; session: Awaited<ReturnType<typeof assertAnyPermission>> } | { ok: false; response: NextResponse }
+> {
+  try {
+    const session = await assertAnyPermission(permissions);
+    return { ok: true, session };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+    return { ok: false, response: FORBIDDEN_RESPONSE };
+  }
+}
+
+export async function requireOwnerApi(): Promise<
+  { ok: true; session: Awaited<ReturnType<typeof assertOwnerUser>> } | { ok: false; response: NextResponse }
+> {
+  try {
+    const session = await assertOwnerUser();
     return { ok: true, session };
   } catch (error) {
     if (error instanceof AuthError) {

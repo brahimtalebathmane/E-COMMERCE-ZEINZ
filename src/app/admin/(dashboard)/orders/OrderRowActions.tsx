@@ -2,20 +2,39 @@
 
 import type { OrderStatus } from "@/types";
 import { adminAr as a } from "@/locales/admin-ar";
-import { useState } from "react";
+import { useAdminAccess } from "@/components/admin/AdminPermissionsContext";
+import {
+  canChangeOrderStatus,
+  PERMISSIONS,
+} from "@/lib/auth/permissions";
+import { useMemo, useState } from "react";
 
 type Props = {
   orderId: string;
   status: OrderStatus;
 };
 
-export function OrderRowActions({
-  orderId,
-  status,
-}: Props) {
+const ALL_STATUSES: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "shipped",
+  "cancelled",
+  "requires_human_intervention",
+  "internal_return",
+];
+
+export function OrderRowActions({ orderId, status }: Props) {
+  const access = useAdminAccess();
   const [busy, setBusy] = useState(false);
 
+  const allowedStatuses = useMemo(() => {
+    return ALL_STATUSES.filter((next) => canChangeOrderStatus(access, next));
+  }, [access]);
+
+  const canEdit = allowedStatuses.length > 0;
+
   async function onStatus(next: OrderStatus) {
+    if (!canChangeOrderStatus(access, next)) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -35,6 +54,18 @@ export function OrderRowActions({
     }
   }
 
+  if (!access.isOwner && !access.permissions.includes(PERMISSIONS.view_orders)) {
+    return null;
+  }
+
+  if (!canEdit) {
+    return (
+      <p className="text-xs text-[var(--muted)]">
+        {a.orders.readOnlyStatus}: {a.orderStatus[status]}
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <select
@@ -43,14 +74,17 @@ export function OrderRowActions({
         value={status}
         onChange={(e) => void onStatus(e.target.value as OrderStatus)}
       >
-        <option value="pending">{a.orderStatus.pending}</option>
-        <option value="confirmed">{a.orderStatus.confirmed}</option>
-        <option value="shipped">{a.orderStatus.shipped}</option>
-        <option value="cancelled">{a.orderStatus.cancelled}</option>
-        <option value="requires_human_intervention">
-          {a.orderStatus.requires_human_intervention}
-        </option>
-        <option value="internal_return">{a.orderStatus.internal_return}</option>
+        {ALL_STATUSES.map((value) => {
+          const allowed =
+            value === status ||
+            canChangeOrderStatus(access, value);
+          if (!allowed && value !== status) return null;
+          return (
+            <option key={value} value={value} disabled={!allowed}>
+              {a.orderStatus[value]}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { assertAdminUser } from "@/lib/auth/admin";
+import { assertPermission } from "@/lib/auth/admin";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export type AdSpendActionResult = { ok: true; amount: number } | { ok: false; error: string };
 
@@ -24,7 +26,8 @@ export async function updateAdSpendAction(
   const rounded = Math.round(amount * 100) / 100;
 
   try {
-    const { supabase } = await assertAdminUser();
+    await assertPermission(PERMISSIONS.view_analytics);
+    const supabase = createServiceClient();
     const { error } = await supabase
       .from("product_ad_spend")
       .upsert(
@@ -77,7 +80,8 @@ export async function updateCalculationStartDateAction(
   }
 
   try {
-    const { supabase } = await assertAdminUser();
+    await assertPermission(PERMISSIONS.view_analytics);
+    const supabase = createServiceClient();
     const { error } = await supabase
       .from("products")
       .update({ profit_calculation_start_date: value })

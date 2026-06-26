@@ -7,6 +7,11 @@ import { SiteLogo } from "@/components/SiteLogo";
 import { createClient } from "@/lib/supabase/client";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useAdminAssistant } from "./AdminAssistantContext";
+import { useAdminAccess } from "./AdminPermissionsContext";
+import {
+  PERMISSIONS,
+  type PermissionKey,
+} from "@/lib/auth/permissions";
 import {
   AnalyticsIcon,
   AssistantIcon,
@@ -16,6 +21,7 @@ import {
   MenuIcon,
   OrdersIcon,
   ProductsIcon,
+  StaffIcon,
   StoreIcon,
 } from "./AdminIcons";
 
@@ -24,13 +30,30 @@ type NavItem = {
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
   exact?: boolean;
+  permission?: PermissionKey;
+  ownerOnly?: boolean;
 };
 
-const NAV_ITEMS: NavItem[] = [
+const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: a.nav.home, icon: HomeIcon, exact: true },
-  { href: "/admin/products", label: a.nav.products, icon: ProductsIcon },
-  { href: "/admin/orders", label: a.nav.orders, icon: OrdersIcon },
-  { href: "/admin/analytics", label: a.nav.analytics, icon: AnalyticsIcon },
+  {
+    href: "/admin/products",
+    label: a.nav.products,
+    icon: ProductsIcon,
+    permission: PERMISSIONS.manage_products,
+  },
+  {
+    href: "/admin/orders",
+    label: a.nav.orders,
+    icon: OrdersIcon,
+    permission: PERMISSIONS.view_orders,
+  },
+  {
+    href: "/admin/analytics",
+    label: a.nav.analytics,
+    icon: AnalyticsIcon,
+    permission: PERMISSIONS.view_analytics,
+  },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -41,16 +64,22 @@ function isActive(pathname: string, item: NavItem): boolean {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const router = useRouter();
+  const access = useAdminAccess();
   const { open: assistantOpen, openAssistant } = useAdminAssistant();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Close the mobile drawer on route change.
+  const navItems = useMemo(() => {
+    return ALL_NAV_ITEMS.filter((item) => {
+      if (!item.permission) return true;
+      return access.isOwner || access.permissions.includes(item.permission);
+    });
+  }, [access]);
+
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
 
-  // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (!drawerOpen) return;
     const prev = document.body.style.overflow;
@@ -61,15 +90,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [drawerOpen]);
 
   const activeItem = useMemo(() => {
-    // Most-specific match wins so /admin/products/new still highlights Products.
     let best: NavItem | null = null;
-    for (const item of NAV_ITEMS) {
+    const candidates = [...navItems];
+    if (access.isOwner) {
+      candidates.push({
+        href: "/admin/staff",
+        label: a.nav.staff,
+        icon: StaffIcon,
+      });
+    }
+    for (const item of candidates) {
       if (isActive(pathname, item)) {
         if (!best || item.href.length > best.href.length) best = item;
       }
     }
     return best;
-  }, [pathname]);
+  }, [pathname, navItems, access.isOwner]);
 
   async function onLogout() {
     if (loggingOut) return;
@@ -95,7 +131,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
             {a.shell.sectionMain}
           </p>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -110,24 +146,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          <button
-            type="button"
-            onClick={() => {
-              setDrawerOpen(false);
-              openAssistant();
-            }}
-            className="admin-nav-link w-full justify-start text-start"
-            data-active={assistantOpen}
-          >
-            <AssistantIcon size={20} className="shrink-0" />
-            <span className="truncate">{a.nav.assistant}</span>
-          </button>
+          {access.isOwner ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                openAssistant();
+              }}
+              className="admin-nav-link w-full justify-start text-start"
+              data-active={assistantOpen}
+            >
+              <AssistantIcon size={20} className="shrink-0" />
+              <span className="truncate">{a.nav.assistant}</span>
+            </button>
+          ) : null}
         </div>
 
         <div className="space-y-1">
           <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
             {a.shell.sectionSettings}
           </p>
+          {access.isOwner ? (
+            <Link
+              href="/admin/staff"
+              className="admin-nav-link"
+              data-active={pathname.startsWith("/admin/staff")}
+            >
+              <StaffIcon size={20} className="shrink-0" />
+              <span className="truncate">{a.nav.staff}</span>
+            </Link>
+          ) : null}
           <Link href="/" className="admin-nav-link" target="_blank" rel="noopener noreferrer">
             <StoreIcon size={20} className="shrink-0" />
             <span className="truncate">{a.nav.storefront}</span>
@@ -149,12 +197,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:ps-64">
-      {/* Desktop sidebar */}
       <aside className="admin-glass fixed inset-y-0 start-0 z-30 hidden w-64 border-e lg:block">
         {sidebarBody}
       </aside>
 
-      {/* Mobile slide-in drawer */}
       <div
         className={`fixed inset-0 z-50 lg:hidden ${drawerOpen ? "" : "pointer-events-none"}`}
         aria-hidden={!drawerOpen}
@@ -184,7 +230,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </aside>
       </div>
 
-      {/* Top app bar */}
       <header className="admin-glass sticky top-0 z-20 border-b">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <button
@@ -200,7 +245,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <h1 className="truncate text-base font-bold leading-tight text-[var(--foreground)] sm:text-lg">
               {activeItem?.label ?? a.nav.title}
             </h1>
-            <p className="hidden text-xs text-[var(--muted)] sm:block">{a.shell.brandTagline}</p>
+            <p className="hidden text-xs text-[var(--muted)] sm:block">
+              {access.displayName || access.email || a.shell.brandTagline}
+            </p>
           </div>
 
           <Link
@@ -219,15 +266,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="admin-fade-in mx-auto max-w-6xl px-4 pb-28 pt-6 text-start lg:pb-10">
         {children}
       </main>
 
-      {/* Mobile bottom tab bar */}
       <nav className="admin-glass fixed inset-x-0 bottom-0 z-30 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="mx-auto flex max-w-md items-stretch gap-1 px-2 py-1.5">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -242,19 +287,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          <button
-            type="button"
-            onClick={() => {
-              setDrawerOpen(false);
-              openAssistant();
-            }}
-            className="admin-bottom-link"
-            data-active={assistantOpen}
-            aria-label={a.nav.assistant}
-          >
-            <AssistantIcon size={22} />
-            <span className="truncate">{a.nav.assistant}</span>
-          </button>
+          {access.isOwner ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                openAssistant();
+              }}
+              className="admin-bottom-link"
+              data-active={assistantOpen}
+              aria-label={a.nav.assistant}
+            >
+              <AssistantIcon size={22} />
+              <span className="truncate">{a.nav.assistant}</span>
+            </button>
+          ) : null}
         </div>
       </nav>
     </div>

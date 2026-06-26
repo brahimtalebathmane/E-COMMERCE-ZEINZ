@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireAdminApi } from "@/lib/auth/api-access";
+import { requirePermissionApi } from "@/lib/auth/api-access";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
-  const admin = await requireAdminApi();
+  const admin = await requirePermissionApi(PERMISSIONS.manage_products);
   if (!admin.ok) {
     return admin.response;
   }

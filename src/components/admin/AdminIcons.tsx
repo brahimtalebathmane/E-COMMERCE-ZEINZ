@@ -133,3 +133,16 @@ export function AssistantIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function StaffIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M16 19v-1.5a3.5 3.5 0 0 0-7 0V19" />
+      <circle cx="12.5" cy="8.5" r="3.5" />
+      <path d="M5 19v-1.2a4 4 0 0 1 4-3.95" />
+      <circle cx="6" cy="9" r="2.5" />
+      <path d="M20 19v-1.2a4 4 0 0 0-4-3.95" />
+      <circle cx="19" cy="9" r="2.5" />
+    </Base>
+  );
+}

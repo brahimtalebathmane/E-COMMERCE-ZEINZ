@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { assertAdminUser, AuthError } from "@/lib/auth/admin";
+import { assertOwnerUser, AuthError } from "@/lib/auth/admin";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
 import { runAdminAssistant } from "@/lib/admin-assistant/run";
@@ -14,7 +14,7 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    await assertAdminUser();
+    await assertOwnerUser();
 
     let raw: unknown;
     try {

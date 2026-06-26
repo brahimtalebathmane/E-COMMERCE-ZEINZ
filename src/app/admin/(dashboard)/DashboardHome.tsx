@@ -108,26 +108,49 @@ function PipelineStat({ label, value, tone }: { label: string; value: number; to
   );
 }
 
-export function DashboardHome({ data }: { data: DashboardData }) {
+export type DashboardVisibility = {
+  analytics: boolean;
+  orders: boolean;
+  products: boolean;
+};
+
+export function DashboardHome({
+  data,
+  visibility,
+}: {
+  data: DashboardData;
+  visibility: DashboardVisibility;
+}) {
   return (
     <div className="space-y-6">
-      {/* KPI grid */}
+      {(visibility.analytics || visibility.orders) && (
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <KpiTile label={a.dashboard.kpiRevenue} value={formatPrice(data.grossRevenue)} accent="#34d399" />
-        <KpiTile
-          label={a.dashboard.kpiNetProfit}
-          value={formatPrice(data.netProfit)}
-          accent="var(--accent)"
-          emphasize
-        />
-        <KpiTile label={a.dashboard.kpiOrders} value={String(data.totalOrders)} accent="#38bdf8" />
-        <KpiTile label={a.dashboard.kpiOrdersToday} value={String(data.ordersToday)} accent="#a78bfa" />
-        <KpiTile label={a.dashboard.kpiPending} value={String(data.pendingOrders)} accent="#fbbf24" />
-        <KpiTile label={a.dashboard.kpiActiveProducts} value={String(data.activeProducts)} accent="#f472b6" />
+        {visibility.analytics ? (
+          <>
+            <KpiTile label={a.dashboard.kpiRevenue} value={formatPrice(data.grossRevenue)} accent="#34d399" />
+            <KpiTile
+              label={a.dashboard.kpiNetProfit}
+              value={formatPrice(data.netProfit)}
+              accent="var(--accent)"
+              emphasize
+            />
+          </>
+        ) : null}
+        {visibility.orders ? (
+          <>
+            <KpiTile label={a.dashboard.kpiOrders} value={String(data.totalOrders)} accent="#38bdf8" />
+            <KpiTile label={a.dashboard.kpiOrdersToday} value={String(data.ordersToday)} accent="#a78bfa" />
+            <KpiTile label={a.dashboard.kpiPending} value={String(data.pendingOrders)} accent="#fbbf24" />
+          </>
+        ) : null}
+        {visibility.products ? (
+          <KpiTile label={a.dashboard.kpiActiveProducts} value={String(data.activeProducts)} accent="#f472b6" />
+        ) : null}
       </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        {/* Recent orders */}
+        {visibility.orders ? (
         <section className="admin-card overflow-hidden lg:col-span-3">
           <div className="flex items-center justify-between border-b border-[var(--admin-border)] px-4 py-3.5 sm:px-5">
             <h2 className="text-sm font-bold text-[var(--foreground)]">{a.dashboard.recentTitle}</h2>
@@ -173,9 +196,11 @@ export function DashboardHome({ data }: { data: DashboardData }) {
             </ul>
           )}
         </section>
+        ) : null}
 
-        {/* Pipeline + quick actions */}
+        {(visibility.products || visibility.orders || visibility.analytics) && (
         <div className="space-y-6 lg:col-span-2">
+          {visibility.products ? (
           <section className="admin-card p-4 sm:p-5">
             <h2 className="mb-3 text-sm font-bold text-[var(--foreground)]">
               {a.dashboard.pipelineTitle}
@@ -187,27 +212,35 @@ export function DashboardHome({ data }: { data: DashboardData }) {
               <PipelineStat label={a.dashboard.pipelineFailed} value={data.pipeline.failed} tone="bg-red-400" />
             </div>
           </section>
+          ) : null}
 
           <section className="admin-card p-4 sm:p-5">
             <h2 className="mb-3 text-sm font-bold text-[var(--foreground)]">
               {a.dashboard.quickActions}
             </h2>
             <div className="grid gap-2">
-              <Link href="/admin/products/new" className="admin-btn-primary w-full">
-                <PlusIcon size={18} />
-                {a.dashboard.quickNewProduct}
-              </Link>
-              <Link href="/admin/orders" className="admin-btn-ghost w-full">
-                <OrdersIcon size={18} />
-                {a.dashboard.quickOrders}
-              </Link>
-              <Link href="/admin/analytics" className="admin-btn-ghost w-full">
-                <AnalyticsIcon size={18} />
-                {a.dashboard.quickAnalytics}
-              </Link>
+              {visibility.products ? (
+                <Link href="/admin/products/new" className="admin-btn-primary w-full">
+                  <PlusIcon size={18} />
+                  {a.dashboard.quickNewProduct}
+                </Link>
+              ) : null}
+              {visibility.orders ? (
+                <Link href="/admin/orders" className="admin-btn-ghost w-full">
+                  <OrdersIcon size={18} />
+                  {a.dashboard.quickOrders}
+                </Link>
+              ) : null}
+              {visibility.analytics ? (
+                <Link href="/admin/analytics" className="admin-btn-ghost w-full">
+                  <AnalyticsIcon size={18} />
+                  {a.dashboard.quickAnalytics}
+                </Link>
+              ) : null}
             </div>
           </section>
         </div>
+        )}
       </div>
     </div>
   );

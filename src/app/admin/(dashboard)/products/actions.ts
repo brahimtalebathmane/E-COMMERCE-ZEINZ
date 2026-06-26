@@ -7,7 +7,8 @@ import {
 } from "@/lib/product-slug";
 import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import { BRAND_COLOR } from "@/lib/site-branding";
-import { assertAdminUser, isAuthError } from "@/lib/auth/admin";
+import { assertPermission, isAuthError } from "@/lib/auth/admin";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import type {
   Testimonial,
   FAQ,
@@ -344,7 +345,7 @@ function researchInsertDefaults(payload: ResearchProductPayload, slug: string) {
 
 export async function createResearchProductAction(payload: ResearchProductPayload) {
   validateResearchProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+  const { supabase } = await assertPermission(PERMISSIONS.manage_products);
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
 
   const { error } = await supabase
@@ -362,7 +363,7 @@ export async function updateResearchProductAction(
   payload: ResearchProductPayload,
 ) {
   validateResearchProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+  const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -402,7 +403,7 @@ export async function updateResearchProductAction(
 
 export async function createProductAction(payload: ProductPayload) {
   validateLandingProductPayload(payload);
-  const { supabase } = await assertAdminUser();
+  const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
   const { slug: candidate, old_slugs } = await resolveProductSlugFields(
     supabase,
@@ -506,7 +507,7 @@ export async function updateProductTestStatusAction(
     throw new Error("Invalid product test status.");
   }
 
-  const { supabase } = await assertAdminUser();
+  const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
   const { data: existing, error: fetchErr } = await supabase
     .from("products")
@@ -622,7 +623,7 @@ export async function saveLandingConfigurationAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingSetupPayload(payload);
-    const { supabase } = await assertAdminUser();
+    const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
@@ -691,7 +692,7 @@ export async function completeLandingSetupAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingSetupPayload(payload);
-    const { supabase } = await assertAdminUser();
+    const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
@@ -748,7 +749,7 @@ export async function updateProductAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingProductPayload(payload);
-    const { supabase } = await assertAdminUser();
+    const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
@@ -823,7 +824,7 @@ export async function deleteProductAction(
   id: string,
 ): Promise<ProductActionResult> {
   try {
-    const { supabase } = await assertAdminUser();
+    const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
