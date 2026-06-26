@@ -12,7 +12,7 @@ import {
   suspendStaffAction,
   type StaffRow,
 } from "./actions";
-import { PlusIcon } from "@/components/admin/AdminIcons";
+import { CheckIcon, PlusIcon } from "@/components/admin/AdminIcons";
 
 type Props = {
   initialStaff: StaffRow[];
@@ -59,7 +59,7 @@ function PermissionToggles({
         return (
           <label
             key={perm.key}
-            className={`flex min-h-[52px] cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
+            className={`flex min-h-[56px] cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
               checked
                 ? "border-[var(--accent-muted)] bg-[var(--accent)]/10"
                 : "border-[var(--admin-border-strong)] bg-white/[0.02] hover:bg-white/[0.04]"
@@ -67,16 +67,40 @@ function PermissionToggles({
           >
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--accent)]"
               checked={checked}
               disabled={disabled}
               onChange={() => toggle(perm.key)}
             />
             <span className="min-w-0">
               <span className="block text-sm font-semibold">{perm.labelAr}</span>
-              <span className="mt-0.5 block text-xs text-[var(--muted)]">{perm.descriptionAr}</span>
+              <span className="mt-0.5 block text-xs leading-snug text-[var(--muted)]">{perm.descriptionAr}</span>
             </span>
           </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {PERMISSION_CATALOG.map((perm) => {
+        const granted = permissions.includes(perm.key);
+        return (
+          <span
+            key={perm.key}
+            title={perm.labelAr}
+            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border text-[10px] ${
+              granted
+                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/40"
+            }`}
+          >
+            {granted ? <CheckIcon size={14} /> : "—"}
+          </span>
         );
       })}
     </div>
@@ -204,49 +228,121 @@ export function StaffAdminView({ initialStaff }: Props) {
       {staff.length === 0 ? (
         <p className="admin-card mt-6 p-6 text-sm text-[var(--muted)]">{a.staff.empty}</p>
       ) : (
-        <div className="mt-6 space-y-3">
-          {staff.map((row) => (
-            <article key={row.id} className="admin-card p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-bold">
-                      {row.displayName || row.email || a.staff.unnamed}
-                    </h2>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                        row.isActive
-                          ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                          : "border border-red-400/30 bg-red-400/10 text-red-300"
-                      }`}
-                    >
-                      {row.isActive ? a.staff.active : a.staff.suspended}
-                    </span>
-                  </div>
-                  {row.email ? (
-                    <p className="mt-1 truncate text-sm text-[var(--muted)]" dir="ltr">
-                      {row.email}
-                    </p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {row.permissions.length === 0 ? (
-                      <span className="text-xs text-[var(--muted)]">{a.staff.noPermissions}</span>
-                    ) : (
-                      row.permissions.map((perm) => {
-                        const meta = PERMISSION_CATALOG.find((p) => p.key === perm);
-                        return (
+        <>
+          {/* Desktop / laptop: dense data table with at-a-glance permission matrix */}
+          <div className="admin-card mt-6 hidden overflow-hidden lg:block">
+            <table className="w-full table-fixed border-collapse text-sm">
+              <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <tr>
+                  <th className="w-[26%] px-4 py-3 text-start">{a.staff.colEmployee}</th>
+                  {PERMISSION_CATALOG.map((perm) => (
+                    <th key={perm.key} className="px-1 py-3 text-center" title={perm.labelAr}>
+                      {perm.shortAr}
+                    </th>
+                  ))}
+                  <th className="w-[10%] px-3 py-3 text-center">{a.staff.colStatus}</th>
+                  <th className="w-[16%] px-4 py-3 text-end">{a.staff.colActions}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--admin-border)]">
+                {staff.map((row) => (
+                  <tr key={row.id} className="transition-colors hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 align-middle">
+                      <p className="truncate font-semibold text-[var(--foreground)]">
+                        {row.displayName || row.email || a.staff.unnamed}
+                      </p>
+                      {row.email ? (
+                        <p className="mt-0.5 truncate text-xs text-[var(--muted)]" dir="ltr">
+                          {row.email}
+                        </p>
+                      ) : null}
+                    </td>
+                    {PERMISSION_CATALOG.map((perm) => {
+                      const granted = row.permissions.includes(perm.key);
+                      return (
+                        <td key={perm.key} className="px-1 py-3 text-center align-middle">
                           <span
-                            key={perm}
-                            className="rounded-full border border-[var(--admin-border-strong)] px-2 py-0.5 text-[11px] text-[var(--muted)]"
+                            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${
+                              granted
+                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                                : "border-[var(--admin-border)] bg-white/[0.01] text-[var(--muted)]/40"
+                            }`}
                           >
-                            {meta?.labelAr ?? perm}
+                            {granted ? <CheckIcon size={14} /> : <span className="text-xs">—</span>}
                           </span>
-                        );
-                      })
-                    )}
-                  </div>
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-3 text-center align-middle">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          row.isActive
+                            ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                            : "border border-red-400/30 bg-red-400/10 text-red-300"
+                        }`}
+                      >
+                        {row.isActive ? a.staff.active : a.staff.suspended}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(row)}
+                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-white/[0.06]"
+                        >
+                          {a.staff.edit}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => onToggleSuspend(row)}
+                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-60"
+                        >
+                          {row.isActive ? a.staff.suspend : a.staff.reactivate}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile / tablet: touch-friendly stackable cards */}
+          <div className="mt-6 space-y-3 lg:hidden">
+            {staff.map((row) => (
+              <article key={row.id} className="admin-card p-4 sm:p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="min-w-0 flex-1 truncate text-base font-bold">
+                    {row.displayName || row.email || a.staff.unnamed}
+                  </h2>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      row.isActive
+                        ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                        : "border border-red-400/30 bg-red-400/10 text-red-300"
+                    }`}
+                  >
+                    {row.isActive ? a.staff.active : a.staff.suspended}
+                  </span>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
+                {row.email ? (
+                  <p className="mt-1 truncate text-sm text-[var(--muted)]" dir="ltr">
+                    {row.email}
+                  </p>
+                ) : null}
+
+                <div className="mt-3">
+                  {row.permissions.length === 0 ? (
+                    <span className="text-xs text-[var(--muted)]">{a.staff.noPermissions}</span>
+                  ) : (
+                    <PermissionMatrix permissions={row.permissions} />
+                  )}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => openEdit(row)}
@@ -263,10 +359,10 @@ export function StaffAdminView({ initialStaff }: Props) {
                     {row.isActive ? a.staff.suspend : a.staff.reactivate}
                   </button>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        </>
       )}
 
       {formOpen ? (

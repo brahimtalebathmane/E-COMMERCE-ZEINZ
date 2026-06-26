@@ -86,6 +86,9 @@ export const adminAr = {
     empty: "لا يوجد موظفون بعد. أنشئ أول حساب للفريق.",
     unnamed: "موظف بدون اسم",
     noPermissions: "بدون صلاحيات",
+    colEmployee: "الموظف",
+    colStatus: "الحالة",
+    colActions: "إجراءات",
   },
   products: {
     title: "المنتجات",

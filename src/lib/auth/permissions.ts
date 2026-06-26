@@ -101,6 +101,7 @@ export function canChangeOrderStatus(
 export type PermissionMeta = {
   key: PermissionKey;
   labelAr: string;
+  shortAr: string;
   descriptionAr: string;
 };
 
@@ -108,26 +109,31 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   {
     key: PERMISSIONS.view_orders,
     labelAr: "عرض الطلبات",
+    shortAr: "الطلبات",
     descriptionAr: "الوصول إلى لوحة الطلبات ومتابعة حالتها.",
   },
   {
     key: PERMISSIONS.confirm_orders,
     labelAr: "تأكيد الطلبات",
+    shortAr: "تأكيد",
     descriptionAr: "تغيير حالة الطلب إلى «مؤكد» أو «تم الشحن».",
   },
   {
     key: PERMISSIONS.cancel_orders,
     labelAr: "إلغاء الطلبات",
+    shortAr: "إلغاء",
     descriptionAr: "إلغاء الطلبات، الإرجاع الداخلي، أو حذفها.",
   },
   {
     key: PERMISSIONS.manage_products,
     labelAr: "إدارة المنتجات",
+    shortAr: "المنتجات",
     descriptionAr: "عرض وإضافة وتعديل وأرشفة المنتجات.",
   },
   {
     key: PERMISSIONS.view_analytics,
     labelAr: "عرض الأرباح",
+    shortAr: "الأرباح",
     descriptionAr: "الوصول إلى تحليلات الربح ومصاريف الإعلانات.",
   },
 ];

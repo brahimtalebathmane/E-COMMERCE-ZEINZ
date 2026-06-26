@@ -134,6 +134,14 @@ export function AssistantIcon(props: IconProps) {
   );
 }
 
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M5 12.5 9.5 17 19 7" />
+    </Base>
+  );
+}
+
 export function StaffIcon(props: IconProps) {
   return (
     <Base {...props}>
