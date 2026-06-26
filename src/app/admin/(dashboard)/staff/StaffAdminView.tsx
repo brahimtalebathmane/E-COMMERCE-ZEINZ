@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { adminAr as a } from "@/locales/admin-ar";
 import {
   PERMISSION_CATALOG,
@@ -114,6 +115,27 @@ export function StaffAdminView({ initialStaff }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock background scroll and allow Escape-to-close while the modal is open.
+  useEffect(() => {
+    if (!formOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeForm();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formOpen]);
 
   const editingRow = useMemo(
     () => staff.find((s) => s.id === editingId) ?? null,
@@ -365,12 +387,17 @@ export function StaffAdminView({ initialStaff }: Props) {
         </>
       )}
 
-      {formOpen ? (
-        <div className="admin-shell fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4">
+      {formOpen && mounted
+        ? createPortal(
+        <div
+          className="admin-shell fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4"
+          dir="rtl"
+          lang="ar"
+        >
           <button
             type="button"
             aria-label={a.staff.closeForm}
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
             onClick={closeForm}
           />
           <div
@@ -452,8 +479,10 @@ export function StaffAdminView({ initialStaff }: Props) {
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </div>
   );
 }
