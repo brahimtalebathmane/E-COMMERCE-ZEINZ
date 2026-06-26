@@ -1,7 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
-export async function createClient() {
+/**
+ * Request-scoped Supabase client.
+ *
+ * Wrapped in React `cache()` so that the layout, the page, and any helpers that
+ * run inside the same server render (e.g. `getAdminSession`) all share a single
+ * client + a single cookie parse instead of constructing a fresh one each call.
+ * This is per-request memoization only — separate requests still get isolated
+ * clients, so there is no cross-user leakage.
+ */
+export const createClient = cache(async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -30,4 +40,4 @@ export async function createClient() {
       },
     },
   );
-}
+});

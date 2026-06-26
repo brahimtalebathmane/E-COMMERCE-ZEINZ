@@ -1,7 +1,7 @@
 import { Toaster } from "sonner";
 import { redirect } from "next/navigation";
 import { OneSignalAdminInit } from "@/components/admin/OneSignalAdminInit";
-import { AdminAssistant } from "@/components/admin/AdminAssistant";
+import { AdminAssistantLazy } from "@/components/admin/AdminAssistantLazy";
 import { AdminAssistantProvider } from "@/components/admin/AdminAssistantContext";
 import { AdminPermissionsProvider } from "@/components/admin/AdminPermissionsContext";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -23,7 +23,7 @@ export default async function AdminDashboardLayout({
       <AdminPermissionsProvider access={session.access}>
         <AdminAssistantProvider>
           <AdminShell>{children}</AdminShell>
-          {session.access.isOwner ? <AdminAssistant /> : null}
+          {session.access.isOwner ? <AdminAssistantLazy /> : null}
         </AdminAssistantProvider>
       </AdminPermissionsProvider>
       <Toaster position="top-center" richColors theme="dark" dir="rtl" />

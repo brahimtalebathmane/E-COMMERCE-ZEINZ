@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import {
@@ -66,9 +67,15 @@ async function loadPanelAccess(
 }
 
 /**
- * Ensures the current session belongs to an active owner or staff panel user.
+ * Resolves and verifies the current panel user once per server request.
+ *
+ * `auth.getUser()` is a network round-trip to Supabase Auth and `loadPanelAccess`
+ * issues a `profiles` query; without memoization these run again for every
+ * caller in the same render (the dashboard layout AND the page both ask for the
+ * session), adding redundant latency to each navigation. `cache()` collapses
+ * them into a single shared promise per request.
  */
-export async function getAdminSession(): Promise<AdminSession | null> {
+const resolveAdminSession = cache(async (): Promise<AdminSession | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -81,6 +88,13 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   } catch {
     return null;
   }
+});
+
+/**
+ * Ensures the current session belongs to an active owner or staff panel user.
+ */
+export async function getAdminSession(): Promise<AdminSession | null> {
+  return resolveAdminSession();
 }
 
 export async function assertAdminUser(): Promise<AdminSession> {

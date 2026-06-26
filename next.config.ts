@@ -72,6 +72,18 @@ const nextConfig: NextConfig = {
       "@supabase/supabase-js",
       "@supabase/ssr",
     ],
+    // Keep visited dashboard panels warm in the client-side Router Cache. The
+    // admin pages are `force-dynamic`, so Next 15 defaults `staleTimes.dynamic`
+    // to 0 and discards each panel's RSC payload the moment you leave it — every
+    // re-visit then re-runs middleware auth + full Supabase fetches, which is the
+    // root cause of the sidebar navigation lag. Caching the payload for a few
+    // minutes makes switching back to a previously opened menu instant. Data
+    // stays correct because every mutation calls `revalidatePath` (which evicts
+    // the cache) and the live panels (orders) subscribe to Supabase realtime.
+    staleTimes: {
+      dynamic: 180,
+      static: 300,
+    },
   },
 };
 

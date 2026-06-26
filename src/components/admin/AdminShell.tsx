@@ -169,6 +169,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {access.isOwner ? (
             <Link
               href="/admin/staff"
+              prefetch
               className="admin-nav-link"
               data-active={pathname.startsWith("/admin/staff")}
             >
