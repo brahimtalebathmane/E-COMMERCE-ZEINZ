@@ -9,7 +9,7 @@ import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { trackLead } from "@/components/MetaPixel";
 import {
   clearMetaSessionEventId,
-  createClientMetaEventId,
+  ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
@@ -100,8 +100,8 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     submitLockRef.current = true;
     setBusy(true);
     try {
-      // Client-owned Lead event_id — shared verbatim with CAPI via meta_event_id.
-      const generatedMetaEventId = createClientMetaEventId();
+      // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
+      const generatedMetaEventId = ensureMetaFunnelSession();
       const phoneE164 = `+222${local}`;
       const pid =
         metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
@@ -163,22 +163,22 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
 
       const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
 
-      // Hybrid dedup: browser Lead pairs with CAPI only when the server confirmed ingestion.
-      // When CAPI is not configured (dev/staging), fall back to browser-only Lead tracking.
-      if (capiLeadSent || !capiConfigured) {
-        await trackLead({
-          value: leadValue,
-          currency: "MRU",
-          eventId: verifiedEventId,
-          orderId: json.order_id,
-          productId: product.id,
-          productName: copy.name,
-          pixelId: pid,
-          phone: phoneE164,
-          customerName: n,
-        });
-      } else {
-        console.warn("[Meta] Browser Lead skipped — CAPI did not confirm Lead", {
+      // Always fire browser Lead with the shared event_id. When CAPI succeeded, Meta dedupes
+      // the pair; when CAPI failed, the Pixel still captures conversion signal for retry.
+      await trackLead({
+        value: leadValue,
+        currency: "MRU",
+        eventId: verifiedEventId,
+        orderId: json.order_id,
+        productId: product.id,
+        productName: copy.name,
+        pixelId: pid,
+        phone: phoneE164,
+        customerName: n,
+      });
+
+      if (capiConfigured && !capiLeadSent) {
+        console.warn("[Meta] Browser Lead sent (degraded) — CAPI did not confirm Lead", {
           orderId: json.order_id,
           capiState: json.meta?.lead?.state,
           reason: json.meta?.lead?.reason,

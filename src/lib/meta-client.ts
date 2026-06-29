@@ -15,6 +15,7 @@ export function createClientMetaEventId(): string {
 
 /**
  * Ensures a stable funnel event_id until 60m inactivity or explicit clear after successful lead.
+ * Shared by InitiateCheckout and Lead so Meta can stitch the full funnel journey.
  * No cross-tab pairing — same storage is shared across tabs (predictable, simple).
  */
 export function ensureMetaFunnelSession(): string {

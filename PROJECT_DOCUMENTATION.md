@@ -729,50 +729,60 @@ Common patterns inside route handlers:
 
 ## 12. Meta Pixel + Meta Conversions API (CAPI)
 
-The project ships dual tracking for every funnel step so a single conversion can be observed both client-side (browser Pixel) and server-side (CAPI), with deduplication.
+The project ships hybrid tracking for Lead (browser Pixel + CAPI with deduplication) and server-only CAPI for Purchase and CancelledLead. Monetary values for Lead and Purchase are converted from MRU to USD via `toMetaPixelPurchaseMoney` (rate from `NEXT_PUBLIC_META_MRU_USD_RATE` or default `0.026`).
 
-### 12.1 The client (`src/components/MetaPixel.tsx`)
+### 12.1 Pixel bootstrap and runtime
 
-- Loaded with `next/script` strategy `lazyOnload`, so the Pixel JS does not block the LCP.
-- On mount, fetches Advanced Matching from `sessionStorage["meta_pixel_am:<pixelId>"]` (a previous order on this device) and merges it with any props-provided values. If non-empty, the init call is `fbq('init', pixelId, advancedMatching)`, otherwise just `fbq('init', pixelId)`.
-- Always fires `fbq('track', 'PageView')` once after init.
-- Provides helpers:
-  - `trackInitiateCheckout(eventId)` — `fbq('track', 'InitiateCheckout', {}, { eventID })`.
-  - `trackLead({ value, currency, eventId })` — uses `toMetaPixelPurchaseMoney` to convert MRU → USD for Pixel (Meta rejects MRU on standard events).
-  - `trackPurchase({ eventId })` — fires a Purchase with the **fixed** `value` and `currency` from `meta-purchase-tracking.ts`.
-- `syncMetaPixelAdvancedMatching(pixelId, { phone, customerName })` is called from the order modal after a successful submit so subsequent events on the success page already have advanced matching.
+- **Bootstrap:** `META_PIXEL_BOOTSTRAP_JS` in `src/app/layout.tsx` loads the `fbq` queue stub inline (non-blocking).
+- **PageView:** `MetaPixelRuntime` owns exactly one `PageView` per route via `trackMetaPageView` (`src/lib/meta-pixel-client.ts`). Uses `autoConfig: false` on init so Meta does not auto-fire PageView.
+- **Advanced matching:** `MetaPixel` refreshes `userData` via `fbq('set', 'userData', …)` without re-init. PII from a prior order is stored in `sessionStorage["meta_pixel_am:<pixelId>"]`.
+- **Init-once:** Each pixel ID is initialized once per page session; `trackSingle` targets a specific pixel to avoid duplicate events.
 
-### 12.2 Browser session id (`src/lib/meta-client.ts`)
+### 12.2 Event helpers (`src/components/MetaPixel.tsx`)
 
-- `meta_event_id_session` in `localStorage` is the canonical `eventID` for the current funnel.
-- `meta_event_last_activity_ms` rolls forward on scroll, focus, visibility change, and form interaction.
-- Sliding TTL: 60 minutes. Crossing this boundary or clearing on success rotates the id, starting a fresh funnel session.
+- `trackInitiateCheckout(eventId, pixelId, product)` — fires on CTA click with product catalog `custom_data`.
+- `trackLead({ value, currency, eventId, orderId, … })` — converts MRU → USD for Pixel, syncs advanced matching (phone, name, hashed `external_id`), fires Lead with shared `eventID`.
+- **No browser Purchase** — Purchase is CAPI-only when admin confirms the order (COD model).
 
-### 12.3 The server CAPI sender (`src/utils/meta.ts`)
+### 12.3 Funnel session id (`src/lib/meta-client.ts`)
 
-- `sendMetaEvent({ pixelId, eventName, eventId, eventSourceUrl, userData, customData, requestHeaders })` is the canonical sender:
-  - Requires env `META_CAPI_ACCESS_TOKEN`; without it returns `{ ok: false, reason: "missing_access_token" }`.
-  - Endpoint: `https://graph.facebook.com/{META_CAPI_VERSION || "v22.0"}/{pixelId}/events?access_token=...`.
-  - **Hashes** name (`fn`/`ln`, normalized lowercase, single-spaced) and phone (`+E.164`) with SHA-256 before sending.
-  - Adds `fbp` / `fbc` cookies verbatim, plus the resolved `client_ip_address` and `client_user_agent`.
-  - For Purchase: forcibly overrides `customData.value`/`currency` with the fixed `META_PURCHASE_TRACKING_VALUE = 25` and `META_PURCHASE_TRACKING_CURRENCY = "USD"` (this is intentional — see below).
-  - Resolves `event_source_url` via a chain: stored URL → referer → `x-forwarded-host` + `x-invoke-path` → `NEXT_PUBLIC_SITE_URL` env. Local/invalid hosts are dropped to avoid sending `localhost` to Meta.
-  - Retries up to 3 times for HTTP 5xx/429/network errors; locks `event_time` to the first attempt.
-  - Treats `events_received > 0` as success; otherwise classifies as `rejected`.
+- `meta_event_id_session` in `localStorage` is the canonical `eventID` for **both** InitiateCheckout and Lead in the current funnel.
+- `ensureMetaFunnelSession()` returns (or creates) this id; `ProductLanding` uses it for InitiateCheckout; `OrderFormModal` reuses it at Lead submit.
+- `meta_event_last_activity_ms` extends a 60-minute sliding TTL on scroll, visibility, and form interaction.
+- `clearMetaSessionEventId()` runs after successful Lead so the next visit starts a fresh funnel.
 
-### 12.4 Why Purchase has a fixed value
+### 12.4 Server CAPI sender (`src/utils/meta.ts`)
 
-The project deliberately reports every Purchase as **25 USD** rather than the actual MRU amount. The browser Pixel will reject many MRU amounts on standard events; sending a constant fixed-currency tuple keeps the marketing dashboard consistent and dedupable with CAPI. Lead events still carry the actual `total_price` in MRU (translated to USD on the Pixel only via `toMetaPixelPurchaseMoney`, which multiplies by `NEXT_PUBLIC_META_MRU_USD_RATE` or the default `0.026`).
+- `sendMetaEvent({ pixelId, eventName, eventId, eventSourceUrl, userData, customData, requestHeaders })`:
+  - Requires `META_CAPI_ACCESS_TOKEN`; endpoint `https://graph.facebook.com/{META_CAPI_VERSION || "v22.0"}/{pixelId}/events`.
+  - Hashes `fn`/`ln`/`ph`/`country`/`external_id` with SHA-256 after shared normalization (`src/lib/meta-user-data.ts`, `src/lib/meta-capi-hash.ts`).
+  - Sends `fbp`/`fbc` verbatim; includes stored `client_ip_address` and `client_user_agent` from the order row only (never substituted from admin retry headers).
+  - `custom_data.value`/`currency` for Lead and Purchase come from the order total via `metaPurchaseMoneyFromOrderTotal` (MRU → USD).
+  - Resolves `event_source_url` from stored URL → request referer → env `NEXT_PUBLIC_SITE_URL` (never localhost).
+  - Retries up to 3 times on 5xx/429/network; locks `event_time` on first attempt; treats Meta dedup responses as success.
 
-### 12.5 Event matrix
+### 12.5 Dispatcher and idempotency (`src/lib/meta/dispatch.ts`)
 
-| Event | Browser Pixel fires when | CAPI fires when | Dedup key |
+- `dispatchMetaEvent(supabase, orderId, eventType, context)` is the single CAPI path for `lead`, `purchase`, and `cancel`.
+- **Shopper session:** IP, UA, `fbp`, and `fbc` are read only from columns persisted at order creation. Legacy orders missing session data send CAPI without IP/UA rather than using an admin’s headers.
+- **Idempotency:** `order_meta_dispatches` claim ledger + optimistic `meta_*_sent` flag updates.
+- **Event ids:** Lead uses client `meta_event_id`; Purchase uses `purchase_{orderId}`; CancelledLead uses `cancelledlead_{orderId}`.
+
+### 12.6 Browser Lead when CAPI fails
+
+- After order submit, the browser **always** fires Lead with the shared `event_id`.
+- When CAPI succeeds, Meta dedupes browser + server on `(event_name, event_id)`.
+- When CAPI fails transiently, the Pixel still captures signal; admin can retry via `POST /api/meta/lead` without losing all conversion data.
+
+### 12.7 Event matrix
+
+| Event | Browser Pixel fires when | CAPI fires when | Dedup / id key |
 |---|---|---|---|
-| `PageView` | Every landing-page render (and order-success render) | — | n/a |
-| `InitiateCheckout` | CTA click in `ProductLanding`/`OrderFormModal` | — (not sent server-side today) | `eventID = session id` |
-| `Lead` | Order modal submit success | Inside `POST /api/orders` after insert; resendable via `POST /api/meta/lead` | `event_id` + `orders.meta_lead_sent` |
-| `Purchase` | n/a from client (server fires) | When admin changes status to `confirmed` (PATCH) or resends via `/api/meta/purchase` | `event_id` + `orders.meta_purchase_sent` |
-| `CancelledLead` | n/a | When admin changes status to `cancelled` (PATCH) or resends via `/api/meta/cancel` | `event_id` + `orders.meta_cancel_sent` |
+| `PageView` | Each store route load (`MetaPixelRuntime`) | — | Per-route in-memory dedupe |
+| `InitiateCheckout` | CTA click in `ProductLanding` | — (browser only today) | `eventID = funnel session id` |
+| `Lead` | Order modal submit success (always) | `POST /api/orders`; retry via `POST /api/meta/lead` | Same funnel `event_id` + `meta_lead_sent` |
+| `Purchase` | — (server only) | Admin status → `confirmed` or `POST /api/meta/purchase` | `purchase_{orderId}` + `meta_purchase_sent` |
+| `CancelledLead` | — | Admin status → `cancelled` or `POST /api/meta/cancel` | `cancelledlead_{orderId}` + `meta_cancel_sent` |
 
 ---
 

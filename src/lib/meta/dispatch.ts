@@ -6,7 +6,7 @@ import {
   buildMetaProductCustomData,
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
-import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
+import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -27,8 +27,8 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is hybrid (browser pixel + CAPI): the client generates the canonical
- * id before submit and stores it on `orders.meta_event_id`; CAPI reuses it
+ * `Lead` is hybrid (browser pixel + CAPI): the client reuses the funnel session
+ * id from InitiateCheckout and stores it on `orders.meta_event_id`; CAPI reuses it
  * verbatim so Meta dedupes on `(event_name, event_id)`. When that field is
  * empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
  */
@@ -74,50 +74,31 @@ async function releaseMetaDispatchClaim(
 }
 
 type MetaClientContext = {
-  /** Fallback only when order has no stored shopper IP (legacy rows). */
+  /** Used only for `event_source_url` resolution when the stored URL is missing. */
   requestHeaders?: Headers;
 };
 
-function orderCustomerSessionContext(
-  order: Record<string, unknown>,
-  requestHeaders?: Headers,
-): {
+/** Shopper session fields captured at order creation — never substituted from admin retries. */
+function orderCustomerSessionContext(order: Record<string, unknown>): {
   clientIpAddress: string | null;
   clientUserAgent: string | null;
   fbp: string | null;
   fbc: string | null;
-  source?: "request_fallback";
+  missingStoredSession: boolean;
 } {
-  const storedIp = (order.meta_client_ip_address as string | null)?.trim() || null;
-  const storedUa = (order.meta_client_user_agent as string | null)?.trim() || null;
+  const clientIpAddress =
+    (order.meta_client_ip_address as string | null)?.trim() || null;
+  const clientUserAgent =
+    (order.meta_client_user_agent as string | null)?.trim() || null;
   const fbp = (order.meta_fbp as string | null)?.trim() || null;
   const fbc = (order.meta_fbc as string | null)?.trim() || null;
-
-  let clientIpAddress = storedIp;
-  let clientUserAgent = storedUa;
-  let source: "request_fallback" | undefined;
-
-  if (requestHeaders && (!clientIpAddress || !clientUserAgent)) {
-    if (!clientIpAddress) {
-      clientIpAddress = resolveClientIpAddress(requestHeaders);
-    }
-    if (!clientUserAgent) {
-      clientUserAgent = requestHeaders.get("user-agent")?.trim() || null;
-    }
-    if (
-      (clientIpAddress && clientIpAddress !== storedIp) ||
-      (clientUserAgent && clientUserAgent !== storedUa)
-    ) {
-      source = "request_fallback";
-    }
-  }
 
   return {
     clientIpAddress,
     clientUserAgent,
     fbp,
     fbc,
-    source,
+    missingStoredSession: !clientIpAddress || !clientUserAgent,
   };
 }
 
@@ -233,14 +214,15 @@ export async function dispatchMetaEvent(
         : orderMoney
       : productCustomData;
 
-  const session = orderCustomerSessionContext(order, headers);
-  if (session.source === "request_fallback") {
-    console.warn("[meta] CAPI session context from request headers", {
+  const session = orderCustomerSessionContext(order);
+  if (session.missingStoredSession) {
+    console.warn("[meta] CAPI missing stored shopper session (IP/UA omitted)", {
       orderId,
       eventType,
-      source: session.source,
       hasIp: Boolean(session.clientIpAddress),
       hasUserAgent: Boolean(session.clientUserAgent),
+      hasFbp: Boolean(session.fbp),
+      hasFbc: Boolean(session.fbc),
     });
   }
 
