@@ -57,7 +57,10 @@ export async function PATCH(
       supabase,
       orderId,
       parsed.data.status,
-      { requestHeaders: request.headers },
+      {
+        requestHeaders: request.headers,
+        changedBy: session.access.userId,
+      },
     );
 
     if (!result.ok) {

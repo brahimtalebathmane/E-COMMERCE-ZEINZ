@@ -1,5 +1,5 @@
 /**
- * Base URL for the always-on Node service that exposes POST /api/send-whatsapp (and OTP routes).
+ * Base URL for the always-on Node service that exposes POST /api/send-whatsapp.
  *
  * - **Netlify / split deploy:** set `WHATSAPP_SERVICE_URL` to the public HTTPS origin (e.g. Railway), no trailing slash.
  * **Same host (`server.js` on Railway):** when `RAILWAY_ENVIRONMENT` (or related) is set, defaults to loopback so you do not have to set the public URL twice. `RENDER=true` is still honored for legacy deploys.

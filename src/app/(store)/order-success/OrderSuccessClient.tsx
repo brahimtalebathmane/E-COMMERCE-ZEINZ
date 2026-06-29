@@ -28,6 +28,17 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+async function clearOrderSuccessSession(): Promise<void> {
+  try {
+    await fetch("/api/orders/session/clear", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+  } catch (e) {
+    console.warn("[order-success] Failed to clear session cookies", e);
+  }
+}
+
 async function sendOrderWhatsAppWithRetries(
   orderId: string,
   completionToken: string,
@@ -132,6 +143,10 @@ export function OrderSuccessClient(props: Props) {
         if (cancelled) return;
       } catch (e) {
         console.error("[order-success] WhatsApp unexpected error", e);
+      } finally {
+        if (!cancelled) {
+          await clearOrderSuccessSession();
+        }
       }
     })();
 

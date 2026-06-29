@@ -115,6 +115,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           product_id: product.id,
           customer_name: n,
@@ -132,8 +133,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             order_id: string;
             meta_event_id: string;
             total_price: number;
-            completion_token: string;
-            action_token: string;
             meta?: {
               lead?: { state: "sent" | "skipped" | "failed" | "error"; reason?: string };
               diagnostics?: {
@@ -188,8 +187,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         order_id: json.order_id,
         product_id: product.id,
         total_price: String(json.total_price ?? ""),
-        completion_token: json.completion_token,
-        action_token: json.action_token,
       });
       router.push(`/order-success?${qs.toString()}`);
     } catch (e) {

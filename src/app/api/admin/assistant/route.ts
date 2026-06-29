@@ -14,7 +14,7 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    await assertOwnerUser();
+    const session = await assertOwnerUser();
 
     let raw: unknown;
     try {
@@ -31,7 +31,11 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
 
     const result = await runAdminAssistant({
-      ctx: { supabase, requestHeaders: request.headers },
+      ctx: {
+        supabase,
+        requestHeaders: request.headers,
+        changedBy: session.access.userId,
+      },
       userText: parsed.data.message,
       threadId: parsed.data.threadId ?? null,
     });

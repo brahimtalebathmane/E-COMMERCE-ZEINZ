@@ -189,6 +189,15 @@ export type OrderRow = {
   deleted_at?: string | null;
 };
 
+export type OrderStatusHistoryRow = {
+  id: string;
+  order_id: string;
+  old_status: OrderStatus;
+  new_status: OrderStatus;
+  changed_by: string | null;
+  created_at: string;
+};
+
 export type PaymentMethodRow = {
   id: string;
   label: string;

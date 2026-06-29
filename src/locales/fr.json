@@ -57,6 +57,11 @@
   "orderForm": {
     "whatsappNumber": "Numéro WhatsApp"
   },
+  "orderSuccess": {
+    "title": "Votre commande a bien été reçue",
+    "subtitle": "Notre équipe va vous contacter maintenant pour confirmer et finaliser votre commande",
+    "whatsappCta": "Contactez-nous sur WhatsApp"
+  },
   "lang": {
     "ar": "AR",
     "fr": "FR"

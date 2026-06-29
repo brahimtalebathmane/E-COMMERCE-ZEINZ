@@ -45,7 +45,7 @@ export async function updateOrderStatusWithEffects(
   supabase: SupabaseClient,
   orderId: string,
   nextStatus: OrderStatus,
-  options: { requestHeaders?: Headers } = {},
+  options: { requestHeaders?: Headers; changedBy?: string | null } = {},
 ): Promise<OrderStatusChangeResult> {
   const { data: existing, error: fetchErr } = await supabase
     .from("orders")
@@ -89,6 +89,20 @@ export async function updateOrderStatusWithEffects(
   }
   if (!updated) {
     return { ok: false, code: "not_found", error: "Order not found" };
+  }
+
+  const changedBy = options.changedBy?.trim() || null;
+  const { error: historyErr } = await supabase.from("order_status_history").insert({
+    order_id: orderId,
+    old_status: fromStatus,
+    new_status: updated.status,
+    changed_by: changedBy,
+  });
+  if (historyErr) {
+    console.error("[updateOrderStatusWithEffects] status history insert failed", {
+      orderId,
+      error: historyErr.message,
+    });
   }
 
   const result: OrderStatusChangeResult = {

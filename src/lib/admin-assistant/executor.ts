@@ -26,6 +26,7 @@ const ORDER_STATUSES: OrderStatus[] = [
 export type AdminToolContext = {
   supabase: SupabaseClient;
   requestHeaders?: Headers;
+  changedBy?: string | null;
 };
 
 type ToolResult = Record<string, unknown>;
@@ -495,7 +496,10 @@ async function updateOrderStatus(ctx: AdminToolContext, args: ToolResult): Promi
     ctx.supabase,
     orderId,
     status as OrderStatus,
-    { requestHeaders: ctx.requestHeaders },
+    {
+      requestHeaders: ctx.requestHeaders,
+      changedBy: ctx.changedBy ?? null,
+    },
   );
 
   if (!result.ok) {

@@ -10,8 +10,9 @@ export type DuplicateOrderCheckInput = {
 };
 
 /**
- * Returns true when an active (non-deleted) order with the same phone and product
- * was created within {@link DUPLICATE_ORDER_WINDOW_MS}.
+ * Returns true when any order with the same phone and product was created within
+ * {@link DUPLICATE_ORDER_WINDOW_MS}, including soft-deleted rows (admin visibility
+ * must not reset the duplicate lock).
  */
 export async function hasRecentDuplicateOrder(
   supabase: import("@supabase/supabase-js").SupabaseClient,
@@ -24,7 +25,6 @@ export async function hasRecentDuplicateOrder(
     .select("id")
     .eq("phone", input.phone)
     .eq("product_id", input.productId)
-    .is("deleted_at", null)
     .gte("created_at", since)
     .limit(1)
     .maybeSingle();

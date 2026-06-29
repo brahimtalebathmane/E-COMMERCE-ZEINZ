@@ -65,11 +65,6 @@ function logEvent(message) {
   console.log(`[WhatsApp] ${message}`);
 }
 
-function logOtpGenerated(phoneE164, expiresAtIso) {
-  const safePhone = normalizeE164(phoneE164) || String(phoneE164 || "");
-  logEvent(`OTP generated for ${safePhone} (expires ${expiresAtIso})`);
-}
-
 function normalizeE164(phone) {
   const trimmed = String(phone || "").trim();
   if (!trimmed) return null;
@@ -332,6 +327,6 @@ module.exports = {
   sendWhatsAppMessage,
   assertConnected,
   waitForConnected,
-  logOtpGenerated,
+  normalizeE164,
   getConnectionInfo,
 };

@@ -20,6 +20,7 @@ import { canAcceptStoreOrder } from "@/lib/product-test-status";
 import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
 import type { ProductTestingStatus } from "@/types";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
+import { setOrderSuccessSessionCookies } from "@/lib/orders/order-success-session";
 
 const createOrderSchema = z.object({
   product_id: z.string().uuid("product_id required"),
@@ -209,13 +210,11 @@ export async function POST(request: Request) {
       return apiErrorResponse(tokenErr, "[POST /api/orders] token");
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       order_id: order.id,
       meta_event_id: String(order.meta_event_id ?? orderEventId),
       total_price: order.total_price,
-      completion_token: completionToken,
-      action_token: actionToken,
       meta: {
         lead: metaLead,
         diagnostics: metaLeadDiagnostics({
@@ -224,6 +223,14 @@ export async function POST(request: Request) {
         }),
       },
     });
+
+    setOrderSuccessSessionCookies(response, {
+      orderId: order.id,
+      completionToken,
+      actionToken,
+    });
+
+    return response;
   } catch (e) {
     return apiErrorResponse(e, "[POST /api/orders]");
   }
