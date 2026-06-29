@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
-import { buildMetaOrderValueCustomData } from "@/lib/meta-product-custom-data";
+import {
+  buildMetaOrderValueCustomData,
+  buildMetaProductCustomData,
+} from "@/lib/meta-product-custom-data";
 import {
   buildMetaPixelAdvancedMatching,
   type MetaPixelAdvancedMatchingPayload,
@@ -104,17 +107,15 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 export function trackInitiateCheckout(
   eventId: string,
   pixelId?: string | null,
-  contentName?: string | null,
+  product?: { productId: string; productName: string } | null,
 ) {
-  const customData: Record<string, unknown> = {};
-  const name = contentName?.trim();
-  if (name) customData.content_name = name;
-  void trackMetaEvent(
-    pixelId,
-    "InitiateCheckout",
-    Object.keys(customData).length > 0 ? customData : undefined,
-    { eventID: eventId },
-  );
+  const customData = product?.productId
+    ? buildMetaProductCustomData({
+        productId: product.productId,
+        productName: product.productName,
+      })
+    : undefined;
+  void trackMetaEvent(pixelId, "InitiateCheckout", customData, { eventID: eventId });
 }
 
 export async function trackLead(params: {

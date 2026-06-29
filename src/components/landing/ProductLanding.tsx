@@ -413,7 +413,10 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
   const openCheckout = () => {
     try {
       touchMetaFunnelActivity();
-      trackInitiateCheckout(ensureMetaFunnelSession(), metaPixelId, copy.name);
+      trackInitiateCheckout(ensureMetaFunnelSession(), metaPixelId, {
+        productId: product.id,
+        productName: copy.name,
+      });
     } catch {
       // ignore
     }

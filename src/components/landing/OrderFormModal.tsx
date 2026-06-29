@@ -135,7 +135,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             completion_token: string;
             action_token: string;
             meta?: {
-              lead?: { state: string; reason?: string };
+              lead?: { state: "sent" | "skipped" | "failed" | "error"; reason?: string };
               diagnostics?: {
                 product_has_pixel_id: boolean;
                 order_has_pixel_id: boolean;
@@ -152,26 +152,38 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         throw new Error("تعذر إرسال الطلب");
       }
 
-      if (json.meta?.lead?.state && json.meta.lead.state !== "sent") {
+      const capiConfigured = json.meta?.diagnostics?.capi_token_configured === true;
+      const capiLeadSent = json.meta?.lead?.state === "sent";
+
+      if (json.meta?.lead?.state && !capiLeadSent) {
         console.warn("[Meta] Server Lead CAPI", json.meta.lead, json.meta.diagnostics);
-      } else if (json.meta?.lead?.state === "sent") {
+      } else if (capiLeadSent) {
         console.info("[Meta] Server Lead CAPI sent", json.meta.diagnostics);
       }
 
-      // Hybrid dedup: browser Lead fires only after the order + CAPI path succeed,
-      // using the server-verified meta_event_id (same value CAPI already dispatched).
       const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
-      await trackLead({
-        value: leadValue,
-        currency: "MRU",
-        eventId: verifiedEventId,
-        orderId: json.order_id,
-        productId: product.id,
-        productName: copy.name,
-        pixelId: pid,
-        phone: phoneE164,
-        customerName: n,
-      });
+
+      // Hybrid dedup: browser Lead pairs with CAPI only when the server confirmed ingestion.
+      // When CAPI is not configured (dev/staging), fall back to browser-only Lead tracking.
+      if (capiLeadSent || !capiConfigured) {
+        await trackLead({
+          value: leadValue,
+          currency: "MRU",
+          eventId: verifiedEventId,
+          orderId: json.order_id,
+          productId: product.id,
+          productName: copy.name,
+          pixelId: pid,
+          phone: phoneE164,
+          customerName: n,
+        });
+      } else {
+        console.warn("[Meta] Browser Lead skipped — CAPI did not confirm Lead", {
+          orderId: json.order_id,
+          capiState: json.meta?.lead?.state,
+          reason: json.meta?.lead?.reason,
+        });
+      }
 
       clearMetaSessionEventId();
 
