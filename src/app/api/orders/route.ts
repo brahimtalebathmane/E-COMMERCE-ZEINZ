@@ -186,6 +186,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       order_id: order.id,
+      meta_event_id: String(order.meta_event_id ?? orderEventId),
       total_price: order.total_price,
       completion_token: completionToken,
       action_token: actionToken,

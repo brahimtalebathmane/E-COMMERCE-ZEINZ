@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import {
+  buildMetaOrderValueCustomData,
+  buildMetaProductCustomData,
+  resolveMetaProductDisplayName,
+} from "@/lib/meta-product-custom-data";
 import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
@@ -135,14 +140,33 @@ export async function dispatchMetaEvent(
       ? resolveLeadEventId(orderId, order.meta_event_id as string | null)
       : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
+  let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
 
-  if (!pixelId && order.product_id) {
+  if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("meta_pixel_id")
+      .select("meta_pixel_id, name_ar, name_fr, default_language")
       .eq("id", order.product_id as string)
       .maybeSingle();
-    pixelId = resolveServerMetaPixelId(product?.meta_pixel_id as string | null) || "";
+
+    if (product) {
+      if (!pixelId) {
+        pixelId = resolveServerMetaPixelId(product.meta_pixel_id as string | null) || "";
+      }
+      productCustomData = buildMetaProductCustomData({
+        productId: order.product_id as string,
+        productName: resolveMetaProductDisplayName({
+          name_ar: product.name_ar as string | null,
+          name_fr: product.name_fr as string | null,
+          default_language: product.default_language as "ar" | "fr" | null,
+        }),
+      });
+    } else {
+      productCustomData = buildMetaProductCustomData({
+        productId: order.product_id as string,
+        productName: "Product",
+      });
+    }
   }
 
   console.warn("[meta] CAPI dispatch attempt", {
@@ -174,11 +198,15 @@ export async function dispatchMetaEvent(
   );
 
   const customData =
-    eventType === "purchase"
-      ? { ...orderMoney, content_type: "product" }
-      : eventType === "lead"
-        ? orderMoney
-        : undefined;
+    eventType === "purchase" || eventType === "lead"
+      ? order.product_id
+        ? buildMetaOrderValueCustomData({
+            ...orderMoney,
+            productId: order.product_id as string,
+            productName: productCustomData?.content_name ?? "Product",
+          })
+        : orderMoney
+      : productCustomData;
 
   const session = orderCustomerSessionContext(order);
 

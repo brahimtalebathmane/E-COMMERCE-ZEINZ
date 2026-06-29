@@ -110,16 +110,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
           ? Number(product.discount_price)
           : Number(product.price);
 
-      // Hybrid dedup: browser Lead fires once here; server CAPI reuses generatedMetaEventId.
-      trackLead({
-        value: leadValue,
-        currency: "MRU",
-        eventId: generatedMetaEventId,
-        pixelId: pid,
-        phone: phoneE164,
-        customerName: n,
-      });
-
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const metaCookies = getMetaBrowserCookies();
       const res = await fetch("/api/orders", {
@@ -140,6 +130,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         | {
             success: true;
             order_id: string;
+            meta_event_id: string;
             total_price: number;
             completion_token: string;
             action_token: string;
@@ -166,6 +157,21 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       } else if (json.meta?.lead?.state === "sent") {
         console.info("[Meta] Server Lead CAPI sent", json.meta.diagnostics);
       }
+
+      // Hybrid dedup: browser Lead fires only after the order + CAPI path succeed,
+      // using the server-verified meta_event_id (same value CAPI already dispatched).
+      const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
+      await trackLead({
+        value: leadValue,
+        currency: "MRU",
+        eventId: verifiedEventId,
+        orderId: json.order_id,
+        productId: product.id,
+        productName: copy.name,
+        pixelId: pid,
+        phone: phoneE164,
+        customerName: n,
+      });
 
       clearMetaSessionEventId();
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
+import { buildMetaOrderValueCustomData } from "@/lib/meta-product-custom-data";
 import {
   buildMetaPixelAdvancedMatching,
   type MetaPixelAdvancedMatchingPayload,
@@ -14,6 +15,7 @@ import {
   trackMetaEvent,
 } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
+import { hashMetaExternalId } from "@/lib/meta-external-id-hash";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 export type MetaPixelAdvancedMatchingProps = {
@@ -115,28 +117,30 @@ export function trackInitiateCheckout(
   );
 }
 
-export function trackPurchase(params: {
-  eventId: string;
-  valueMru: number;
-  currency?: string;
-}) {
-  const { value, currency } = toMetaPixelPurchaseMoney(
-    params.valueMru,
-    params.currency ?? "MRU",
-  );
-  void trackMetaEvent(null, "Purchase", { value, currency }, { eventID: params.eventId });
-}
-
 export async function trackLead(params: {
   value: number;
   currency: string;
   eventId: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  quantity?: number;
   pixelId?: string | null;
   phone?: string;
   customerName?: string;
 }): Promise<void> {
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
+  const leadCustomData = buildMetaOrderValueCustomData({
+    value,
+    currency,
+    productId: params.productId,
+    productName: params.productName,
+    quantity: params.quantity,
+  });
   const pid = resolvePublicMetaPixelId(params.pixelId);
+  const externalIdHash = params.orderId.trim()
+    ? await hashMetaExternalId(params.orderId)
+    : undefined;
   let am: MetaPixelAdvancedMatchingPayload | undefined;
 
   if (pid && params.phone?.trim() && params.customerName?.trim()) {
@@ -150,13 +154,14 @@ export async function trackLead(params: {
       customerName: params.customerName,
       fbp: metaCookies.fbp,
       fbc: metaCookies.fbc,
+      externalIdHash,
     });
   }
 
   trackMetaEvent(
     params.pixelId,
     "Lead",
-    { value, currency },
+    leadCustomData,
     { eventID: params.eventId, advancedMatching: am },
   );
 }

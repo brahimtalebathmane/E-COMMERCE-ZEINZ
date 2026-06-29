@@ -29,6 +29,8 @@ type MetaCustomData = {
   status?: string;
   content_type?: string;
   content_name?: string;
+  content_ids?: string[];
+  contents?: Array<{ id: string; quantity: number }>;
 };
 
 type SendMetaEventParams = {

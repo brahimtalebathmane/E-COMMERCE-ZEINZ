@@ -22,6 +22,8 @@ export type MetaPixelAdvancedMatchingPayload = {
   country?: string;
   fbp?: string;
   fbc?: string;
+  /** Pre-hashed SHA-256 — must match CAPI `external_id` for the same order id. */
+  external_id?: string;
 };
 
 /** Re-export for callers that import from this module. */
@@ -33,6 +35,8 @@ export function buildMetaPixelAdvancedMatching(input: {
   customerName: string;
   fbp?: string | null;
   fbc?: string | null;
+  /** Pre-hashed SHA-256 order id — aligns with CAPI `external_id`. */
+  externalIdHash?: string | null;
 }): MetaPixelAdvancedMatchingPayload | undefined {
   const ph = sanitizePhoneForMetaE164(input.phone) ?? undefined;
   const { fn, ln } = parseCustomerFullName(input.customerName);
@@ -45,6 +49,8 @@ export function buildMetaPixelAdvancedMatching(input: {
   const fbc = input.fbc?.trim();
   if (fbp) out.fbp = fbp;
   if (fbc) out.fbc = fbc;
+  const externalId = input.externalIdHash?.trim();
+  if (externalId) out.external_id = externalId;
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
@@ -95,5 +101,6 @@ export function buildMetaPixelInitUserData(
   out.country = normalizeMetaMatchingCountry(merged.country);
   if (merged.fbp?.trim()) out.fbp = merged.fbp.trim();
   if (merged.fbc?.trim()) out.fbc = merged.fbc.trim();
+  if (merged.external_id?.trim()) out.external_id = merged.external_id.trim();
   return out;
 }
