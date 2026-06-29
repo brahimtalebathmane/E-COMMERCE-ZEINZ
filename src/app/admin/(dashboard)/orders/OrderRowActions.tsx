@@ -7,7 +7,7 @@ import {
   canChangeOrderStatus,
   PERMISSIONS,
 } from "@/lib/auth/permissions";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type Props = {
   orderId: string;
@@ -26,6 +26,10 @@ const ALL_STATUSES: OrderStatus[] = [
 export function OrderRowActions({ orderId, status }: Props) {
   const access = useAdminAccess();
   const [busy, setBusy] = useState(false);
+  // Synchronous lock so a rapid second status change cannot issue a duplicate
+  // PATCH (and thus a duplicate Purchase/CancelledLead dispatch) before `busy`
+  // re-renders the disabled control.
+  const saveLockRef = useRef(false);
 
   const allowedStatuses = useMemo(() => {
     return ALL_STATUSES.filter((next) => canChangeOrderStatus(access, next));
@@ -35,6 +39,8 @@ export function OrderRowActions({ orderId, status }: Props) {
 
   async function onStatus(next: OrderStatus) {
     if (!canChangeOrderStatus(access, next)) return;
+    if (saveLockRef.current || busy) return;
+    saveLockRef.current = true;
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -50,6 +56,7 @@ export function OrderRowActions({ orderId, status }: Props) {
     } catch (e) {
       console.error("[OrderRowActions] status update failed", e);
     } finally {
+      saveLockRef.current = false;
       setBusy(false);
     }
   }

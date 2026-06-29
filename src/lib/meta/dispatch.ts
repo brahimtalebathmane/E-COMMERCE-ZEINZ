@@ -18,6 +18,26 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
   return "meta_cancel_sent";
 }
 
+/**
+ * Deterministic, per-event-type `event_id` tied to the immutable order id.
+ *
+ * `Purchase` and `CancelledLead` are server-only (no paired browser pixel), so we
+ * derive their id straight from the order id + event type. Every retry, manual
+ * resend (`/api/meta/purchase`), or repeated status toggle then carries an
+ * IDENTICAL event_id, and Meta's `(event_name, event_id)` deduplication collapses
+ * any duplicates into a single high-value event — even if the DB claim was
+ * released after an ambiguous network failure. This no longer depends on the
+ * mutable funnel `meta_event_id`, which the client may rotate/clear.
+ */
+function transactionalEventId(
+  orderId: string,
+  eventType: Exclude<MetaDispatchEventType, "lead">,
+): string {
+  return eventType === "purchase"
+    ? `purchase_${orderId}`
+    : `cancelledlead_${orderId}`;
+}
+
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
 async function claimMetaDispatch(
   supabase: SupabaseClient,
@@ -107,7 +127,12 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "already_sent" };
   }
 
-  let eventId = (order.meta_event_id as string | null)?.trim() || "";
+  // Lead pairs with the browser pixel Lead, so it must reuse the funnel
+  // `meta_event_id`. Purchase/CancelledLead use a deterministic id (see helper).
+  let eventId =
+    eventType === "lead"
+      ? (order.meta_event_id as string | null)?.trim() || ""
+      : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
 
   if (!pixelId && order.product_id) {
@@ -126,7 +151,7 @@ export async function dispatchMetaEvent(
     tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
   });
 
-  if (!eventId) {
+  if (eventType === "lead" && !eventId) {
     eventId = createMetaEventId();
     await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
   }
