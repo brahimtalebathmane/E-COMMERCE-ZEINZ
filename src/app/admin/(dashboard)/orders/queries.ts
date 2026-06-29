@@ -31,6 +31,7 @@ export type RealtimeOrderPayload = {
   status: AdminOrderRow["status"];
   completion_token: string;
   created_at: string;
+  deleted_at?: string | null;
 };
 
 /** Merge scalar fields from a Realtime payload into an existing admin row. */

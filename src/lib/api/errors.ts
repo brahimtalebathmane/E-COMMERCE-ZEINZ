@@ -21,3 +21,21 @@ export function apiErrorResponse(
 export function apiValidationError(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
+
+export function apiRateLimitError(retryAfterSec?: number): NextResponse {
+  const headers: HeadersInit = {};
+  if (retryAfterSec != null && retryAfterSec > 0) {
+    headers["Retry-After"] = String(Math.ceil(retryAfterSec));
+  }
+  return NextResponse.json(
+    {
+      error:
+        "تم تجاوز عدد المحاولات المسموح بها. يرجى المحاولة بعد قليل.",
+    },
+    { status: 429, headers },
+  );
+}
+
+export function apiConflictError(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 409 });
+}

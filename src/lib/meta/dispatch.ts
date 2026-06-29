@@ -117,13 +117,15 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent",
+      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!order) return { sent: false, skipped: true, reason: "order_not_found" };
+  if (!order || order.deleted_at != null) {
+    return { sent: false, skipped: true, reason: "order_not_found" };
+  }
 
   if (order[flagColumn] === true) {
     return { sent: false, skipped: true, reason: "already_sent" };

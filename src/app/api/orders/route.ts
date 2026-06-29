@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { signOrderActionToken } from "@/lib/auth/order-action-token";
-import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
+import { apiErrorResponse, apiValidationError, apiRateLimitError, apiConflictError } from "@/lib/api/errors";
 import { mapLeadDispatchToApiPayload, metaLeadDiagnostics } from "@/lib/meta/api-payload";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import {
+  DUPLICATE_ORDER_ERROR_AR,
+  hasRecentDuplicateOrder,
+} from "@/lib/orders/duplicate-guard";
+import { checkOrderCreateRateLimit } from "@/lib/rate-limit/order-create";
 import {
   notifyAdminsOfNewOrder,
   resolveOrderProductName,
@@ -44,6 +49,28 @@ export async function POST(request: Request) {
 
   try {
     const supabase = createServiceClient();
+    const metaClientIp = resolveClientIpAddress(request.headers);
+
+    const rateLimit = await checkOrderCreateRateLimit(supabase, metaClientIp);
+    if (!rateLimit.allowed) {
+      console.warn("[POST /api/orders] Rate limit exceeded", {
+        ip: metaClientIp,
+        retry_after_sec: rateLimit.retryAfterSec,
+      });
+      return apiRateLimitError(rateLimit.retryAfterSec);
+    }
+
+    const isDuplicate = await hasRecentDuplicateOrder(supabase, {
+      phone: data.phone,
+      productId: data.product_id,
+    });
+    if (isDuplicate) {
+      console.warn("[POST /api/orders] Duplicate order rejected", {
+        phone: data.phone,
+        product_id: data.product_id,
+      });
+      return apiConflictError(DUPLICATE_ORDER_ERROR_AR);
+    }
 
     const { data: product, error: pErr } = await supabase
       .from("products")
@@ -75,7 +102,6 @@ export async function POST(request: Request) {
     const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
     const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
     const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
-    const metaClientIp = resolveClientIpAddress(request.headers);
     const metaClientUa = request.headers.get("user-agent")?.trim() || null;
 
     const { data: order, error: orderErr } = await supabase

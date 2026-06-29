@@ -49,14 +49,14 @@ export async function updateOrderStatusWithEffects(
 ): Promise<OrderStatusChangeResult> {
   const { data: existing, error: fetchErr } = await supabase
     .from("orders")
-    .select("id, status")
+    .select("id, status, deleted_at")
     .eq("id", orderId)
     .maybeSingle();
 
   if (fetchErr) {
     return { ok: false, code: "db_error", error: fetchErr.message };
   }
-  if (!existing) {
+  if (!existing || existing.deleted_at != null) {
     return { ok: false, code: "not_found", error: "Order not found" };
   }
 

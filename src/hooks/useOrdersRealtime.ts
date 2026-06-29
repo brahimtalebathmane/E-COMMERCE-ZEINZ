@@ -181,6 +181,10 @@ export function useOrdersRealtime({ setRows, setActive }: Options) {
           { event: "UPDATE", schema: "public", table: "orders" },
           (payload) => {
             const incoming = payload.new as RealtimeOrderPayload;
+            if (incoming.deleted_at) {
+              removeOrder(incoming.id);
+              return;
+            }
             setRowsRef.current((prev) => {
               const existing = prev.find((row) => row.id === incoming.id);
               if (!existing) {

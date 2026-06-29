@@ -185,6 +185,8 @@ export type OrderRow = {
   status: OrderStatus;
   completion_token: string;
   created_at: string;
+  /** Set when soft-deleted from admin; row is retained for auditing. */
+  deleted_at?: string | null;
 };
 
 export type PaymentMethodRow = {
