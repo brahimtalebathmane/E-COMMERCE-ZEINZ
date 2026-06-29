@@ -2,16 +2,17 @@
 
 import type { ProductRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { syncMetaPixelAdvancedMatching } from "@/components/MetaPixel";
+import { trackLead } from "@/components/MetaPixel";
 import {
+  clearMetaSessionEventId,
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
-import { storePendingBrowserLead } from "@/lib/meta-lead-client";
+import { hasBrowserLeadBeenSent, markBrowserLeadSent } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
@@ -49,6 +50,8 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     name: false,
     phone: false,
   });
+  // Synchronous lock: blocks a second tap before React re-renders `busy`.
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +86,10 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     setTouched({ name: false, phone: false });
   }
 
-  async function submit() {
+  async function submit(e?: React.SyntheticEvent) {
+    e?.preventDefault();
+
+    if (submitLockRef.current || busy) return;
     setTouched({ name: true, phone: true });
 
     const n = name.trim();
@@ -92,6 +98,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     if (!n) return;
     if (phoneErr) return;
 
+    submitLockRef.current = true;
     setBusy(true);
     try {
       const eventId = ensureMetaFunnelSession();
@@ -132,8 +139,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         throw new Error("error" in json ? json.error ?? "تعذر إرسال الطلب" : "تعذر إرسال الطلب");
       }
 
-      reset();
-      onClose();
       if (!("success" in json) || !json.order_id) {
         throw new Error("تعذر إرسال الطلب");
       }
@@ -147,21 +152,24 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       const phoneE164 = `+222${local}`;
       const pid =
         metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
-      if (pid) {
-        syncMetaPixelAdvancedMatching(pid, {
+      const leadValue = Number(json.total_price ?? product.discount_price ?? product.price);
+
+      // Browser Lead fires exactly once here, after the server confirms the order.
+      // Lock synchronously before fbq so remounts / double-taps cannot duplicate.
+      if (!hasBrowserLeadBeenSent(eventId)) {
+        markBrowserLeadSent(eventId);
+        trackLead({
+          value: leadValue,
+          currency: "MRU",
+          eventId,
+          pixelId: pid,
           phone: phoneE164,
           customerName: n,
         });
       }
+      clearMetaSessionEventId();
 
-      storePendingBrowserLead({
-        eventId,
-        value: Number(json.total_price ?? product.discount_price ?? product.price),
-        currency: "MRU",
-        pixelId: pid,
-        phone: phoneE164,
-        customerName: n,
-      });
+      onClose();
 
       const qs = new URLSearchParams({
         order_id: json.order_id,
@@ -174,7 +182,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       router.push(`/order-success?${qs.toString()}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");
-    } finally {
+      submitLockRef.current = false;
       setBusy(false);
     }
   }
@@ -310,7 +318,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void submit()}
+              onClick={(e) => void submit(e)}
               className="store-btn-primary mt-1 w-full text-base font-bold disabled:opacity-60"
             >
               {busy ? (

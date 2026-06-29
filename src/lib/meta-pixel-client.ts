@@ -60,15 +60,24 @@ function applyMetaPixelUserData(pixelId: string): void {
   window.fbq("set", "userData", userData);
 }
 
+/** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
+const FBQ_INIT_OPTS = { autoConfig: false } as const;
+
+function pageViewDedupeKey(pixelId: string): string {
+  const path = window.location.pathname;
+  const search = window.location.search;
+  return `${pixelId}:${path}${search}`;
+}
+
 function queueMetaPixelInit(
   id: string,
   extra?: MetaPixelAdvancedMatchingPayload | null,
 ): void {
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData) {
-    window.fbq!("init", id, userData);
+    window.fbq!("init", id, userData, FBQ_INIT_OPTS);
   } else {
-    window.fbq!("init", id);
+    window.fbq!("init", id, {}, FBQ_INIT_OPTS);
   }
   window.__metaPixelsInited = window.__metaPixelsInited || {};
   window.__metaPixelsInited[id] = true;
@@ -187,21 +196,23 @@ export function trackMetaPageView(pixelId?: string | null): void {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
-  const ready = syncMetaPixelInit(id);
-  if (!ready || !window.fbq) return;
-
-  const key = `${id}:${window.location.pathname}`;
+  const key = pageViewDedupeKey(id);
   if (window.__metaPixelPageViewSent?.[key]) {
     devLog("PageView skipped (already queued for route)", { pixelId: id, key });
     return;
   }
 
+  // Lock synchronously BEFORE init/track so StrictMode remounts and concurrent
+  // effect invocations cannot pass the guard in the same tick.
+  if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
+  window.__metaPixelPageViewSent[key] = true;
+
+  const ready = syncMetaPixelInit(id);
+  if (!ready || !window.fbq) return;
+
   applyMetaPixelUserData(id);
   // Target this pixel only so a single PageView never fans out to stray registrations.
   window.fbq!("trackSingle", id, "PageView");
-
-  if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
-  window.__metaPixelPageViewSent[key] = true;
 
   devLog("PageView queued", {
     pixelId: id,

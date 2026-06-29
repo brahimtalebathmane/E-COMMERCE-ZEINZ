@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { trackMetaPageView } from "@/lib/meta-pixel-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -16,10 +16,16 @@ type Props = {
 export function MetaPixelRuntime({ pixelId }: Props) {
   const id = resolvePublicMetaPixelId(pixelId);
   const pathname = usePathname();
+  // Per-mount guard: blocks React StrictMode's double effect invoke before the
+  // global window dedupe key is written on the first synchronous pass.
+  const lastPageViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    void trackMetaPageView(id);
+    const routeKey = `${id}:${pathname}`;
+    if (lastPageViewRef.current === routeKey) return;
+    lastPageViewRef.current = routeKey;
+    trackMetaPageView(id);
   }, [id, pathname]);
 
   return null;
