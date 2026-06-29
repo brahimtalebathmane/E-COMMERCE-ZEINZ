@@ -6,12 +6,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { trackLead } from "@/components/MetaPixel";
 import {
   clearMetaSessionEventId,
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { queueMetaPendingLead } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
@@ -158,14 +158,13 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       if (json.meta?.lead?.state && !capiLeadSent) {
         console.warn("[Meta] Server Lead CAPI", json.meta.lead, json.meta.diagnostics);
       } else if (capiLeadSent) {
-        console.info("[Meta] Server Lead CAPI sent", json.meta.diagnostics);
+        console.info("[Meta] Server Lead CAPI sent", json.meta?.diagnostics);
       }
 
       const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
 
-      // Always fire browser Lead with the shared event_id. When CAPI succeeded, Meta dedupes
-      // the pair; when CAPI failed, the Pixel still captures conversion signal for retry.
-      await trackLead({
+      // Queue browser Lead for order-success — firing before router.push can lose fbq on navigation.
+      queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",
         eventId: verifiedEventId,
@@ -175,15 +174,11 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         pixelId: pid,
         phone: phoneE164,
         customerName: n,
+        capiConfigured,
+        capiLeadSent,
+        capiState: json.meta?.lead?.state,
+        capiReason: json.meta?.lead?.reason,
       });
-
-      if (capiConfigured && !capiLeadSent) {
-        console.warn("[Meta] Browser Lead sent (degraded) — CAPI did not confirm Lead", {
-          orderId: json.order_id,
-          capiState: json.meta?.lead?.state,
-          reason: json.meta?.lead?.reason,
-        });
-      }
 
       clearMetaSessionEventId();
 

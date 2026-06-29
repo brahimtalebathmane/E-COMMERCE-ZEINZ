@@ -4,6 +4,7 @@ import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
 import { OrderSuccessContinueLink } from "./OrderSuccessContinueLink";
+import { OrderSuccessMetaLead } from "./OrderSuccessMetaLead";
 
 type Props = {
   searchParams?: Promise<{
@@ -36,6 +37,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
     >
       <MetaPixelRuntime pixelId={metaPixelId} />
       <MetaPixel pixelId={metaPixelId} />
+      {orderId ? <OrderSuccessMetaLead orderId={orderId} /> : null}
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}
