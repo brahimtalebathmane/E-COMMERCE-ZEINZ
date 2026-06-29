@@ -6,10 +6,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { syncMetaPixelAdvancedMatching } from "@/components/MetaPixel";
+import { trackLead } from "@/components/MetaPixel";
 import {
   clearMetaSessionEventId,
-  ensureMetaFunnelSession,
+  createClientMetaEventId,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
@@ -100,7 +100,26 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     submitLockRef.current = true;
     setBusy(true);
     try {
-      const eventId = ensureMetaFunnelSession();
+      // Client-owned Lead event_id — shared verbatim with CAPI via meta_event_id.
+      const generatedMetaEventId = createClientMetaEventId();
+      const phoneE164 = `+222${local}`;
+      const pid =
+        metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
+      const leadValue =
+        product.discount_price != null
+          ? Number(product.discount_price)
+          : Number(product.price);
+
+      // Hybrid dedup: browser Lead fires once here; server CAPI reuses generatedMetaEventId.
+      trackLead({
+        value: leadValue,
+        currency: "MRU",
+        eventId: generatedMetaEventId,
+        pixelId: pid,
+        phone: phoneE164,
+        customerName: n,
+      });
+
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const metaCookies = getMetaBrowserCookies();
       const res = await fetch("/api/orders", {
@@ -109,8 +128,8 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         body: JSON.stringify({
           product_id: product.id,
           customer_name: n,
-          phone: `+222${local}`,
-          meta_event_id: eventId,
+          phone: phoneE164,
+          meta_event_id: generatedMetaEventId,
           event_source_url: eventSourceUrl,
           meta_fbp: metaCookies.fbp,
           meta_fbc: metaCookies.fbc,
@@ -148,19 +167,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         console.info("[Meta] Server Lead CAPI sent", json.meta.diagnostics);
       }
 
-      const phoneE164 = `+222${local}`;
-      const pid =
-        metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
-
-      // Lead is server-only CAPI (POST /api/orders) — never fire browser fbq Lead here.
-      // Dual-channel Pixel+CAPI was counting every submission twice in Ads Manager.
-      // Advanced matching is synced so order-success PageView carries shopper PII.
-      if (pid) {
-        syncMetaPixelAdvancedMatching(pid, {
-          phone: phoneE164,
-          customerName: n,
-        });
-      }
       clearMetaSessionEventId();
 
       onClose();

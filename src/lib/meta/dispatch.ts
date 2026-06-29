@@ -21,16 +21,24 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
 /**
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
- * Lead, Purchase, and CancelledLead are all server-only CAPI events (no paired
- * browser pixel). Every retry, manual resend, or repeated status toggle carries
- * an IDENTICAL event_id, and Meta's `(event_name, event_id)` deduplication
- * collapses any duplicates into a single event — even if the DB claim was
- * released after an ambiguous network failure.
+ * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
+ * `Lead` is hybrid (browser pixel + CAPI): the client generates the canonical
+ * id before submit and stores it on `orders.meta_event_id`; CAPI reuses it
+ * verbatim so Meta dedupes on `(event_name, event_id)`. When that field is
+ * empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
  */
-function transactionalEventId(orderId: string, eventType: MetaDispatchEventType): string {
-  if (eventType === "lead") return `lead_${orderId}`;
+function transactionalEventId(
+  orderId: string,
+  eventType: Exclude<MetaDispatchEventType, "lead">,
+): string {
   if (eventType === "purchase") return `purchase_${orderId}`;
   return `cancelledlead_${orderId}`;
+}
+
+function resolveLeadEventId(orderId: string, clientEventId: string | null | undefined): string {
+  const fromClient = clientEventId?.trim();
+  if (fromClient) return fromClient;
+  return `lead_${orderId}`;
 }
 
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
@@ -122,7 +130,10 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "already_sent" };
   }
 
-  const eventId = transactionalEventId(orderId, eventType);
+  const eventId =
+    eventType === "lead"
+      ? resolveLeadEventId(orderId, order.meta_event_id as string | null)
+      : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
 
   if (!pixelId && order.product_id) {
