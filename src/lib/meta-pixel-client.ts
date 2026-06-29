@@ -18,6 +18,8 @@ declare global {
     /** Pixel IDs that received manual AM (ph/fn/ln) on fbq init — per pixel, site-wide. */
     __metaPixelInitHadPii?: Record<string, boolean>;
     __metaPixelPageViewSent?: Record<string, boolean>;
+    /** `${pixelId}:${eventName}:${eventID}` keys already dispatched, to guarantee once-per-action. */
+    __metaSentEvents?: Record<string, boolean>;
   }
 }
 
@@ -82,7 +84,14 @@ function queueMetaPixelInit(
 }
 
 /**
- * Init each pixel once; re-init when manual AM (ph/fn/ln) becomes available.
+ * Initialize each pixel ID EXACTLY once per page session.
+ *
+ * Calling `fbq('init', id)` more than once for the same ID registers the pixel a
+ * second time inside fbevents.js, which makes every untargeted `fbq('track', …)`
+ * (and even `trackSingle`) fire twice. Advanced matching that arrives after the
+ * first init is therefore applied via the supported `fbq('set', 'userData', …)`
+ * path instead of a re-init, so events are never duplicated.
+ *
  * Each product landing uses its own meta_pixel_id from admin (keyed separately in sessionStorage).
  */
 function syncMetaPixelInit(
@@ -94,13 +103,20 @@ function syncMetaPixelInit(
 
   ensureFbqQueue();
 
-  const initData = buildMetaPixelInitUserData(id, extra);
-  const hasPii = initUserDataHasPii(initData);
-  const wasInited = window.__metaPixelsInited?.[id];
-  const hadPiiInit = window.__metaPixelInitHadPii?.[id];
-
-  if (!wasInited || extra || (hasPii && !hadPiiInit)) {
+  if (!window.__metaPixelsInited?.[id]) {
     queueMetaPixelInit(id, extra);
+    return id;
+  }
+
+  // Already initialized: NEVER re-init. Push any newer advanced matching through
+  // `set` so it attaches to subsequent events without re-registering the pixel.
+  const userData = buildMetaPixelInitUserData(id, extra);
+  if (userData && window.fbq) {
+    window.fbq("set", "userData", userData);
+    if (initUserDataHasPii(userData)) {
+      window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
+      window.__metaPixelInitHadPii[id] = true;
+    }
   }
 
   return id;
@@ -121,6 +137,20 @@ export function refreshMetaPixelInitWithUserData(
   syncMetaPixelInit(pixelId, extra);
 }
 
+/** True when this exact (pixel, event, eventID) was already dispatched in this page session. */
+function isDuplicateTrackedEvent(
+  pixelId: string,
+  eventName: string,
+  eventID?: string,
+): boolean {
+  if (!eventID || typeof window === "undefined") return false;
+  const key = `${pixelId}:${eventName}:${eventID}`;
+  if (window.__metaSentEvents?.[key]) return true;
+  if (!window.__metaSentEvents) window.__metaSentEvents = {};
+  window.__metaSentEvents[key] = true;
+  return false;
+}
+
 function pushFbqTrack(
   pixelId: string,
   eventName: string,
@@ -129,19 +159,22 @@ function pushFbqTrack(
 ): void {
   if (!window.fbq) return;
 
+  // Guarantee a given user action (identified by eventID) fires once per session,
+  // so rapid double-taps / re-renders cannot emit the same Lead/InitiateCheckout twice.
+  if (isDuplicateTrackedEvent(pixelId, eventName, opts?.eventID)) {
+    devLog(`${eventName} skipped (duplicate eventID)`, { pixelId, eventID: opts?.eventID });
+    return;
+  }
+
   applyMetaPixelUserData(pixelId);
 
+  // Always target the specific pixel (`trackSingle`). Untargeted `fbq('track', …)`
+  // dispatches to every registered pixel instance and is the main duplication vector.
   const trackPayload = payload ?? {};
   if (opts?.eventID) {
     window.fbq("trackSingle", pixelId, eventName, trackPayload, { eventID: opts.eventID });
-    return;
-  }
-  if (payload && Object.keys(trackPayload).length > 0) {
-    window.fbq("track", eventName, trackPayload);
-  } else if (payload) {
-    window.fbq("track", eventName, trackPayload);
   } else {
-    window.fbq("track", eventName);
+    window.fbq("trackSingle", pixelId, eventName, trackPayload);
   }
 }
 
@@ -164,7 +197,8 @@ export function trackMetaPageView(pixelId?: string | null): void {
   }
 
   applyMetaPixelUserData(id);
-  window.fbq!("track", "PageView");
+  // Target this pixel only so a single PageView never fans out to stray registrations.
+  window.fbq!("trackSingle", id, "PageView");
 
   if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
   window.__metaPixelPageViewSent[key] = true;

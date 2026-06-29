@@ -6,14 +6,12 @@ import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 import {
   buildMetaPixelAdvancedMatching,
   type MetaPixelAdvancedMatchingPayload,
-  buildMetaPixelInitUserData,
   loadStoredMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
 } from "@/lib/meta-pixel-advanced-matching";
 import {
   refreshMetaPixelInitWithUserData,
   trackMetaEvent,
-  trackMetaPageView,
 } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -49,7 +47,11 @@ export function syncMetaPixelAdvancedMatching(
   refreshMetaPixelInitWithUserData(id, am);
 }
 
-/** Advanced matching + deduped PageView fallback (MetaPixelRuntime is primary). */
+/**
+ * Advanced matching only. PageView is owned exclusively by MetaPixelRuntime so a
+ * single route load never fires two PageViews. This component just keeps the
+ * pixel's userData fresh (init happens once; AM is applied via `set`).
+ */
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -76,12 +78,8 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
         fbp: metaCookies.fbp,
         fbc: metaCookies.fbc,
       }) ?? storedAm;
-    const initUserData = buildMetaPixelInitUserData(resolvedPixelId, am);
-
-    if (typeof window !== "undefined" && window.fbq && initUserData) {
-      window.fbq("set", "userData", initUserData as Record<string, unknown>);
-    }
-    trackMetaPageView(resolvedPixelId);
+    // Ensure init-once and push advanced matching via `set` (no re-init, no PageView here).
+    refreshMetaPixelInitWithUserData(resolvedPixelId, am ?? undefined);
   }, [
     resolvedPixelId,
     mounted,
