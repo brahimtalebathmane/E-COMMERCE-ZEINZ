@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
-import { createMetaEventId, sendMetaEvent } from "@/utils/meta";
+import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -21,21 +21,16 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
 /**
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
- * `Purchase` and `CancelledLead` are server-only (no paired browser pixel), so we
- * derive their id straight from the order id + event type. Every retry, manual
- * resend (`/api/meta/purchase`), or repeated status toggle then carries an
- * IDENTICAL event_id, and Meta's `(event_name, event_id)` deduplication collapses
- * any duplicates into a single high-value event — even if the DB claim was
- * released after an ambiguous network failure. This no longer depends on the
- * mutable funnel `meta_event_id`, which the client may rotate/clear.
+ * Lead, Purchase, and CancelledLead are all server-only CAPI events (no paired
+ * browser pixel). Every retry, manual resend, or repeated status toggle carries
+ * an IDENTICAL event_id, and Meta's `(event_name, event_id)` deduplication
+ * collapses any duplicates into a single event — even if the DB claim was
+ * released after an ambiguous network failure.
  */
-function transactionalEventId(
-  orderId: string,
-  eventType: Exclude<MetaDispatchEventType, "lead">,
-): string {
-  return eventType === "purchase"
-    ? `purchase_${orderId}`
-    : `cancelledlead_${orderId}`;
+function transactionalEventId(orderId: string, eventType: MetaDispatchEventType): string {
+  if (eventType === "lead") return `lead_${orderId}`;
+  if (eventType === "purchase") return `purchase_${orderId}`;
+  return `cancelledlead_${orderId}`;
 }
 
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
@@ -127,12 +122,7 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "already_sent" };
   }
 
-  // Lead pairs with the browser pixel Lead, so it must reuse the funnel
-  // `meta_event_id`. Purchase/CancelledLead use a deterministic id (see helper).
-  let eventId =
-    eventType === "lead"
-      ? (order.meta_event_id as string | null)?.trim() || ""
-      : transactionalEventId(orderId, eventType);
+  const eventId = transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
 
   if (!pixelId && order.product_id) {
@@ -151,10 +141,6 @@ export async function dispatchMetaEvent(
     tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
   });
 
-  if (eventType === "lead" && !eventId) {
-    eventId = createMetaEventId();
-    await supabase.from("orders").update({ meta_event_id: eventId }).eq("id", order.id);
-  }
   if (!(order.meta_pixel_id as string | null)?.trim() && pixelId) {
     await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
   }

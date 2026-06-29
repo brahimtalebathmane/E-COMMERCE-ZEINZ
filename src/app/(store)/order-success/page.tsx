@@ -3,7 +3,6 @@ import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { getProductById } from "@/lib/products";
 import { OrderSuccessClient } from "./OrderSuccessClient";
-import { OrderSuccessMetaLead } from "./OrderSuccessMetaLead";
 import { OrderSuccessContinueLink } from "./OrderSuccessContinueLink";
 
 type Props = {
@@ -13,7 +12,6 @@ type Props = {
     total_price?: string;
     completion_token?: string;
     action_token?: string;
-    meta_event_id?: string;
   }>;
 };
 
@@ -23,7 +21,6 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   const productId = sp?.product_id?.trim() || null;
   const completionToken = sp?.completion_token?.trim() || null;
   const actionToken = sp?.action_token?.trim() || null;
-  const metaEventId = sp?.meta_event_id?.trim() || null;
   const totalPriceRaw = sp?.total_price?.trim() || "";
   const totalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
 
@@ -39,7 +36,6 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
     >
       <MetaPixelRuntime pixelId={metaPixelId} />
       <MetaPixel pixelId={metaPixelId} />
-      <OrderSuccessMetaLead />
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}

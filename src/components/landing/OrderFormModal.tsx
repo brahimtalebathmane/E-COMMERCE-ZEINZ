@@ -6,13 +6,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
-import { trackLead } from "@/components/MetaPixel";
+import { syncMetaPixelAdvancedMatching } from "@/components/MetaPixel";
 import {
   clearMetaSessionEventId,
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
-import { hasBrowserLeadBeenSent, markBrowserLeadSent } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
@@ -152,17 +151,12 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       const phoneE164 = `+222${local}`;
       const pid =
         metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
-      const leadValue = Number(json.total_price ?? product.discount_price ?? product.price);
 
-      // Browser Lead fires exactly once here, after the server confirms the order.
-      // Lock synchronously before fbq so remounts / double-taps cannot duplicate.
-      if (!hasBrowserLeadBeenSent(eventId)) {
-        markBrowserLeadSent(eventId);
-        trackLead({
-          value: leadValue,
-          currency: "MRU",
-          eventId,
-          pixelId: pid,
+      // Lead is server-only CAPI (POST /api/orders) — never fire browser fbq Lead here.
+      // Dual-channel Pixel+CAPI was counting every submission twice in Ads Manager.
+      // Advanced matching is synced so order-success PageView carries shopper PII.
+      if (pid) {
+        syncMetaPixelAdvancedMatching(pid, {
           phone: phoneE164,
           customerName: n,
         });
@@ -175,7 +169,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         order_id: json.order_id,
         product_id: product.id,
         total_price: String(json.total_price ?? ""),
-        meta_event_id: eventId,
         completion_token: json.completion_token,
         action_token: json.action_token,
       });
