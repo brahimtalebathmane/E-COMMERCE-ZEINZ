@@ -219,6 +219,37 @@ function isRetryableMetaHttpStatus(status: number): boolean {
   return status >= 500 || status === 429;
 }
 
+function metaCapiMessageText(message: Record<string, unknown>): string {
+  return `${String(message.message ?? "")} ${String(message.error_user_msg ?? "")}`.toLowerCase();
+}
+
+/**
+ * Meta may return HTTP 200 with `events_received: 0` when an identical
+ * `(event_name, event_id)` was already ingested (48h dedup window). Treat as success
+ * so idempotency flags can be cleared; distinguish from validation rejections via `messages`.
+ */
+export function isMetaCapiDedupOrAlreadyProcessed(
+  parsed: Record<string, unknown> | null,
+  eventsReceived: number,
+): boolean {
+  if (eventsReceived > 0 || !parsed || parsed.error) return false;
+
+  const messages = parsed.messages;
+  if (!Array.isArray(messages) || messages.length === 0) return true;
+
+  return messages.every((raw) => {
+    if (!raw || typeof raw !== "object") return false;
+    const text = metaCapiMessageText(raw as Record<string, unknown>);
+    return (
+      text.includes("duplicate") ||
+      text.includes("dedup") ||
+      text.includes("already received") ||
+      text.includes("already processed") ||
+      text.includes("already been recorded")
+    );
+  });
+}
+
 async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -321,6 +352,17 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
 
         if (eventsReceived > 0) {
           console.warn("[meta] CAPI event accepted", {
+            eventName: params.eventName,
+            eventIdPrefix: params.eventId?.slice(0, 12),
+            eventsReceived,
+            fbtrace_id:
+              typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined,
+          });
+          return { ok: true };
+        }
+
+        if (isMetaCapiDedupOrAlreadyProcessed(parsed, eventsReceived)) {
+          console.warn("[meta] CAPI event deduplicated (already received)", {
             eventName: params.eventName,
             eventIdPrefix: params.eventId?.slice(0, 12),
             eventsReceived,

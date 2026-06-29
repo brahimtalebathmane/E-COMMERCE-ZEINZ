@@ -6,7 +6,7 @@ import {
   buildMetaProductCustomData,
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
-import { sendMetaEvent } from "@/utils/meta";
+import { resolveClientIpAddress, sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -78,21 +78,46 @@ type MetaClientContext = {
   requestHeaders?: Headers;
 };
 
-function orderCustomerSessionContext(order: Record<string, unknown>): {
+function orderCustomerSessionContext(
+  order: Record<string, unknown>,
+  requestHeaders?: Headers,
+): {
   clientIpAddress: string | null;
   clientUserAgent: string | null;
   fbp: string | null;
   fbc: string | null;
+  source?: "request_fallback";
 } {
-  const ip = (order.meta_client_ip_address as string | null)?.trim() || null;
-  const ua = (order.meta_client_user_agent as string | null)?.trim() || null;
+  const storedIp = (order.meta_client_ip_address as string | null)?.trim() || null;
+  const storedUa = (order.meta_client_user_agent as string | null)?.trim() || null;
   const fbp = (order.meta_fbp as string | null)?.trim() || null;
   const fbc = (order.meta_fbc as string | null)?.trim() || null;
+
+  let clientIpAddress = storedIp;
+  let clientUserAgent = storedUa;
+  let source: "request_fallback" | undefined;
+
+  if (requestHeaders && (!clientIpAddress || !clientUserAgent)) {
+    if (!clientIpAddress) {
+      clientIpAddress = resolveClientIpAddress(requestHeaders);
+    }
+    if (!clientUserAgent) {
+      clientUserAgent = requestHeaders.get("user-agent")?.trim() || null;
+    }
+    if (
+      (clientIpAddress && clientIpAddress !== storedIp) ||
+      (clientUserAgent && clientUserAgent !== storedUa)
+    ) {
+      source = "request_fallback";
+    }
+  }
+
   return {
-    clientIpAddress: ip,
-    clientUserAgent: ua,
+    clientIpAddress,
+    clientUserAgent,
     fbp,
     fbc,
+    source,
   };
 }
 
@@ -198,7 +223,7 @@ export async function dispatchMetaEvent(
   );
 
   const customData =
-    eventType === "purchase" || eventType === "lead"
+    eventType === "purchase" || eventType === "lead" || eventType === "cancel"
       ? order.product_id
         ? buildMetaOrderValueCustomData({
             ...orderMoney,
@@ -208,7 +233,16 @@ export async function dispatchMetaEvent(
         : orderMoney
       : productCustomData;
 
-  const session = orderCustomerSessionContext(order);
+  const session = orderCustomerSessionContext(order, headers);
+  if (session.source === "request_fallback") {
+    console.warn("[meta] CAPI session context from request headers", {
+      orderId,
+      eventType,
+      source: session.source,
+      hasIp: Boolean(session.clientIpAddress),
+      hasUserAgent: Boolean(session.clientUserAgent),
+    });
+  }
 
   try {
     const capi = await sendMetaEvent({
