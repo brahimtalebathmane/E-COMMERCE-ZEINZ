@@ -114,6 +114,21 @@ function syncMetaPixelInit(
 
   if (!window.__metaPixelsInited?.[id]) {
     queueMetaPixelInit(id, extra);
+    // #region agent log
+    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
+      body: JSON.stringify({
+        sessionId: "5d3a9b",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "meta-pixel-client.ts:syncMetaPixelInit",
+        message: "fbq init queued (first time for pixel)",
+        data: { pixelIdPrefix: id.slice(0, 8) },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     return id;
   }
 
@@ -172,6 +187,23 @@ function pushFbqTrack(
   // so rapid double-taps / re-renders cannot emit the same Lead/InitiateCheckout twice.
   if (isDuplicateTrackedEvent(pixelId, eventName, opts?.eventID)) {
     devLog(`${eventName} skipped (duplicate eventID)`, { pixelId, eventID: opts?.eventID });
+    // #region agent log
+    if (eventName === "Lead") {
+      fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
+        body: JSON.stringify({
+          sessionId: "5d3a9b",
+          runId: "pre-fix",
+          hypothesisId: "H3",
+          location: "meta-pixel-client.ts:pushFbqTrack",
+          message: "Lead skipped duplicate eventID",
+          data: { pixelIdPrefix: pixelId.slice(0, 8), eventIdPrefix: opts?.eventID?.slice(0, 20) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
     return;
   }
 
@@ -185,6 +217,29 @@ function pushFbqTrack(
   } else {
     window.fbq("trackSingle", pixelId, eventName, trackPayload);
   }
+
+  // #region agent log
+  if (eventName === "Lead") {
+    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
+      body: JSON.stringify({
+        sessionId: "5d3a9b",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "meta-pixel-client.ts:pushFbqTrack",
+        message: "Lead trackSingle queued",
+        data: {
+          pixelIdPrefix: pixelId.slice(0, 8),
+          eventIdPrefix: opts?.eventID?.slice(0, 20),
+          eventIdLen: opts?.eventID?.length ?? 0,
+          pixelsInitedCount: Object.keys(window.__metaPixelsInited ?? {}).length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
 }
 
 /** @deprecated Use trackMetaPageView / trackMetaEvent; kept for callers that awaited init. */

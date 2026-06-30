@@ -85,15 +85,20 @@ export async function dispatchMetaLeadCapi(params: {
     });
     const json = (await res.json().catch(() => ({}))) as {
       lead?: MetaLeadCapiResult;
-      diagnostics?: { test_event_code_included?: boolean; test_event_code_prefix?: string | null };
+      diagnostics?: {
+        test_event_code_included?: boolean;
+        test_event_code_prefix?: string | null;
+        capi_event_id_prefix?: string | null;
+        capi_pixel_id_prefix?: string | null;
+      };
       error?: string;
     };
     // #region agent log
     fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5bc961" },
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
       body: JSON.stringify({
-        sessionId: "5bc961",
+        sessionId: "5d3a9b",
         runId: "pre-fix",
         hypothesisId: "H1",
         location: "meta-lead-client.ts:dispatchMetaLeadCapi",
@@ -103,6 +108,8 @@ export async function dispatchMetaLeadCapi(params: {
           leadState: json.lead?.state,
           testEventIncluded: json.diagnostics?.test_event_code_included,
           testEventPrefix: json.diagnostics?.test_event_code_prefix,
+          capiEventIdPrefix: json.diagnostics?.capi_event_id_prefix,
+          capiPixelIdPrefix: json.diagnostics?.capi_pixel_id_prefix,
         },
         timestamp: Date.now(),
       }),

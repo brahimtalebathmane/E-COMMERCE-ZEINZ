@@ -347,15 +347,17 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
       });
       fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5bc961" },
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
         body: JSON.stringify({
-          sessionId: "5bc961",
+          sessionId: "5d3a9b",
           runId: "pre-fix",
           hypothesisId: "H1-H2",
           location: "meta.ts:sendMetaEvent",
           message: "CAPI payload prep",
           data: {
             eventName: params.eventName,
+            eventIdLen: params.eventId?.length ?? 0,
+            eventIdPrefix: params.eventId?.slice(0, 20),
             testEventIncluded: Boolean(testEventCode),
             testEventCodePrefix: testEventCode ? testEventCode.slice(0, 8) : null,
             pixelIdPrefix: pixelId.slice(0, 6),
