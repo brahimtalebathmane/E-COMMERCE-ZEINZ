@@ -27,10 +27,11 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is hybrid (browser pixel + CAPI): the client reuses the funnel session
- * id from InitiateCheckout and stores it on `orders.meta_event_id`; CAPI reuses it
- * verbatim so Meta dedupes on `(event_name, event_id)`. When that field is
- * empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
+ * `Lead` is hybrid (browser pixel + CAPI): both fire together on order-success
+ * via `/api/meta/lead` and `fbq('track','Lead')`. The client reuses the funnel
+ * session id from InitiateCheckout and stores it on `orders.meta_event_id`; CAPI
+ * reuses it verbatim so Meta dedupes on `(event_name, event_id)`. When that field
+ * is empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
  */
 function transactionalEventId(
   orderId: string,

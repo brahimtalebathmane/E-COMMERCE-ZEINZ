@@ -3,8 +3,6 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { signOrderActionToken } from "@/lib/auth/order-action-token";
 import { apiErrorResponse, apiValidationError, apiRateLimitError, apiConflictError } from "@/lib/api/errors";
-import { mapLeadDispatchToApiPayload, metaLeadDiagnostics } from "@/lib/meta/api-payload";
-import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import {
   DUPLICATE_ORDER_ERROR_AR,
@@ -180,27 +178,6 @@ export async function POST(request: Request) {
       console.error("[POST /api/orders] OneSignal notify threw", oneSignalErr);
     }
 
-    let metaLead = mapLeadDispatchToApiPayload(null, "dispatch_not_run");
-    try {
-      const leadResult = await dispatchMetaEvent(supabase, order.id, "lead", {
-        requestHeaders: request.headers,
-      });
-      metaLead = mapLeadDispatchToApiPayload(leadResult);
-      console.warn("[POST /api/orders] Meta Lead CAPI", {
-        order_id: order.id,
-        lead: metaLead,
-        diagnostics: metaLeadDiagnostics({
-          productPixelId: product.meta_pixel_id as string | null,
-          orderPixelId,
-        }),
-      });
-    } catch (error) {
-      metaLead = mapLeadDispatchToApiPayload(
-        null,
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-
     const completionToken = String(order.completion_token);
     let actionToken: string;
     try {
@@ -215,13 +192,6 @@ export async function POST(request: Request) {
       order_id: order.id,
       meta_event_id: String(order.meta_event_id ?? orderEventId),
       total_price: order.total_price,
-      meta: {
-        lead: metaLead,
-        diagnostics: metaLeadDiagnostics({
-          productPixelId: product.meta_pixel_id as string | null,
-          orderPixelId,
-        }),
-      },
     });
 
     setOrderSuccessSessionCookies(response, {

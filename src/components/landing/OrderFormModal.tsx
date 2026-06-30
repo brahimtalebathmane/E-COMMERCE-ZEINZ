@@ -133,14 +133,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             order_id: string;
             meta_event_id: string;
             total_price: number;
-            meta?: {
-              lead?: { state: "sent" | "skipped" | "failed" | "error"; reason?: string };
-              diagnostics?: {
-                product_has_pixel_id: boolean;
-                order_has_pixel_id: boolean;
-                capi_token_configured: boolean;
-              };
-            };
           }
         | { error?: string };
       if (!res.ok) {
@@ -151,18 +143,9 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         throw new Error("تعذر إرسال الطلب");
       }
 
-      const capiConfigured = json.meta?.diagnostics?.capi_token_configured === true;
-      const capiLeadSent = json.meta?.lead?.state === "sent";
-
-      if (json.meta?.lead?.state && !capiLeadSent) {
-        console.warn("[Meta] Server Lead CAPI", json.meta.lead, json.meta.diagnostics);
-      } else if (capiLeadSent) {
-        console.info("[Meta] Server Lead CAPI sent", json.meta?.diagnostics);
-      }
-
       const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
 
-      // Queue browser Lead for order-success — firing before router.push can lose fbq on navigation.
+      // Queue Lead for order-success — pixel + CAPI fire together after navigation.
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",
@@ -173,10 +156,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         pixelId: pid,
         phone: phoneE164,
         customerName: n,
-        capiConfigured,
-        capiLeadSent,
-        capiState: json.meta?.lead?.state,
-        capiReason: json.meta?.lead?.reason,
       });
 
       clearMetaSessionEventId();

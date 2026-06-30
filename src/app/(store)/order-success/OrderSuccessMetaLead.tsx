@@ -2,22 +2,26 @@
 
 import { useEffect, useRef } from "react";
 import { trackLead } from "@/components/MetaPixel";
-import { consumeMetaPendingLead } from "@/lib/meta-lead-client";
+import { consumeMetaPendingLead, dispatchMetaLeadCapi } from "@/lib/meta-lead-client";
 
 type Props = {
   orderId: string;
+  completionToken: string | null;
+  actionToken: string | null;
 };
 
 /**
- * Fires browser Lead after navigation to order-success so fbq is not cancelled
- * by the modal → router.push transition.
+ * Fires browser Lead and server Lead CAPI together on order-success load so Meta
+ * receives both channels at the same moment (shared event_id for deduplication).
  */
-export function OrderSuccessMetaLead({ orderId }: Props) {
+export function OrderSuccessMetaLead({ orderId, completionToken, actionToken }: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
     const id = orderId.trim();
-    if (!id || startedRef.current) return;
+    const ct = completionToken?.trim();
+    const at = actionToken?.trim();
+    if (!id || !ct || !at || startedRef.current) return;
     startedRef.current = true;
 
     const payload = consumeMetaPendingLead(id);
@@ -25,31 +29,42 @@ export function OrderSuccessMetaLead({ orderId }: Props) {
 
     void (async () => {
       try {
-        await trackLead({
-          value: payload.value,
-          currency: payload.currency,
-          eventId: payload.eventId,
-          orderId: payload.orderId,
-          productId: payload.productId,
-          productName: payload.productName,
-          pixelId: payload.pixelId,
-          phone: payload.phone,
-          customerName: payload.customerName,
-          quantity: payload.quantity,
-        });
-
-        if (payload.capiConfigured && !payload.capiLeadSent) {
-          console.warn("[Meta] Browser Lead sent on order-success — CAPI did not confirm Lead", {
+        const [, capiResult] = await Promise.all([
+          trackLead({
+            value: payload.value,
+            currency: payload.currency,
+            eventId: payload.eventId,
             orderId: payload.orderId,
-            capiState: payload.capiState,
-            reason: payload.capiReason,
+            productId: payload.productId,
+            productName: payload.productName,
+            pixelId: payload.pixelId,
+            phone: payload.phone,
+            customerName: payload.customerName,
+            quantity: payload.quantity,
+          }),
+          dispatchMetaLeadCapi({
+            orderId: payload.orderId,
+            completionToken: ct,
+            actionToken: at,
+          }),
+        ]);
+
+        if (capiResult.state !== "sent") {
+          console.warn("[Meta] Lead CAPI on order-success", {
+            orderId: payload.orderId,
+            capi: capiResult,
+          });
+        } else {
+          console.info("[Meta] Lead pixel + CAPI sent together on order-success", {
+            orderId: payload.orderId,
+            eventId: payload.eventId,
           });
         }
       } catch (error) {
-        console.warn("[Meta] Browser Lead failed on order-success", error);
+        console.warn("[Meta] Lead dispatch failed on order-success", error);
       }
     })();
-  }, [orderId]);
+  }, [orderId, completionToken, actionToken]);
 
   return null;
 }

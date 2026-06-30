@@ -13,11 +13,13 @@ export type MetaPendingLeadPayload = {
   phone?: string;
   customerName?: string;
   quantity?: number;
-  capiConfigured?: boolean;
-  capiLeadSent?: boolean;
-  capiState?: string;
-  capiReason?: string;
 };
+
+export type MetaLeadCapiResult =
+  | { state: "sent" }
+  | { state: "skipped"; reason: string }
+  | { state: "failed"; reason: string }
+  | { state: "error"; reason: string };
 
 function isValidPayload(raw: unknown): raw is MetaPendingLeadPayload {
   if (!raw || typeof raw !== "object") return false;
@@ -65,5 +67,33 @@ export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload 
     return parsed;
   } catch {
     return null;
+  }
+}
+
+/** Server Lead CAPI — paired with browser pixel on order-success. */
+export async function dispatchMetaLeadCapi(params: {
+  orderId: string;
+  completionToken: string;
+  actionToken: string;
+}): Promise<MetaLeadCapiResult> {
+  try {
+    const res = await fetch("/api/meta/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        order_id: params.orderId,
+        completion_token: params.completionToken,
+        action_token: params.actionToken,
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as { lead?: MetaLeadCapiResult; error?: string };
+    if (!res.ok) {
+      return { state: "error", reason: json.error ?? `http_${res.status}` };
+    }
+    if (json.lead?.state) return json.lead;
+    return { state: "error", reason: "invalid_response" };
+  } catch (e) {
+    return { state: "error", reason: e instanceof Error ? e.message : String(e) };
   }
 }

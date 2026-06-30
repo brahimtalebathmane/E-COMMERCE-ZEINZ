@@ -45,7 +45,13 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
     <>
       <MetaPixelRuntime pixelId={metaPixelId} />
       <MetaPixel pixelId={metaPixelId} />
-      {orderId ? <OrderSuccessMetaLead orderId={orderId} /> : null}
+      {orderId ? (
+        <OrderSuccessMetaLead
+          orderId={orderId}
+          completionToken={completionToken}
+          actionToken={actionToken}
+        />
+      ) : null}
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}
