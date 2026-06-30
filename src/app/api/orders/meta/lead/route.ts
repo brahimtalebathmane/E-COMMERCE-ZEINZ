@@ -54,11 +54,38 @@ export async function POST(request: Request) {
       requestHeaders: request.headers,
     });
     const lead = mapLeadDispatchToApiPayload(result);
+    const testEventCode = process.env.META_CAPI_TEST_EVENT_CODE?.trim() || "";
+    const diagnostics = {
+      test_event_code_included: testEventCode.length > 0,
+      test_event_code_prefix: testEventCode ? testEventCode.slice(0, 8) : null,
+    };
+    // #region agent log
+    console.warn("[POST /api/orders/meta/lead][debug] dispatch result", {
+      hypothesisId: "H1-H3",
+      order_id: orderId,
+      lead,
+      diagnostics,
+    });
+    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5bc961" },
+      body: JSON.stringify({
+        sessionId: "5bc961",
+        runId: "pre-fix",
+        hypothesisId: "H1-H3",
+        location: "orders/meta/lead/route.ts",
+        message: "Lead CAPI dispatch result",
+        data: { order_id: orderId, lead_state: lead.state, diagnostics },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     console.warn("[POST /api/orders/meta/lead] Meta Lead CAPI", {
       order_id: orderId,
       lead,
+      diagnostics,
     });
-    return NextResponse.json({ lead });
+    return NextResponse.json({ lead, diagnostics });
   } catch (e) {
     return apiErrorResponse(e, "[POST /api/orders/meta/lead]");
   }

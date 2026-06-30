@@ -83,7 +83,31 @@ export async function dispatchMetaLeadCapi(params: {
         order_id: params.orderId,
       }),
     });
-    const json = (await res.json().catch(() => ({}))) as { lead?: MetaLeadCapiResult; error?: string };
+    const json = (await res.json().catch(() => ({}))) as {
+      lead?: MetaLeadCapiResult;
+      diagnostics?: { test_event_code_included?: boolean; test_event_code_prefix?: string | null };
+      error?: string;
+    };
+    // #region agent log
+    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5bc961" },
+      body: JSON.stringify({
+        sessionId: "5bc961",
+        runId: "pre-fix",
+        hypothesisId: "H1",
+        location: "meta-lead-client.ts:dispatchMetaLeadCapi",
+        message: "CAPI client response",
+        data: {
+          httpStatus: res.status,
+          leadState: json.lead?.state,
+          testEventIncluded: json.diagnostics?.test_event_code_included,
+          testEventPrefix: json.diagnostics?.test_event_code_prefix,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     if (!res.ok) {
       return { state: "error", reason: json.error ?? `http_${res.status}` };
     }
