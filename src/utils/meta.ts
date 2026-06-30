@@ -330,6 +330,10 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
     const payload: Record<string, unknown> = {
       data: [{ ...dataRowBase, event_time: lockedEventTimeSec }],
     };
+    const testEventCode = normalizeEnv(process.env.META_CAPI_TEST_EVENT_CODE);
+    if (testEventCode) {
+      payload.test_event_code = testEventCode;
+    }
 
     try {
       const res = await safeMetaFetch(endpoint, payload);

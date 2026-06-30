@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { verifyOrderActionToken } from "@/lib/auth/order-action-token";
 
 /** HttpOnly cookie names for post-checkout order actions (never expose in URLs). */
 export const ORDER_SUCCESS_OID_COOKIE = "order_success_oid";
@@ -36,4 +38,28 @@ export function clearOrderSuccessSessionCookies(response: NextResponse): void {
   response.cookies.set(ORDER_SUCCESS_OID_COOKIE, "", opts);
   response.cookies.set(ORDER_SUCCESS_CT_COOKIE, "", opts);
   response.cookies.set(ORDER_SUCCESS_AT_COOKIE, "", opts);
+}
+
+/** Validates the HttpOnly post-checkout session for a given order id. */
+export async function readVerifiedOrderSuccessSession(
+  orderId: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const id = orderId.trim();
+  if (!id) return { ok: false, reason: "missing_order_id" };
+
+  const cookieStore = await cookies();
+  const cookieOrderId = cookieStore.get(ORDER_SUCCESS_OID_COOKIE)?.value?.trim() || null;
+  const completionToken = cookieStore.get(ORDER_SUCCESS_CT_COOKIE)?.value?.trim() || null;
+  const actionToken = cookieStore.get(ORDER_SUCCESS_AT_COOKIE)?.value?.trim() || null;
+
+  if (!cookieOrderId || cookieOrderId !== id) {
+    return { ok: false, reason: "session_order_mismatch" };
+  }
+  if (!completionToken || !actionToken) {
+    return { ok: false, reason: "session_tokens_missing" };
+  }
+  if (!verifyOrderActionToken(id, completionToken, actionToken)) {
+    return { ok: false, reason: "invalid_action_token" };
+  }
+  return { ok: true };
 }

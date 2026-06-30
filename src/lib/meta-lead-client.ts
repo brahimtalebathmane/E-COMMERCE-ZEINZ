@@ -70,21 +70,17 @@ export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload 
   }
 }
 
-/** Server Lead CAPI — paired with browser pixel on order-success. */
+/** Server Lead CAPI — paired with browser pixel on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
-  completionToken: string;
-  actionToken: string;
 }): Promise<MetaLeadCapiResult> {
   try {
-    const res = await fetch("/api/meta/lead", {
+    const res = await fetch("/api/orders/meta/lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({
         order_id: params.orderId,
-        completion_token: params.completionToken,
-        action_token: params.actionToken,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as { lead?: MetaLeadCapiResult; error?: string };

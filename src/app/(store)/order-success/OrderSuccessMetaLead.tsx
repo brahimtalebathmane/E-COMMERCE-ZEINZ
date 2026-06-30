@@ -6,22 +6,18 @@ import { consumeMetaPendingLead, dispatchMetaLeadCapi } from "@/lib/meta-lead-cl
 
 type Props = {
   orderId: string;
-  completionToken: string | null;
-  actionToken: string | null;
 };
 
 /**
  * Fires browser Lead and server Lead CAPI together on order-success load so Meta
  * receives both channels at the same moment (shared event_id for deduplication).
  */
-export function OrderSuccessMetaLead({ orderId, completionToken, actionToken }: Props) {
+export function OrderSuccessMetaLead({ orderId }: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
     const id = orderId.trim();
-    const ct = completionToken?.trim();
-    const at = actionToken?.trim();
-    if (!id || !ct || !at || startedRef.current) return;
+    if (!id || startedRef.current) return;
     startedRef.current = true;
 
     const payload = consumeMetaPendingLead(id);
@@ -44,8 +40,6 @@ export function OrderSuccessMetaLead({ orderId, completionToken, actionToken }: 
           }),
           dispatchMetaLeadCapi({
             orderId: payload.orderId,
-            completionToken: ct,
-            actionToken: at,
           }),
         ]);
 
@@ -64,7 +58,7 @@ export function OrderSuccessMetaLead({ orderId, completionToken, actionToken }: 
         console.warn("[Meta] Lead dispatch failed on order-success", error);
       }
     })();
-  }, [orderId, completionToken, actionToken]);
+  }, [orderId]);
 
   return null;
 }

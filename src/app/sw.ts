@@ -22,10 +22,14 @@ function isNetworkOnlyDocument(url: URL): boolean {
   return false;
 }
 
+function isApiRequest(url: URL): boolean {
+  return url.pathname.startsWith("/api/");
+}
+
 const networkOnlyPages = [
   {
     matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
-      sameOrigin && isNetworkOnlyDocument(url),
+      sameOrigin && (isNetworkOnlyDocument(url) || isApiRequest(url)),
     handler: new NetworkOnly(),
   },
 ] as const;
