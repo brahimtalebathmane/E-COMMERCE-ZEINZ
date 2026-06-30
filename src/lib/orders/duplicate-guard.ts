@@ -2,7 +2,7 @@
 export const DUPLICATE_ORDER_WINDOW_MS = 10 * 60 * 1000;
 
 export const DUPLICATE_ORDER_ERROR_AR =
-  "لقد أرسلت طلباً لهذا المنتج مؤخراً. يرجى الانتظار بضع دقائق قبل إعادة المحاولة.";
+  "لقد أرسلت طلباً لهذا المنتج مؤخراً. يرجى الانتظار 10 دقائق قبل إعادة المحاولة.";
 
 export type DuplicateOrderCheckInput = {
   phone: string;
@@ -26,12 +26,11 @@ export async function hasRecentDuplicateOrder(
     .eq("phone", input.phone)
     .eq("product_id", input.productId)
     .gte("created_at", since)
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return Boolean(data);
+  return Boolean(data?.length);
 }
