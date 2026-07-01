@@ -202,7 +202,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     ? "Paiement à la livraison — vous payez à la réception"
     : "الدفع عند الاستلام — تدفع عند وصول الطلب";
   const priceLabel = isFr ? "Total à payer" : "المبلغ الإجمالي";
-  const freeShippingLabel = isFr ? "Livraison gratuite incluse" : "يشمل الشحن المجاني";
+  const freeShippingLabel = isFr ? "Livraison gratuite incluse" : "يشمل التوصيل المجاني";
 
   const originalPrice = Number(product.price);
   const discountedPrice =
@@ -261,7 +261,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
               <div className="flex items-baseline justify-end gap-2">
                 {hasDiscount ? (
                   <span
-                    className="text-sm font-semibold tabular-nums text-[var(--muted)] line-through decoration-[var(--muted)]/70"
+                    className="text-xl font-black tabular-nums tracking-tight text-[var(--muted)] line-through decoration-[var(--muted)]/70"
                     dir="ltr"
                   >
                     {formatPrice(originalPrice)}
