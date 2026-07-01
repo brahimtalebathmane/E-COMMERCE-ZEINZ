@@ -11,6 +11,9 @@ export const ADMIN_ORDER_SELECT = `
   status,
   completion_token,
   created_at,
+  meta_lead_sent,
+  meta_purchase_sent,
+  meta_cancel_sent,
   products (
     name_ar,
     slug,

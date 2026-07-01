@@ -20,7 +20,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onDeleted: (orderId: string) => void;
-  onOrderUpdated: (orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) => void;
+  onOrderUpdated: (orderId: string, patch: Partial<Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">>) => void;
 };
 
 const DETAIL_DATE_FORMATTER = new Intl.DateTimeFormat("ar", {
@@ -61,6 +61,78 @@ function normalizeProduct(
 ): AdminOrderRow["products"] {
   if (Array.isArray(products)) return products[0] ?? null;
   return products ?? null;
+}
+
+function metaFlagSent(value: boolean | null | undefined): boolean {
+  return value === true;
+}
+
+type MetaRetryKind = "lead" | "purchase" | "cancel";
+
+async function retryMetaEvent(
+  kind: MetaRetryKind,
+  orderId: string,
+): Promise<{
+  state: "sent" | "skipped" | "failed" | "error";
+  reason?: string;
+}> {
+  const path =
+    kind === "lead"
+      ? "/api/meta/lead"
+      : kind === "purchase"
+        ? "/api/meta/purchase"
+        : "/api/meta/cancel";
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ order_id: orderId }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    lead?: { state: string; reason?: string };
+    sent?: boolean;
+    skipped?: boolean;
+    reason?: string;
+    error?: string;
+  };
+  if (!res.ok) {
+    return { state: "error", reason: json.error ?? `http_${res.status}` };
+  }
+
+  if (kind === "lead") {
+    const payload = json.lead;
+    if (!payload?.state) return { state: "error", reason: "invalid_response" };
+    return payload as { state: "sent" | "skipped" | "failed" | "error"; reason?: string };
+  }
+
+  if (json.sent) return { state: "sent" };
+  if (json.skipped) {
+    return { state: "skipped", reason: json.reason ?? "skipped" };
+  }
+  return { state: "failed", reason: json.reason ?? "capi_failed" };
+}
+
+function toastMetaRetryResult(
+  kind: MetaRetryKind,
+  result: { state: string; reason?: string },
+): void {
+  if (result.state === "sent") {
+    if (kind === "lead") toast.success(a.orders.metaLeadCapiOk);
+    else if (kind === "purchase") toast.success(a.orders.metaPurchaseCapiOk);
+    else toast.success(a.orders.metaCancelCapiOk);
+    return;
+  }
+  if (result.state === "failed") {
+    if (kind === "lead") toast.error(a.orders.metaLeadCapiFailed);
+    else if (kind === "purchase") toast.error(a.orders.metaPurchaseCapiFailed);
+    else toast.error(a.orders.metaCancelCapiFailed);
+    return;
+  }
+  if (result.state === "skipped" && result.reason === "missing_meta_data") {
+    if (kind === "lead") toast.warning(a.orders.metaLeadCapiMissingMeta);
+    else if (kind === "purchase") toast.warning(a.orders.metaPurchaseCapiMissingMeta);
+    else toast.warning(a.orders.metaCancelCapiMissingMeta);
+  }
 }
 
 export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdated }: Props) {
@@ -142,6 +214,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       const purchaseMeta = json.meta?.purchase;
       if (purchaseMeta?.state === "sent") {
         toast.success(a.orders.metaPurchaseCapiOk);
+        onOrderUpdated(currentOrder.id, { meta_purchase_sent: true });
       } else if (purchaseMeta?.state === "failed") {
         toast.error(a.orders.metaPurchaseCapiFailed);
       } else if (
@@ -149,11 +222,17 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         purchaseMeta.reason === "missing_meta_data"
       ) {
         toast.warning(a.orders.metaPurchaseCapiMissingMeta);
+      } else if (
+        purchaseMeta?.state === "skipped" &&
+        purchaseMeta.reason === "already_sent"
+      ) {
+        onOrderUpdated(currentOrder.id, { meta_purchase_sent: true });
       }
 
       const cancelMeta = json.meta?.cancel;
       if (cancelMeta?.state === "sent") {
         toast.success(a.orders.metaCancelCapiOk);
+        onOrderUpdated(currentOrder.id, { meta_cancel_sent: true });
       } else if (cancelMeta?.state === "failed") {
         toast.error(a.orders.metaCancelCapiFailed);
       } else if (
@@ -161,6 +240,11 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         cancelMeta.reason === "missing_meta_data"
       ) {
         toast.warning(a.orders.metaCancelCapiMissingMeta);
+      } else if (
+        cancelMeta?.state === "skipped" &&
+        cancelMeta.reason === "already_sent"
+      ) {
+        onOrderUpdated(currentOrder.id, { meta_cancel_sent: true });
       }
     } catch (error) {
       onOrderUpdated(currentOrder.id, { status: prevStatus });
@@ -247,6 +331,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
               hasChanges={hasChanges}
               onSaveChanges={() => void onSaveChanges()}
               onDeleted={onDeleted}
+              onOrderUpdated={onOrderUpdated}
             />
           </ErrorBoundary>
         </div>
@@ -264,6 +349,10 @@ type SectionsProps = {
   hasChanges: boolean;
   onSaveChanges: () => void;
   onDeleted: (orderId: string) => void;
+  onOrderUpdated: (
+    orderId: string,
+    patch: Partial<Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">>,
+  ) => void;
 };
 
 /**
@@ -280,6 +369,7 @@ function OrderDetailSections({
   hasChanges,
   onSaveChanges,
   onDeleted,
+  onOrderUpdated,
 }: SectionsProps) {
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
@@ -289,6 +379,29 @@ function OrderDetailSections({
     canChangeOrderStatus(access, "cancelled");
   const product = normalizeProduct(order?.products);
   const dateStr = formatDetailDate(order?.created_at);
+  const [metaRetrying, setMetaRetrying] = useState<MetaRetryKind | null>(null);
+
+  async function onMetaRetry(kind: MetaRetryKind) {
+    if (metaRetrying) return;
+    setMetaRetrying(kind);
+    try {
+      const result = await retryMetaEvent(kind, order.id);
+      toastMetaRetryResult(kind, result);
+      if (result.state === "sent" || result.state === "skipped") {
+        const patch =
+          kind === "lead"
+            ? { meta_lead_sent: true }
+            : kind === "purchase"
+              ? { meta_purchase_sent: true }
+              : { meta_cancel_sent: true };
+        onOrderUpdated(order.id, patch);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.orders.saveFailed);
+    } finally {
+      setMetaRetrying(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -375,6 +488,67 @@ function OrderDetailSections({
             </dd>
           </div>
         </dl>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          {a.orders.metaTrackingTitle}
+        </h3>
+        <ul className="mt-3 space-y-2 text-sm">
+          <li className="flex flex-wrap items-center justify-between gap-2">
+            <span className={metaFlagSent(order.meta_lead_sent) ? "text-emerald-400" : "text-amber-300"}>
+              {metaFlagSent(order.meta_lead_sent) ? a.orders.metaLeadSent : a.orders.metaLeadNotSent}
+            </span>
+            {!metaFlagSent(order.meta_lead_sent) ? (
+              <button
+                type="button"
+                disabled={Boolean(metaRetrying) || saving}
+                onClick={() => void onMetaRetry("lead")}
+                className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+              >
+                {metaRetrying === "lead" ? a.orders.metaRetrying : a.orders.metaRetryLead}
+              </button>
+            ) : null}
+          </li>
+          {order.status === "confirmed" || metaFlagSent(order.meta_purchase_sent) ? (
+            <li className="flex flex-wrap items-center justify-between gap-2">
+              <span className={metaFlagSent(order.meta_purchase_sent) ? "text-emerald-400" : "text-amber-300"}>
+                {metaFlagSent(order.meta_purchase_sent)
+                  ? a.orders.metaPurchaseSent
+                  : a.orders.metaPurchaseNotSent}
+              </span>
+              {order.status === "confirmed" && !metaFlagSent(order.meta_purchase_sent) ? (
+                <button
+                  type="button"
+                  disabled={Boolean(metaRetrying) || saving}
+                  onClick={() => void onMetaRetry("purchase")}
+                  className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                >
+                  {metaRetrying === "purchase" ? a.orders.metaRetrying : a.orders.metaRetryPurchase}
+                </button>
+              ) : null}
+            </li>
+          ) : null}
+          {order.status === "cancelled" || metaFlagSent(order.meta_cancel_sent) ? (
+            <li className="flex flex-wrap items-center justify-between gap-2">
+              <span className={metaFlagSent(order.meta_cancel_sent) ? "text-emerald-400" : "text-amber-300"}>
+                {metaFlagSent(order.meta_cancel_sent)
+                  ? a.orders.metaCancelSent
+                  : a.orders.metaCancelNotSent}
+              </span>
+              {order.status === "cancelled" && !metaFlagSent(order.meta_cancel_sent) ? (
+                <button
+                  type="button"
+                  disabled={Boolean(metaRetrying) || saving}
+                  onClick={() => void onMetaRetry("cancel")}
+                  className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                >
+                  {metaRetrying === "cancel" ? a.orders.metaRetrying : a.orders.metaRetryCancel}
+                </button>
+              ) : null}
+            </li>
+          ) : null}
+        </ul>
       </section>
 
       {canEditStatus ? (

@@ -49,7 +49,7 @@ export function OrderSuccessEffects({
     void clearOrderSuccessSession();
   }, []);
 
-  const onLeadSettled = useCallback(() => {
+  const onLeadComplete = useCallback(() => {
     leadDoneRef.current = true;
     tryClearSession();
   }, [tryClearSession]);
@@ -61,7 +61,7 @@ export function OrderSuccessEffects({
 
   return (
     <>
-      {orderId ? <OrderSuccessMetaLead orderId={orderId} onSettled={onLeadSettled} /> : null}
+      {orderId ? <OrderSuccessMetaLead orderId={orderId} onComplete={onLeadComplete} /> : null}
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}

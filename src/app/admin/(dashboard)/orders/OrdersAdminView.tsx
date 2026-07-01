@@ -318,7 +318,12 @@ export function OrdersAdminView({ orders }: Props) {
     });
   }, [visibleRows]);
 
-  function patchOrder(orderId: string, patch: Partial<Pick<AdminOrderRow, "status">>) {
+  function patchOrder(
+    orderId: string,
+    patch: Partial<
+      Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">
+    >,
+  ) {
     setRows((prev) => prev.map((row) => (row.id === orderId ? { ...row, ...patch } : row)));
     setActive((prev) => (prev && prev.id === orderId ? { ...prev, ...patch } : prev));
   }

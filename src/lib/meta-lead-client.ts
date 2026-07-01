@@ -23,6 +23,15 @@ export type MetaLeadCapiResult =
   | { state: "failed"; reason: string }
   | { state: "error"; reason: string };
 
+/** True when CAPI Lead is done (sent or definitively skipped). */
+export function isMetaLeadCapiComplete(result: MetaLeadCapiResult): boolean {
+  return result.state === "sent" || result.state === "skipped";
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function isValidPayload(raw: unknown): raw is MetaPendingLeadPayload {
   if (!raw || typeof raw !== "object") return false;
   const p = raw as Record<string, unknown>;
@@ -143,6 +152,12 @@ export async function fetchMetaLeadPayloadFromServer(
   }
 }
 
+/** Marks tab session complete and clears pending payload after CAPI Lead settles. */
+export function finalizeMetaLeadDispatch(orderId: string): void {
+  markMetaLeadDispatched(orderId);
+  clearMetaPendingLead();
+}
+
 /** Server Lead CAPI — paired with browser pixel on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
@@ -168,6 +183,23 @@ export async function dispatchMetaLeadCapi(params: {
   } catch (e) {
     return { state: "error", reason: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** Retries transient Lead CAPI failures; skipped/sent return immediately. */
+export async function dispatchMetaLeadCapiWithRetry(
+  params: { orderId: string },
+  options: { maxAttempts?: number } = {},
+): Promise<MetaLeadCapiResult> {
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+  let last: MetaLeadCapiResult = { state: "error", reason: "not_started" };
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) await sleep(400 * attempt);
+    last = await dispatchMetaLeadCapi(params);
+    if (isMetaLeadCapiComplete(last)) return last;
+  }
+
+  return last;
 }
 
 /**

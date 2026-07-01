@@ -3,23 +3,24 @@
 import { useEffect, useRef } from "react";
 import { trackLead } from "@/components/MetaPixel";
 import {
-  clearMetaPendingLead,
-  dispatchMetaLeadCapi,
+  dispatchMetaLeadCapiWithRetry,
+  finalizeMetaLeadDispatch,
+  isMetaLeadCapiComplete,
   isMetaLeadDispatched,
-  markMetaLeadDispatched,
   resolveMetaLeadPayload,
 } from "@/lib/meta-lead-client";
 
 type Props = {
   orderId: string;
-  onSettled?: () => void;
+  /** Called only when Lead CAPI is sent/skipped (cookies may then be cleared). */
+  onComplete?: () => void;
 };
 
 /**
  * Fires browser Lead and server Lead CAPI together on order-success load so Meta
  * receives both channels at the same moment (shared event_id for deduplication).
  */
-export function OrderSuccessMetaLead({ orderId, onSettled }: Props) {
+export function OrderSuccessMetaLead({ orderId, onComplete }: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -30,30 +31,27 @@ export function OrderSuccessMetaLead({ orderId, onSettled }: Props) {
     void (async () => {
       try {
         if (isMetaLeadDispatched(id)) {
+          onComplete?.();
           return;
         }
 
         const { payload, metaLeadSent } = await resolveMetaLeadPayload(id);
         if (metaLeadSent) {
-          markMetaLeadDispatched(id);
-          clearMetaPendingLead();
+          finalizeMetaLeadDispatch(id);
+          onComplete?.();
           return;
         }
+
         if (!payload) {
-          if (!metaLeadSent) {
-            const capiResult = await dispatchMetaLeadCapi({ orderId: id });
-            if (capiResult.state === "sent" || capiResult.state === "skipped") {
-              markMetaLeadDispatched(id);
-              clearMetaPendingLead();
-            }
-            if (capiResult.state !== "sent") {
-              console.warn("[Meta] Lead CAPI-only recovery on order-success", {
-                orderId: id,
-                capi: capiResult,
-              });
-            }
+          const capiResult = await dispatchMetaLeadCapiWithRetry({ orderId: id });
+          if (isMetaLeadCapiComplete(capiResult)) {
+            finalizeMetaLeadDispatch(id);
+            onComplete?.();
           } else {
-            console.warn("[Meta] Lead skipped on order-success: no payload", { orderId: id });
+            console.warn("[Meta] Lead CAPI-only recovery on order-success failed", {
+              orderId: id,
+              capi: capiResult,
+            });
           }
           return;
         }
@@ -71,32 +69,29 @@ export function OrderSuccessMetaLead({ orderId, onSettled }: Props) {
             customerName: payload.customerName,
             quantity: payload.quantity,
           }),
-          dispatchMetaLeadCapi({
-            orderId: payload.orderId,
-          }),
+          dispatchMetaLeadCapiWithRetry({ orderId: payload.orderId }),
         ]);
 
-        markMetaLeadDispatched(id);
-        clearMetaPendingLead();
-
-        if (capiResult.state !== "sent") {
-          console.warn("[Meta] Lead CAPI on order-success", {
+        if (isMetaLeadCapiComplete(capiResult)) {
+          finalizeMetaLeadDispatch(id);
+          onComplete?.();
+          if (capiResult.state === "sent") {
+            console.info("[Meta] Lead pixel + CAPI sent together on order-success", {
+              orderId: payload.orderId,
+              eventId: payload.eventId,
+            });
+          }
+        } else {
+          console.warn("[Meta] Lead CAPI failed on order-success (pixel may have fired)", {
             orderId: payload.orderId,
             capi: capiResult,
-          });
-        } else {
-          console.info("[Meta] Lead pixel + CAPI sent together on order-success", {
-            orderId: payload.orderId,
-            eventId: payload.eventId,
           });
         }
       } catch (error) {
         console.warn("[Meta] Lead dispatch failed on order-success", error);
-      } finally {
-        onSettled?.();
       }
     })();
-  }, [orderId, onSettled]);
+  }, [orderId, onComplete]);
 
   return null;
 }
