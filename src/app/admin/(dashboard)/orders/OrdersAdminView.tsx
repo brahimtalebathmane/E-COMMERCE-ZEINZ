@@ -1,11 +1,11 @@
 "use client";
 
-import { memo, useEffect, useMemo, useState } from "react";
+import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
-import { deleteOrderAction } from "./actions";
+import { deleteOrderAction, deleteOrdersAction } from "./actions";
 import { useHasPermission } from "@/components/admin/AdminPermissionsContext";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
@@ -215,6 +215,9 @@ export function OrdersAdminView({ orders }: Props) {
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>(ALL_PRODUCTS);
   const [renderCount, setRenderCount] = useState(() =>
     Math.min(INITIAL_RENDER, orders.length),
@@ -273,11 +276,26 @@ export function OrdersAdminView({ orders }: Props) {
     return tab ?? emptyCounts();
   }, [rows, productTabs, selectedProduct]);
 
+  const selectedCount = selectedIds.size;
+  const allFilteredSelected =
+    filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
+  const someFilteredSelected = filteredRows.some((row) => selectedIds.has(row.id));
+  const deleteBusy = deletingId !== null || bulkDeleting;
+
   // Reset the progressive window whenever the active segment changes so a
   // freshly selected product paints its first page instantly.
   useEffect(() => {
     setRenderCount(Math.min(INITIAL_RENDER, filteredRows.length));
   }, [selectedProduct, filteredRows.length]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected;
+  }, [someFilteredSelected, allFilteredSelected]);
 
   useEffect(() => {
     if (renderCount >= filteredRows.length) return;
@@ -328,13 +346,44 @@ export function OrdersAdminView({ orders }: Props) {
     setActive((prev) => (prev && prev.id === orderId ? { ...prev, ...patch } : prev));
   }
 
+  function toggleSelected(orderId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  }
+
+  function toggleSelectAllFiltered() {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const row of filteredRows) next.delete(row.id);
+        return next;
+      });
+      return;
+    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const row of filteredRows) next.add(row.id);
+      return next;
+    });
+  }
+
   async function onDelete(orderId: string) {
-    if (deletingId) return;
+    if (deleteBusy) return;
     if (!confirm(a.orders.deleteConfirm)) return;
     setDeletingId(orderId);
     const prev = rows;
     setRows((r) => r.filter((x) => x.id !== orderId));
     setActive((cur) => (cur?.id === orderId ? null : cur));
+    setSelectedIds((prev) => {
+      if (!prev.has(orderId)) return prev;
+      const next = new Set(prev);
+      next.delete(orderId);
+      return next;
+    });
     try {
       await deleteOrderAction(orderId);
     } catch (e) {
@@ -342,6 +391,31 @@ export function OrdersAdminView({ orders }: Props) {
       throw e;
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function onDeleteSelected() {
+    if (deleteBusy || selectedCount === 0) return;
+    const ids = [...selectedIds];
+    const confirmMessage = a.orders.deleteBulkConfirm.replace(
+      "{count}",
+      String(ids.length),
+    );
+    if (!confirm(confirmMessage)) return;
+
+    setBulkDeleting(true);
+    const prev = rows;
+    const idSet = new Set(ids);
+    setRows((r) => r.filter((x) => !idSet.has(x.id)));
+    setActive((cur) => (cur && idSet.has(cur.id) ? null : cur));
+    setSelectedIds(new Set());
+    try {
+      await deleteOrdersAction(ids);
+    } catch (e) {
+      setRows(prev);
+      throw e;
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -407,6 +481,45 @@ export function OrdersAdminView({ orders }: Props) {
       </div>
       ) : null}
 
+      {canDeleteOrders && rows.length > 0 ? (
+        <div className="sticky top-14 z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-3 shadow-lg">
+          <div className="flex flex-wrap items-center gap-3">
+            <OrderSelectCheckbox
+              ref={selectAllRef}
+              checked={allFilteredSelected}
+              disabled={deleteBusy || filteredRows.length === 0}
+              ariaLabel={allFilteredSelected ? a.orders.deselectAll : a.orders.selectAll}
+              onChange={toggleSelectAllFiltered}
+            />
+            <span className="text-sm font-semibold text-[var(--foreground)]">
+              {selectedCount > 0
+                ? a.orders.selectedCountLabel.replace("{count}", String(selectedCount))
+                : a.orders.selectAll}
+            </span>
+          </div>
+          {selectedCount > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={deleteBusy}
+                className="min-h-[40px] rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white/[0.04] disabled:opacity-60"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                {a.orders.deselectAll}
+              </button>
+              <button
+                type="button"
+                disabled={deleteBusy}
+                className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-60"
+                onClick={() => void onDeleteSelected().catch(() => {})}
+              >
+                {bulkDeleting ? a.orders.deletingBulk : a.orders.deleteSelected}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Day-by-day chronological sections */}
       {rows.length > 0 ? (
       <div className="mt-6 space-y-8">
@@ -444,6 +557,19 @@ export function OrdersAdminView({ orders }: Props) {
                   className={`admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                 >
                   <div className="flex gap-4">
+                    {canDeleteOrders ? (
+                      <div
+                        className="flex shrink-0 items-start pt-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <OrderSelectCheckbox
+                          checked={selectedIds.has(o.id)}
+                          disabled={deleteBusy}
+                          ariaLabel={a.orders.selectAll}
+                          onChange={() => toggleSelected(o.id)}
+                        />
+                      </div>
+                    ) : null}
                     <div className="min-w-0 flex-1 space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
@@ -470,7 +596,7 @@ export function OrdersAdminView({ orders }: Props) {
                           {canDeleteOrders ? (
                           <button
                             type="button"
-                            disabled={deletingId === o.id}
+                            disabled={deleteBusy && deletingId === o.id}
                             className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
                             onClick={(e) => {
                               e.preventDefault();
@@ -495,10 +621,11 @@ export function OrdersAdminView({ orders }: Props) {
               <table className="w-full table-fixed border-collapse text-sm">
                 <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
-                    <th className="w-[28%] px-4 py-3 text-start">{a.orders.phone}</th>
-                    <th className="w-[48%] px-4 py-3 text-start">{a.orders.status}</th>
+                    {canDeleteOrders ? <th className="w-[4%] px-3 py-3" aria-hidden /> : null}
+                    <th className="w-[26%] px-4 py-3 text-start">{a.orders.phone}</th>
+                    <th className="w-[44%] px-4 py-3 text-start">{a.orders.status}</th>
                     <th className="w-[12%] px-4 py-3 text-start">{a.orders.orderDate}</th>
-                    <th className="w-[12%] px-4 py-3 text-start">{a.orders.actions}</th>
+                    <th className="w-[14%] px-4 py-3 text-start">{a.orders.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--admin-border)]">
@@ -517,6 +644,19 @@ export function OrdersAdminView({ orders }: Props) {
                         }
                       }}
                     >
+                      {canDeleteOrders ? (
+                        <td
+                          className="px-3 py-4 align-middle text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <OrderSelectCheckbox
+                            checked={selectedIds.has(o.id)}
+                            disabled={deleteBusy}
+                            ariaLabel={a.orders.selectAll}
+                            onChange={() => toggleSelected(o.id)}
+                          />
+                        </td>
+                      ) : null}
                       <td className="px-4 py-4 align-middle">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="break-all font-mono text-sm" dir="ltr">
@@ -542,7 +682,7 @@ export function OrdersAdminView({ orders }: Props) {
                         {canDeleteOrders ? (
                         <button
                           type="button"
-                          disabled={deletingId === o.id}
+                          disabled={deleteBusy && deletingId === o.id}
                           className="min-h-[40px] rounded-xl border border-red-400/40 bg-red-400/5 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
                           onClick={(e) => {
                             e.preventDefault();
@@ -577,6 +717,34 @@ export function OrdersAdminView({ orders }: Props) {
     </>
   );
 }
+
+const OrderSelectCheckbox = memo(
+  forwardRef<
+    HTMLInputElement,
+    {
+      checked: boolean;
+      disabled?: boolean;
+      ariaLabel: string;
+      onChange: () => void;
+    }
+  >(function OrderSelectCheckbox({ checked, disabled, ariaLabel, onChange }, ref) {
+    return (
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        className="h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--admin-border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          e.stopPropagation();
+          onChange();
+        }}
+      />
+    );
+  }),
+);
 
 function ProductTabButton({
   label,
