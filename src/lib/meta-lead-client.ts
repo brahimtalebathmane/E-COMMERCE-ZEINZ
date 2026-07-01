@@ -7,6 +7,7 @@ export const META_PENDING_LEAD_STORAGE_KEY = "meta_pending_lead_v1";
 
 const META_LEAD_DISPATCHED_PREFIX = "meta_lead_dispatched:";
 const META_BROWSER_LEAD_SENT_PREFIX = "meta_browser_lead_sent:";
+const META_LEAD_EFFECT_LOCK_PREFIX = "meta_lead_effect_v1:";
 
 export type MetaPendingLeadPayload = {
   value: number;
@@ -96,7 +97,48 @@ export function tryMarkBrowserLeadSent(orderId: string): boolean {
     sessionStorage.setItem(key, "1");
     return true;
   } catch {
+    return false;
+  }
+}
+
+/** True when browser Lead was already marked for this order in this tab. */
+export function wasBrowserLeadSent(orderId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const id = orderId.trim();
+  if (!id) return false;
+  try {
+    return sessionStorage.getItem(`${META_BROWSER_LEAD_SENT_PREFIX}${id}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Once-per-order effect lock — blocks StrictMode remounts before any async gap.
+ * Pair with releaseMetaLeadEffectLock on effect cleanup when Lead did not fire.
+ */
+export function tryBeginMetaLeadEffect(orderId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const id = orderId.trim();
+  if (!id || isMetaLeadDispatched(id)) return false;
+  try {
+    const key = `${META_LEAD_EFFECT_LOCK_PREFIX}${id}`;
+    if (sessionStorage.getItem(key) === "1") return false;
+    sessionStorage.setItem(key, "1");
     return true;
+  } catch {
+    return false;
+  }
+}
+
+export function releaseMetaLeadEffectLock(orderId: string): void {
+  if (typeof window === "undefined") return;
+  const id = orderId.trim();
+  if (!id) return;
+  try {
+    sessionStorage.removeItem(`${META_LEAD_EFFECT_LOCK_PREFIX}${id}`);
+  } catch {
+    // ignore
   }
 }
 

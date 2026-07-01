@@ -146,17 +146,30 @@ export function refreshMetaPixelInitWithUserData(
   syncMetaPixelInit(pixelId, extra);
 }
 
-/** True when this exact (pixel, event, eventID) was already dispatched in this page session. */
+const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
+
+/** True when this exact (pixel, event, eventID) was already dispatched in this tab. */
 function isDuplicateTrackedEvent(
   pixelId: string,
   eventName: string,
   eventID?: string,
 ): boolean {
   if (!eventID || typeof window === "undefined") return false;
-  const key = `${pixelId}:${eventName}:${eventID}`;
-  if (window.__metaSentEvents?.[key]) return true;
+  const memKey = `${pixelId}:${eventName}:${eventID}`;
+  const storageKey = `${META_TRACKED_EVENT_STORAGE_PREFIX}${memKey}`;
+
+  try {
+    if (sessionStorage.getItem(storageKey) === "1") return true;
+    sessionStorage.setItem(storageKey, "1");
+  } catch {
+    if (window.__metaSentEvents?.[memKey]) return true;
+    if (!window.__metaSentEvents) window.__metaSentEvents = {};
+    window.__metaSentEvents[memKey] = true;
+    return false;
+  }
+
   if (!window.__metaSentEvents) window.__metaSentEvents = {};
-  window.__metaSentEvents[key] = true;
+  window.__metaSentEvents[memKey] = true;
   return false;
 }
 

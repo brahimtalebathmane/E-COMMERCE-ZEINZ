@@ -9,6 +9,7 @@ import {
 } from "@/lib/meta-product-custom-data";
 import {
   buildMetaPixelAdvancedMatching,
+  buildMetaPixelInitUserData,
   loadStoredMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
 } from "@/lib/meta-pixel-advanced-matching";
@@ -132,6 +133,14 @@ export async function trackLead(params: {
 }): Promise<void> {
   if (!tryMarkBrowserLeadSent(params.orderId)) return;
 
+  const pid = resolvePublicMetaPixelId(params.pixelId);
+  if (pid && params.phone?.trim() && params.customerName?.trim()) {
+    syncMetaPixelAdvancedMatching(pid, {
+      phone: params.phone,
+      customerName: params.customerName,
+    });
+  }
+
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
   const leadCustomData = buildMetaOrderValueCustomData({
     value,
@@ -141,16 +150,11 @@ export async function trackLead(params: {
     quantity: params.quantity,
   });
 
-  // Queue Pixel Lead immediately with eventID — Meta pairs this with CAPI via event_id.
+  // Single browser Lead — eventID pairs with CAPI event_id for Meta deduplication.
   trackMetaEvent(params.pixelId, "Lead", leadCustomData, { eventID: params.eventId });
 
-  const pid = resolvePublicMetaPixelId(params.pixelId);
   if (!pid || !params.phone?.trim() || !params.customerName?.trim()) return;
 
-  syncMetaPixelAdvancedMatching(pid, {
-    phone: params.phone,
-    customerName: params.customerName,
-  });
   const externalIdHash = params.orderId.trim()
     ? await hashMetaExternalId(params.orderId)
     : undefined;
@@ -162,5 +166,10 @@ export async function trackLead(params: {
     fbc: metaCookies.fbc,
     externalIdHash,
   });
-  if (am) refreshMetaPixelInitWithUserData(pid, am);
+  if (am && typeof window !== "undefined" && window.fbq) {
+    const userData = buildMetaPixelInitUserData(pid, am);
+    if (userData) {
+      window.fbq("set", "userData", userData);
+    }
+  }
 }

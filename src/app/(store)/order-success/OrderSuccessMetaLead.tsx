@@ -8,8 +8,11 @@ import {
   isMetaLeadCapiComplete,
   isMetaLeadDispatched,
   readMetaPendingLead,
+  releaseMetaLeadEffectLock,
   resolveMetaLeadPayload,
+  tryBeginMetaLeadEffect,
   type MetaPendingLeadPayload,
+  wasBrowserLeadSent,
 } from "@/lib/meta-lead-client";
 import { resolveOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
@@ -46,29 +49,41 @@ export function OrderSuccessMetaLead({
   actionToken,
   onComplete,
 }: Props) {
-  const startedRef = useRef(false);
+  const sessionRef = useRef({
+    completionToken,
+    actionToken,
+    onComplete,
+  });
+  sessionRef.current = { completionToken, actionToken, onComplete };
 
   useEffect(() => {
     const id = orderId.trim();
-    if (!id || startedRef.current) return;
-    startedRef.current = true;
+    if (!id) return;
+
+    if (!tryBeginMetaLeadEffect(id)) {
+      sessionRef.current.onComplete?.();
+      return;
+    }
+
+    let cancelled = false;
 
     void (async () => {
       try {
         if (isMetaLeadDispatched(id)) {
-          onComplete?.();
           return;
         }
 
         const session = resolveOrderSuccessClientSession(id, {
-          completionToken,
-          actionToken,
+          completionToken: sessionRef.current.completionToken,
+          actionToken: sessionRef.current.actionToken,
         });
 
         const { payload, metaLeadSent } = await resolveMetaLeadPayload(
           id,
           session ?? undefined,
         );
+
+        if (cancelled) return;
 
         const leadPayload = payload ?? readMetaPendingLead(id);
 
@@ -84,9 +99,10 @@ export function OrderSuccessMetaLead({
         // Meta dedupes best when the browser event arrives before the server event.
         await fireBrowserLead(leadPayload);
 
+        if (cancelled) return;
+
         if (metaLeadSent) {
           finalizeMetaLeadDispatch(id);
-          onComplete?.();
           return;
         }
 
@@ -98,6 +114,8 @@ export function OrderSuccessMetaLead({
           actionToken: session?.actionToken,
           eventTimeSec,
         });
+
+        if (cancelled) return;
 
         if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
@@ -116,14 +134,22 @@ export function OrderSuccessMetaLead({
             },
           );
         }
-
-        onComplete?.();
       } catch (error) {
         console.error("[Meta] Lead dispatch failed on order-success", error);
-        onComplete?.();
+      } finally {
+        if (!cancelled) {
+          sessionRef.current.onComplete?.();
+        }
       }
     })();
-  }, [orderId, completionToken, actionToken, onComplete]);
+
+    return () => {
+      cancelled = true;
+      if (!wasBrowserLeadSent(id)) {
+        releaseMetaLeadEffectLock(id);
+      }
+    };
+  }, [orderId]);
 
   return null;
 }
