@@ -28,9 +28,8 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is server-first CAPI on order-success via `/api/orders/meta/lead`.
- * The browser pixel fires only when CAPI cannot ingest (missing token / transient
- * failure). Both channels share the deterministic `lead_{orderId}` event id.
+ * `Lead` is hybrid: browser Pixel + CAPI on order-success, both using the same
+ * deterministic `lead_{orderId}` event id for Meta deduplication.
  * `orders.meta_event_id` stores the funnel session id for InitiateCheckout stitching.
  */
 function transactionalEventId(

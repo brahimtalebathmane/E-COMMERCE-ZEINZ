@@ -145,7 +145,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
 
       const verifiedEventId = buildMetaLeadEventId(json.order_id);
 
-      // Queue Lead for order-success — CAPI first, browser only if CAPI cannot ingest.
+      // Queue Lead for order-success — browser Pixel + CAPI fire in parallel with shared event_id.
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",

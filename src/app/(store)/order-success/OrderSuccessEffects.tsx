@@ -26,8 +26,8 @@ async function clearOrderSuccessSession(): Promise<void> {
 }
 
 /**
- * Runs Lead + WhatsApp post-checkout effects, then clears the short-lived
- * session cookies only after both have finished (Lead CAPI needs those cookies).
+ * Runs hybrid Lead (Pixel + CAPI) + WhatsApp post-checkout effects, then clears the
+ * short-lived session cookies only after both have finished (Lead CAPI needs those cookies).
  */
 export function OrderSuccessEffects({
   orderId,

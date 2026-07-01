@@ -33,21 +33,6 @@ export function isMetaLeadCapiComplete(result: MetaLeadCapiResult): boolean {
   return result.state === "sent" || result.state === "skipped";
 }
 
-/**
- * Browser Lead fallback only when CAPI did not ingest the event.
- * Avoids dual Pixel+CAPI Lead in live Events Manager (Meta dedup is unreliable in production).
- */
-export function shouldFallbackToBrowserLead(result: MetaLeadCapiResult): boolean {
-  if (result.state === "failed" || result.state === "error") return true;
-  if (result.state === "skipped") {
-    return (
-      result.reason === "missing_meta_data" ||
-      result.reason === "missing_access_token"
-    );
-  }
-  return false;
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -190,13 +175,13 @@ export async function fetchMetaLeadPayloadFromServer(
   }
 }
 
-/** Marks tab session complete and clears pending payload after CAPI Lead settles. */
+/** Marks tab session complete and clears pending payload after hybrid Lead settles. */
 export function finalizeMetaLeadDispatch(orderId: string): void {
   markMetaLeadDispatched(orderId);
   clearMetaPendingLead();
 }
 
-/** Server Lead CAPI — primary Lead path on order-success (cookie session auth). */
+/** Server Lead CAPI — paired with browser Pixel on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
 }): Promise<MetaLeadCapiResult> {
