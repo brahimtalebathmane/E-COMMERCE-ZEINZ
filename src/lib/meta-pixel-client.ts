@@ -80,7 +80,7 @@ function applyMetaPixelUserData(pixelId: string): void {
   if (!id) return;
   const userData = buildMetaPixelInitUserData(id);
   if (!userData) return;
-  window.fbq("set", "userData", userData);
+  window.fbq("set", "userData", userData, id);
 }
 
 /** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
@@ -97,14 +97,26 @@ function isInitPendingInFbqQueue(pixelId: string): boolean {
   );
 }
 
-function isFbqPixelRegistered(pixelId: string): boolean {
+function countFbqPixelRegistrations(pixelId: string): number {
   try {
     const pixels = window.fbq?.getState?.()?.pixels;
-    if (!Array.isArray(pixels)) return false;
-    return pixels.some((pixel) => pixel?.id === pixelId);
+    if (!Array.isArray(pixels)) return 0;
+    const id = String(pixelId);
+    return pixels.filter((pixel) => String(pixel?.id) === id).length;
   } catch {
-    return false;
+    return 0;
   }
+}
+
+function isFbqPixelRegistered(pixelId: string): boolean {
+  return countFbqPixelRegistrations(pixelId) > 0;
+}
+
+/** Sync module/window init flags when fbq already registered this pixel (SPA navigation). */
+function syncInitedFromFbqState(pixelId: string): boolean {
+  if (!isFbqPixelRegistered(pixelId)) return false;
+  markMetaPixelInited(pixelId);
+  return true;
 }
 
 function markMetaPixelInited(pixelId: string): void {
@@ -135,8 +147,16 @@ function queueMetaPixelInit(
   ensureFbqQueue();
   if (!window.fbq) return;
 
+  syncInitedFromFbqState(id);
+
   if (isMetaPixelInited(id)) {
     devLog("init skipped (already registered or pending)", { pixelId: id });
+    return;
+  }
+
+  if (countFbqPixelRegistrations(id) > 0) {
+    markMetaPixelInited(id);
+    devLog("init skipped (pixel already in fbq state)", { pixelId: id });
     return;
   }
 
@@ -184,6 +204,8 @@ function syncMetaPixelInit(
 
   ensureFbqQueue();
 
+  syncInitedFromFbqState(id);
+
   if (!isMetaPixelInited(id)) {
     queueMetaPixelInit(id, extra);
     return id;
@@ -194,7 +216,7 @@ function syncMetaPixelInit(
   markMetaPixelInited(id);
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData && window.fbq) {
-    window.fbq("set", "userData", userData);
+    window.fbq("set", "userData", userData, id);
     if (initUserDataHasPii(userData)) {
       window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
       window.__metaPixelInitHadPii[id] = true;
@@ -263,6 +285,13 @@ function pushFbqTrack(
   }
 
   applyMetaPixelUserData(pixelId);
+
+  const duplicateRegistrations = countFbqPixelRegistrations(pixelId);
+  if (duplicateRegistrations > 1) {
+    console.warn(
+      `[Meta Pixel] ${eventName} may duplicate — pixel ${pixelId} registered ${duplicateRegistrations}x in fbq (avoid calling fbq init twice)`,
+    );
+  }
 
   // Always target the specific pixel (`trackSingle`). Untargeted `fbq('track', …)`
   // dispatches to every registered pixel instance and is the main duplication vector.

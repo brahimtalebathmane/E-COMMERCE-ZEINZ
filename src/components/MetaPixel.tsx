@@ -9,7 +9,6 @@ import {
 } from "@/lib/meta-product-custom-data";
 import {
   buildMetaPixelAdvancedMatching,
-  buildMetaPixelInitUserData,
   loadStoredMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
 } from "@/lib/meta-pixel-advanced-matching";
@@ -126,11 +125,28 @@ export async function trackLead(params: {
   if (!tryMarkBrowserLeadSent(params.orderId)) return;
 
   const pid = resolvePublicMetaPixelId(params.pixelId);
-  if (pid && params.phone?.trim() && params.customerName?.trim()) {
-    syncMetaPixelAdvancedMatching(pid, {
-      phone: params.phone,
-      customerName: params.customerName,
-    });
+  if (!pid) return;
+
+  let advancedMatching = null as ReturnType<typeof buildMetaPixelAdvancedMatching> | null;
+  if (params.phone?.trim() && params.customerName?.trim()) {
+    const externalIdHash = params.orderId.trim()
+      ? await hashMetaExternalId(params.orderId)
+      : undefined;
+    const metaCookies = getMetaBrowserCookies();
+    advancedMatching =
+      buildMetaPixelAdvancedMatching({
+        phone: params.phone,
+        customerName: params.customerName,
+        fbp: metaCookies.fbp,
+        fbc: metaCookies.fbc,
+        externalIdHash,
+      }) ?? null;
+    if (advancedMatching) {
+      syncMetaPixelAdvancedMatching(pid, {
+        phone: params.phone,
+        customerName: params.customerName,
+      });
+    }
   }
 
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
@@ -142,26 +158,10 @@ export async function trackLead(params: {
     quantity: params.quantity,
   });
 
-  // Single browser Lead — eventID pairs with CAPI event_id for Meta deduplication.
-  trackMetaEvent(params.pixelId, "Lead", leadCustomData, { eventID: params.eventId });
-
-  if (!pid || !params.phone?.trim() || !params.customerName?.trim()) return;
-
-  const externalIdHash = params.orderId.trim()
-    ? await hashMetaExternalId(params.orderId)
-    : undefined;
-  const metaCookies = getMetaBrowserCookies();
-  const am = buildMetaPixelAdvancedMatching({
-    phone: params.phone,
-    customerName: params.customerName,
-    fbp: metaCookies.fbp,
-    fbc: metaCookies.fbc,
-    externalIdHash,
+  // Apply full userData (incl. external_id) once, then fire a single Lead — never
+  // update userData after trackSingle; Meta can emit a second Lead for the same eventID.
+  trackMetaEvent(pid, "Lead", leadCustomData, {
+    eventID: params.eventId,
+    advancedMatching,
   });
-  if (am && typeof window !== "undefined" && window.fbq) {
-    const userData = buildMetaPixelInitUserData(pid, am);
-    if (userData) {
-      window.fbq("set", "userData", userData);
-    }
-  }
 }
