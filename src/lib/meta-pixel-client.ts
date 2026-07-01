@@ -84,7 +84,18 @@ function applyMetaPixelUserData(pixelId: string): void {
 }
 
 /** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
-const FBQ_INIT_OPTS = { autoConfig: false } as const;
+const FBQ_INIT_OPTS = { autoConfig: false, xfbml: false } as const;
+
+/** Module-level init lock — survives HMR and complements window.__metaPixelsInited. */
+const initedPixelIds = new Set<string>();
+
+function isInitPendingInFbqQueue(pixelId: string): boolean {
+  const queue = window.fbq?.queue;
+  if (!Array.isArray(queue)) return false;
+  return queue.some(
+    (entry) => Array.isArray(entry) && entry[0] === "init" && String(entry[1]) === pixelId,
+  );
+}
 
 function isFbqPixelRegistered(pixelId: string): boolean {
   try {
@@ -97,12 +108,18 @@ function isFbqPixelRegistered(pixelId: string): boolean {
 }
 
 function markMetaPixelInited(pixelId: string): void {
+  initedPixelIds.add(pixelId);
   window.__metaPixelsInited = window.__metaPixelsInited || {};
   window.__metaPixelsInited[pixelId] = true;
 }
 
 function isMetaPixelInited(pixelId: string): boolean {
-  return Boolean(window.__metaPixelsInited?.[pixelId]) || isFbqPixelRegistered(pixelId);
+  return (
+    initedPixelIds.has(pixelId) ||
+    Boolean(window.__metaPixelsInited?.[pixelId]) ||
+    isFbqPixelRegistered(pixelId) ||
+    isInitPendingInFbqQueue(pixelId)
+  );
 }
 
 function pageViewDedupeKey(pixelId: string): string {
@@ -118,12 +135,17 @@ function queueMetaPixelInit(
   ensureFbqQueue();
   if (!window.fbq) return;
 
+  if (isMetaPixelInited(id)) {
+    devLog("init skipped (already registered or pending)", { pixelId: id });
+    return;
+  }
+
   // Reserve the init slot synchronously so concurrent callers cannot queue a second init.
   markMetaPixelInited(id);
 
-  // Disable automatic PageView / Lead / button-click detection before the first init.
+  // Meta expects the string 'false' here — boolean false does not always disable auto PageView.
   window.fbq.disablePushState = true;
-  window.fbq("set", "autoConfig", false, id);
+  window.fbq("set", "autoConfig", "false", id);
 
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData) {
@@ -297,8 +319,8 @@ export function trackMetaPageView(pixelId?: string | null): void {
   if (!ready || !window.fbq) return;
 
   applyMetaPixelUserData(id);
-  // Target this pixel only so a single PageView never fans out to stray registrations.
-  window.fbq!("trackSingle", id, "PageView");
+  // Synthetic eventID per route so pushFbqTrack dedupe blocks any second PageView dispatch.
+  pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });
 
   devLog("PageView queued", {
     pixelId: id,

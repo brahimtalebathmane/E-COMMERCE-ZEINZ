@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { MetaPixel } from "@/components/MetaPixel";
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import {
   ORDER_SUCCESS_AT_COOKIE,
@@ -49,7 +48,6 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   return (
     <>
       <MetaPixelRuntime pixelId={metaPixelId} />
-      <MetaPixel pixelId={metaPixelId} />
       <OrderSuccessEffects
         orderId={orderId}
         completionToken={completionToken}

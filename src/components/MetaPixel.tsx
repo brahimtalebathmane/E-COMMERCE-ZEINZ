@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
 import {
@@ -54,12 +54,10 @@ export function syncMetaPixelAdvancedMatching(
 }
 
 /**
- * Advanced matching only. PageView is owned exclusively by MetaPixelRuntime so a
- * single route load never fires two PageViews. This component just keeps the
- * pixel's userData fresh (init happens once; AM is applied via `set`).
+ * Advanced matching only. Prefer MetaPixelRuntime (combined init + PageView + AM).
+ * Kept for pages that only need userData refresh without a separate PageView effect.
  */
 export function MetaPixel({ pixelId, advancedMatching }: Props) {
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const resolvedPixelId = useMemo(
     () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(null),
@@ -67,11 +65,7 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
   );
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!resolvedPixelId || !mounted) return;
+    if (!resolvedPixelId) return;
 
     const phone = advancedMatching?.phone?.trim() ?? "";
     const customerName = advancedMatching?.customerName?.trim() ?? "";
@@ -84,17 +78,15 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
         fbp: metaCookies.fbp,
         fbc: metaCookies.fbc,
       }) ?? storedAm;
-    // Ensure init-once and push advanced matching via `set` (no re-init, no PageView here).
     refreshMetaPixelInitWithUserData(resolvedPixelId, am ?? undefined);
   }, [
     resolvedPixelId,
-    mounted,
     pathname,
     advancedMatching?.phone,
     advancedMatching?.customerName,
   ]);
 
-  if (!resolvedPixelId || !mounted) return null;
+  if (!resolvedPixelId) return null;
 
   return (
     <div

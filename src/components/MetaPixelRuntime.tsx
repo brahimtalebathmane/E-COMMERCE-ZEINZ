@@ -1,27 +1,49 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { trackMetaPageView } from "@/lib/meta-pixel-client";
-import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import {
+  buildMetaPixelAdvancedMatching,
+  loadStoredMetaPixelAdvancedMatching,
+} from "@/lib/meta-pixel-advanced-matching";
+import { refreshMetaPixelInitWithUserData, trackMetaPageView } from "@/lib/meta-pixel-client";
+import { getMetaBrowserCookies } from "@/utils/cookies-client";
+import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import type { MetaPixelAdvancedMatchingProps } from "@/components/MetaPixel";
 
 type Props = {
   pixelId: string | null | undefined;
+  advancedMatching?: MetaPixelAdvancedMatchingProps | null;
 };
 
 /**
- * Client-side init + PageView for every store route and pixel ID.
- * Resolves per-product meta_pixel_id (or env fallback) and applies manual advanced matching.
+ * Single client-side Meta Pixel owner: init-once, one PageView per route, advanced matching via `set`.
+ * Consolidates MetaPixelRuntime + MetaPixel so two effects never race on fbq('init').
  */
-export function MetaPixelRuntime({ pixelId }: Props) {
-  const id = resolvePublicMetaPixelId(pixelId);
+export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
   const pathname = usePathname();
-  // Per-mount guard: blocks React StrictMode's double effect invoke before the
-  // global window dedupe key is written on the first synchronous pass.
+  const id = useMemo(
+    () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(pixelId),
+    [pixelId],
+  );
   const lastPageViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
+
+    const phone = advancedMatching?.phone?.trim() ?? "";
+    const customerName = advancedMatching?.customerName?.trim() ?? "";
+    const metaCookies = getMetaBrowserCookies();
+    const storedAm = loadStoredMetaPixelAdvancedMatching(id);
+    const am =
+      buildMetaPixelAdvancedMatching({
+        phone,
+        customerName,
+        fbp: metaCookies.fbp,
+        fbc: metaCookies.fbc,
+      }) ?? storedAm;
+    refreshMetaPixelInitWithUserData(id, am ?? undefined);
+
     const routeKey =
       typeof window !== "undefined"
         ? `${id}:${window.location.pathname}${window.location.search}`
@@ -29,7 +51,20 @@ export function MetaPixelRuntime({ pixelId }: Props) {
     if (lastPageViewRef.current === routeKey) return;
     lastPageViewRef.current = routeKey;
     trackMetaPageView(id);
-  }, [id, pathname]);
+  }, [
+    id,
+    pathname,
+    advancedMatching?.phone,
+    advancedMatching?.customerName,
+  ]);
 
-  return null;
+  if (!id) return null;
+
+  return (
+    <div
+      data-meta-pixel-id={id}
+      aria-hidden
+      className="hidden"
+    />
+  );
 }
