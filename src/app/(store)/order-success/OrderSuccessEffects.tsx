@@ -61,7 +61,14 @@ export function OrderSuccessEffects({
 
   return (
     <>
-      {orderId ? <OrderSuccessMetaLead orderId={orderId} onComplete={onLeadComplete} /> : null}
+      {orderId ? (
+        <OrderSuccessMetaLead
+          orderId={orderId}
+          completionToken={completionToken}
+          actionToken={actionToken}
+          onComplete={onLeadComplete}
+        />
+      ) : null}
       <OrderSuccessClient
         orderId={orderId}
         completionToken={completionToken}

@@ -4,17 +4,19 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { FORBIDDEN_RESPONSE, apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { mapLeadDispatchToApiPayload } from "@/lib/meta/api-payload";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
-import { readVerifiedOrderSuccessSession } from "@/lib/orders/order-success-session";
+import { verifyShopperOrderSuccessAccess } from "@/lib/orders/order-success-auth";
 
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   order_id: z.string().uuid(),
+  completion_token: z.string().uuid().optional(),
+  action_token: z.string().min(1).optional(),
 });
 
 /**
- * Shopper Lead CAPI — authenticated via HttpOnly order-success session cookies
- * (same session as WhatsApp). Called from order-success alongside the browser pixel.
+ * Shopper Lead CAPI — authenticated via order action tokens (same as WhatsApp)
+ * or HttpOnly order-success session cookies. Called from order-success alongside the browser pixel.
  */
 export async function POST(request: Request) {
   let raw: unknown;
@@ -30,11 +32,15 @@ export async function POST(request: Request) {
   }
 
   const orderId = parsed.data.order_id.trim();
-  const session = await readVerifiedOrderSuccessSession(orderId);
-  if (!session.ok) {
+  const access = await verifyShopperOrderSuccessAccess({
+    orderId,
+    completionToken: parsed.data.completion_token,
+    actionToken: parsed.data.action_token,
+  });
+  if (!access.ok) {
     console.warn("[POST /api/orders/meta/lead] Forbidden", {
       order_id: orderId,
-      reason: session.reason,
+      reason: access.reason,
     });
     return FORBIDDEN_RESPONSE;
   }
@@ -47,6 +53,7 @@ export async function POST(request: Request) {
     const lead = mapLeadDispatchToApiPayload(result);
     console.warn("[POST /api/orders/meta/lead] Meta Lead CAPI", {
       order_id: orderId,
+      via: access.via,
       lead,
     });
     return NextResponse.json({ lead });

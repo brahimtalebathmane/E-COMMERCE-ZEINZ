@@ -1,6 +1,5 @@
-/** Browser Lead payload queued until order-success (avoids losing fbq on navigation). */
-
 import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
+import { clearOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
 export { buildMetaLeadEventId };
 
@@ -143,18 +142,30 @@ export function clearMetaPendingLead(): void {
   }
 }
 
+export type MetaLeadSessionCredentials = {
+  completionToken?: string | null;
+  actionToken?: string | null;
+};
+
 /** Server fallback when sessionStorage pending payload is missing. */
 export async function fetchMetaLeadPayloadFromServer(
   orderId: string,
+  session?: MetaLeadSessionCredentials,
 ): Promise<{ payload: MetaPendingLeadPayload | null; metaLeadSent: boolean }> {
   const id = orderId.trim();
   if (!id) return { payload: null, metaLeadSent: false };
 
   try {
-    const res = await fetch(
-      `/api/orders/meta/lead-payload?order_id=${encodeURIComponent(id)}`,
-      { credentials: "same-origin" },
-    );
+    const res = await fetch("/api/orders/meta/lead-payload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        order_id: id,
+        completion_token: session?.completionToken ?? undefined,
+        action_token: session?.actionToken ?? undefined,
+      }),
+    });
     const json = (await res.json().catch(() => ({}))) as {
       payload?: MetaPendingLeadPayload | null;
       meta_lead_sent?: boolean;
@@ -179,11 +190,14 @@ export async function fetchMetaLeadPayloadFromServer(
 export function finalizeMetaLeadDispatch(orderId: string): void {
   markMetaLeadDispatched(orderId);
   clearMetaPendingLead();
+  clearOrderSuccessClientSession(orderId);
 }
 
 /** Server Lead CAPI — paired with browser Pixel on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
+  completionToken?: string | null;
+  actionToken?: string | null;
 }): Promise<MetaLeadCapiResult> {
   try {
     const res = await fetch("/api/orders/meta/lead", {
@@ -192,6 +206,8 @@ export async function dispatchMetaLeadCapi(params: {
       credentials: "same-origin",
       body: JSON.stringify({
         order_id: params.orderId,
+        completion_token: params.completionToken ?? undefined,
+        action_token: params.actionToken ?? undefined,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -210,7 +226,11 @@ export async function dispatchMetaLeadCapi(params: {
 
 /** Retries transient Lead CAPI failures; skipped/sent return immediately. */
 export async function dispatchMetaLeadCapiWithRetry(
-  params: { orderId: string },
+  params: {
+    orderId: string;
+    completionToken?: string | null;
+    actionToken?: string | null;
+  },
   options: { maxAttempts?: number } = {},
 ): Promise<MetaLeadCapiResult> {
   const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
@@ -231,10 +251,11 @@ export async function dispatchMetaLeadCapiWithRetry(
  */
 export async function resolveMetaLeadPayload(
   orderId: string,
+  session?: MetaLeadSessionCredentials,
 ): Promise<{ payload: MetaPendingLeadPayload | null; metaLeadSent: boolean }> {
   const fromStorage = readMetaPendingLead(orderId);
   if (fromStorage) {
     return { payload: fromStorage, metaLeadSent: false };
   }
-  return fetchMetaLeadPayloadFromServer(orderId);
+  return fetchMetaLeadPayloadFromServer(orderId, session);
 }

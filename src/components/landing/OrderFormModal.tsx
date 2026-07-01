@@ -12,6 +12,7 @@ import {
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { queueMetaPendingLead, buildMetaLeadEventId } from "@/lib/meta-lead-client";
+import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
@@ -133,6 +134,9 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             order_id: string;
             meta_event_id: string;
             total_price: number;
+            completion_token?: string;
+            action_token?: string;
+            meta_lead_capi?: { state: string; reason?: string };
           }
         | { error?: string };
       if (!res.ok) {
@@ -145,7 +149,21 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
 
       const verifiedEventId = buildMetaLeadEventId(json.order_id);
 
-      // Queue Lead for order-success — browser Pixel + CAPI fire in parallel with shared event_id.
+      if (json.completion_token && json.action_token) {
+        storeOrderSuccessClientSession(json.order_id, {
+          completionToken: json.completion_token,
+          actionToken: json.action_token,
+        });
+      }
+
+      if (json.meta_lead_capi?.state !== "sent") {
+        console.warn("[Meta] Lead CAPI at order create did not ingest", {
+          orderId: json.order_id,
+          capi: json.meta_lead_capi,
+        });
+      }
+
+      // Queue Lead for order-success — browser Pixel fires alongside server CAPI (same event_id).
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",

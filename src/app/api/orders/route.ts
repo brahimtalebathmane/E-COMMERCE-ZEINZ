@@ -19,6 +19,8 @@ import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
 import type { ProductTestingStatus } from "@/types";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 import { setOrderSuccessSessionCookies } from "@/lib/orders/order-success-session";
+import { dispatchMetaEvent } from "@/lib/meta/dispatch";
+import { mapLeadDispatchToApiPayload, type MetaLeadApiPayload } from "@/lib/meta/api-payload";
 
 const createOrderSchema = z.object({
   product_id: z.string().uuid("product_id required"),
@@ -141,6 +143,33 @@ export async function POST(request: Request) {
 
     await logOrderCommunicationEvent(supabase, order.id, "order_created", null);
 
+    const completionToken = String(order.completion_token);
+    let actionToken: string;
+    try {
+      actionToken = signOrderActionToken(order.id, completionToken);
+    } catch (tokenErr) {
+      console.error("[POST /api/orders] ORDER_ACTION_SECRET missing", tokenErr);
+      return apiErrorResponse(tokenErr, "[POST /api/orders] token");
+    }
+
+    let metaLeadCapi: MetaLeadApiPayload = { state: "error", reason: "not_run" };
+    try {
+      const leadResult = await dispatchMetaEvent(supabase, order.id, "lead", {
+        requestHeaders: request.headers,
+      });
+      metaLeadCapi = mapLeadDispatchToApiPayload(leadResult);
+      console.warn("[POST /api/orders] Meta Lead CAPI at order create", {
+        order_id: order.id,
+        lead: metaLeadCapi,
+      });
+    } catch (leadErr) {
+      metaLeadCapi = {
+        state: "error",
+        reason: leadErr instanceof Error ? leadErr.message : String(leadErr),
+      };
+      console.error("[POST /api/orders] Meta Lead CAPI failed at order create", leadErr);
+    }
+
     try {
       const oneSignalProductName = resolveOrderProductName(product);
       console.warn("[POST /api/orders] OneSignal dispatch begin", {
@@ -178,20 +207,14 @@ export async function POST(request: Request) {
       console.error("[POST /api/orders] OneSignal notify threw", oneSignalErr);
     }
 
-    const completionToken = String(order.completion_token);
-    let actionToken: string;
-    try {
-      actionToken = signOrderActionToken(order.id, completionToken);
-    } catch (tokenErr) {
-      console.error("[POST /api/orders] ORDER_ACTION_SECRET missing", tokenErr);
-      return apiErrorResponse(tokenErr, "[POST /api/orders] token");
-    }
-
     const response = NextResponse.json({
       success: true,
       order_id: order.id,
       meta_event_id: String(order.meta_event_id ?? orderEventId),
       total_price: order.total_price,
+      completion_token: completionToken,
+      action_token: actionToken,
+      meta_lead_capi: metaLeadCapi,
     });
 
     setOrderSuccessSessionCookies(response, {

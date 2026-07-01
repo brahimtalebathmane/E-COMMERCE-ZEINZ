@@ -6,6 +6,7 @@ import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
  */
 export async function GET() {
   const capiToken = Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim());
+  const testEventCode = Boolean(process.env.META_CAPI_TEST_EVENT_CODE?.trim());
   const publicPixel = resolveServerMetaPixelId(null);
   const siteUrl = Boolean(process.env.NEXT_PUBLIC_SITE_URL?.trim());
 
@@ -15,6 +16,7 @@ export async function GET() {
     ok: ready,
     checks: {
       meta_capi_access_token: capiToken,
+      meta_capi_test_event_code: testEventCode,
       pixel_id_resolved: Boolean(publicPixel),
       pixel_id_prefix: publicPixel ? `${publicPixel.slice(0, 6)}…` : null,
       next_public_site_url: siteUrl,
@@ -27,6 +29,10 @@ export async function GET() {
             "Set NEXT_PUBLIC_META_PIXEL_ID in Netlify (or meta_pixel_id per product in Admin), then redeploy.",
             "NEXT_PUBLIC_* vars are baked in at build time — changing them requires a new deploy.",
           ]
-        : ["Configuration looks present. Test a landing page with Meta Pixel Helper and submit a test order."],
+        : !testEventCode
+          ? [
+              "Set META_CAPI_TEST_EVENT_CODE to see server Lead events in Events Manager → Test Events (browser-only is normal without it).",
+            ]
+          : ["Configuration looks present. Test a landing page with Meta Pixel Helper and submit a test order."],
   });
 }

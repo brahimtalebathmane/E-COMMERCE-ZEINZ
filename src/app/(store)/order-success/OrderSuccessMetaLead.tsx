@@ -7,20 +7,48 @@ import {
   finalizeMetaLeadDispatch,
   isMetaLeadCapiComplete,
   isMetaLeadDispatched,
+  readMetaPendingLead,
   resolveMetaLeadPayload,
+  type MetaLeadCapiResult,
 } from "@/lib/meta-lead-client";
+import { resolveOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
 type Props = {
   orderId: string;
+  completionToken?: string | null;
+  actionToken?: string | null;
   /** Called when hybrid Lead dispatch settles (browser pixel queued + CAPI attempt finished). */
   onComplete?: () => void;
 };
 
+async function fireBrowserLead(
+  payload: NonNullable<Awaited<ReturnType<typeof resolveMetaLeadPayload>>["payload"]>,
+): Promise<void> {
+  await trackLead({
+    value: payload.value,
+    currency: payload.currency,
+    eventId: payload.eventId,
+    orderId: payload.orderId,
+    productId: payload.productId,
+    productName: payload.productName,
+    pixelId: payload.pixelId,
+    phone: payload.phone,
+    customerName: payload.customerName,
+    quantity: payload.quantity,
+  });
+}
+
 /**
- * Hybrid Lead on order-success: browser Pixel and CAPI fire in parallel with the same
- * `event_id` (`lead_{orderId}`) so Meta deduplicates them into one conversion.
+ * Hybrid Lead: CAPI is sent at order create (POST /api/orders); browser Pixel fires here
+ * on order-success with the same `event_id` (`lead_{orderId}`) for Meta deduplication.
+ * Success-page CAPI is a retry when order-create dispatch did not ingest.
  */
-export function OrderSuccessMetaLead({ orderId, onComplete }: Props) {
+export function OrderSuccessMetaLead({
+  orderId,
+  completionToken,
+  actionToken,
+  onComplete,
+}: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -35,55 +63,73 @@ export function OrderSuccessMetaLead({ orderId, onComplete }: Props) {
           return;
         }
 
-        const { payload, metaLeadSent } = await resolveMetaLeadPayload(id);
+        const session = resolveOrderSuccessClientSession(id, {
+          completionToken,
+          actionToken,
+        });
+
+        const { payload, metaLeadSent } = await resolveMetaLeadPayload(
+          id,
+          session ?? undefined,
+        );
+
+        const leadPayload = payload ?? readMetaPendingLead(id);
+
+        if (!leadPayload) {
+          console.warn("[Meta] Lead dispatch skipped: missing payload", {
+            orderId: id,
+            hasSessionTokens: Boolean(session),
+            metaLeadSent,
+          });
+          return;
+        }
+
+        let capiResult: MetaLeadCapiResult = metaLeadSent
+          ? { state: "skipped", reason: "already_sent" }
+          : { state: "error", reason: "not_started" };
+
         if (metaLeadSent) {
+          await fireBrowserLead(leadPayload);
+        } else {
+          const [capiAttempt] = await Promise.all([
+            dispatchMetaLeadCapiWithRetry({
+              orderId: leadPayload.orderId,
+              completionToken: session?.completionToken,
+              actionToken: session?.actionToken,
+            }),
+            fireBrowserLead(leadPayload),
+          ]);
+          capiResult = capiAttempt;
+        }
+
+        if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
-          onComplete?.();
-          return;
+        } else {
+          console.error(
+            "[Meta] Lead Pixel fired but CAPI did not ingest — check Netlify env (META_CAPI_ACCESS_TOKEN, META_CAPI_TEST_EVENT_CODE)",
+            {
+              orderId: leadPayload.orderId,
+              eventId: leadPayload.eventId,
+              capi: capiResult,
+            },
+          );
         }
 
-        if (!payload) {
-          console.warn("[Meta] Lead dispatch skipped: missing payload", { orderId: id });
-          return;
-        }
-
-        const [capiResult] = await Promise.all([
-          dispatchMetaLeadCapiWithRetry({ orderId: payload.orderId }),
-          trackLead({
-            value: payload.value,
-            currency: payload.currency,
-            eventId: payload.eventId,
-            orderId: payload.orderId,
-            productId: payload.productId,
-            productName: payload.productName,
-            pixelId: payload.pixelId,
-            phone: payload.phone,
-            customerName: payload.customerName,
-            quantity: payload.quantity,
-          }),
-        ]);
-
-        finalizeMetaLeadDispatch(id);
         onComplete?.();
 
         if (isMetaLeadCapiComplete(capiResult)) {
-          console.info("[Meta] Lead hybrid dispatched (Pixel + CAPI)", {
-            orderId: payload.orderId,
-            eventId: payload.eventId,
+          console.info("[Meta] Lead hybrid complete (Pixel + CAPI)", {
+            orderId: leadPayload.orderId,
+            eventId: leadPayload.eventId,
             capi: capiResult.state,
-          });
-        } else {
-          console.warn("[Meta] Lead Pixel fired; CAPI did not ingest", {
-            orderId: payload.orderId,
-            eventId: payload.eventId,
-            capi: capiResult,
           });
         }
       } catch (error) {
-        console.warn("[Meta] Lead dispatch failed on order-success", error);
+        console.error("[Meta] Lead dispatch failed on order-success", error);
+        onComplete?.();
       }
     })();
-  }, [orderId, onComplete]);
+  }, [orderId, completionToken, actionToken, onComplete]);
 
   return null;
 }
