@@ -73,16 +73,6 @@ function initUserDataHasPii(userData?: Record<string, string>): boolean {
   return Boolean(userData?.ph || userData?.fn || userData?.ln || userData?.em);
 }
 
-/** Apply stored + cookie user data for a specific pixel before tracked events. */
-function applyMetaPixelUserData(pixelId: string): void {
-  if (typeof window === "undefined" || !window.fbq) return;
-  const id = normalizeMetaPixelId(pixelId);
-  if (!id) return;
-  const userData = buildMetaPixelInitUserData(id);
-  if (!userData) return;
-  window.fbq("set", "userData", userData, id);
-}
-
 /** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
 const FBQ_INIT_OPTS = { autoConfig: false, xfbml: false } as const;
 
@@ -284,8 +274,6 @@ function pushFbqTrack(
     return;
   }
 
-  applyMetaPixelUserData(pixelId);
-
   const duplicateRegistrations = countFbqPixelRegistrations(pixelId);
   if (duplicateRegistrations > 1) {
     console.warn(
@@ -295,6 +283,7 @@ function pushFbqTrack(
 
   // Always target the specific pixel (`trackSingle`). Untargeted `fbq('track', …)`
   // dispatches to every registered pixel instance and is the main duplication vector.
+  // userData is applied in syncMetaPixelInit before this call — do not set again here.
   const trackPayload = payload ?? {};
   if (opts?.eventID) {
     window.fbq("trackSingle", pixelId, eventName, trackPayload, { eventID: opts.eventID });
@@ -347,7 +336,6 @@ export function trackMetaPageView(pixelId?: string | null): void {
   const ready = syncMetaPixelInit(id);
   if (!ready || !window.fbq) return;
 
-  applyMetaPixelUserData(id);
   // Synthetic eventID per route so pushFbqTrack dedupe blocks any second PageView dispatch.
   pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });
 
@@ -383,4 +371,69 @@ export function trackMetaEvent(
     eventID: opts?.eventID,
     hasPayload: Boolean(payload && Object.keys(payload).length > 0),
   });
+}
+
+/** Outcome of the dedicated browser Lead path (never shares pushFbqTrack with other events). */
+export type TrackMetaLeadResult =
+  | { sent: true }
+  | { sent: false; reason: string };
+
+function waitForFbqPixelRegistration(pixelId: string, maxMs = 2500): Promise<number> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      const count = countFbqPixelRegistrations(pixelId);
+      const pending = isInitPendingInFbqQueue(pixelId);
+      const elapsed = Date.now() - started;
+      if (count > 0 || (!pending && elapsed > 200) || elapsed >= maxMs) {
+        resolve(count);
+        return;
+      }
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+/**
+ * Single-path browser Lead — one userData update, one trackSingle, no applyMetaPixelUserData.
+ * Skips browser Lead when fbq has duplicate pixel registrations (trackSingle would emit twice).
+ */
+export async function trackMetaLead(
+  pixelId: string,
+  payload: Record<string, unknown>,
+  opts: { eventID: string; advancedMatching?: MetaPixelAdvancedMatchingPayload | null },
+): Promise<TrackMetaLeadResult> {
+  const id = normalizeMetaPixelId(pixelId);
+  if (!id || typeof window === "undefined") {
+    return { sent: false, reason: "no_pixel" };
+  }
+
+  ensureFbqQueue();
+  syncMetaPixelInit(id, opts.advancedMatching);
+
+  const regCount = await waitForFbqPixelRegistration(id);
+  if (regCount > 1) {
+    console.warn(
+      `[Meta Pixel] Skipping browser Lead — pixel ${id} registered ${regCount}x in fbq; CAPI Lead will still fire`,
+    );
+    return { sent: false, reason: "duplicate_pixel_registration" };
+  }
+
+  if (isDuplicateTrackedEvent(id, "Lead", opts.eventID)) {
+    return { sent: false, reason: "duplicate_event_id" };
+  }
+
+  if (!window.fbq) {
+    return { sent: false, reason: "fbq_unavailable" };
+  }
+
+  window.fbq("trackSingle", id, "Lead", payload, { eventID: opts.eventID });
+  devLog("Lead trackSingle queued (dedicated path)", {
+    pixelId: id,
+    eventID: opts.eventID,
+    regCount,
+  });
+
+  return { sent: true };
 }

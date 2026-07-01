@@ -15,6 +15,7 @@ import {
 import {
   refreshMetaPixelInitWithUserData,
   trackMetaEvent,
+  trackMetaLead,
 } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { hashMetaExternalId } from "@/lib/meta-external-id-hash";
@@ -142,10 +143,18 @@ export async function trackLead(params: {
         externalIdHash,
       }) ?? null;
     if (advancedMatching) {
-      syncMetaPixelAdvancedMatching(pid, {
-        phone: params.phone,
-        customerName: params.customerName,
-      });
+      try {
+        sessionStorage.setItem(
+          metaPixelAmStorageKey(pid),
+          JSON.stringify({
+            ph: advancedMatching.ph,
+            fn: advancedMatching.fn,
+            ln: advancedMatching.ln,
+          }),
+        );
+      } catch {
+        // ignore quota / private mode
+      }
     }
   }
 
@@ -158,10 +167,15 @@ export async function trackLead(params: {
     quantity: params.quantity,
   });
 
-  // Apply full userData (incl. external_id) once, then fire a single Lead — never
-  // update userData after trackSingle; Meta can emit a second Lead for the same eventID.
-  trackMetaEvent(pid, "Lead", leadCustomData, {
+  const result = await trackMetaLead(pid, leadCustomData, {
     eventID: params.eventId,
     advancedMatching,
   });
+
+  if (!result.sent && result.reason === "duplicate_pixel_registration") {
+    console.warn("[Meta] Browser Lead skipped (duplicate fbq registration); relying on CAPI Lead", {
+      orderId: params.orderId,
+      eventId: params.eventId,
+    });
+  }
 }

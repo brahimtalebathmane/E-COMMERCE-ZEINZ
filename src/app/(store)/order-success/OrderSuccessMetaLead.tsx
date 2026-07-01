@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { trackLead } from "@/components/MetaPixel";
+import { trackMetaPageView } from "@/lib/meta-pixel-client";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   dispatchMetaLeadCapiWithRetry,
   finalizeMetaLeadDispatch,
@@ -96,6 +98,11 @@ export function OrderSuccessMetaLead({
 
         // Meta dedupes best when the browser event arrives before the server event.
         await fireBrowserLead(leadPayload);
+
+        const pageViewPixelId = resolvePublicMetaPixelId(leadPayload.pixelId);
+        if (pageViewPixelId) {
+          trackMetaPageView(pageViewPixelId);
+        }
 
         if (cancelled) return;
 
