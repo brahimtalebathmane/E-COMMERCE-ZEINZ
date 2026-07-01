@@ -401,15 +401,31 @@ export type TrackMetaLeadResult =
   | { sent: true }
   | { sent: false; reason: string };
 
+/** Wait until fbq registration count stabilizes — catches late duplicate inits. */
 function waitForFbqPixelRegistration(pixelId: string, maxMs = 2500): Promise<number> {
   return new Promise((resolve) => {
     const started = Date.now();
+    let lastCount = -1;
+    let stableTicks = 0;
+
     const tick = () => {
       const count = countFbqPixelRegistrations(pixelId);
       const pending = isInitPendingInFbqQueue(pixelId);
       const elapsed = Date.now() - started;
-      if (count > 0 || (!pending && elapsed > 200) || elapsed >= maxMs) {
-        resolve(count);
+
+      if (count > 0 && count === lastCount && !pending) {
+        stableTicks += 1;
+        if (stableTicks >= 2) {
+          resolve(count);
+          return;
+        }
+      } else {
+        stableTicks = 0;
+        lastCount = count;
+      }
+
+      if ((!pending && elapsed > 200) || elapsed >= maxMs) {
+        resolve(countFbqPixelRegistrations(pixelId));
         return;
       }
       setTimeout(tick, 50);
@@ -432,20 +448,23 @@ export async function trackMetaLead(
     return { sent: false, reason: "no_pixel" };
   }
 
+  // Lock before any async gap so concurrent callers cannot queue a second Lead.
+  if (isDuplicateTrackedEvent(id, "Lead", opts.eventID)) {
+    return { sent: false, reason: "duplicate_event_id" };
+  }
+
   ensureFbqQueue();
   syncMetaPixelInit(id, opts.advancedMatching);
 
   const regCount = await waitForFbqPixelRegistration(id);
   mergeMetaPixelUserData(id, opts.advancedMatching);
-  if (regCount > 1) {
+
+  const finalRegCount = countFbqPixelRegistrations(id);
+  if (finalRegCount > 1 || regCount > 1) {
     console.warn(
-      `[Meta Pixel] Skipping browser Lead — pixel ${id} registered ${regCount}x in fbq; CAPI Lead will still fire`,
+      `[Meta Pixel] Skipping browser Lead — pixel ${id} registered ${finalRegCount}x in fbq; CAPI Lead will still fire`,
     );
     return { sent: false, reason: "duplicate_pixel_registration" };
-  }
-
-  if (isDuplicateTrackedEvent(id, "Lead", opts.eventID)) {
-    return { sent: false, reason: "duplicate_event_id" };
   }
 
   if (!window.fbq) {
@@ -456,7 +475,7 @@ export async function trackMetaLead(
   devLog("Lead trackSingle queued (dedicated path)", {
     pixelId: id,
     eventID: opts.eventID,
-    regCount,
+    regCount: finalRegCount,
   });
 
   return { sent: true };
