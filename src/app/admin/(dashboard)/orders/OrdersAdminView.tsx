@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
@@ -388,7 +389,7 @@ export function OrdersAdminView({ orders }: Props) {
       await deleteOrderAction(orderId);
     } catch (e) {
       setRows(prev);
-      throw e;
+      toast.error(e instanceof Error ? e.message : a.orders.deleteFailed);
     } finally {
       setDeletingId(null);
     }
@@ -413,7 +414,7 @@ export function OrdersAdminView({ orders }: Props) {
       await deleteOrdersAction(ids);
     } catch (e) {
       setRows(prev);
-      throw e;
+      toast.error(e instanceof Error ? e.message : a.orders.deleteFailed);
     } finally {
       setBulkDeleting(false);
     }
