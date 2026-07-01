@@ -100,14 +100,34 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 export function trackInitiateCheckout(
   eventId: string,
   pixelId?: string | null,
-  product?: { productId: string; productName: string } | null,
+  product?: {
+    productId: string;
+    productName: string;
+    value?: number;
+    currency?: string;
+  } | null,
 ) {
-  const customData = product?.productId
-    ? buildMetaProductCustomData({
-        productId: product.productId,
-        productName: product.productName,
-      })
-    : undefined;
+  let customData: Record<string, unknown> | undefined;
+  if (
+    product?.productId &&
+    product.value != null &&
+    Number.isFinite(product.value) &&
+    product.currency?.trim()
+  ) {
+    const { value, currency } = toMetaPixelPurchaseMoney(product.value, product.currency);
+    customData = buildMetaOrderValueCustomData({
+      value,
+      currency,
+      productId: product.productId,
+      productName: product.productName,
+    });
+  } else if (product?.productId) {
+    customData = buildMetaProductCustomData({
+      productId: product.productId,
+      productName: product.productName,
+    });
+  }
+
   void trackMetaEvent(pixelId, "InitiateCheckout", customData, { eventID: eventId });
 }
 

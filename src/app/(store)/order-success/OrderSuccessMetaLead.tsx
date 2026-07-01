@@ -59,7 +59,9 @@ export function OrderSuccessMetaLead({
     if (!id) return;
 
     if (!tryBeginMetaLeadEffect(id)) {
-      sessionRef.current.onComplete?.();
+      if (isMetaLeadDispatched(id)) {
+        sessionRef.current.onComplete?.();
+      }
       return;
     }
 
@@ -95,6 +97,7 @@ export function OrderSuccessMetaLead({
         }
 
         // Meta dedupes best when the browser event arrives before the server event.
+        const eventTimeSec = Math.floor(Date.now() / 1000);
         await fireBrowserLead(leadPayload);
 
         if (cancelled) return;
@@ -104,7 +107,6 @@ export function OrderSuccessMetaLead({
           return;
         }
 
-        const eventTimeSec = Math.floor(Date.now() / 1000);
         const capiResult = await dispatchMetaLeadCapiWithRetry({
           orderId: leadPayload.orderId,
           eventId: leadPayload.eventId,

@@ -413,9 +413,15 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
   const openCheckout = () => {
     try {
       touchMetaFunnelActivity();
+      const leadValue =
+        product.discount_price != null
+          ? Number(product.discount_price)
+          : Number(product.price);
       trackInitiateCheckout(ensureMetaFunnelSession(), metaPixelId, {
         productId: product.id,
         productName: copy.name,
+        value: leadValue,
+        currency: "MRU",
       });
     } catch {
       // ignore

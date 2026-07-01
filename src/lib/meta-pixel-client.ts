@@ -2,6 +2,10 @@ import {
   buildMetaPixelInitUserData,
   type MetaPixelAdvancedMatchingPayload,
 } from "@/lib/meta-pixel-advanced-matching";
+import {
+  META_PAGEVIEW_STORAGE_PREFIX,
+  META_TRACKED_EVENT_STORAGE_PREFIX,
+} from "@/lib/meta-pixel-landing-script";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 type FbqFn = {
@@ -254,9 +258,6 @@ export function refreshMetaPixelInitWithUserData(
   syncMetaPixelInit(pixelId, extra);
 }
 
-const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
-const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v1:";
-
 function isPageViewSentForRoute(key: string): boolean {
   if (typeof window === "undefined") return false;
   const storageKey = `${META_PAGEVIEW_STORAGE_PREFIX}${key}`;
@@ -308,14 +309,14 @@ function pushFbqTrack(
   eventName: string,
   payload?: Record<string, unknown>,
   opts?: { eventID?: string },
-): void {
-  if (!window.fbq) return;
+): boolean {
+  if (!window.fbq) return false;
 
   // Guarantee a given user action (identified by eventID) fires once per session,
   // so rapid double-taps / re-renders cannot emit the same Lead/InitiateCheckout twice.
   if (isDuplicateTrackedEvent(pixelId, eventName, opts?.eventID)) {
     devLog(`${eventName} skipped (duplicate eventID)`, { pixelId, eventID: opts?.eventID });
-    return;
+    return false;
   }
 
   const duplicateRegistrations = countFbqPixelRegistrations(pixelId);
@@ -339,6 +340,8 @@ function pushFbqTrack(
     pixelId,
     eventID: opts?.eventID,
   });
+
+  return true;
 }
 
 /** @deprecated Use trackMetaPageView / trackMetaEvent; kept for callers that awaited init. */
@@ -365,19 +368,16 @@ export function trackMetaPageView(pixelId?: string | null): void {
     return;
   }
 
-  // Mark sent only once init succeeded and we're about to queue the track call.
-  // Previously the lock was set before init/track, which could skip PageView on the
-  // landing page while still blocking retries (e.g. before fbq finished loading).
-  markPageViewSentForRoute(key);
-
-  // Synthetic eventID per route so pushFbqTrack dedupe blocks any second PageView dispatch.
-  pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });
-
-  devLog("PageView queued", {
-    pixelId: id,
-    key,
-    queueLength: window.fbq?.queue?.length ?? 0,
-  });
+  // Mark sent only after the track call is queued — allows retry if fbq was unavailable.
+  const sent = pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });
+  if (sent) {
+    markPageViewSentForRoute(key);
+    devLog("PageView queued", {
+      pixelId: id,
+      key,
+      queueLength: window.fbq?.queue?.length ?? 0,
+    });
+  }
 }
 
 export function trackMetaEvent(
@@ -459,11 +459,6 @@ export async function trackMetaLead(
     return { sent: false, reason: "no_pixel" };
   }
 
-  // Lock before any async gap so concurrent callers cannot queue a second Lead.
-  if (isDuplicateTrackedEvent(id, "Lead", opts.eventID)) {
-    return { sent: false, reason: "duplicate_event_id" };
-  }
-
   ensureFbqQueue();
   syncMetaPixelInit(id, opts.advancedMatching);
 
@@ -480,6 +475,11 @@ export async function trackMetaLead(
 
   if (!window.fbq) {
     return { sent: false, reason: "fbq_unavailable" };
+  }
+
+  // Lock immediately before trackSingle — not before async registration wait.
+  if (isDuplicateTrackedEvent(id, "Lead", opts.eventID)) {
+    return { sent: false, reason: "duplicate_event_id" };
   }
 
   window.fbq("trackSingle", id, "Lead", payload, { eventID: opts.eventID });

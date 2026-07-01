@@ -6,7 +6,6 @@ import {
   buildMetaPixelAdvancedMatching,
   loadStoredMetaPixelAdvancedMatching,
 } from "@/lib/meta-pixel-advanced-matching";
-import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { refreshMetaPixelInitWithUserData, trackMetaPageView } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -18,8 +17,9 @@ type Props = {
 };
 
 /**
- * Single client-side Meta Pixel owner: init-once, one PageView per route, advanced matching via `set`.
- * Consolidates MetaPixelRuntime + MetaPixel so two effects never race on fbq('init').
+ * Client-side Meta Pixel owner: init-once, one PageView per route, advanced matching via merge.
+ * Landing pages also render MetaPixelLandingScript for an immediate pre-hydration PageView;
+ * this component dedupes and refreshes advanced matching after React hydrates.
  */
 export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
   const pathname = usePathname();
@@ -32,42 +32,28 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
   useEffect(() => {
     if (!id) return;
 
-    let cancelled = false;
+    const phone = advancedMatching?.phone?.trim() ?? "";
+    const customerName = advancedMatching?.customerName?.trim() ?? "";
+    const metaCookies = getMetaBrowserCookies();
+    const storedAm = loadStoredMetaPixelAdvancedMatching(id);
+    const am =
+      buildMetaPixelAdvancedMatching({
+        phone,
+        customerName,
+        fbp: metaCookies.fbp,
+        fbc: metaCookies.fbc,
+      }) ?? storedAm;
+    refreshMetaPixelInitWithUserData(id, am ?? undefined);
 
-    void (async () => {
-      const phone = advancedMatching?.phone?.trim() ?? "";
-      const customerName = advancedMatching?.customerName?.trim() ?? "";
-      const metaCookies = getMetaBrowserCookies();
-      const storedAm = loadStoredMetaPixelAdvancedMatching(id);
-      const am =
-        buildMetaPixelAdvancedMatching({
-          phone,
-          customerName,
-          fbp: metaCookies.fbp,
-          fbc: metaCookies.fbc,
-        }) ?? storedAm;
-      refreshMetaPixelInitWithUserData(id, am ?? undefined);
+    const routeKey =
+      typeof window !== "undefined"
+        ? `${id}:${window.location.pathname}${window.location.search}`
+        : `${id}:${pathname}`;
+    if (lastPageViewRef.current === routeKey) return;
+    lastPageViewRef.current = routeKey;
 
-      // Legacy root-scoped Serwist can block pixel beacons on first paint.
-      await unregisterLegacyRootSerwist();
-      if (cancelled) return;
-
-      const routeKey =
-        typeof window !== "undefined"
-          ? `${id}:${window.location.pathname}${window.location.search}`
-          : `${id}:${pathname}`;
-      if (lastPageViewRef.current === routeKey) return;
-      lastPageViewRef.current = routeKey;
-      trackMetaPageView(id);
-
-      // One delayed retry if fbq/fbevents.js was still loading on first paint.
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      if (!cancelled) trackMetaPageView(id);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    // Synchronous — no async gates (SW cleanup, StrictMode cancel) before PageView.
+    trackMetaPageView(id);
   }, [
     id,
     pathname,

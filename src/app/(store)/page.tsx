@@ -1,4 +1,5 @@
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
+import { MetaPixelLandingScript } from "@/components/MetaPixelLandingScript";
 import {
   createPublicClient,
   isSupabaseConfigured,
@@ -33,6 +34,7 @@ export default async function HomePage() {
   if (!isSupabaseConfigured()) {
     return (
       <>
+        <MetaPixelLandingScript pixelId={resolveServerMetaPixelId(null)} />
         <MetaPixelRuntime pixelId={resolveServerMetaPixelId(null)} />
         <CatalogPageClient products={[]} configured={false} />
       </>
@@ -57,6 +59,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <MetaPixelLandingScript pixelId={siteWidePixelId} />
       <MetaPixelRuntime pixelId={siteWidePixelId} />
       <CatalogPageClient products={products} configured />
     </>
