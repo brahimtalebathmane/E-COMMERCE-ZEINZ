@@ -22,7 +22,10 @@ export function MetaPixelRuntime({ pixelId }: Props) {
 
   useEffect(() => {
     if (!id) return;
-    const routeKey = `${id}:${pathname}`;
+    const routeKey =
+      typeof window !== "undefined"
+        ? `${id}:${window.location.pathname}${window.location.search}`
+        : `${id}:${pathname}`;
     if (lastPageViewRef.current === routeKey) return;
     lastPageViewRef.current = routeKey;
     trackMetaPageView(id);

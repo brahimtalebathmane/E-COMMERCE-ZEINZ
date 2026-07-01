@@ -8,11 +8,9 @@ import {
   isMetaLeadCapiComplete,
   isMetaLeadDispatched,
   readMetaPendingLead,
-  releaseMetaLeadEffectLock,
   resolveMetaLeadPayload,
   tryBeginMetaLeadEffect,
   type MetaPendingLeadPayload,
-  wasBrowserLeadSent,
 } from "@/lib/meta-lead-client";
 import { resolveOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
@@ -145,9 +143,8 @@ export function OrderSuccessMetaLead({
 
     return () => {
       cancelled = true;
-      if (!wasBrowserLeadSent(id)) {
-        releaseMetaLeadEffectLock(id);
-      }
+      // Keep the sessionStorage effect lock until Lead completes — releasing it here
+      // re-opens StrictMode remounts and can duplicate browser Lead events.
     };
   }, [orderId]);
 

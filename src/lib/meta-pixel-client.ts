@@ -8,6 +8,11 @@ type FbqFn = {
   (...args: unknown[]): void;
   callMethod?: (...args: unknown[]) => void;
   queue: unknown[][];
+  push?: FbqFn;
+  loaded?: boolean;
+  version?: string;
+  disablePushState?: boolean;
+  getState?: () => { pixels?: Array<{ id?: string }> };
 };
 
 declare global {
@@ -34,16 +39,30 @@ function devLog(message: string, data?: Record<string, unknown>): void {
   }
 }
 
-/** Minimal queue stub if root layout Script has not run yet. */
+/** Load official fbq bootstrap if root layout script has not run yet. */
 function ensureFbqQueue(): void {
   if (typeof window === "undefined" || window.fbq) return;
 
-  const stub = function (this: FbqFn, ...args: unknown[]) {
-    stub.queue.push(args);
-  } as FbqFn;
-  stub.queue = [];
-  window.fbq = stub;
-  window._fbq = stub;
+  (function (f, b, e, v) {
+    if (f.fbq) return;
+    const n = function (...args: unknown[]) {
+      n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+    } as FbqFn;
+    f.fbq = n;
+    if (!f._fbq) f._fbq = n;
+    n.push = n;
+    n.loaded = true;
+    n.version = "2.0";
+    n.queue = [];
+    // Stop Meta's automatic PageView on history.pushState — we fire one manually per route.
+    n.disablePushState = true;
+    const t = b.createElement(e) as HTMLScriptElement;
+    t.async = true;
+    t.src = v;
+    const s = b.getElementsByTagName(e)[0];
+    if (s?.parentNode) s.parentNode.insertBefore(t, s);
+    else (b.head || b.documentElement).appendChild(t);
+  })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
 }
 
 function initUserDataHasPii(userData?: Record<string, string>): boolean {
@@ -63,6 +82,25 @@ function applyMetaPixelUserData(pixelId: string): void {
 /** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
 const FBQ_INIT_OPTS = { autoConfig: false } as const;
 
+function isFbqPixelRegistered(pixelId: string): boolean {
+  try {
+    const pixels = window.fbq?.getState?.()?.pixels;
+    if (!Array.isArray(pixels)) return false;
+    return pixels.some((pixel) => pixel?.id === pixelId);
+  } catch {
+    return false;
+  }
+}
+
+function markMetaPixelInited(pixelId: string): void {
+  window.__metaPixelsInited = window.__metaPixelsInited || {};
+  window.__metaPixelsInited[pixelId] = true;
+}
+
+function isMetaPixelInited(pixelId: string): boolean {
+  return Boolean(window.__metaPixelsInited?.[pixelId]) || isFbqPixelRegistered(pixelId);
+}
+
 function pageViewDedupeKey(pixelId: string): string {
   const path = window.location.pathname;
   const search = window.location.search;
@@ -73,14 +111,22 @@ function queueMetaPixelInit(
   id: string,
   extra?: MetaPixelAdvancedMatchingPayload | null,
 ): void {
+  ensureFbqQueue();
+  if (!window.fbq) return;
+
+  // Reserve the init slot synchronously so concurrent callers cannot queue a second init.
+  markMetaPixelInited(id);
+
+  // Disable automatic PageView / Lead / button-click detection before the first init.
+  window.fbq.disablePushState = true;
+  window.fbq("set", "autoConfig", false, id);
+
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData) {
-    window.fbq!("init", id, userData, FBQ_INIT_OPTS);
+    window.fbq("init", id, userData, FBQ_INIT_OPTS);
   } else {
-    window.fbq!("init", id, {}, FBQ_INIT_OPTS);
+    window.fbq("init", id, {}, FBQ_INIT_OPTS);
   }
-  window.__metaPixelsInited = window.__metaPixelsInited || {};
-  window.__metaPixelsInited[id] = true;
   if (initUserDataHasPii(userData)) {
     window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
     window.__metaPixelInitHadPii[id] = true;
@@ -112,13 +158,14 @@ function syncMetaPixelInit(
 
   ensureFbqQueue();
 
-  if (!window.__metaPixelsInited?.[id]) {
+  if (!isMetaPixelInited(id)) {
     queueMetaPixelInit(id, extra);
     return id;
   }
 
   // Already initialized: NEVER re-init. Push any newer advanced matching through
   // `set` so it attaches to subsequent events without re-registering the pixel.
+  markMetaPixelInited(id);
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData && window.fbq) {
     window.fbq("set", "userData", userData);
@@ -147,6 +194,7 @@ export function refreshMetaPixelInitWithUserData(
 }
 
 const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
+const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v1:";
 
 /** True when this exact (pixel, event, eventID) was already dispatched in this tab. */
 function isDuplicateTrackedEvent(
@@ -215,6 +263,17 @@ export function trackMetaPageView(pixelId?: string | null): void {
   if (!id || typeof window === "undefined") return;
 
   const key = pageViewDedupeKey(id);
+  const storageKey = `${META_PAGEVIEW_STORAGE_PREFIX}${key}`;
+
+  try {
+    if (sessionStorage.getItem(storageKey) === "1") {
+      devLog("PageView skipped (already sent for route)", { pixelId: id, key });
+      return;
+    }
+  } catch {
+    // ignore private mode / quota
+  }
+
   if (window.__metaPixelPageViewSent?.[key]) {
     devLog("PageView skipped (already queued for route)", { pixelId: id, key });
     return;
@@ -224,6 +283,11 @@ export function trackMetaPageView(pixelId?: string | null): void {
   // effect invocations cannot pass the guard in the same tick.
   if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
   window.__metaPixelPageViewSent[key] = true;
+  try {
+    sessionStorage.setItem(storageKey, "1");
+  } catch {
+    // ignore
+  }
 
   const ready = syncMetaPixelInit(id);
   if (!ready || !window.fbq) return;

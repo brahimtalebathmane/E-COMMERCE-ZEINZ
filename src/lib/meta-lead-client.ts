@@ -115,7 +115,7 @@ export function wasBrowserLeadSent(orderId: string): boolean {
 
 /**
  * Once-per-order effect lock — blocks StrictMode remounts before any async gap.
- * Pair with releaseMetaLeadEffectLock on effect cleanup when Lead did not fire.
+ * Do not release on effect cleanup; the lock must survive remounts until Lead completes.
  */
 export function tryBeginMetaLeadEffect(orderId: string): boolean {
   if (typeof window === "undefined") return false;
