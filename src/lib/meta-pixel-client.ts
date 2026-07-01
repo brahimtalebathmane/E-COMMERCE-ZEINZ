@@ -46,7 +46,11 @@ function ensureFbqQueue(): void {
   (function (f, b, e, v) {
     if (f.fbq) return;
     const n = function (...args: unknown[]) {
-      n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+      if (n.callMethod) {
+        n.callMethod(...args);
+      } else {
+        n.queue.push(args);
+      }
     } as FbqFn;
     f.fbq = n;
     if (!f._fbq) f._fbq = n;
