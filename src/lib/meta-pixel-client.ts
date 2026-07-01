@@ -13,6 +13,7 @@ type FbqFn = {
   version?: string;
   disablePushState?: boolean;
   getState?: () => { pixels?: Array<{ id?: string }> };
+  instance?: { pixelsByID?: Record<string, { userData?: Record<string, string> }> };
 };
 
 declare global {
@@ -71,6 +72,36 @@ function ensureFbqQueue(): void {
 
 function initUserDataHasPii(userData?: Record<string, string>): boolean {
   return Boolean(userData?.ph || userData?.fn || userData?.ln || userData?.em);
+}
+
+/**
+ * Merge advanced matching on an already-inited pixel.
+ * Avoids fbq('set','userData') — Meta's SDK rejects a pixel_id 4th arg on that API and
+ * may warn even when our code passes 3 args (plugin wraps the call internally).
+ */
+function mergeMetaPixelUserData(
+  pixelId: string,
+  extra?: MetaPixelAdvancedMatchingPayload | null,
+): void {
+  const userData = buildMetaPixelInitUserData(pixelId, extra);
+  if (!userData) return;
+
+  try {
+    const inst = window.fbq?.instance?.pixelsByID?.[pixelId];
+    if (inst) {
+      inst.userData = { ...(inst.userData ?? {}), ...userData };
+      if (initUserDataHasPii(userData)) {
+        window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
+        window.__metaPixelInitHadPii[pixelId] = true;
+      }
+      devLog("userData merged on pixel instance", {
+        pixelId,
+        keys: Object.keys(userData),
+      });
+    }
+  } catch {
+    // ignore — next tracked event may ship without enriched AM
+  }
 }
 
 /** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
@@ -180,8 +211,8 @@ function queueMetaPixelInit(
  * Calling `fbq('init', id)` more than once for the same ID registers the pixel a
  * second time inside fbevents.js, which makes every untargeted `fbq('track', …)`
  * (and even `trackSingle`) fire twice. Advanced matching that arrives after the
- * first init is therefore applied via the supported `fbq('set', 'userData', …)`
- * path instead of a re-init, so events are never duplicated.
+ * first init is therefore merged on fbq.instance.pixelsByID[id].userData instead of a
+ * re-init, so events are never duplicated.
  *
  * Each product landing uses its own meta_pixel_id from admin (keyed separately in sessionStorage).
  */
@@ -201,18 +232,9 @@ function syncMetaPixelInit(
     return id;
   }
 
-  // Already initialized: NEVER re-init. Push any newer advanced matching through
-  // `set` so it attaches to subsequent events without re-registering the pixel.
+  // Already initialized: NEVER re-init. Merge advanced matching on the live instance.
   markMetaPixelInited(id);
-  const userData = buildMetaPixelInitUserData(id, extra);
-  if (userData && window.fbq) {
-    // Meta accepts only fbq('set', 'userData', object) — no pixel_id 4th argument.
-    window.fbq("set", "userData", userData);
-    if (initUserDataHasPii(userData)) {
-      window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
-      window.__metaPixelInitHadPii[id] = true;
-    }
-  }
+  mergeMetaPixelUserData(id, extra);
 
   return id;
 }
@@ -414,6 +436,7 @@ export async function trackMetaLead(
   syncMetaPixelInit(id, opts.advancedMatching);
 
   const regCount = await waitForFbqPixelRegistration(id);
+  mergeMetaPixelUserData(id, opts.advancedMatching);
   if (regCount > 1) {
     console.warn(
       `[Meta Pixel] Skipping browser Lead — pixel ${id} registered ${regCount}x in fbq; CAPI Lead will still fire`,
