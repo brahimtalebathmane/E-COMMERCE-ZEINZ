@@ -9,7 +9,6 @@ import {
 } from "@/lib/meta-product-custom-data";
 import {
   buildMetaPixelAdvancedMatching,
-  type MetaPixelAdvancedMatchingPayload,
   loadStoredMetaPixelAdvancedMatching,
   metaPixelAmStorageKey,
 } from "@/lib/meta-pixel-advanced-matching";
