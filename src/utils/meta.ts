@@ -335,39 +335,6 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
       payload.test_event_code = testEventCode;
     }
 
-    // #region agent log
-    if (attempt === 0) {
-      console.warn("[meta][debug] CAPI payload prep", {
-        hypothesisId: "H1-H2",
-        eventName: params.eventName,
-        eventIdPrefix: params.eventId?.slice(0, 12),
-        pixelIdPrefix: pixelId.slice(0, 6),
-        testEventIncluded: Boolean(testEventCode),
-        testEventCodePrefix: testEventCode ? testEventCode.slice(0, 8) : null,
-      });
-      fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
-        body: JSON.stringify({
-          sessionId: "5d3a9b",
-          runId: "pre-fix",
-          hypothesisId: "H1-H2",
-          location: "meta.ts:sendMetaEvent",
-          message: "CAPI payload prep",
-          data: {
-            eventName: params.eventName,
-            eventIdLen: params.eventId?.length ?? 0,
-            eventIdPrefix: params.eventId?.slice(0, 20),
-            testEventIncluded: Boolean(testEventCode),
-            testEventCodePrefix: testEventCode ? testEventCode.slice(0, 8) : null,
-            pixelIdPrefix: pixelId.slice(0, 6),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
-
     try {
       const res = await safeMetaFetch(endpoint, payload);
       const body = await res.text().catch(() => "");

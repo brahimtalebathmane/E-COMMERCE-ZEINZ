@@ -126,6 +126,10 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
             state: "sent" | "skipped" | "failed";
             reason?: string;
           };
+          cancel?: {
+            state: "sent" | "skipped" | "failed";
+            reason?: string;
+          };
         };
       };
       if (!res.ok || !json.success) {
@@ -145,6 +149,18 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         purchaseMeta.reason === "missing_meta_data"
       ) {
         toast.warning(a.orders.metaPurchaseCapiMissingMeta);
+      }
+
+      const cancelMeta = json.meta?.cancel;
+      if (cancelMeta?.state === "sent") {
+        toast.success(a.orders.metaCancelCapiOk);
+      } else if (cancelMeta?.state === "failed") {
+        toast.error(a.orders.metaCancelCapiFailed);
+      } else if (
+        cancelMeta?.state === "skipped" &&
+        cancelMeta.reason === "missing_meta_data"
+      ) {
+        toast.warning(a.orders.metaCancelCapiMissingMeta);
       }
     } catch (error) {
       onOrderUpdated(currentOrder.id, { status: prevStatus });

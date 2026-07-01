@@ -2,6 +2,8 @@
 
 export const META_PENDING_LEAD_STORAGE_KEY = "meta_pending_lead_v1";
 
+const META_LEAD_DISPATCHED_PREFIX = "meta_lead_dispatched:";
+
 export type MetaPendingLeadPayload = {
   value: number;
   currency: string;
@@ -40,6 +42,33 @@ function isValidPayload(raw: unknown): raw is MetaPendingLeadPayload {
   );
 }
 
+function dispatchedStorageKey(orderId: string): string {
+  return `${META_LEAD_DISPATCHED_PREFIX}${orderId.trim()}`;
+}
+
+/** True when Lead was already dispatched for this order in this tab session. */
+export function isMetaLeadDispatched(orderId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const id = orderId.trim();
+  if (!id) return false;
+  try {
+    return sessionStorage.getItem(dispatchedStorageKey(id)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markMetaLeadDispatched(orderId: string): void {
+  if (typeof window === "undefined") return;
+  const id = orderId.trim();
+  if (!id) return;
+  try {
+    sessionStorage.setItem(dispatchedStorageKey(id), "1");
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 /** Persist Lead params for firing on the order-success page after navigation. */
 export function queueMetaPendingLead(payload: MetaPendingLeadPayload): void {
   if (typeof window === "undefined") return;
@@ -50,11 +79,8 @@ export function queueMetaPendingLead(payload: MetaPendingLeadPayload): void {
   }
 }
 
-/**
- * Read and remove the pending Lead for this order id.
- * Returns null when missing, malformed, or order id mismatch.
- */
-export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload | null {
+/** Read pending Lead without removing (safe for StrictMode remounts). */
+export function readMetaPendingLead(orderId: string): MetaPendingLeadPayload | null {
   if (typeof window === "undefined") return null;
   const id = orderId.trim();
   if (!id) return null;
@@ -63,10 +89,57 @@ export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload 
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!isValidPayload(parsed) || parsed.orderId.trim() !== id) return null;
-    sessionStorage.removeItem(META_PENDING_LEAD_STORAGE_KEY);
     return parsed;
   } catch {
     return null;
+  }
+}
+
+/** @deprecated Prefer readMetaPendingLead + clearMetaPendingLead after success. */
+export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload | null {
+  const payload = readMetaPendingLead(orderId);
+  if (payload) clearMetaPendingLead();
+  return payload;
+}
+
+export function clearMetaPendingLead(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(META_PENDING_LEAD_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** Server fallback when sessionStorage pending payload is missing. */
+export async function fetchMetaLeadPayloadFromServer(
+  orderId: string,
+): Promise<{ payload: MetaPendingLeadPayload | null; metaLeadSent: boolean }> {
+  const id = orderId.trim();
+  if (!id) return { payload: null, metaLeadSent: false };
+
+  try {
+    const res = await fetch(
+      `/api/orders/meta/lead-payload?order_id=${encodeURIComponent(id)}`,
+      { credentials: "same-origin" },
+    );
+    const json = (await res.json().catch(() => ({}))) as {
+      payload?: MetaPendingLeadPayload | null;
+      meta_lead_sent?: boolean;
+    };
+    if (!res.ok) {
+      return { payload: null, metaLeadSent: false };
+    }
+    if (json.meta_lead_sent) {
+      return { payload: null, metaLeadSent: true };
+    }
+    const payload = json.payload;
+    if (!payload || !isValidPayload(payload) || payload.orderId.trim() !== id) {
+      return { payload: null, metaLeadSent: false };
+    }
+    return { payload, metaLeadSent: false };
+  } catch {
+    return { payload: null, metaLeadSent: false };
   }
 }
 
@@ -85,36 +158,8 @@ export async function dispatchMetaLeadCapi(params: {
     });
     const json = (await res.json().catch(() => ({}))) as {
       lead?: MetaLeadCapiResult;
-      diagnostics?: {
-        test_event_code_included?: boolean;
-        test_event_code_prefix?: string | null;
-        capi_event_id_prefix?: string | null;
-        capi_pixel_id_prefix?: string | null;
-      };
       error?: string;
     };
-    // #region agent log
-    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
-      body: JSON.stringify({
-        sessionId: "5d3a9b",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "meta-lead-client.ts:dispatchMetaLeadCapi",
-        message: "CAPI client response",
-        data: {
-          httpStatus: res.status,
-          leadState: json.lead?.state,
-          testEventIncluded: json.diagnostics?.test_event_code_included,
-          testEventPrefix: json.diagnostics?.test_event_code_prefix,
-          capiEventIdPrefix: json.diagnostics?.capi_event_id_prefix,
-          capiPixelIdPrefix: json.diagnostics?.capi_pixel_id_prefix,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (!res.ok) {
       return { state: "error", reason: json.error ?? `http_${res.status}` };
     }
@@ -123,4 +168,18 @@ export async function dispatchMetaLeadCapi(params: {
   } catch (e) {
     return { state: "error", reason: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * Resolves Lead payload from sessionStorage or server, without consuming storage
+ * until dispatch succeeds.
+ */
+export async function resolveMetaLeadPayload(
+  orderId: string,
+): Promise<{ payload: MetaPendingLeadPayload | null; metaLeadSent: boolean }> {
+  const fromStorage = readMetaPendingLead(orderId);
+  if (fromStorage) {
+    return { payload: fromStorage, metaLeadSent: false };
+  }
+  return fetchMetaLeadPayloadFromServer(orderId);
 }

@@ -209,6 +209,11 @@ export const adminAr = {
       "تعذر إرسال حدث الشراء إلى Meta. تحقق من META_CAPI_ACCESS_TOKEN في Netlify وسجلات الدالة.",
     metaPurchaseCapiMissingMeta:
       "لم يُرسل حدث الشراء: الطلب يفتقد بيانات التتبع (معرّف الحدث أو البكسل).",
+    metaCancelCapiOk: "تم إرسال حدث الإلغاء (CancelledLead) إلى Meta بنجاح.",
+    metaCancelCapiFailed:
+      "تعذر إرسال حدث الإلغاء إلى Meta. تحقق من META_CAPI_ACCESS_TOKEN في Netlify وسجلات الدالة.",
+    metaCancelCapiMissingMeta:
+      "لم يُرسل حدث الإلغاء: الطلب يفتقد بيانات التتبع (معرّف الحدث أو البكسل).",
     allProducts: "كل المنتجات",
     productUnknown: "منتج غير معروف",
     today: "اليوم",

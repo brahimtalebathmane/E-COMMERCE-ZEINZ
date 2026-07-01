@@ -79,14 +79,17 @@ export async function PATCH(
     const responsePayload: {
       success: true;
       order: { id: string; status: string };
-      meta?: { purchase?: MetaSideEffect };
+      meta?: { purchase?: MetaSideEffect; cancel?: MetaSideEffect };
     } = {
       success: true,
       order: { id: result.orderId, status: result.toStatus },
     };
 
     if (result.toStatus === "confirmed" && result.metaPurchase) {
-      responsePayload.meta = { purchase: result.metaPurchase };
+      responsePayload.meta = { ...responsePayload.meta, purchase: result.metaPurchase };
+    }
+    if (result.toStatus === "cancelled" && result.metaCancel) {
+      responsePayload.meta = { ...responsePayload.meta, cancel: result.metaCancel };
     }
 
     return NextResponse.json(responsePayload);

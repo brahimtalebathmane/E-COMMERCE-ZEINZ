@@ -1,16 +1,14 @@
 import { cookies } from "next/headers";
 import { MetaPixel } from "@/components/MetaPixel";
 import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import {
   ORDER_SUCCESS_AT_COOKIE,
   ORDER_SUCCESS_CT_COOKIE,
   ORDER_SUCCESS_OID_COOKIE,
 } from "@/lib/orders/order-success-session";
-import { getProductById } from "@/lib/products";
-import { OrderSuccessClient } from "./OrderSuccessClient";
+import { loadOrderSuccessContext } from "@/lib/orders/order-success-context";
 import { OrderSuccessContent } from "./OrderSuccessContent";
-import { OrderSuccessMetaLead } from "./OrderSuccessMetaLead";
+import { OrderSuccessEffects } from "./OrderSuccessEffects";
 
 type Props = {
   searchParams?: Promise<{
@@ -23,9 +21,8 @@ type Props = {
 export default async function OrderSuccessPage({ searchParams }: Props) {
   const sp = searchParams ? await searchParams : undefined;
   const orderId = sp?.order_id?.trim() || null;
-  const productId = sp?.product_id?.trim() || null;
   const totalPriceRaw = sp?.total_price?.trim() || "";
-  const totalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
+  const queryTotalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
 
   const cookieStore = await cookies();
   const cookieOrderId = cookieStore.get(ORDER_SUCCESS_OID_COOKIE)?.value?.trim() || null;
@@ -38,22 +35,29 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
     actionToken = cookieStore.get(ORDER_SUCCESS_AT_COOKIE)?.value?.trim() || null;
   }
 
-  const product = productId ? await getProductById(productId) : null;
-  const metaPixelId = resolveServerMetaPixelId(product?.meta_pixel_id);
+  const orderContext = await loadOrderSuccessContext(orderId, cookieOrderId);
+  const metaPixelId = orderContext?.metaPixelId ?? null;
+  const productId = orderContext?.productId ?? sp?.product_id?.trim() ?? null;
+  const productName = orderContext?.productName ?? null;
+  const totalPrice =
+    orderContext?.totalPrice ??
+    (typeof queryTotalPrice === "number" && Number.isFinite(queryTotalPrice)
+      ? queryTotalPrice
+      : null);
+  const currency = orderContext?.currency ?? "MRU";
 
   return (
     <>
       <MetaPixelRuntime pixelId={metaPixelId} />
       <MetaPixel pixelId={metaPixelId} />
-      {orderId ? <OrderSuccessMetaLead orderId={orderId} /> : null}
-      <OrderSuccessClient
+      <OrderSuccessEffects
         orderId={orderId}
         completionToken={completionToken}
         actionToken={actionToken}
         productId={productId}
-        productName={product?.name_ar ?? null}
-        totalPrice={typeof totalPrice === "number" && Number.isFinite(totalPrice) ? totalPrice : null}
-        currency="MRU"
+        productName={productName}
+        totalPrice={totalPrice}
+        currency={currency}
       />
       <OrderSuccessContent />
     </>

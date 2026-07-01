@@ -28,9 +28,9 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
  * `Lead` is hybrid (browser pixel + CAPI): both fire together on order-success
- * via `/api/meta/lead` and `fbq('track','Lead')`. The client reuses the funnel
- * session id from InitiateCheckout and stores it on `orders.meta_event_id`; CAPI
- * reuses it verbatim so Meta dedupes on `(event_name, event_id)`. When that field
+ * via `/api/orders/meta/lead` and `fbq('trackSingle','Lead')`. The client reuses
+ * the funnel session id from InitiateCheckout and stores it on `orders.meta_event_id`;
+ * CAPI reuses it verbatim so Meta dedupes on `(event_name, event_id)`. When that field
  * is empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
  */
 function transactionalEventId(
@@ -149,30 +149,6 @@ export async function dispatchMetaEvent(
       ? resolveLeadEventId(orderId, order.meta_event_id as string | null)
       : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
-  // #region agent log
-  if (eventType === "lead") {
-    fetch("http://127.0.0.1:7481/ingest/e5ab9c4f-3cf6-4050-b164-44ac5ad50fe7", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5d3a9b" },
-      body: JSON.stringify({
-        sessionId: "5d3a9b",
-        runId: "pre-fix",
-        hypothesisId: "H1-H2",
-        location: "dispatch.ts:dispatchMetaEvent",
-        message: "Lead CAPI resolved ids",
-        data: {
-          orderId,
-          eventIdLen: eventId.length,
-          eventIdPrefix: eventId.slice(0, 20),
-          storedMetaEventIdPrefix: String(order.meta_event_id ?? "").slice(0, 20),
-          pixelIdPrefix: pixelId.slice(0, 8),
-          orderPixelIdPrefix: String(order.meta_pixel_id ?? "").slice(0, 8),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
   let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
 
   if (order.product_id) {
@@ -221,7 +197,8 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "missing_meta_data" };
   }
 
-  const headers = context.requestHeaders ?? new Headers();
+  const headers =
+    eventType === "lead" ? (context.requestHeaders ?? new Headers()) : null;
   const eventName =
     eventType === "lead" ? "Lead" : eventType === "purchase" ? "Purchase" : "CancelledLead";
 

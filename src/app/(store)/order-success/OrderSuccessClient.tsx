@@ -10,6 +10,7 @@ type Props = {
   productName: string | null;
   totalPrice: number | null;
   currency: string;
+  onSettled?: () => void;
 };
 
 const WA_MAX_ATTEMPTS = 5;
@@ -26,17 +27,6 @@ type WaResponse = {
 
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
-}
-
-async function clearOrderSuccessSession(): Promise<void> {
-  try {
-    await fetch("/api/orders/session/clear", {
-      method: "POST",
-      credentials: "same-origin",
-    });
-  } catch (e) {
-    console.warn("[order-success] Failed to clear session cookies", e);
-  }
 }
 
 async function sendOrderWhatsAppWithRetries(
@@ -128,10 +118,13 @@ async function sendOrderWhatsAppWithRetries(
 }
 
 export function OrderSuccessClient(props: Props) {
-  const { orderId, completionToken, actionToken } = props;
+  const { orderId, completionToken, actionToken, onSettled } = props;
 
   useEffect(() => {
-    if (!orderId || !completionToken || !actionToken) return;
+    if (!orderId || !completionToken || !actionToken) {
+      onSettled?.();
+      return;
+    }
 
     let cancelled = false;
 
@@ -145,7 +138,7 @@ export function OrderSuccessClient(props: Props) {
         console.error("[order-success] WhatsApp unexpected error", e);
       } finally {
         if (!cancelled) {
-          await clearOrderSuccessSession();
+          onSettled?.();
         }
       }
     })();
@@ -153,7 +146,7 @@ export function OrderSuccessClient(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [orderId, completionToken, actionToken]);
+  }, [orderId, completionToken, actionToken, onSettled]);
 
   return null;
 }
