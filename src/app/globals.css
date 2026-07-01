@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   --background: #f3f8f3;
   --foreground: #0e1a0e;
   --accent: #006B0C;
@@ -25,28 +26,34 @@
   --shadow-accent: 0 16px 34px -14px rgba(0, 107, 12, 0.5);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b110b;
-    --foreground: #e8f5e8;
-    --accent: #18a02b;
-    --accent-foreground: #04140a;
-    --accent-strong: #0f8a22;
-    --accent-muted: #1d331d;
-    --accent-soft: #142414;
-    --card: #121a12;
-    --card-muted: #0f160f;
-    --muted: #9aaa9a;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
-    --ring: rgba(24, 160, 43, 0.45);
+/* Storefront + landing pages are designed as a fixed light theme. iOS Safari in Dark Mode
+   otherwise flips :root tokens while ProductLanding still forces light card surfaces,
+   producing unreadable light-on-light text. Admin uses `.admin-shell` for its own dark palette. */
+.storefront-light {
+  color-scheme: light;
 
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 10px 26px -10px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 28px 56px -22px rgba(0, 0, 0, 0.8), 0 8px 18px -8px rgba(0, 0, 0, 0.5);
-    --shadow-accent: 0 18px 38px -16px rgba(24, 160, 43, 0.55);
-  }
+  --background: #f3f8f3;
+  --foreground: #0e1a0e;
+  --accent: #006B0C;
+  --accent-foreground: #f3fff3;
+  --accent-strong: #00580a;
+  --accent-muted: #d6efd6;
+  --accent-soft: #eaf7ea;
+  --card: #ffffff;
+  --card-muted: #f7fbf7;
+  --muted: #54684f;
+  --border: rgba(15, 40, 15, 0.1);
+  --border-strong: rgba(15, 40, 15, 0.16);
+  --ring: rgba(0, 107, 12, 0.35);
+
+  --shadow-xs: 0 1px 2px rgba(13, 38, 13, 0.06);
+  --shadow-sm: 0 2px 6px rgba(13, 38, 13, 0.07), 0 1px 2px rgba(13, 38, 13, 0.05);
+  --shadow-md: 0 8px 24px -10px rgba(13, 38, 13, 0.18), 0 2px 6px rgba(13, 38, 13, 0.06);
+  --shadow-lg: 0 24px 48px -22px rgba(13, 38, 13, 0.32), 0 6px 16px -8px rgba(13, 38, 13, 0.12);
+  --shadow-accent: 0 16px 34px -14px rgba(0, 107, 12, 0.5);
+
+  color: var(--foreground);
+  background: var(--background);
 }
 
 html {

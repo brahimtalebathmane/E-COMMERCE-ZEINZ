@@ -446,13 +446,15 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
 
   return (
     <div
-      className="w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
+      className="storefront-light w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
       dir="ltr"
       style={
         {
           "--accent": copy.brandColor,
           "--accent-muted": `color-mix(in srgb, ${copy.brandColor} 34%, white)`,
           "--accent-foreground": "#f0fff0",
+          "--background": "#f3f8f3",
+          "--foreground": "#0e1a0e",
           "--card": "#f4fff4",
           "--muted": "#4a5c4a",
           "--brand-accent": accent,

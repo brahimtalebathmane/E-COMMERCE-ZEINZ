@@ -18,7 +18,7 @@ export default function StoreLayout({
   return (
     <LanguageProvider>
       <StorefrontSerwistCleanup />
-      <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
+      <div className="storefront-light flex min-h-screen min-w-0 flex-col overflow-x-clip">
         <StoreLayoutHeader />
         <div className="min-h-0 flex-1">{children}</div>
         <StoreSiteFooter />
