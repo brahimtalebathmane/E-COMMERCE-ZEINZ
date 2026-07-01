@@ -48,13 +48,12 @@ export function extractMetaPixelIdFromRow(
 }
 
 function envFallbackPixelId(scope: "public" | "server"): string | null {
+  const fromPublic = normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
+  const fromServer = normalizeMetaPixelId(process.env.META_PIXEL_ID);
   if (scope === "public") {
-    return normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
+    return fromPublic ?? fromServer;
   }
-  return (
-    normalizeMetaPixelId(process.env.META_PIXEL_ID) ??
-    normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID)
-  );
+  return fromPublic ?? fromServer;
 }
 
 /**

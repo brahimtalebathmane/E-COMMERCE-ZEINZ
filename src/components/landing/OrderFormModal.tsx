@@ -11,7 +11,7 @@ import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
-import { queueMetaPendingLead } from "@/lib/meta-lead-client";
+import { queueMetaPendingLead, buildMetaLeadEventId } from "@/lib/meta-lead-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
@@ -143,9 +143,9 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         throw new Error("تعذر إرسال الطلب");
       }
 
-      const verifiedEventId = json.meta_event_id?.trim() || generatedMetaEventId;
+      const verifiedEventId = buildMetaLeadEventId(json.order_id);
 
-      // Queue Lead for order-success — pixel + CAPI fire together after navigation.
+      // Queue Lead for order-success — CAPI first, browser only if CAPI cannot ingest.
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",

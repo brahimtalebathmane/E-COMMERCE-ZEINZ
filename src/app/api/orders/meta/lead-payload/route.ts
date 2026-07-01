@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { FORBIDDEN_RESPONSE, apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
+import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import type { MetaPendingLeadPayload } from "@/lib/meta-lead-client";
 import { readVerifiedOrderSuccessSession } from "@/lib/orders/order-success-session";
@@ -39,8 +40,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ payload: null, meta_lead_sent: true });
     }
 
-    const eventId = (order.meta_event_id as string | null)?.trim();
-    if (!eventId || !order.product_id) {
+    const eventId = buildMetaLeadEventId(order.id as string);
+    if (!order.product_id) {
       return NextResponse.json({ payload: null, meta_lead_sent: false, reason: "missing_meta_data" });
     }
 

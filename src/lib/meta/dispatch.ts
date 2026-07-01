@@ -6,6 +6,7 @@ import {
   buildMetaProductCustomData,
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
+import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
 import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
@@ -27,11 +28,10 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is hybrid (browser pixel + CAPI): both fire together on order-success
- * via `/api/orders/meta/lead` and `fbq('trackSingle','Lead')`. The client reuses
- * the funnel session id from InitiateCheckout and stores it on `orders.meta_event_id`;
- * CAPI reuses it verbatim so Meta dedupes on `(event_name, event_id)`. When that field
- * is empty (legacy rows / edge cases), fall back to `lead_{orderId}`.
+ * `Lead` is server-first CAPI on order-success via `/api/orders/meta/lead`.
+ * The browser pixel fires only when CAPI cannot ingest (missing token / transient
+ * failure). Both channels share the deterministic `lead_{orderId}` event id.
+ * `orders.meta_event_id` stores the funnel session id for InitiateCheckout stitching.
  */
 function transactionalEventId(
   orderId: string,
@@ -41,10 +41,8 @@ function transactionalEventId(
   return `cancelledlead_${orderId}`;
 }
 
-function resolveLeadEventId(orderId: string, clientEventId: string | null | undefined): string {
-  const fromClient = clientEventId?.trim();
-  if (fromClient) return fromClient;
-  return `lead_${orderId}`;
+function resolveLeadEventId(orderId: string): string {
+  return buildMetaLeadEventId(orderId);
 }
 
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
@@ -146,7 +144,7 @@ export async function dispatchMetaEvent(
 
   const eventId =
     eventType === "lead"
-      ? resolveLeadEventId(orderId, order.meta_event_id as string | null)
+      ? resolveLeadEventId(orderId)
       : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
   let productCustomData: ReturnType<typeof buildMetaProductCustomData>;

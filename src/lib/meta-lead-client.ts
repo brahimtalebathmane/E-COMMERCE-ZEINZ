@@ -1,8 +1,13 @@
 /** Browser Lead payload queued until order-success (avoids losing fbq on navigation). */
 
+import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
+
+export { buildMetaLeadEventId };
+
 export const META_PENDING_LEAD_STORAGE_KEY = "meta_pending_lead_v1";
 
 const META_LEAD_DISPATCHED_PREFIX = "meta_lead_dispatched:";
+const META_BROWSER_LEAD_SENT_PREFIX = "meta_browser_lead_sent:";
 
 export type MetaPendingLeadPayload = {
   value: number;
@@ -26,6 +31,21 @@ export type MetaLeadCapiResult =
 /** True when CAPI Lead is done (sent or definitively skipped). */
 export function isMetaLeadCapiComplete(result: MetaLeadCapiResult): boolean {
   return result.state === "sent" || result.state === "skipped";
+}
+
+/**
+ * Browser Lead fallback only when CAPI did not ingest the event.
+ * Avoids dual Pixel+CAPI Lead in live Events Manager (Meta dedup is unreliable in production).
+ */
+export function shouldFallbackToBrowserLead(result: MetaLeadCapiResult): boolean {
+  if (result.state === "failed" || result.state === "error") return true;
+  if (result.state === "skipped") {
+    return (
+      result.reason === "missing_meta_data" ||
+      result.reason === "missing_access_token"
+    );
+  }
+  return false;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -75,6 +95,24 @@ export function markMetaLeadDispatched(orderId: string): void {
     sessionStorage.setItem(dispatchedStorageKey(id), "1");
   } catch {
     // ignore quota / private mode
+  }
+}
+
+/**
+ * Synchronous once-per-order browser Lead lock (survives refresh, blocks async races).
+ * Returns false when Lead was already marked for this order in this tab.
+ */
+export function tryMarkBrowserLeadSent(orderId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const id = orderId.trim();
+  if (!id) return false;
+  try {
+    const key = `${META_BROWSER_LEAD_SENT_PREFIX}${id}`;
+    if (sessionStorage.getItem(key) === "1") return false;
+    sessionStorage.setItem(key, "1");
+    return true;
+  } catch {
+    return true;
   }
 }
 
@@ -158,7 +196,7 @@ export function finalizeMetaLeadDispatch(orderId: string): void {
   clearMetaPendingLead();
 }
 
-/** Server Lead CAPI — paired with browser pixel on order-success (cookie session auth). */
+/** Server Lead CAPI — primary Lead path on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
 }): Promise<MetaLeadCapiResult> {

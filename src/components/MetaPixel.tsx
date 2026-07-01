@@ -19,6 +19,7 @@ import {
 } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { hashMetaExternalId } from "@/lib/meta-external-id-hash";
+import { tryMarkBrowserLeadSent } from "@/lib/meta-lead-client";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 export type MetaPixelAdvancedMatchingProps = {
@@ -130,6 +131,8 @@ export async function trackLead(params: {
   phone?: string;
   customerName?: string;
 }): Promise<void> {
+  if (!tryMarkBrowserLeadSent(params.orderId)) return;
+
   const { value, currency } = toMetaPixelPurchaseMoney(params.value, params.currency);
   const leadCustomData = buildMetaOrderValueCustomData({
     value,

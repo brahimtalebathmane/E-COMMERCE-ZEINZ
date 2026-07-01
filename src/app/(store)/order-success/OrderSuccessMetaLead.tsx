@@ -8,17 +8,19 @@ import {
   isMetaLeadCapiComplete,
   isMetaLeadDispatched,
   resolveMetaLeadPayload,
+  shouldFallbackToBrowserLead,
 } from "@/lib/meta-lead-client";
 
 type Props = {
   orderId: string;
-  /** Called only when Lead CAPI is sent/skipped (cookies may then be cleared). */
+  /** Called only when Lead dispatch settles (CAPI sent/skipped or browser fallback). */
   onComplete?: () => void;
 };
 
 /**
- * Fires browser Lead and server Lead CAPI together on order-success load so Meta
- * receives both channels at the same moment (shared event_id for deduplication).
+ * Server-first Lead: CAPI on order-success, browser pixel only when CAPI cannot ingest.
+ * Firing both channels in parallel double-counts in live Events Manager even with a
+ * shared event_id; Test Events mode hides CAPI from the live stream so it looked fine.
  */
 export function OrderSuccessMetaLead({ orderId, onComplete }: Props) {
   const startedRef = useRef(false);
@@ -42,51 +44,50 @@ export function OrderSuccessMetaLead({ orderId, onComplete }: Props) {
           return;
         }
 
-        if (!payload) {
-          const capiResult = await dispatchMetaLeadCapiWithRetry({ orderId: id });
-          if (isMetaLeadCapiComplete(capiResult)) {
-            finalizeMetaLeadDispatch(id);
-            onComplete?.();
-          } else {
-            console.warn("[Meta] Lead CAPI-only recovery on order-success failed", {
-              orderId: id,
-              capi: capiResult,
-            });
-          }
-          return;
-        }
-
-        const [, capiResult] = await Promise.all([
-          trackLead({
-            value: payload.value,
-            currency: payload.currency,
-            eventId: payload.eventId,
-            orderId: payload.orderId,
-            productId: payload.productId,
-            productName: payload.productName,
-            pixelId: payload.pixelId,
-            phone: payload.phone,
-            customerName: payload.customerName,
-            quantity: payload.quantity,
-          }),
-          dispatchMetaLeadCapiWithRetry({ orderId: payload.orderId }),
-        ]);
+        const capiResult = await dispatchMetaLeadCapiWithRetry({
+          orderId: payload?.orderId ?? id,
+        });
 
         if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
           onComplete?.();
           if (capiResult.state === "sent") {
-            console.info("[Meta] Lead pixel + CAPI sent together on order-success", {
-              orderId: payload.orderId,
-              eventId: payload.eventId,
+            console.info("[Meta] Lead CAPI sent on order-success", {
+              orderId: payload?.orderId ?? id,
+              eventId: payload?.eventId,
             });
           }
-        } else {
-          console.warn("[Meta] Lead CAPI failed on order-success (pixel may have fired)", {
-            orderId: payload.orderId,
+          return;
+        }
+
+        if (!payload || !shouldFallbackToBrowserLead(capiResult)) {
+          console.warn("[Meta] Lead CAPI failed on order-success (no browser fallback)", {
+            orderId: payload?.orderId ?? id,
             capi: capiResult,
           });
+          return;
         }
+
+        await trackLead({
+          value: payload.value,
+          currency: payload.currency,
+          eventId: payload.eventId,
+          orderId: payload.orderId,
+          productId: payload.productId,
+          productName: payload.productName,
+          pixelId: payload.pixelId,
+          phone: payload.phone,
+          customerName: payload.customerName,
+          quantity: payload.quantity,
+        });
+
+        finalizeMetaLeadDispatch(id);
+        onComplete?.();
+        console.info("[Meta] Lead browser fallback fired (CAPI unavailable)", {
+          orderId: payload.orderId,
+          eventId: payload.eventId,
+          capi: capiResult,
+        });
       } catch (error) {
         console.warn("[Meta] Lead dispatch failed on order-success", error);
       }
