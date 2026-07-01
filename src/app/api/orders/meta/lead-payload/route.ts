@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { FORBIDDEN_RESPONSE, apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
-import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
+import { resolveLeadEventId } from "@/lib/meta-lead-event-id";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import type { MetaPendingLeadPayload } from "@/lib/meta-lead-client";
 import { verifyShopperOrderSuccessAccess } from "@/lib/orders/order-success-auth";
@@ -36,7 +36,10 @@ async function buildLeadPayload(orderId: string): Promise<NextResponse> {
     return NextResponse.json({ payload: null, meta_lead_sent: true });
   }
 
-  const eventId = buildMetaLeadEventId(order.id as string);
+    const eventId = resolveLeadEventId({
+      orderId: order.id as string,
+      metaEventId: order.meta_event_id as string | null,
+    });
   if (!order.product_id) {
     return NextResponse.json({ payload: null, meta_lead_sent: false, reason: "missing_meta_data" });
   }

@@ -11,7 +11,7 @@ import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
-import { queueMetaPendingLead, buildMetaLeadEventId } from "@/lib/meta-lead-client";
+import { queueMetaPendingLead, resolveLeadEventId } from "@/lib/meta-lead-client";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -146,7 +146,10 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         throw new Error("تعذر إرسال الطلب");
       }
 
-      const verifiedEventId = buildMetaLeadEventId(json.order_id);
+      const leadEventId = resolveLeadEventId({
+        orderId: json.order_id,
+        metaEventId: json.meta_event_id,
+      });
 
       if (json.completion_token && json.action_token) {
         storeOrderSuccessClientSession(json.order_id, {
@@ -155,11 +158,11 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         });
       }
 
-      // Queue Lead for order-success — Pixel + CAPI fire in parallel on that page (same event_id).
+      // Queue Lead for order-success — Pixel first, then CAPI with same funnel event_id.
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",
-        eventId: verifiedEventId,
+        eventId: leadEventId,
         orderId: json.order_id,
         productId: product.id,
         productName: copy.name,

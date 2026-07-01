@@ -6,7 +6,7 @@ import {
   buildMetaProductCustomData,
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
-import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
+import { resolveLeadEventId } from "@/lib/meta-lead-event-id";
 import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
@@ -28,9 +28,9 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is hybrid: browser Pixel + CAPI on order-success in the same tick (Promise.all),
- * both using the deterministic `lead_{orderId}` event id for Meta deduplication.
- * `orders.meta_event_id` stores the funnel session id for InitiateCheckout stitching.
+ * `Lead` is hybrid: browser Pixel first, then CAPI on order-success with the same
+ * `event_id` (`orders.meta_event_id`, shared with InitiateCheckout) for Meta deduplication.
+ * `orders.meta_event_id` is the funnel session id captured at checkout.
  */
 function transactionalEventId(
   orderId: string,
@@ -40,8 +40,11 @@ function transactionalEventId(
   return `cancelledlead_${orderId}`;
 }
 
-function resolveLeadEventId(orderId: string): string {
-  return buildMetaLeadEventId(orderId);
+function resolveLeadEventIdForOrder(order: Record<string, unknown>): string {
+  return resolveLeadEventId({
+    orderId: order.id as string,
+    metaEventId: order.meta_event_id as string | null,
+  });
 }
 
 /** Claim exactly-once dispatch slot in DB before calling Meta. */
@@ -145,7 +148,7 @@ export async function dispatchMetaEvent(
 
   const eventId =
     eventType === "lead"
-      ? resolveLeadEventId(orderId)
+      ? resolveLeadEventIdForOrder(order)
       : transactionalEventId(orderId, eventType);
   let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
   let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
@@ -180,6 +183,8 @@ export async function dispatchMetaEvent(
   console.warn("[meta] CAPI dispatch attempt", {
     orderId,
     eventType,
+    eventIdPrefix:
+      eventType === "lead" ? resolveLeadEventIdForOrder(order).slice(0, 20) : undefined,
     hasPixelId: Boolean(pixelId),
     tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
   });

@@ -37,8 +37,8 @@ async function fireBrowserLead(payload: MetaPendingLeadPayload): Promise<void> {
 }
 
 /**
- * Hybrid Lead on order-success: browser Pixel and CAPI fire in the same tick via
- * Promise.all with the shared `event_id` (`lead_{orderId}`) for Meta deduplication.
+ * Hybrid Lead on order-success: browser Pixel fires first, then CAPI with the same
+ * `event_id` (`orders.meta_event_id`) so Meta deduplicates into one Lead.
  */
 export function OrderSuccessMetaLead({
   orderId,
@@ -81,28 +81,27 @@ export function OrderSuccessMetaLead({
           return;
         }
 
+        // Meta dedupes best when the browser event arrives before the server event.
+        await fireBrowserLead(leadPayload);
+
         if (metaLeadSent) {
-          await fireBrowserLead(leadPayload);
           finalizeMetaLeadDispatch(id);
           onComplete?.();
           return;
         }
 
         const eventTimeSec = Math.floor(Date.now() / 1000);
-
-        const [capiResult] = await Promise.all([
-          dispatchMetaLeadCapiWithRetry({
-            orderId: leadPayload.orderId,
-            completionToken: session?.completionToken,
-            actionToken: session?.actionToken,
-            eventTimeSec,
-          }),
-          fireBrowserLead(leadPayload),
-        ]);
+        const capiResult = await dispatchMetaLeadCapiWithRetry({
+          orderId: leadPayload.orderId,
+          eventId: leadPayload.eventId,
+          completionToken: session?.completionToken,
+          actionToken: session?.actionToken,
+          eventTimeSec,
+        });
 
         if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
-          console.info("[Meta] Lead hybrid dispatched (Pixel + CAPI, same tick)", {
+          console.info("[Meta] Lead hybrid complete (Pixel → CAPI, shared event_id)", {
             orderId: leadPayload.orderId,
             eventId: leadPayload.eventId,
             capi: capiResult.state,

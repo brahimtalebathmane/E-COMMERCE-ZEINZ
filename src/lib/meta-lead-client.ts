@@ -1,7 +1,7 @@
-import { buildMetaLeadEventId } from "@/lib/meta-lead-event-id";
+import { buildMetaLeadEventId, resolveLeadEventId } from "@/lib/meta-lead-event-id";
 import { clearOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
-export { buildMetaLeadEventId };
+export { buildMetaLeadEventId, resolveLeadEventId };
 
 export const META_PENDING_LEAD_STORAGE_KEY = "meta_pending_lead_v1";
 
@@ -196,6 +196,7 @@ export function finalizeMetaLeadDispatch(orderId: string): void {
 /** Server Lead CAPI — paired with browser Pixel on order-success (cookie session auth). */
 export async function dispatchMetaLeadCapi(params: {
   orderId: string;
+  eventId: string;
   completionToken?: string | null;
   actionToken?: string | null;
   eventTimeSec?: number;
@@ -207,6 +208,7 @@ export async function dispatchMetaLeadCapi(params: {
       credentials: "same-origin",
       body: JSON.stringify({
         order_id: params.orderId,
+        event_id: params.eventId,
         completion_token: params.completionToken ?? undefined,
         action_token: params.actionToken ?? undefined,
         event_time: params.eventTimeSec,
@@ -230,6 +232,7 @@ export async function dispatchMetaLeadCapi(params: {
 export async function dispatchMetaLeadCapiWithRetry(
   params: {
     orderId: string;
+    eventId: string;
     completionToken?: string | null;
     actionToken?: string | null;
     eventTimeSec?: number;
