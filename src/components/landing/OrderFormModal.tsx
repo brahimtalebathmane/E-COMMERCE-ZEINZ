@@ -202,11 +202,14 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
     ? "Paiement à la livraison — vous payez à la réception"
     : "الدفع عند الاستلام — تدفع عند وصول الطلب";
   const priceLabel = isFr ? "Total à payer" : "المبلغ الإجمالي";
+  const freeShippingLabel = isFr ? "Livraison gratuite incluse" : "يشمل الشحن المجاني";
 
-  const priceValue =
-    product.discount_price != null
-      ? Number(product.discount_price)
-      : Number(product.price);
+  const originalPrice = Number(product.price);
+  const discountedPrice =
+    product.discount_price != null ? Number(product.discount_price) : null;
+  const hasDiscount =
+    discountedPrice != null && discountedPrice < originalPrice;
+  const priceValue = hasDiscount ? discountedPrice : originalPrice;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 [backdrop-filter:blur(4px)] sm:items-center sm:p-4">
@@ -252,11 +255,29 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
 
         <div className="px-4 sm:px-6">
           {/* Price summary */}
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
+          <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
             <span className="text-sm font-semibold text-[var(--muted)]">{priceLabel}</span>
-            <span className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]" dir="ltr">
-              {formatPrice(priceValue)}
-            </span>
+            <div className="text-right">
+              <div className="flex items-baseline justify-end gap-2">
+                {hasDiscount ? (
+                  <span
+                    className="text-sm font-semibold tabular-nums text-[var(--muted)] line-through decoration-[var(--muted)]/70"
+                    dir="ltr"
+                  >
+                    {formatPrice(originalPrice)}
+                  </span>
+                ) : null}
+                <span
+                  className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]"
+                  dir="ltr"
+                >
+                  {formatPrice(priceValue)}
+                </span>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                {freeShippingLabel}
+              </p>
+            </div>
           </div>
 
           <div className="mt-5 space-y-4">
