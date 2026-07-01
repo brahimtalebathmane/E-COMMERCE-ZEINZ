@@ -364,7 +364,47 @@ export function ensureMetaPixelSdk(pixelId: string): string | null {
   return ensurePixelInit(pixelId);
 }
 
-export function trackMetaPageView(pixelId?: string | null): void {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Queue a standard PageView once the pixel is registered (or after retry budget).
+ * Retries when fbq / fbevents.js is still loading — unlike Lead, PageView must not
+ * rely on a one-shot effect that StrictMode or dedupe locks can permanently block.
+ */
+async function dispatchMetaPageViewOnce(id: string, key: string): Promise<boolean> {
+  ensureFbqQueue();
+  syncMetaPixelInit(id);
+
+  if (!window.fbq) return false;
+
+  const regCount = await waitForFbqPixelRegistration(id);
+  if (isPageViewSentForRoute(key)) return true;
+
+  // Prefer firing after init registered the pixel; still attempt on last resort when
+  // fbevents.js is slow but init is queued (regCount may stay 0 briefly).
+  if (regCount === 0 && isInitPendingInFbqQueue(id)) {
+    await sleep(200);
+  }
+
+  if (isPageViewSentForRoute(key)) return true;
+
+  const sent = pushFbqPageView(id);
+  if (!sent) return false;
+
+  markPageViewSentForRoute(key);
+  devLog("PageView queued", {
+    pixelId: id,
+    key,
+    regCount,
+    queueLength: window.fbq?.queue?.length ?? 0,
+  });
+  return true;
+}
+
+/** Fire one PageView per route; safe to call multiple times (dedupes + retries). */
+export async function trackMetaPageView(pixelId?: string | null): Promise<void> {
   const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
   if (!id || typeof window === "undefined") return;
 
@@ -374,25 +414,19 @@ export function trackMetaPageView(pixelId?: string | null): void {
     return;
   }
 
-  const ready = syncMetaPixelInit(id);
-  if (!ready || !window.fbq) return;
+  const retryDelaysMs = [0, 150, 400, 900, 1800];
+  for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+    if (isPageViewSentForRoute(key)) return;
+    if (retryDelaysMs[attempt] > 0) {
+      await sleep(retryDelaysMs[attempt]);
+    }
+    if (isPageViewSentForRoute(key)) return;
 
-  // Re-check after init — a concurrent caller may have won the race.
-  if (isPageViewSentForRoute(key)) {
-    devLog("PageView skipped (already sent for route)", { pixelId: id, key });
-    return;
+    const sent = await dispatchMetaPageViewOnce(id, key);
+    if (sent) return;
   }
 
-  // Mark sent only after the track call is queued — allows retry if fbq was unavailable.
-  const sent = pushFbqPageView(id);
-  if (sent) {
-    markPageViewSentForRoute(key);
-    devLog("PageView queued", {
-      pixelId: id,
-      key,
-      queueLength: window.fbq?.queue?.length ?? 0,
-    });
-  }
+  devLog("PageView retries exhausted", { pixelId: id, key });
 }
 
 export function trackMetaEvent(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import {
   buildMetaPixelAdvancedMatching,
@@ -27,7 +27,6 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
     () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(pixelId),
     [pixelId],
   );
-  const lastPageViewRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     if (!id) return;
@@ -45,14 +44,7 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
       }) ?? storedAm;
     refreshMetaPixelInitWithUserData(id, am ?? undefined);
 
-    const routeKey =
-      typeof window !== "undefined"
-        ? `${id}:${window.location.pathname}${window.location.search}`
-        : `${id}:${pathname}`;
-    if (lastPageViewRef.current === routeKey) return;
-    lastPageViewRef.current = routeKey;
-
-    trackMetaPageView(id);
+    void trackMetaPageView(id);
   }, [
     id,
     pathname,
