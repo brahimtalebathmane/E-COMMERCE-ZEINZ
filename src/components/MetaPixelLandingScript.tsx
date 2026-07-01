@@ -12,6 +12,7 @@ export function MetaPixelLandingScript({ pixelId }: Props) {
   return (
     <script
       id="meta-pixel-landing-pageview"
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: js }}
     />
   );

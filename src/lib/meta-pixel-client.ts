@@ -4,7 +4,6 @@ import {
 } from "@/lib/meta-pixel-advanced-matching";
 import {
   META_PAGEVIEW_STORAGE_PREFIX,
-  META_TRACKED_EVENT_STORAGE_PREFIX,
 } from "@/lib/meta-pixel-landing-script";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
@@ -279,7 +278,7 @@ function markPageViewSentForRoute(key: string): void {
   }
 }
 
-/** True when this exact (pixel, event, eventID) was already dispatched in this tab. */
+const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
 function isDuplicateTrackedEvent(
   pixelId: string,
   eventName: string,
@@ -344,6 +343,22 @@ function pushFbqTrack(
   return true;
 }
 
+/** Standard PageView — no custom eventID (Meta Test Events expects the default PageView event). */
+function pushFbqPageView(pixelId: string): boolean {
+  if (!window.fbq) return false;
+
+  const duplicateRegistrations = countFbqPixelRegistrations(pixelId);
+  if (duplicateRegistrations > 1) {
+    console.warn(
+      `[Meta Pixel] PageView may duplicate — pixel ${pixelId} registered ${duplicateRegistrations}x in fbq (avoid calling fbq init twice)`,
+    );
+  }
+
+  window.fbq("trackSingle", pixelId, "PageView");
+  devLog("PageView trackSingle queued", { pixelId });
+  return true;
+}
+
 /** @deprecated Use trackMetaPageView / trackMetaEvent; kept for callers that awaited init. */
 export function ensureMetaPixelSdk(pixelId: string): string | null {
   return ensurePixelInit(pixelId);
@@ -369,7 +384,7 @@ export function trackMetaPageView(pixelId?: string | null): void {
   }
 
   // Mark sent only after the track call is queued — allows retry if fbq was unavailable.
-  const sent = pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });
+  const sent = pushFbqPageView(id);
   if (sent) {
     markPageViewSentForRoute(key);
     devLog("PageView queued", {

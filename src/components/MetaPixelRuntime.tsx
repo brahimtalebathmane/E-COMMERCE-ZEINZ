@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   buildMetaPixelAdvancedMatching,
@@ -29,7 +29,7 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
   );
   const lastPageViewRef = useRef<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!id) return;
 
     const phone = advancedMatching?.phone?.trim() ?? "";
@@ -52,7 +52,6 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
     if (lastPageViewRef.current === routeKey) return;
     lastPageViewRef.current = routeKey;
 
-    // Synchronous — no async gates (SW cleanup, StrictMode cancel) before PageView.
     trackMetaPageView(id);
   }, [
     id,
