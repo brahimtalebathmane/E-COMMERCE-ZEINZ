@@ -38,7 +38,8 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  // Off: preload rejections surface as `no-response` when the network blips (see serwist#194).
+  navigationPreload: false,
   runtimeCaching: [...networkOnlyPages, ...defaultCache],
   fallbacks: {
     entries: [

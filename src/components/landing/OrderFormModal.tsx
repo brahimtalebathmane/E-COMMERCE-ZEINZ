@@ -12,6 +12,7 @@ import {
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { queueMetaPendingLead, resolveLeadEventId } from "@/lib/meta-lead-client";
+import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -180,6 +181,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         product_id: product.id,
         total_price: String(json.total_price ?? ""),
       });
+      await unregisterLegacyRootSerwist();
       router.push(`/order-success?${qs.toString()}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");

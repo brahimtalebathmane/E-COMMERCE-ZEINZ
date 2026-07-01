@@ -257,6 +257,27 @@ export function refreshMetaPixelInitWithUserData(
 const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
 const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v1:";
 
+function isPageViewSentForRoute(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  const storageKey = `${META_PAGEVIEW_STORAGE_PREFIX}${key}`;
+  try {
+    if (sessionStorage.getItem(storageKey) === "1") return true;
+  } catch {
+    // ignore private mode / quota
+  }
+  return Boolean(window.__metaPixelPageViewSent?.[key]);
+}
+
+function markPageViewSentForRoute(key: string): void {
+  if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
+  window.__metaPixelPageViewSent[key] = true;
+  try {
+    sessionStorage.setItem(`${META_PAGEVIEW_STORAGE_PREFIX}${key}`, "1");
+  } catch {
+    // ignore
+  }
+}
+
 /** True when this exact (pixel, event, eventID) was already dispatched in this tab. */
 function isDuplicateTrackedEvent(
   pixelId: string,
@@ -330,34 +351,24 @@ export function trackMetaPageView(pixelId?: string | null): void {
   if (!id || typeof window === "undefined") return;
 
   const key = pageViewDedupeKey(id);
-  const storageKey = `${META_PAGEVIEW_STORAGE_PREFIX}${key}`;
-
-  try {
-    if (sessionStorage.getItem(storageKey) === "1") {
-      devLog("PageView skipped (already sent for route)", { pixelId: id, key });
-      return;
-    }
-  } catch {
-    // ignore private mode / quota
-  }
-
-  if (window.__metaPixelPageViewSent?.[key]) {
-    devLog("PageView skipped (already queued for route)", { pixelId: id, key });
+  if (isPageViewSentForRoute(key)) {
+    devLog("PageView skipped (already sent for route)", { pixelId: id, key });
     return;
-  }
-
-  // Lock synchronously BEFORE init/track so StrictMode remounts and concurrent
-  // effect invocations cannot pass the guard in the same tick.
-  if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
-  window.__metaPixelPageViewSent[key] = true;
-  try {
-    sessionStorage.setItem(storageKey, "1");
-  } catch {
-    // ignore
   }
 
   const ready = syncMetaPixelInit(id);
   if (!ready || !window.fbq) return;
+
+  // Re-check after init — a concurrent caller may have won the race.
+  if (isPageViewSentForRoute(key)) {
+    devLog("PageView skipped (already sent for route)", { pixelId: id, key });
+    return;
+  }
+
+  // Mark sent only once init succeeded and we're about to queue the track call.
+  // Previously the lock was set before init/track, which could skip PageView on the
+  // landing page while still blocking retries (e.g. before fbq finished loading).
+  markPageViewSentForRoute(key);
 
   // Synthetic eventID per route so pushFbqTrack dedupe blocks any second PageView dispatch.
   pushFbqTrack(id, "PageView", undefined, { eventID: `pv:${key}` });

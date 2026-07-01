@@ -6,6 +6,7 @@ import {
   buildMetaPixelAdvancedMatching,
   loadStoredMetaPixelAdvancedMatching,
 } from "@/lib/meta-pixel-advanced-matching";
+import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { refreshMetaPixelInitWithUserData, trackMetaPageView } from "@/lib/meta-pixel-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
@@ -31,26 +32,42 @@ export function MetaPixelRuntime({ pixelId, advancedMatching }: Props) {
   useEffect(() => {
     if (!id) return;
 
-    const phone = advancedMatching?.phone?.trim() ?? "";
-    const customerName = advancedMatching?.customerName?.trim() ?? "";
-    const metaCookies = getMetaBrowserCookies();
-    const storedAm = loadStoredMetaPixelAdvancedMatching(id);
-    const am =
-      buildMetaPixelAdvancedMatching({
-        phone,
-        customerName,
-        fbp: metaCookies.fbp,
-        fbc: metaCookies.fbc,
-      }) ?? storedAm;
-    refreshMetaPixelInitWithUserData(id, am ?? undefined);
+    let cancelled = false;
 
-    const routeKey =
-      typeof window !== "undefined"
-        ? `${id}:${window.location.pathname}${window.location.search}`
-        : `${id}:${pathname}`;
-    if (lastPageViewRef.current === routeKey) return;
-    lastPageViewRef.current = routeKey;
-    trackMetaPageView(id);
+    void (async () => {
+      const phone = advancedMatching?.phone?.trim() ?? "";
+      const customerName = advancedMatching?.customerName?.trim() ?? "";
+      const metaCookies = getMetaBrowserCookies();
+      const storedAm = loadStoredMetaPixelAdvancedMatching(id);
+      const am =
+        buildMetaPixelAdvancedMatching({
+          phone,
+          customerName,
+          fbp: metaCookies.fbp,
+          fbc: metaCookies.fbc,
+        }) ?? storedAm;
+      refreshMetaPixelInitWithUserData(id, am ?? undefined);
+
+      // Legacy root-scoped Serwist can block pixel beacons on first paint.
+      await unregisterLegacyRootSerwist();
+      if (cancelled) return;
+
+      const routeKey =
+        typeof window !== "undefined"
+          ? `${id}:${window.location.pathname}${window.location.search}`
+          : `${id}:${pathname}`;
+      if (lastPageViewRef.current === routeKey) return;
+      lastPageViewRef.current = routeKey;
+      trackMetaPageView(id);
+
+      // One delayed retry if fbq/fbevents.js was still loading on first paint.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      if (!cancelled) trackMetaPageView(id);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     id,
     pathname,
