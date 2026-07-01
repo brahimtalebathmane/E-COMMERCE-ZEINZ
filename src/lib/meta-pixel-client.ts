@@ -206,7 +206,8 @@ function syncMetaPixelInit(
   markMetaPixelInited(id);
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData && window.fbq) {
-    window.fbq("set", "userData", userData, id);
+    // Meta accepts only fbq('set', 'userData', object) — no pixel_id 4th argument.
+    window.fbq("set", "userData", userData);
     if (initUserDataHasPii(userData)) {
       window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
       window.__metaPixelInitHadPii[id] = true;
