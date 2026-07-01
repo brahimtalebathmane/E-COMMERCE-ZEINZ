@@ -9,7 +9,7 @@ import {
   isMetaLeadDispatched,
   readMetaPendingLead,
   resolveMetaLeadPayload,
-  type MetaLeadCapiResult,
+  type MetaPendingLeadPayload,
 } from "@/lib/meta-lead-client";
 import { resolveOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
@@ -21,9 +21,7 @@ type Props = {
   onComplete?: () => void;
 };
 
-async function fireBrowserLead(
-  payload: NonNullable<Awaited<ReturnType<typeof resolveMetaLeadPayload>>["payload"]>,
-): Promise<void> {
+async function fireBrowserLead(payload: MetaPendingLeadPayload): Promise<void> {
   await trackLead({
     value: payload.value,
     currency: payload.currency,
@@ -39,9 +37,8 @@ async function fireBrowserLead(
 }
 
 /**
- * Hybrid Lead: CAPI is sent at order create (POST /api/orders); browser Pixel fires here
- * on order-success with the same `event_id` (`lead_{orderId}`) for Meta deduplication.
- * Success-page CAPI is a retry when order-create dispatch did not ingest.
+ * Hybrid Lead on order-success: browser Pixel and CAPI fire in the same tick via
+ * Promise.all with the shared `event_id` (`lead_{orderId}`) for Meta deduplication.
  */
 export function OrderSuccessMetaLead({
   orderId,
@@ -84,26 +81,32 @@ export function OrderSuccessMetaLead({
           return;
         }
 
-        let capiResult: MetaLeadCapiResult = metaLeadSent
-          ? { state: "skipped", reason: "already_sent" }
-          : { state: "error", reason: "not_started" };
-
         if (metaLeadSent) {
           await fireBrowserLead(leadPayload);
-        } else {
-          const [capiAttempt] = await Promise.all([
-            dispatchMetaLeadCapiWithRetry({
-              orderId: leadPayload.orderId,
-              completionToken: session?.completionToken,
-              actionToken: session?.actionToken,
-            }),
-            fireBrowserLead(leadPayload),
-          ]);
-          capiResult = capiAttempt;
+          finalizeMetaLeadDispatch(id);
+          onComplete?.();
+          return;
         }
+
+        const eventTimeSec = Math.floor(Date.now() / 1000);
+
+        const [capiResult] = await Promise.all([
+          dispatchMetaLeadCapiWithRetry({
+            orderId: leadPayload.orderId,
+            completionToken: session?.completionToken,
+            actionToken: session?.actionToken,
+            eventTimeSec,
+          }),
+          fireBrowserLead(leadPayload),
+        ]);
 
         if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
+          console.info("[Meta] Lead hybrid dispatched (Pixel + CAPI, same tick)", {
+            orderId: leadPayload.orderId,
+            eventId: leadPayload.eventId,
+            capi: capiResult.state,
+          });
         } else {
           console.error(
             "[Meta] Lead Pixel fired but CAPI did not ingest — check Netlify env (META_CAPI_ACCESS_TOKEN, META_CAPI_TEST_EVENT_CODE)",
@@ -116,14 +119,6 @@ export function OrderSuccessMetaLead({
         }
 
         onComplete?.();
-
-        if (isMetaLeadCapiComplete(capiResult)) {
-          console.info("[Meta] Lead hybrid complete (Pixel + CAPI)", {
-            orderId: leadPayload.orderId,
-            eventId: leadPayload.eventId,
-            capi: capiResult.state,
-          });
-        }
       } catch (error) {
         console.error("[Meta] Lead dispatch failed on order-success", error);
         onComplete?.();

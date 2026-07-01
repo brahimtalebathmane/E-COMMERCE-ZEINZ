@@ -12,6 +12,7 @@ const bodySchema = z.object({
   order_id: z.string().uuid(),
   completion_token: z.string().uuid().optional(),
   action_token: z.string().min(1).optional(),
+  event_time: z.number().int().positive().optional(),
 });
 
 /**
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const result = await dispatchMetaEvent(supabase, orderId, "lead", {
       requestHeaders: request.headers,
+      eventTimeSec: parsed.data.event_time,
     });
     const lead = mapLeadDispatchToApiPayload(result);
     console.warn("[POST /api/orders/meta/lead] Meta Lead CAPI", {

@@ -198,6 +198,7 @@ export async function dispatchMetaLeadCapi(params: {
   orderId: string;
   completionToken?: string | null;
   actionToken?: string | null;
+  eventTimeSec?: number;
 }): Promise<MetaLeadCapiResult> {
   try {
     const res = await fetch("/api/orders/meta/lead", {
@@ -208,6 +209,7 @@ export async function dispatchMetaLeadCapi(params: {
         order_id: params.orderId,
         completion_token: params.completionToken ?? undefined,
         action_token: params.actionToken ?? undefined,
+        event_time: params.eventTimeSec,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -230,6 +232,7 @@ export async function dispatchMetaLeadCapiWithRetry(
     orderId: string;
     completionToken?: string | null;
     actionToken?: string | null;
+    eventTimeSec?: number;
   },
   options: { maxAttempts?: number } = {},
 ): Promise<MetaLeadCapiResult> {

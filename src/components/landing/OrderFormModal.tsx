@@ -136,7 +136,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
             total_price: number;
             completion_token?: string;
             action_token?: string;
-            meta_lead_capi?: { state: string; reason?: string };
           }
         | { error?: string };
       if (!res.ok) {
@@ -156,14 +155,7 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         });
       }
 
-      if (json.meta_lead_capi?.state !== "sent") {
-        console.warn("[Meta] Lead CAPI at order create did not ingest", {
-          orderId: json.order_id,
-          capi: json.meta_lead_capi,
-        });
-      }
-
-      // Queue Lead for order-success — browser Pixel fires alongside server CAPI (same event_id).
+      // Queue Lead for order-success — Pixel + CAPI fire in parallel on that page (same event_id).
       queueMetaPendingLead({
         value: leadValue,
         currency: "MRU",

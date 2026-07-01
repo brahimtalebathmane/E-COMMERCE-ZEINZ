@@ -42,6 +42,8 @@ type SendMetaEventParams = {
   requestHeaders?: Headers | null;
   userData?: MetaUserDataInput;
   customData?: MetaCustomData;
+  /** Unix seconds — align CAPI `event_time` with a paired browser Pixel fire. */
+  eventTimeSec?: number;
 };
 
 function normalizeEnv(value: string | undefined): string {
@@ -318,7 +320,14 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
     dataRowBase.event_source_url = resolvedSourceUrl;
   }
 
-  let lockedEventTimeSec: number | undefined;
+  const clientEventTimeSec =
+    typeof params.eventTimeSec === "number" &&
+    Number.isFinite(params.eventTimeSec) &&
+    params.eventTimeSec > 0
+      ? Math.floor(params.eventTimeSec)
+      : undefined;
+
+  let lockedEventTimeSec: number | undefined = clientEventTimeSec;
   const maxAttempts = 3;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
