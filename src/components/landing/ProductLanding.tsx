@@ -11,12 +11,13 @@ import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trackInitiateCheckout } from "@/components/MetaPixel";
-import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import { dispatchInitiateCheckoutCapiWithRetry } from "@/lib/meta-initiate-checkout-client";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
+import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { useInViewOnce } from "@/hooks/useInViewOnce";
 
 const OrderFormModal = dynamic(
@@ -29,8 +30,6 @@ const OrderFormModal = dynamic(
 
 type Props = {
   product: ProductRow;
-  /** Server-resolved pixel ID (includes META_PIXEL_ID fallback). Prefer over client-only env. */
-  resolvedMetaPixelId?: string | null;
 };
 
 /** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
@@ -342,7 +341,7 @@ function GuaranteeStrip({ locale }: { locale: "ar" | "fr" }) {
   );
 }
 
-export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
+export function ProductLanding({ product }: Props) {
   const { locale, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
@@ -407,21 +406,29 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
     };
   }, []);
 
-  const metaPixelId =
-    resolvedMetaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
-
   const openCheckout = () => {
     try {
       touchMetaFunnelActivity();
+      const eventId = ensureMetaFunnelSession();
+      const eventTimeSec = Math.floor(Date.now() / 1000);
       const leadValue =
         product.discount_price != null
           ? Number(product.discount_price)
           : Number(product.price);
-      trackInitiateCheckout(ensureMetaFunnelSession(), metaPixelId, {
+      trackInitiateCheckout(eventId, {
         productId: product.id,
         productName: copy.name,
         value: leadValue,
         currency: "MRU",
+      });
+      const metaCookies = getMetaBrowserCookies();
+      void dispatchInitiateCheckoutCapiWithRetry({
+        productId: product.id,
+        eventId,
+        eventTimeSec,
+        eventSourceUrl: typeof window !== "undefined" ? window.location.href : null,
+        metaFbp: metaCookies.fbp,
+        metaFbc: metaCookies.fbc,
       });
     } catch {
       // ignore
@@ -768,7 +775,6 @@ export function ProductLanding({ product, resolvedMetaPixelId }: Props) {
 
       <OrderFormModal
         product={product}
-        metaPixelId={metaPixelId}
         open={open}
         onClose={() => setOpen(false)}
       />

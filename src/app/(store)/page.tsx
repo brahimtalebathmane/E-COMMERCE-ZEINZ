@@ -6,7 +6,6 @@ import {
 } from "@/lib/supabase/public";
 import { CatalogPageClient } from "@/components/store/CatalogPageClient";
 import type { CatalogProduct } from "@/components/store/CatalogProductCard";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 
 export const revalidate = 60;
 
@@ -34,8 +33,9 @@ export default async function HomePage() {
   if (!isSupabaseConfigured()) {
     return (
       <>
-        <MetaPixelLandingScript pixelId={resolveServerMetaPixelId(null)} />
-        <MetaPixelRuntime pixelId={resolveServerMetaPixelId(null)} />
+        {/* Catalog listing — generic PageView only; no per-card ViewContent (user navigates to /{slug}). */}
+        <MetaPixelLandingScript />
+        <MetaPixelRuntime />
         <CatalogPageClient products={[]} configured={false} />
       </>
     );
@@ -55,12 +55,10 @@ export default async function HomePage() {
     normalizeCatalogRow(row as Record<string, unknown>),
   );
 
-  const siteWidePixelId = resolveServerMetaPixelId(null);
-
   return (
     <>
-      <MetaPixelLandingScript pixelId={siteWidePixelId} />
-      <MetaPixelRuntime pixelId={siteWidePixelId} />
+      <MetaPixelLandingScript />
+      <MetaPixelRuntime />
       <CatalogPageClient products={products} configured />
     </>
   );

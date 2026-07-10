@@ -1,6 +1,6 @@
 # E-COMMERCE-ZAINE
 
-Single-product landing pages with Supabase-backed checkout, private file uploads, Meta Pixel per product, and a password-protected admin area.
+Single-product landing pages with Supabase-backed checkout, private file uploads, unified Meta Pixel + CAPI, and a password-protected admin area.
 
 ## Stack
 

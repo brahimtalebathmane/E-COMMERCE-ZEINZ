@@ -216,7 +216,6 @@ export function ProductForm({ mode, initial }: Props) {
         }))
       : [],
   );
-  const [metaPixel, setMetaPixel] = useState(initial?.meta_pixel_id ?? "");
   const [slugInput, setSlugInput] = useState(initial?.slug ?? "");
 
   const siteBase = getPublicSiteUrlClient();
@@ -389,7 +388,6 @@ export function ProductForm({ mode, initial }: Props) {
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean),
-      meta_pixel_id: metaPixel.trim() || null,
       slug: slugInput.trim(),
       old_slugs: [],
       sticky_footer_offer_ends_at: parseStickyEndsAtLocal(stickyFooterEndsAt),
@@ -1235,14 +1233,17 @@ export function ProductForm({ mode, initial }: Props) {
             <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionIntegrationsHint}</p>
           </div>
           <div>
-            <label className="text-sm font-medium">{a.productForm.metaPixel}</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-              value={metaPixel}
-              onChange={(e) => setMetaPixel(e.target.value)}
-              placeholder={a.productForm.metaPlaceholder}
-              dir="ltr"
-            />
+            <p className="text-sm font-medium text-[var(--muted)]">
+              {a.productForm.metaPixel}{" "}
+              <span className="text-xs">(Legacy — not used; unified site pixel from env)</span>
+            </p>
+            {initial?.meta_pixel_id ? (
+              <p className="mt-1 font-mono text-xs text-[var(--muted)]" dir="ltr">
+                {initial.meta_pixel_id}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-[var(--muted)]">—</p>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium">{a.productForm.whatsappTemplate}</label>

@@ -2,7 +2,7 @@ import { MetaPixelRuntime } from "@/components/MetaPixelRuntime";
 import { MetaPixelLandingScript } from "@/components/MetaPixelLandingScript";
 import { HeroMediaPreload } from "@/components/landing/HeroMediaPreload";
 import { ProductLanding } from "@/components/landing/ProductLanding";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
 import {
   getAllProductSlugs,
   getProductByOldSlug,
@@ -40,14 +40,17 @@ export default async function ProductPage({ params }: PageProps) {
     notFound();
   }
 
-  const productPixelId = resolveServerMetaPixelId(found.meta_pixel_id);
+  const productContent = {
+    productId: found.id,
+    productName: resolveMetaProductDisplayName(found),
+  };
 
   return (
     <>
-      <MetaPixelLandingScript pixelId={productPixelId} />
+      <MetaPixelLandingScript productContent={productContent} />
       <HeroMediaPreload mediaType={found.media_type} mediaUrl={found.media_url} />
-      <MetaPixelRuntime pixelId={productPixelId} />
-      <ProductLanding product={found} resolvedMetaPixelId={productPixelId} />
+      <MetaPixelRuntime productContent={productContent} />
+      <ProductLanding product={found} />
     </>
   );
 }

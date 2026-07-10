@@ -120,7 +120,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_pixel_id, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
+      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -150,20 +150,17 @@ export async function dispatchMetaEvent(
     eventType === "lead"
       ? resolveLeadEventIdForOrder(order)
       : transactionalEventId(orderId, eventType);
-  let pixelId = resolveServerMetaPixelId(order.meta_pixel_id as string | null) || "";
+  const pixelId = resolveServerMetaPixelId() || "";
   let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
 
   if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("meta_pixel_id, name_ar, name_fr, default_language")
+      .select("name_ar, name_fr, default_language")
       .eq("id", order.product_id as string)
       .maybeSingle();
 
     if (product) {
-      if (!pixelId) {
-        pixelId = resolveServerMetaPixelId(product.meta_pixel_id as string | null) || "";
-      }
       productCustomData = buildMetaProductCustomData({
         productId: order.product_id as string,
         productName: resolveMetaProductDisplayName({
@@ -189,12 +186,9 @@ export async function dispatchMetaEvent(
     tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
   });
 
-  if (!(order.meta_pixel_id as string | null)?.trim() && pixelId) {
-    await supabase.from("orders").update({ meta_pixel_id: pixelId }).eq("id", order.id);
-  }
   if (!pixelId) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);
-    console.warn("[meta] CAPI skipped: no pixel id on order/product", {
+    console.warn("[meta] CAPI skipped: META_PIXEL_ID not set", {
       orderId,
       eventType,
     });

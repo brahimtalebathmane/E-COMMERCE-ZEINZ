@@ -45,7 +45,7 @@ export async function loadOrderSuccessContext(
 
   const total = Number(order.total_price);
   return {
-    metaPixelId: resolveServerMetaPixelId(order.meta_pixel_id as string | null),
+    metaPixelId: resolveServerMetaPixelId(),
     productId: (order.product_id as string | null) ?? null,
     productName,
     totalPrice: Number.isFinite(total) ? total : null,

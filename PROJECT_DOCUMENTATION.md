@@ -520,7 +520,9 @@ A full picture of what happens when a customer clicks the CTA:
 
 1. **CTA → `openCheckout()`** (`ProductLanding.tsx`)
    - Touches the Meta funnel activity timestamp (`touchMetaFunnelActivity()`).
-   - Calls `trackInitiateCheckout(ensureMetaFunnelSession())` so the browser Pixel fires an `InitiateCheckout` with the same `eventID` that will be reused on Lead and Purchase (server-side deduplication).
+   - Captures `eventId = ensureMetaFunnelSession()` and `eventTimeSec`.
+   - Fires browser `InitiateCheckout` with product `content_ids` (Supabase `products.id` UUID).
+   - Fires server `InitiateCheckout` CAPI via `POST /api/meta/initiate-checkout` with the **same** `event_id` and `event_time` (deduped via `funnel_meta_dispatches`).
    - Sets `open = true` to mount `<OrderFormModal>`.
 2. **Order form** (`OrderFormModal.tsx`)
    - Two fields: full name + 8-digit local phone (the `+222` prefix is enforced visually with a non-input span; only digits 2/3/4 are accepted as first digit).
@@ -536,27 +538,20 @@ A full picture of what happens when a customer clicks the CTA:
        "meta_fbc": "<_fbc cookie>"
      }
      ```
-   - On success, builds Meta Advanced Matching from the phone + name, stores it under `sessionStorage["meta_pixel_am:<pixelId>"]` and re-runs `fbq("set", "userData", …)` so future events on this page have advanced matching.
-   - Fires browser `Lead` via `trackLead({ value, currency: "MRU", eventId })` (server-side `Lead` is fired in parallel by the API; deduplicated by `event_id`).
+   - On success, queues Lead payload in `sessionStorage` for the order-success page (does **not** fire Lead here).
    - Clears the funnel session id (next visit is a fresh attribution).
    - Pushes the user to `/order-success?order_id=&product_id=&total_price=`.
 3. **`POST /api/orders`** (`src/app/api/orders/route.ts`)
-   - Validates required fields.
-   - Reads the product (only `id`, `discount_price`, `price`, `meta_pixel_id`) via the service role.
+   - Validates required fields and rate-limits by IP.
+   - Reads the product (`id`, `discount_price`, `price`, …) via the service role.
    - Computes `total_price = discount_price ?? price`.
-   - Decides on the Meta event id: keep the client-provided one if any, else `createMetaEventId()` (`Date.now()_uuid`).
-   - Decides on the pixel id: product’s `meta_pixel_id` → env `META_PIXEL_ID` → env `NEXT_PUBLIC_META_PIXEL_ID`.
-   - Inserts a new order with `status='pending'`, `currency='MRU'`, and snapshots of `meta_event_id`, `meta_event_source_url`, `meta_pixel_id`, `meta_fbp`, `meta_fbc`.
-   - Logs `order_created` to `order_communication_logs`.
-   - Fires server-side `Lead` via `sendMetaEvent(...)` (CAPI). If accepted, flips `meta_lead_sent = true` (with the `eq('meta_lead_sent', false)` guard so two concurrent calls can never both set the flag).
-   - Returns `{ success: true, order_id, total_price }`.
-4. **`/order-success`** mounts `OrderSuccessClient`.
-   - If `localStorage["whatsapp_handled:{orderId}"]` is `"1"`, do nothing (already handled).
-   - Otherwise `POST /api/whatsapp/send` with `{ order_id }`, up to 5 attempts with backoff. The route returns one of:
-     - `{ handled: true, sent: true }` — success.
-     - `{ handled: true, sent: false, skipReason: ... }` — terminal but skipped (missing phone, no template, service unconfigured, etc.).
-     - `{ handled: false, sent: false, retryable: true, error: ... }` — transient (503/502/504/network error) → retried.
-     - `{ handled: false, sent: false, retryable: false, error: ... }` → marked handled.
+   - Keeps the client-provided `meta_event_id` or generates `createMetaEventId()`.
+   - Inserts a new order with `status='pending'`, `currency='MRU'`, and snapshots of `meta_event_id`, `meta_event_source_url`, shopper session (`meta_fbp`, `meta_fbc`, IP, UA). **`meta_pixel_id` on the order row is a legacy snapshot only** — routing uses unified env `META_PIXEL_ID`.
+   - Does **not** fire Meta CAPI Lead (Lead is hybrid on `/order-success`).
+   - Returns `{ success: true, order_id, meta_event_id, total_price, completion_token, action_token }`.
+4. **`/order-success`** — hybrid Meta Lead + WhatsApp (`OrderSuccessEffects.tsx`)
+   - **`OrderSuccessMetaLead`**: browser `Lead` Pixel first, then CAPI Lead via `POST /api/orders/meta/lead` with shared funnel `event_id` + aligned `event_time`.
+   - **`OrderSuccessClient`**: WhatsApp post-order message (same retry semantics as before).
 5. **`POST /api/whatsapp/send`** (`src/app/api/whatsapp/send/route.ts`)
    - Pulls the order’s `phone` and `product_id`. Logs `whatsapp_triggered`.
    - If `phone` or `product_id` is missing → `whatsapp_skipped`.
@@ -729,60 +724,70 @@ Common patterns inside route handlers:
 
 ## 12. Meta Pixel + Meta Conversions API (CAPI)
 
-The project ships hybrid tracking for Lead (browser Pixel + CAPI with deduplication) and server-only CAPI for Purchase and CancelledLead. Monetary values for Lead and Purchase are converted from MRU to USD via `toMetaPixelPurchaseMoney` (rate from `NEXT_PUBLIC_META_MRU_USD_RATE` or default `0.026`).
+The project uses a **single unified Meta Pixel** for the entire storefront (catalog + all product landings). Per-product separation for Ads Manager is done via **`content_ids`** (Supabase `products.id` UUID) on ViewContent, InitiateCheckout, Lead, Purchase, and CancelledLead — not via separate pixel IDs.
+
+**Env vars (strict, no cross-fallback):**
+- Browser Pixel: `NEXT_PUBLIC_META_PIXEL_ID` only (`resolvePublicMetaPixelId()`).
+- Server CAPI: `META_PIXEL_ID` only (`resolveServerMetaPixelId()`).
+- When **both** are set they **must match** — `GET /api/meta/health` returns `ok: false` with an explicit error on mismatch.
+
+Legacy DB columns `products.meta_pixel_id` and `orders.meta_pixel_id` are retained for historical records but **not used for event routing**.
+
+Monetary values for InitiateCheckout, Lead, and Purchase are converted from MRU to USD via `toMetaPixelPurchaseMoney` (rate from `NEXT_PUBLIC_META_MRU_USD_RATE` or default `0.026`).
+
+Product content fields (`content_type`, `content_ids`, `content_name`, `contents`) are built centrally by `resolveMetaContentData()` in `src/lib/meta-product-custom-data.ts`.
 
 ### 12.1 Pixel bootstrap and runtime
 
 - **Bootstrap:** `META_PIXEL_BOOTSTRAP_JS` in `src/app/layout.tsx` loads the `fbq` queue stub inline (non-blocking).
-- **PageView:** `MetaPixelRuntime` owns exactly one `PageView` per route via `trackMetaPageView` (`src/lib/meta-pixel-client.ts`). Uses `autoConfig: false` on init so Meta does not auto-fire PageView.
-- **Advanced matching:** `MetaPixel` refreshes `userData` via `fbq('set', 'userData', …)` without re-init. PII from a prior order is stored in `sessionStorage["meta_pixel_am:<pixelId>"]`.
-- **Init-once:** Each pixel ID is initialized once per page session; `trackSingle` targets a specific pixel to avoid duplicate events.
+- **Catalog `/`:** generic `PageView` only (listing page — no product `content_ids`).
+- **Product landing `/{slug}`:** pre-hydration script fires `PageView` + **`ViewContent`** with product `content_ids`; `MetaPixelRuntime` dedupes the same after hydration.
+- **Advanced matching:** merged on pixel init / before Lead; PII stored in `sessionStorage["meta_pixel_am:<pixelId>"]`.
+- **Init-once:** unified pixel ID initialized once per page session; `trackSingle` targets that pixel.
 
 ### 12.2 Event helpers (`src/components/MetaPixel.tsx`)
 
-- `trackInitiateCheckout(eventId, pixelId, product)` — fires on CTA click with product catalog `custom_data`.
-- `trackLead({ value, currency, eventId, orderId, … })` — converts MRU → USD for Pixel, syncs advanced matching (phone, name, hashed `external_id`), fires Lead with shared `eventID`.
+- `trackInitiateCheckout(eventId, product)` — browser CTA; paired CAPI via `POST /api/meta/initiate-checkout`.
+- `trackLead({ … })` — browser Lead on `/order-success` only; paired CAPI via `POST /api/orders/meta/lead`.
 - **No browser Purchase** — Purchase is CAPI-only when admin confirms the order (COD model).
+- **No AddToCart** — single-product COD checkout; InitiateCheckout is the correct checkout-intent event.
 
 ### 12.3 Funnel session id (`src/lib/meta-client.ts`)
 
-- `meta_event_id_session` in `localStorage` is the canonical `eventID` for **both** InitiateCheckout and Lead in the current funnel.
-- `ensureMetaFunnelSession()` returns (or creates) this id; `ProductLanding` uses it for InitiateCheckout; `OrderFormModal` reuses it at Lead submit.
-- `meta_event_last_activity_ms` extends a 60-minute sliding TTL on scroll, visibility, and form interaction.
-- `clearMetaSessionEventId()` runs after successful Lead so the next visit starts a fresh funnel.
+- `meta_event_id_session` in `localStorage` is the canonical `eventID` for **InitiateCheckout and Lead**.
+- `ensureMetaFunnelSession()` returns (or creates) this id; reused through checkout until cleared after order submit.
+- `meta_event_last_activity_ms` extends a 60-minute sliding TTL.
+- `clearMetaSessionEventId()` runs after successful order form submit.
 
 ### 12.4 Server CAPI sender (`src/utils/meta.ts`)
 
-- `sendMetaEvent({ pixelId, eventName, eventId, eventSourceUrl, userData, customData, requestHeaders })`:
+- `sendMetaEvent({ pixelId, eventName, eventId, eventSourceUrl, userData, customData, requestHeaders, eventTimeSec })`:
   - Requires `META_CAPI_ACCESS_TOKEN`; endpoint `https://graph.facebook.com/{META_CAPI_VERSION || "v22.0"}/{pixelId}/events`.
-  - Hashes `fn`/`ln`/`ph`/`country`/`external_id` with SHA-256 after shared normalization (`src/lib/meta-user-data.ts`, `src/lib/meta-capi-hash.ts`).
-  - Sends `fbp`/`fbc` verbatim; includes stored `client_ip_address` and `client_user_agent` from the order row only (never substituted from admin retry headers).
-  - `custom_data.value`/`currency` for Lead and Purchase come from the order total via `metaPurchaseMoneyFromOrderTotal` (MRU → USD).
-  - Resolves `event_source_url` from stored URL → request referer → env `NEXT_PUBLIC_SITE_URL` (never localhost).
-  - Retries up to 3 times on 5xx/429/network; locks `event_time` on first attempt; treats Meta dedup responses as success.
+  - Resolves `event_source_url` via `resolveEventSourceUrl({ stored: eventSourceUrl, headers })` — same pattern for Lead and InitiateCheckout CAPI.
+  - Hashes PII per Meta spec; sends `fbp`/`fbc` verbatim; uses stored shopper IP/UA on order-backed events.
+  - Retries up to 3 times; locks `event_time` on first attempt; treats Meta dedup responses as success.
 
-### 12.5 Dispatcher and idempotency (`src/lib/meta/dispatch.ts`)
+### 12.5 Dispatchers and idempotency
 
-- `dispatchMetaEvent(supabase, orderId, eventType, context)` is the single CAPI path for `lead`, `purchase`, and `cancel`.
-- **Shopper session:** IP, UA, `fbp`, and `fbc` are read only from columns persisted at order creation. Legacy orders missing session data send CAPI without IP/UA rather than using an admin’s headers.
-- **Idempotency:** `order_meta_dispatches` claim ledger + optimistic `meta_*_sent` flag updates.
-- **Event ids:** Lead uses client `meta_event_id`; Purchase uses `purchase_{orderId}`; CancelledLead uses `cancelledlead_{orderId}`.
+- **Orders:** `dispatchMetaEvent(supabase, orderId, eventType, context)` for `lead`, `purchase`, `cancel` — ledger `order_meta_dispatches` + `meta_*_sent` flags.
+- **Pre-order funnel:** `dispatchInitiateCheckoutMetaEvent(...)` — ledger `funnel_meta_dispatches` keyed by `(event_id, 'initiate_checkout')`.
+- **Event ids:** InitiateCheckout + Lead share funnel `meta_event_id`; Purchase uses `purchase_{orderId}`; CancelledLead uses `cancelledlead_{orderId}`.
 
-### 12.6 Browser Lead when CAPI fails
+### 12.6 Browser + CAPI hybrid events
 
-- After order submit, the browser **always** fires Lead with the shared `event_id`.
-- When CAPI succeeds, Meta dedupes browser + server on `(event_name, event_id)`.
-- When CAPI fails transiently, the Pixel still captures signal; admin can retry via `POST /api/meta/lead` without losing all conversion data.
+- **InitiateCheckout:** browser on CTA, CAPI immediately after (same `event_id`, `event_time` captured before browser fire).
+- **Lead:** browser on `/order-success` first, then CAPI (same funnel `event_id`). Admin retry: `POST /api/meta/lead`.
 
 ### 12.7 Event matrix
 
-| Event | Browser Pixel fires when | CAPI fires when | Dedup / id key |
-|---|---|---|---|
-| `PageView` | Each store route load (`MetaPixelRuntime`) | — | Per-route in-memory dedupe |
-| `InitiateCheckout` | CTA click in `ProductLanding` | — (browser only today) | `eventID = funnel session id` |
-| `Lead` | Order modal submit success (always) | `POST /api/orders`; retry via `POST /api/meta/lead` | Same funnel `event_id` + `meta_lead_sent` |
-| `Purchase` | — (server only) | Admin status → `confirmed` or `POST /api/meta/purchase` | `purchase_{orderId}` + `meta_purchase_sent` |
-| `CancelledLead` | — | Admin status → `cancelled` or `POST /api/meta/cancel` | `cancelledlead_{orderId}` + `meta_cancel_sent` |
+| Event | Browser Pixel fires when | CAPI fires when | Dedup / id key | `content_ids` |
+|---|---|---|---|---|
+| `PageView` | Catalog + product route load | — | Per-route dedupe | — |
+| `ViewContent` | Product landing `/{slug}` | — | Per-route dedupe | ✅ `products.id` |
+| `InitiateCheckout` | CTA click | `POST /api/meta/initiate-checkout` | Funnel `event_id` + `funnel_meta_dispatches` | ✅ |
+| `Lead` | `/order-success` | `POST /api/orders/meta/lead` | Funnel `event_id` + `meta_lead_sent` | ✅ |
+| `Purchase` | — | Admin `confirmed` or `POST /api/meta/purchase` | `purchase_{orderId}` + `meta_purchase_sent` | ✅ |
+| `CancelledLead` | — | Admin `cancelled` or `POST /api/meta/cancel` | `cancelledlead_{orderId}` + `meta_cancel_sent` | ✅ |
 
 ---
 
@@ -859,7 +864,7 @@ The implication: the landing pages can be **fully public** (no auth required) an
 - `generateStaticParams` builds all known product slugs at build time, so cold cache hits still get a fast first byte.
 - Server actions (`createProductAction`, `updateProductAction`, `deleteProductAction`) call `revalidatePath('/')`, `revalidatePath(`/${slug}`)`, and `revalidatePath('/admin/products')` so changes appear immediately after save (no waiting for the 60-second window).
 - Admin pages are marked `export const dynamic = "force-dynamic"` so they always reflect live data.
-- The `/order-success` page is server-rendered per request (it needs the product’s pixel id) and the WhatsApp send is fired in `useEffect` on the client.
+- The `/order-success` page is server-rendered per request; hybrid Meta Lead runs client-side in `OrderSuccessEffects`.
 
 ---
 
@@ -873,7 +878,8 @@ The implication: the landing pages can be **fully public** (no auth required) an
 | `NEXT_PUBLIC_SITE_URL` | Server + Pixel CAPI fallback | Canonical production URL used by `resolveEventSourceUrl` when no referer is available. |
 | `META_CAPI_ACCESS_TOKEN` | Server | Required for any CAPI event to be sent. Without it `sendMetaEvent` returns `{ ok:false, reason:"missing_access_token" }`. |
 | `META_CAPI_VERSION` | Server | Optional; defaults to `v22.0`. |
-| `META_PIXEL_ID` / `NEXT_PUBLIC_META_PIXEL_ID` | Server (and Pixel) | Fallback pixel id when a product has no `meta_pixel_id`. The non-public variant is preferred server-side. |
+| `META_PIXEL_ID` | Server CAPI only | **Required** for CAPI. Must match `NEXT_PUBLIC_META_PIXEL_ID` when both are set. No per-product fallback. |
+| `NEXT_PUBLIC_META_PIXEL_ID` | Browser Pixel | **Required** for browser events. Baked in at build time on Netlify. |
 | `NEXT_PUBLIC_META_MRU_USD_RATE` | Browser | Multiplier MRU → USD for Meta Pixel only. Default `0.026`. |
 | `WHATSAPP_SERVICE_URL` | Next.js (Netlify) | HTTPS base URL of the WhatsApp service. Required on Netlify; can be omitted on a single-Railway deploy. |
 | `WHATSAPP_AUTH_DIR` | WhatsApp service | Path on disk for Baileys credentials. **Must** live under a persistent volume on Railway, e.g. `/var/data/baileys_auth`. |
@@ -893,7 +899,7 @@ Front (Netlify):
 
 1. Connect the repo. Netlify auto-detects `next build`. Do **not** set the publish directory manually — `@netlify/plugin-nextjs` controls it.
 2. Use a patched Next.js (the repo pins ≥ 15.2.6, see the CVE link in the README).
-3. Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `META_CAPI_ACCESS_TOKEN`, `WHATSAPP_SERVICE_URL`.
+3. Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `META_CAPI_ACCESS_TOKEN`, `NEXT_PUBLIC_META_PIXEL_ID`, `META_PIXEL_ID` (must match), `WHATSAPP_SERVICE_URL`.
 
 WhatsApp service (Railway):
 

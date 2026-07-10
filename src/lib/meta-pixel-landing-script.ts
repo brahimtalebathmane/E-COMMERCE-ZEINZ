@@ -1,37 +1,35 @@
-import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
+import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import type { MetaProductCustomData } from "@/lib/meta-product-custom-data";
 
 /** Must stay in sync with `meta-pixel-client.ts` route dedupe keys. Bump when dedupe logic changes. */
 export const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v3:";
+export const META_VIEWCONTENT_STORAGE_PREFIX = "meta_viewcontent_v1:";
 
-/**
- * Inline script for product landing pages — fires init + standard PageView before React hydrates.
- * Polls until fbq exists and the pixel is registered; never marks dedupe unless trackSingle is queued.
- */
-export function buildMetaPixelLandingPageViewScript(
-  pixelId: string | null | undefined,
-): string | null {
-  const id = normalizeMetaPixelId(pixelId);
-  if (!id) return null;
+export type MetaLandingProductContent = {
+  productId: string;
+  productName: string;
+};
 
-  const safeId = JSON.stringify(id);
-  const safePrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);
-
+/** Shared inline bootstrap helpers (catalog + product landings). */
+function landingScriptShell(idJson: string, prefixJson: string, fireBody: string): string {
   return `(function(){
-var id=${safeId};
+var id=${idJson};
 if(!id)return;
-var prefix=${safePrefix};
+var prefix=${prefixJson};
 function routeKey(){return id+":"+location.pathname+location.search;}
-function storageKey(){return prefix+routeKey();}
-function alreadySent(){
+function storageKey(suffix){return suffix+routeKey();}
+function alreadySent(suffix,mem){
   var rk=routeKey();
-  try{if(sessionStorage.getItem(storageKey())==="1")return true;}catch(e){}
-  return !!(window.__metaPixelPageViewSent&&window.__metaPixelPageViewSent[rk]);
+  var sk=storageKey(suffix);
+  try{if(sessionStorage.getItem(sk)==="1")return true;}catch(e){}
+  return !!(window[mem]&&window[mem][rk]);
 }
-function markSent(){
+function markSent(suffix,mem){
   var rk=routeKey();
-  try{sessionStorage.setItem(storageKey(),"1");}catch(e){}
-  window.__metaPixelPageViewSent=window.__metaPixelPageViewSent||{};
-  window.__metaPixelPageViewSent[rk]=true;
+  var sk=storageKey(suffix);
+  try{sessionStorage.setItem(sk,"1");}catch(e){}
+  window[mem]=window[mem]||{};
+  window[mem][rk]=true;
 }
 function ensureInit(){
   if(window.__metaPixelsInited&&window.__metaPixelsInited[id])return;
@@ -65,20 +63,114 @@ function initInFlight(){
   if(initPending())return true;
   return !!(window.__metaPixelsInited&&window.__metaPixelsInited[id]&&!pixelRegistered());
 }
-function firePageView(){
+function readyToTrack(){
   if(!window.fbq)return false;
-  if(alreadySent())return true;
   ensureInit();
   if(!pixelRegistered()&&!initInFlight())return false;
-  if(!pixelRegistered())return false;
-  window.fbq("trackSingle",id,"PageView");
-  markSent();
-  return true;
+  return pixelRegistered();
 }
-if(firePageView())return;
+${fireBody}
 var attempts=0;
 var timer=setInterval(function(){
-  if(firePageView()||++attempts>=120)clearInterval(timer);
+  if(fireEvents()||++attempts>=120)clearInterval(timer);
 },50);
 })();`;
+}
+
+/**
+ * Catalog listing — generic PageView only (no product content_ids).
+ */
+export function buildMetaPixelCatalogPageViewScript(
+  pixelId?: string | null,
+): string | null {
+  const id = normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId();
+  if (!id) return null;
+
+  const safeId = JSON.stringify(id);
+  const safePrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);
+
+  const fireBody = `
+var pvPrefix=${safePrefix};
+function fireEvents(){
+  if(!readyToTrack())return false;
+  if(alreadySent(pvPrefix,"__metaPixelPageViewSent"))return true;
+  window.fbq("trackSingle",id,"PageView");
+  markSent(pvPrefix,"__metaPixelPageViewSent");
+  return true;
+}
+if(fireEvents())return;
+`;
+
+  return landingScriptShell(safeId, safePrefix, fireBody);
+}
+
+/** @deprecated Use buildMetaPixelCatalogPageViewScript */
+export function buildMetaPixelLandingPageViewScript(
+  pixelId?: string | null,
+): string | null {
+  return buildMetaPixelCatalogPageViewScript(pixelId);
+}
+
+/**
+ * Product landing — PageView + ViewContent with product content_ids before React hydrates.
+ */
+export function buildMetaPixelProductLandingScript(
+  product: MetaLandingProductContent,
+  pixelId?: string | null,
+): string | null {
+  const id = normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId();
+  if (!id) return null;
+
+  const productId = product.productId.trim();
+  const productName = product.productName.trim() || "Product";
+  if (!productId) return buildMetaPixelCatalogPageViewScript(id);
+
+  const safeId = JSON.stringify(id);
+  const safePvPrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);
+  const safeVcPrefix = JSON.stringify(META_VIEWCONTENT_STORAGE_PREFIX);
+  const safeProductId = JSON.stringify(productId);
+  const safeProductName = JSON.stringify(productName);
+
+  const fireBody = `
+var pvPrefix=${safePvPrefix};
+var vcPrefix=${safeVcPrefix};
+var productId=${safeProductId};
+var productName=${safeProductName};
+function viewContentPayload(){
+  return {
+    content_type:"product",
+    content_ids:[productId],
+    content_name:productName,
+    contents:[{id:productId,quantity:1}]
+  };
+}
+function fireEvents(){
+  if(!readyToTrack())return false;
+  var done=true;
+  if(!alreadySent(pvPrefix,"__metaPixelPageViewSent")){
+    window.fbq("trackSingle",id,"PageView");
+    markSent(pvPrefix,"__metaPixelPageViewSent");
+  }
+  if(!alreadySent(vcPrefix,"__metaPixelViewContentSent")){
+    window.fbq("trackSingle",id,"ViewContent",viewContentPayload());
+    markSent(vcPrefix,"__metaPixelViewContentSent");
+  }
+  return alreadySent(pvPrefix,"__metaPixelPageViewSent")&&alreadySent(vcPrefix,"__metaPixelViewContentSent");
+}
+if(fireEvents())return;
+`;
+
+  return landingScriptShell(safeId, safePvPrefix, fireBody);
+}
+
+/** Browser ViewContent payload shape (matches resolveMetaContentData). */
+export function metaContentDataToPixelPayload(
+  data: MetaProductCustomData,
+): Record<string, unknown> {
+  return {
+    content_type: data.content_type,
+    content_ids: data.content_ids,
+    content_name: data.content_name,
+    contents: data.contents,
+  };
 }

@@ -20,7 +20,7 @@ import {
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { hashMetaExternalId } from "@/lib/meta-external-id-hash";
 import { tryMarkBrowserLeadSent } from "@/lib/meta-lead-client";
-import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 
 export type MetaPixelAdvancedMatchingProps = {
   phone?: string | null;
@@ -28,15 +28,14 @@ export type MetaPixelAdvancedMatchingProps = {
 };
 
 type Props = {
-  pixelId: string | null | undefined;
   advancedMatching?: MetaPixelAdvancedMatchingProps | null;
 };
 
-export function syncMetaPixelAdvancedMatching(
-  pixelId: string | null | undefined,
-  input: { phone: string; customerName: string },
-) {
-  const id = resolvePublicMetaPixelId(pixelId);
+export function syncMetaPixelAdvancedMatching(input: {
+  phone: string;
+  customerName: string;
+}) {
+  const id = resolvePublicMetaPixelId();
   if (!id || typeof window === "undefined") return;
   const metaCookies = getMetaBrowserCookies();
   const am = buildMetaPixelAdvancedMatching({
@@ -55,14 +54,10 @@ export function syncMetaPixelAdvancedMatching(
 
 /**
  * Advanced matching only. Prefer MetaPixelRuntime (combined init + PageView + AM).
- * Kept for pages that only need userData refresh without a separate PageView effect.
  */
-export function MetaPixel({ pixelId, advancedMatching }: Props) {
+export function MetaPixel({ advancedMatching }: Props) {
   const pathname = usePathname();
-  const resolvedPixelId = useMemo(
-    () => normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId(null),
-    [pixelId],
-  );
+  const resolvedPixelId = useMemo(() => resolvePublicMetaPixelId(), []);
 
   useEffect(() => {
     if (!resolvedPixelId) return;
@@ -99,7 +94,6 @@ export function MetaPixel({ pixelId, advancedMatching }: Props) {
 
 export function trackInitiateCheckout(
   eventId: string,
-  pixelId?: string | null,
   product?: {
     productId: string;
     productName: string;
@@ -128,7 +122,7 @@ export function trackInitiateCheckout(
     });
   }
 
-  void trackMetaEvent(pixelId, "InitiateCheckout", customData, { eventID: eventId });
+  void trackMetaEvent(undefined, "InitiateCheckout", customData, { eventID: eventId });
 }
 
 export async function trackLead(params: {
@@ -139,13 +133,12 @@ export async function trackLead(params: {
   productId: string;
   productName: string;
   quantity?: number;
-  pixelId?: string | null;
   phone?: string;
   customerName?: string;
 }): Promise<void> {
   if (!tryMarkBrowserLeadSent(params.orderId)) return;
 
-  const pid = resolvePublicMetaPixelId(params.pixelId);
+  const pid = resolvePublicMetaPixelId();
   if (!pid) return;
 
   let advancedMatching = null as ReturnType<typeof buildMetaPixelAdvancedMatching> | null;

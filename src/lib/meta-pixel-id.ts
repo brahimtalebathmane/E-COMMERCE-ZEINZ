@@ -33,7 +33,7 @@ const META_PIXEL_ROW_KEYS = [
 
 /**
  * Read a raw pixel ID string from a product row before normalization.
- * Checks common column/property names in priority order.
+ * LEGACY — retained for admin display / historical data only; not used for event routing.
  */
 export function extractMetaPixelIdFromRow(
   row: Record<string, unknown>,
@@ -47,27 +47,18 @@ export function extractMetaPixelIdFromRow(
   return null;
 }
 
-function envFallbackPixelId(scope: "public" | "server"): string | null {
-  const fromPublic = normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
-  const fromServer = normalizeMetaPixelId(process.env.META_PIXEL_ID);
-  if (scope === "public") {
-    return fromPublic ?? fromServer;
-  }
-  return fromPublic ?? fromServer;
+/**
+ * Unified Meta Pixel ID for the browser (client components).
+ * Source: NEXT_PUBLIC_META_PIXEL_ID only — no per-product or server-env fallback.
+ */
+export function resolvePublicMetaPixelId(): string | null {
+  return normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
 }
 
 /**
- * Resolve Meta Pixel ID for the browser (client components).
- * Product-level ID takes priority; falls back to NEXT_PUBLIC_META_PIXEL_ID.
+ * Unified Meta Pixel ID on the server (CAPI).
+ * Source: META_PIXEL_ID only — no per-product or public-env fallback.
  */
-export function resolvePublicMetaPixelId(productPixelId?: string | null): string | null {
-  return normalizeMetaPixelId(productPixelId) ?? envFallbackPixelId("public");
-}
-
-/**
- * Resolve Meta Pixel ID on the server (orders, CAPI).
- * Product/order ID takes priority; falls back to META_PIXEL_ID / NEXT_PUBLIC_META_PIXEL_ID.
- */
-export function resolveServerMetaPixelId(productPixelId?: string | null): string | null {
-  return normalizeMetaPixelId(productPixelId) ?? envFallbackPixelId("server");
+export function resolveServerMetaPixelId(): string | null {
+  return normalizeMetaPixelId(process.env.META_PIXEL_ID);
 }

@@ -1,0 +1,144 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { toMetaPixelPurchaseMoney } from "@/lib/currency";
+import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import {
+  buildMetaOrderValueCustomData,
+  resolveMetaProductDisplayName,
+} from "@/lib/meta-product-custom-data";
+import { sendMetaEvent, resolveClientIpAddress } from "@/utils/meta";
+
+export type InitiateCheckoutDispatchResult =
+  | { sent: true; skipped?: false }
+  | { sent: false; skipped: true; reason: string }
+  | { sent: false; skipped?: false; reason: string };
+
+const FUNNEL_EVENT_TYPE = "initiate_checkout" as const;
+
+async function claimFunnelMetaDispatch(
+  supabase: SupabaseClient,
+  eventId: string,
+  productId: string,
+): Promise<boolean> {
+  const { error } = await supabase.from("funnel_meta_dispatches").insert({
+    event_id: eventId,
+    event_type: FUNNEL_EVENT_TYPE,
+    product_id: productId,
+  });
+  if (!error) return true;
+  if (error.code === "23505") return false;
+  throw new Error(error.message);
+}
+
+async function releaseFunnelMetaDispatchClaim(
+  supabase: SupabaseClient,
+  eventId: string,
+): Promise<void> {
+  await supabase
+    .from("funnel_meta_dispatches")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("event_type", FUNNEL_EVENT_TYPE);
+}
+
+export type InitiateCheckoutDispatchInput = {
+  productId: string;
+  eventId: string;
+  eventSourceUrl?: string | null;
+  eventTimeSec?: number;
+  requestHeaders?: Headers;
+  metaFbp?: string | null;
+  metaFbc?: string | null;
+};
+
+/**
+ * Server CAPI InitiateCheckout — paired with browser Pixel via shared funnel `event_id`.
+ * Idempotency: `funnel_meta_dispatches` ledger keyed by (event_id, event_type).
+ */
+export async function dispatchInitiateCheckoutMetaEvent(
+  supabase: SupabaseClient,
+  input: InitiateCheckoutDispatchInput,
+): Promise<InitiateCheckoutDispatchResult> {
+  const eventId = input.eventId.trim();
+  const productId = input.productId.trim();
+  if (!eventId || !productId) {
+    return { sent: false, skipped: true, reason: "missing_meta_data" };
+  }
+
+  const claimed = await claimFunnelMetaDispatch(supabase, eventId, productId);
+  if (!claimed) {
+    return { sent: false, skipped: true, reason: "already_sent" };
+  }
+
+  const pixelId = resolveServerMetaPixelId() || "";
+  if (!pixelId) {
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    console.warn("[meta] InitiateCheckout CAPI skipped: META_PIXEL_ID not set", { eventId });
+    return { sent: false, skipped: true, reason: "missing_meta_data" };
+  }
+
+  const { data: product, error: productErr } = await supabase
+    .from("products")
+    .select("id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (productErr) throw new Error(productErr.message);
+  if (!product || product.deleted_at != null) {
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    return { sent: false, skipped: true, reason: "product_not_found" };
+  }
+
+  const totalMru =
+    product.discount_price != null
+      ? Number(product.discount_price)
+      : Number(product.price);
+  const { value, currency } = toMetaPixelPurchaseMoney(totalMru, "MRU");
+  const productName = resolveMetaProductDisplayName({
+    name_ar: product.name_ar as string | null,
+    name_fr: product.name_fr as string | null,
+    default_language: product.default_language as "ar" | "fr" | null,
+  });
+
+  const customData = buildMetaOrderValueCustomData({
+    value,
+    currency,
+    productId,
+    productName,
+  });
+
+  const headers = input.requestHeaders ?? new Headers();
+  const clientIp = resolveClientIpAddress(headers);
+  const clientUa = headers.get("user-agent")?.trim() || null;
+
+  try {
+    const capi = await sendMetaEvent({
+      pixelId,
+      eventName: "InitiateCheckout",
+      eventId,
+      eventSourceUrl: input.eventSourceUrl,
+      requestHeaders: headers,
+      eventTimeSec: input.eventTimeSec,
+      userData: {
+        fbp: input.metaFbp?.trim() || null,
+        fbc: input.metaFbc?.trim() || null,
+        clientIpAddress: clientIp,
+        clientUserAgent: clientUa,
+      },
+      customData,
+    });
+
+    if (!capi.ok) {
+      await releaseFunnelMetaDispatchClaim(supabase, eventId);
+      console.warn("[meta] InitiateCheckout CAPI dispatch failed", {
+        eventIdPrefix: eventId.slice(0, 12),
+        reason: capi.reason,
+      });
+      return { sent: false, reason: capi.reason ?? "capi_failed" };
+    }
+
+    return { sent: true };
+  } catch (e) {
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    throw e;
+  }
+}

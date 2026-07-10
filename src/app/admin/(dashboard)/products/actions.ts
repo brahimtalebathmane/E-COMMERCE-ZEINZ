@@ -87,6 +87,7 @@ export type ProductPayload = {
   stats_fr: string[];
   contact_lines_ar: string[];
   contact_lines_fr: string[];
+  /** LEGACY — not used for Meta event routing; preserved on create as null. */
   meta_pixel_id: string | null;
   /** URL path segment for the landing page (editable in admin). */
   slug: string;
@@ -478,7 +479,6 @@ export async function createProductAction(payload: ProductPayload) {
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
-    meta_pixel_id: normalizeMetaPixelId(payload.meta_pixel_id),
     sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
     sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
     sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,
@@ -596,7 +596,6 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,
     contact_lines_fr: payload.contact_lines_fr,
-    meta_pixel_id: normalizeMetaPixelId(payload.meta_pixel_id),
     sticky_footer_offer_ends_at: payload.sticky_footer_offer_ends_at,
     sticky_footer_timer_label_ar: payload.sticky_footer_timer_label_ar,
     sticky_footer_timer_label_fr: payload.sticky_footer_timer_label_fr,

@@ -61,7 +61,7 @@ async function buildLeadPayload(orderId: string): Promise<NextResponse> {
     orderId: order.id as string,
     productId: order.product_id as string,
     productName,
-    pixelId: resolveServerMetaPixelId(order.meta_pixel_id as string | null),
+    pixelId: resolveServerMetaPixelId(),
     phone: (order.phone as string | null) ?? undefined,
     customerName: (order.customer_name as string | null) ?? undefined,
   };

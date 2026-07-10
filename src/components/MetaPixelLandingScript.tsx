@@ -1,17 +1,25 @@
-import { buildMetaPixelLandingPageViewScript } from "@/lib/meta-pixel-landing-script";
+import {
+  buildMetaPixelCatalogPageViewScript,
+  buildMetaPixelProductLandingScript,
+  type MetaLandingProductContent,
+} from "@/lib/meta-pixel-landing-script";
 
 type Props = {
-  pixelId: string | null | undefined;
+  /** When set, fires PageView + ViewContent with product content_ids (product landing). */
+  productContent?: MetaLandingProductContent | null;
 };
 
-/** Server-rendered PageView bootstrap — runs before client hydration on landing pages. */
-export function MetaPixelLandingScript({ pixelId }: Props) {
-  const js = buildMetaPixelLandingPageViewScript(pixelId);
+/** Server-rendered Pixel bootstrap — runs before client hydration. */
+export function MetaPixelLandingScript({ productContent }: Props) {
+  const js = productContent
+    ? buildMetaPixelProductLandingScript(productContent)
+    : buildMetaPixelCatalogPageViewScript();
+
   if (!js) return null;
 
   return (
     <script
-      id="meta-pixel-landing-pageview"
+      id={productContent ? "meta-pixel-product-landing" : "meta-pixel-catalog-pageview"}
       suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: js }}
     />

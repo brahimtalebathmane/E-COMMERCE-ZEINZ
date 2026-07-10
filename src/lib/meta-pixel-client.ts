@@ -4,8 +4,11 @@ import {
 } from "@/lib/meta-pixel-advanced-matching";
 import {
   META_PAGEVIEW_STORAGE_PREFIX,
+  META_VIEWCONTENT_STORAGE_PREFIX,
+  metaContentDataToPixelPayload,
 } from "@/lib/meta-pixel-landing-script";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import type { MetaProductCustomData } from "@/lib/meta-product-custom-data";
 
 type FbqFn = {
   (...args: unknown[]): void;
@@ -27,6 +30,7 @@ declare global {
     /** Pixel IDs that received manual AM (ph/fn/ln) on fbq init — per pixel, site-wide. */
     __metaPixelInitHadPii?: Record<string, boolean>;
     __metaPixelPageViewSent?: Record<string, boolean>;
+    __metaPixelViewContentSent?: Record<string, boolean>;
     /** `${pixelId}:${eventName}:${eventID}` keys already dispatched, to guarantee once-per-action. */
     __metaSentEvents?: Record<string, boolean>;
   }
@@ -217,7 +221,7 @@ function queueMetaPixelInit(
  * first init is therefore merged on fbq.instance.pixelsByID[id].userData instead of a
  * re-init, so events are never duplicated.
  *
- * Each product landing uses its own meta_pixel_id from admin (keyed separately in sessionStorage).
+ * Unified site-wide pixel from NEXT_PUBLIC_META_PIXEL_ID — init once per page session.
  */
 function syncMetaPixelInit(
   pixelId: string,
@@ -276,6 +280,26 @@ function markPageViewSentForRoute(key: string): void {
   } catch {
     // ignore
   }
+}
+
+function markViewContentSentForRoute(key: string): void {
+  if (!window.__metaPixelViewContentSent) window.__metaPixelViewContentSent = {};
+  window.__metaPixelViewContentSent[key] = true;
+  try {
+    sessionStorage.setItem(`${META_VIEWCONTENT_STORAGE_PREFIX}${key}`, "1");
+  } catch {
+    // ignore
+  }
+}
+
+function isViewContentSentForRoute(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (sessionStorage.getItem(`${META_VIEWCONTENT_STORAGE_PREFIX}${key}`) === "1") return true;
+  } catch {
+    // ignore
+  }
+  return Boolean(window.__metaPixelViewContentSent?.[key]);
 }
 
 const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
@@ -405,7 +429,7 @@ async function dispatchMetaPageViewOnce(id: string, key: string): Promise<boolea
 
 /** Fire one PageView per route; safe to call multiple times (dedupes + retries). */
 export async function trackMetaPageView(pixelId?: string | null): Promise<void> {
-  const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
+  const id = normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId();
   if (!id || typeof window === "undefined") return;
 
   const key = pageViewDedupeKey(id);
@@ -429,13 +453,76 @@ export async function trackMetaPageView(pixelId?: string | null): Promise<void> 
   devLog("PageView retries exhausted", { pixelId: id, key });
 }
 
+function pushFbqViewContent(pixelId: string, payload: Record<string, unknown>): boolean {
+  if (!window.fbq) return false;
+  window.fbq("trackSingle", pixelId, "ViewContent", payload);
+  devLog("ViewContent trackSingle queued", { pixelId });
+  return true;
+}
+
+async function dispatchMetaViewContentOnce(
+  id: string,
+  key: string,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  ensureFbqQueue();
+  syncMetaPixelInit(id);
+  if (!window.fbq) return false;
+
+  const regCount = await waitForFbqPixelRegistration(id);
+  if (isViewContentSentForRoute(key)) return true;
+
+  if (regCount === 0 && isInitPendingInFbqQueue(id)) {
+    await sleep(200);
+  }
+
+  if (isViewContentSentForRoute(key)) return true;
+
+  const sent = pushFbqViewContent(id, payload);
+  if (!sent) return false;
+
+  markViewContentSentForRoute(key);
+  devLog("ViewContent queued", { pixelId: id, key, regCount });
+  return true;
+}
+
+/** Fire one ViewContent per product route; dedupes like PageView. */
+export async function trackMetaViewContent(
+  content: MetaProductCustomData,
+  pixelId?: string | null,
+): Promise<void> {
+  const id = normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId();
+  if (!id || typeof window === "undefined") return;
+
+  const key = pageViewDedupeKey(id);
+  if (isViewContentSentForRoute(key)) {
+    devLog("ViewContent skipped (already sent for route)", { pixelId: id, key });
+    return;
+  }
+
+  const payload = metaContentDataToPixelPayload(content);
+  const retryDelaysMs = [0, 150, 400, 900, 1800];
+  for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+    if (isViewContentSentForRoute(key)) return;
+    if (retryDelaysMs[attempt] > 0) {
+      await sleep(retryDelaysMs[attempt]);
+    }
+    if (isViewContentSentForRoute(key)) return;
+
+    const sent = await dispatchMetaViewContentOnce(id, key, payload);
+    if (sent) return;
+  }
+
+  devLog("ViewContent retries exhausted", { pixelId: id, key });
+}
+
 export function trackMetaEvent(
   pixelId: string | null | undefined,
   eventName: string,
   payload?: Record<string, unknown>,
   opts?: { eventID?: string; advancedMatching?: MetaPixelAdvancedMatchingPayload | null },
 ): void {
-  const id = pixelId ? resolvePublicMetaPixelId(pixelId) : resolvePublicMetaPixelId(null);
+  const id = normalizeMetaPixelId(pixelId) ?? resolvePublicMetaPixelId();
   if (!id || typeof window === "undefined") return;
 
   const ready = syncMetaPixelInit(id, opts?.advancedMatching);

@@ -8,11 +8,12 @@
 #   SUPABASE_SERVICE_ROLE_KEY   (server-only; required for /api/orders, uploads, etc.)
 #   ORDER_ACTION_SECRET         (min 16 chars; HMAC for post-checkout order actions — required for /api/orders)
 #   NEXT_PUBLIC_SITE_URL        (your live URL, e.g. https://yoursite.netlify.app)
-#   META_CAPI_ACCESS_TOKEN      (Business Manager system user token with access to ALL product pixels)
+#   META_CAPI_ACCESS_TOKEN      (Business Manager system user token for the unified pixel)
 #   META_CAPI_TEST_EVENT_CODE   (optional; e.g. TEST24694 — required for CAPI rows in Meta Test Events)
-#   META_PIXEL_ID               (optional server fallback when a product has no meta_pixel_id)
-#   NEXT_PUBLIC_META_PIXEL_ID   (optional browser fallback; also used server-side if META_PIXEL_ID unset)
-#   Per-product meta_pixel_id   (preferred — Admin → Product → Integrations, one pixel per landing page)
+#   NEXT_PUBLIC_META_PIXEL_ID   (browser Pixel — baked in at build time on Netlify)
+#   META_PIXEL_ID               (server CAPI — must match NEXT_PUBLIC_META_PIXEL_ID when both set)
+#   GET /api/meta/health        (validates env; errors if pixel IDs mismatch)
+#   products.meta_pixel_id      (LEGACY in DB — ignored for routing)
 #
 [build]
   command = "npm run build"

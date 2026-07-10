@@ -24,8 +24,11 @@ export function resolveMetaProductDisplayName(input: {
   return ar || fr || "Product";
 }
 
-/** Build Meta product catalog keys for `custom_data` / Pixel event payloads. */
-export function buildMetaProductCustomData(input: {
+/**
+ * Single source of truth for Meta product content fields (Pixel + CAPI).
+ * `content_ids[0]` is always the Supabase `products.id` UUID string.
+ */
+export function resolveMetaContentData(input: {
   productId: string;
   productName: string;
   quantity?: number;
@@ -45,6 +48,15 @@ export function buildMetaProductCustomData(input: {
   };
 }
 
+/** Build Meta product catalog keys for `custom_data` / Pixel event payloads. */
+export function buildMetaProductCustomData(input: {
+  productId: string;
+  productName: string;
+  quantity?: number;
+}): MetaProductCustomData | undefined {
+  return resolveMetaContentData(input);
+}
+
 /** Merge monetary fields with product catalog metadata for Lead / Purchase events. */
 export function buildMetaOrderValueCustomData(input: {
   value: number;
@@ -53,7 +65,7 @@ export function buildMetaOrderValueCustomData(input: {
   productName: string;
   quantity?: number;
 }): MetaProductCustomData & { value: number; currency: string } {
-  const product = buildMetaProductCustomData(input);
+  const product = resolveMetaContentData(input);
   if (!product) {
     return {
       value: input.value,

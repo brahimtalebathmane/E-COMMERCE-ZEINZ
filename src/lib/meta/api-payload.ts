@@ -1,4 +1,5 @@
 import type { MetaDispatchResult } from "@/lib/meta/dispatch";
+import type { InitiateCheckoutDispatchResult } from "@/lib/meta/initiate-checkout-dispatch";
 
 export type MetaLeadApiPayload =
   | { state: "sent" }
@@ -10,6 +11,34 @@ export function mapLeadDispatchToApiPayload(
   result: MetaDispatchResult | null,
   errorMessage?: string,
 ): MetaLeadApiPayload {
+  if (errorMessage) {
+    return { state: "error", reason: errorMessage };
+  }
+  if (!result) {
+    return { state: "error", reason: "dispatch_not_run" };
+  }
+  if (result.sent) {
+    return { state: "sent" };
+  }
+  if ("skipped" in result && result.skipped) {
+    return { state: "skipped", reason: result.reason };
+  }
+  return {
+    state: "failed",
+    reason: "reason" in result ? result.reason : "capi_failed",
+  };
+}
+
+export type MetaInitiateCheckoutApiPayload =
+  | { state: "sent" }
+  | { state: "skipped"; reason: string }
+  | { state: "failed"; reason: string }
+  | { state: "error"; reason: string };
+
+export function mapInitiateCheckoutDispatchToApiPayload(
+  result: InitiateCheckoutDispatchResult | null,
+  errorMessage?: string,
+): MetaInitiateCheckoutApiPayload {
   if (errorMessage) {
     return { state: "error", reason: errorMessage };
   }

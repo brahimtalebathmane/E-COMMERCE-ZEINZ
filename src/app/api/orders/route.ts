@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, discount_price, price, meta_pixel_id, test_status, name_ar, name_fr, deleted_at")
+      .select("id, discount_price, price, test_status, name_ar, name_fr, deleted_at")
       .eq("id", data.product_id)
       .maybeSingle();
 
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       data.meta_event_id && data.meta_event_id.length > 0
         ? data.meta_event_id
         : createMetaEventId();
-    const orderPixelId = resolveServerMetaPixelId(product.meta_pixel_id);
+    const orderPixelId = resolveServerMetaPixelId();
     const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
     const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
     const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
@@ -118,6 +118,7 @@ export async function POST(request: Request) {
         status: "pending",
         meta_event_id: orderEventId,
         meta_event_source_url: eventSourceUrl,
+        /** LEGACY snapshot — unified pixel from META_PIXEL_ID; not used for routing. */
         meta_pixel_id: orderPixelId,
         meta_fbp: metaFbp,
         meta_fbc: metaFbc,

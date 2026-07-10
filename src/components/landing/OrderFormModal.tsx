@@ -15,12 +15,10 @@ import { queueMetaPendingLead, resolveLeadEventId } from "@/lib/meta-lead-client
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
-import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { formatPrice } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
-  metaPixelId?: string | null;
   open: boolean;
   onClose: () => void;
 };
@@ -39,7 +37,7 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
   return null;
 }
 
-export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
+export function OrderFormModal({ product, open, onClose }: Props) {
   const { locale, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -105,8 +103,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
       // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
       const generatedMetaEventId = ensureMetaFunnelSession();
       const phoneE164 = `+222${local}`;
-      const pid =
-        metaPixelId ?? resolvePublicMetaPixelId(product.meta_pixel_id);
       const leadValue =
         product.discount_price != null
           ? Number(product.discount_price)
@@ -167,7 +163,6 @@ export function OrderFormModal({ product, metaPixelId, open, onClose }: Props) {
         orderId: json.order_id,
         productId: product.id,
         productName: copy.name,
-        pixelId: pid,
         phone: phoneE164,
         customerName: n,
       });

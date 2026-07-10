@@ -112,6 +112,7 @@ export type ProductRow = {
   stats_fr: string[];
   contact_lines_ar: string[];
   contact_lines_fr: string[];
+  /** LEGACY — not used for Meta event routing (unified env pixel only). */
   meta_pixel_id: string | null;
   test_status: ProductTestingStatus;
   sourcing_type: ProductSourcingType | null;
