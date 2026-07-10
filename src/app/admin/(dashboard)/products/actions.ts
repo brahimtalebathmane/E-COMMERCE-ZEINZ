@@ -86,8 +86,6 @@ export type ProductPayload = {
   stats_fr: string[];
   contact_lines_ar: string[];
   contact_lines_fr: string[];
-  /** LEGACY — not used for Meta event routing; preserved on create as null. */
-  meta_pixel_id: string | null;
   /** URL path segment for the landing page (editable in admin). */
   slug: string;
   old_slugs: string[];
