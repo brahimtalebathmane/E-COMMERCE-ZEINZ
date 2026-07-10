@@ -5,7 +5,6 @@ import {
   allocateUniqueSlug,
   resolveProductSlugFields,
 } from "@/lib/product-slug";
-import { normalizeMetaPixelId } from "@/lib/meta-pixel-id";
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { assertPermission, isAuthError } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
