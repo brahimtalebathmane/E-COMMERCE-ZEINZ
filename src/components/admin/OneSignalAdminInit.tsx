@@ -49,8 +49,9 @@ export function OneSignalAdminInit() {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal) => {
       try {
-        // Temporary verbose logging to surface domain/permission/config errors.
-        OneSignal.Debug?.setLogLevel?.("trace");
+        if (process.env.NODE_ENV === "development") {
+          OneSignal.Debug?.setLogLevel?.("trace");
+        }
 
         await OneSignal.init({
           appId: ONESIGNAL_APP_ID,

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { countCurrentlyStuck } from "@/lib/meta/stuck-events";
+import { countStuckEventsFast } from "@/lib/meta/stuck-events";
 import type { MetaEventLogRow, MetaOverviewStats } from "./types";
 
 export const META_EVENT_LOG_SELECT =
@@ -37,7 +37,7 @@ export async function fetchMetaOverview(
       .select("id", { count: "exact", head: true })
       .eq("state", "success")
       .gte("created_at", since24h),
-    countCurrentlyStuck(supabase),
+    countStuckEventsFast(supabase),
   ]);
 
   const lastSuccessByType: Record<string, string | null> = {};

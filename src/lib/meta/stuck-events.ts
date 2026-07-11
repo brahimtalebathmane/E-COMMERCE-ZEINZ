@@ -200,3 +200,51 @@ export async function countCurrentlyStuck(supabase: SupabaseClient): Promise<num
   const events = await findStuckMetaEvents(supabase);
   return events.length;
 }
+
+/**
+ * Fast stuck-order count for the admin dashboard (3 indexed queries).
+ *
+ * `findStuckMetaEvents` walks every candidate with per-order history checks and
+ * is correct for the scheduled stuck-event job, but it can exceed serverless
+ * timeouts when the orders table is large — which aborts the RSC stream and
+ * surfaces as "Connection closed" in the browser. This approximation is enough
+ * for the monitoring overview card.
+ */
+export async function countStuckEventsFast(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const purchaseCutoff = minutesAgoIso(PURCHASE_STUCK_MINUTES);
+  const cancelCutoff = minutesAgoIso(CANCEL_STUCK_MINUTES);
+  const leadCutoff = minutesAgoIso(LEAD_STUCK_MINUTES);
+
+  const [purchaseRes, cancelRes, leadRes] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["confirmed", "shipped"])
+      .eq("meta_purchase_sent", false)
+      .is("deleted_at", null)
+      .lte("updated_at", purchaseCutoff),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "cancelled")
+      .eq("meta_cancel_sent", false)
+      .is("deleted_at", null)
+      .lte("updated_at", cancelCutoff),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .eq("meta_lead_sent", false)
+      .not("meta_event_id", "is", null)
+      .is("deleted_at", null)
+      .lte("created_at", leadCutoff),
+  ]);
+
+  if (purchaseRes.error) throw new Error(purchaseRes.error.message);
+  if (cancelRes.error) throw new Error(cancelRes.error.message);
+  if (leadRes.error) throw new Error(leadRes.error.message);
+
+  return (purchaseRes.count ?? 0) + (cancelRes.count ?? 0) + (leadRes.count ?? 0);
+}

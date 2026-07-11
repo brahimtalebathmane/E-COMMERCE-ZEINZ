@@ -1,7 +1,10 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
 import { MetaMonitoringView } from "./MetaMonitoringView";
-import { fetchMetaEventLogPage, fetchMetaOverview } from "./queries";
+import { MetaOverviewPanel } from "./MetaOverviewPanel";
+import { MetaOverviewSkeleton } from "./MetaOverviewSection";
+import { fetchMetaEventLogPage } from "./queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,24 +19,23 @@ export default async function AdminMetaPage({ searchParams }: Props) {
   const supabase = await createClient();
 
   try {
-    const [overview, logPage] = await Promise.all([
-      fetchMetaOverview(supabase),
-      fetchMetaEventLogPage(supabase, {
-        page: 1,
-        pageSize: 50,
-        search: orderFilter || undefined,
-      }),
-    ]);
+    const logPage = await fetchMetaEventLogPage(supabase, {
+      page: 1,
+      pageSize: 50,
+      search: orderFilter || undefined,
+    });
 
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.meta.title}</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">{a.meta.subtitle}</p>
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
+          <Suspense fallback={<MetaOverviewSkeleton />}>
+            <MetaOverviewPanel />
+          </Suspense>
           <MetaMonitoringView
             initialRows={logPage.rows}
             initialTotal={logPage.total}
-            overview={overview}
             initialOrderFilter={orderFilter}
           />
         </div>
