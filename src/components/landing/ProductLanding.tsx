@@ -386,11 +386,11 @@ export function ProductLanding({ product }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      ensureMetaFunnelSession();
+      ensureMetaFunnelSession(product.id);
     } catch {
       // ignore storage errors
     }
-  }, []);
+  }, [product.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -409,7 +409,7 @@ export function ProductLanding({ product }: Props) {
   const openCheckout = () => {
     try {
       touchMetaFunnelActivity();
-      const eventId = ensureMetaFunnelSession();
+      const eventId = ensureMetaFunnelSession(product.id);
       const eventTimeSec = Math.floor(Date.now() / 1000);
       const leadValue =
         product.discount_price != null

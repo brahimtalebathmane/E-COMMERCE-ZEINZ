@@ -1,4 +1,5 @@
 export const META_EVENT_ID_STORAGE_KEY = "meta_event_id_session";
+export const META_EVENT_PRODUCT_ID_KEY = "meta_event_product_id_session";
 export const META_LAST_ACTIVITY_MS_KEY = "meta_event_last_activity_ms";
 
 const SESSION_TTL_MS = 60 * 60 * 1000;
@@ -13,13 +14,33 @@ export function createClientMetaEventId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
+function normalizeFunnelProductId(productId?: string | null): string | null {
+  const id = productId?.trim();
+  return id || null;
+}
+
+function startNewFunnelSession(now: number, productId?: string | null): string {
+  const next = createClientMetaEventId();
+  localStorage.setItem(META_EVENT_ID_STORAGE_KEY, next);
+  localStorage.setItem(META_LAST_ACTIVITY_MS_KEY, String(now));
+  const normalizedProductId = normalizeFunnelProductId(productId);
+  if (normalizedProductId) {
+    localStorage.setItem(META_EVENT_PRODUCT_ID_KEY, normalizedProductId);
+  } else {
+    localStorage.removeItem(META_EVENT_PRODUCT_ID_KEY);
+  }
+  return next;
+}
+
 /**
- * Ensures a stable funnel event_id until 60m inactivity or explicit clear after successful lead.
+ * Ensures a stable funnel event_id until 60m inactivity, product change, or explicit clear.
  * Shared by InitiateCheckout and Lead so Meta can stitch the full funnel journey.
- * No cross-tab pairing — same storage is shared across tabs (predictable, simple).
+ * When `productId` changes within the TTL, a fresh event_id is issued so InitiateCheckout
+ * dedupe does not block the new product's checkout events.
  */
-export function ensureMetaFunnelSession(): string {
+export function ensureMetaFunnelSession(productId?: string | null): string {
   const now = Date.now();
+  const normalizedProductId = normalizeFunnelProductId(productId);
   try {
     const existingId = localStorage.getItem(META_EVENT_ID_STORAGE_KEY)?.trim();
     const lastRaw = localStorage.getItem(META_LAST_ACTIVITY_MS_KEY);
@@ -28,14 +49,24 @@ export function ensureMetaFunnelSession(): string {
     const expired = !lastOk || now - lastMs > SESSION_TTL_MS;
 
     if (existingId && !expired) {
+      const storedProductId = normalizeFunnelProductId(
+        localStorage.getItem(META_EVENT_PRODUCT_ID_KEY),
+      );
+      if (
+        normalizedProductId &&
+        storedProductId &&
+        storedProductId !== normalizedProductId
+      ) {
+        return startNewFunnelSession(now, normalizedProductId);
+      }
+      if (normalizedProductId && !storedProductId) {
+        localStorage.setItem(META_EVENT_PRODUCT_ID_KEY, normalizedProductId);
+      }
       localStorage.setItem(META_LAST_ACTIVITY_MS_KEY, String(now));
       return existingId;
     }
 
-    const next = createClientMetaEventId();
-    localStorage.setItem(META_EVENT_ID_STORAGE_KEY, next);
-    localStorage.setItem(META_LAST_ACTIVITY_MS_KEY, String(now));
-    return next;
+    return startNewFunnelSession(now, normalizedProductId);
   } catch {
     return createClientMetaEventId();
   }
@@ -69,6 +100,7 @@ export function clearMetaSessionEventId(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(META_EVENT_ID_STORAGE_KEY);
+    localStorage.removeItem(META_EVENT_PRODUCT_ID_KEY);
     localStorage.removeItem(META_LAST_ACTIVITY_MS_KEY);
     localStorage.removeItem("meta_event_paired_tab_session_id");
     sessionStorage.removeItem("meta_funnel_tab_session_id");

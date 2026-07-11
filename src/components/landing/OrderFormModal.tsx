@@ -101,7 +101,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     setBusy(true);
     try {
       // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
-      const generatedMetaEventId = ensureMetaFunnelSession();
+      const generatedMetaEventId = ensureMetaFunnelSession(product.id);
       const phoneE164 = `+222${local}`;
       const leadValue =
         product.discount_price != null

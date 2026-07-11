@@ -1,4 +1,10 @@
 const FBC_STORAGE_KEY = "meta_derived_fbc";
+const FBC_STORAGE_ROUTE_KEY = "meta_derived_fbc_route";
+
+function currentRouteKey(): string {
+  if (typeof window === "undefined") return "";
+  return `${window.location.pathname}${window.location.search}`;
+}
 
 function readFbclidFromLocation(): string | null {
   if (typeof window === "undefined") return null;
@@ -12,10 +18,24 @@ function readFbclidFromLocation(): string | null {
 }
 
 /**
- * Meta `_fbc` from cookie, or derived from `fbclid` query param per Meta format:
- * `fb.{subdomain_index}.{creation_time}.{fbclid}`
+ * Meta `_fbc` for CAPI advanced matching.
+ * When `fbclid` is in the current URL, derive a fresh click id — it must win over a
+ * stale `_fbc` cookie from an earlier ad/campaign click on the same browser.
+ * Format: `fb.{subdomain_index}.{creation_time}.{fbclid}`
  */
 function resolveFbc(): string | undefined {
+  const fbclid = readFbclidFromLocation();
+  if (fbclid) {
+    const derived = `fb.1.${Date.now()}.${fbclid}`;
+    try {
+      sessionStorage.setItem(FBC_STORAGE_KEY, derived);
+      sessionStorage.setItem(FBC_STORAGE_ROUTE_KEY, currentRouteKey());
+    } catch {
+      // ignore
+    }
+    return derived;
+  }
+
   const fromCookie = getClientCookie("_fbc")?.trim();
   if (fromCookie) return fromCookie;
 
@@ -23,21 +43,13 @@ function resolveFbc(): string | undefined {
 
   try {
     const stored = sessionStorage.getItem(FBC_STORAGE_KEY)?.trim();
-    if (stored) return stored;
+    const storedRoute = sessionStorage.getItem(FBC_STORAGE_ROUTE_KEY);
+    if (stored && storedRoute === currentRouteKey()) return stored;
   } catch {
     // ignore
   }
 
-  const fbclid = readFbclidFromLocation();
-  if (!fbclid) return undefined;
-
-  const derived = `fb.1.${Date.now()}.${fbclid}`;
-  try {
-    sessionStorage.setItem(FBC_STORAGE_KEY, derived);
-  } catch {
-    // ignore
-  }
-  return derived;
+  return undefined;
 }
 
 export function getClientCookie(name: string): string | undefined {
