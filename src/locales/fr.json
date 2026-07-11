@@ -55,12 +55,26 @@
     "supabaseEnvMissing": "Configuration serveur incomplète. Contactez l’administrateur."
   },
   "orderForm": {
-    "whatsappNumber": "Numéro WhatsApp"
+    "whatsappNumber": "Numéro WhatsApp",
+    "nameRequired": "Le nom est obligatoire",
+    "phoneLength": "Le numéro doit comporter 8 chiffres",
+    "phonePrefix": "Le numéro doit commencer par 2, 3 ou 4",
+    "phoneHint": "Entrez 8 chiffres commençant par 2, 3 ou 4",
+    "phoneRequired": "Le numéro est obligatoire",
+    "submitError": "Une erreur inattendue s'est produite"
   },
   "orderSuccess": {
     "title": "Votre commande a bien été reçue",
     "subtitle": "Notre équipe va vous contacter maintenant pour confirmer et finaliser votre commande",
-    "whatsappCta": "Contactez-nous sur WhatsApp"
+    "whatsappCta": "Contactez-nous sur WhatsApp",
+    "orderId": "N° de commande",
+    "product": "Produit",
+    "total": "Montant total"
+  },
+  "productContact": {
+    "email": "E-mail",
+    "whatsapp": "WhatsApp",
+    "phone": "Téléphone"
   },
   "lang": {
     "ar": "AR",

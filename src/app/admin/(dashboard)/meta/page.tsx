@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
+import { AdminPageHeader } from "@/components/admin/ui";
 import { MetaMonitoringView } from "./MetaMonitoringView";
 import { MetaOverviewPanel } from "./MetaOverviewPanel";
 import { MetaOverviewSkeleton } from "./MetaOverviewSection";
@@ -26,27 +27,24 @@ export default async function AdminMetaPage({ searchParams }: Props) {
     });
 
     return (
-      <div>
-        <h1 className="text-2xl font-semibold">{a.meta.title}</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{a.meta.subtitle}</p>
-        <div className="mt-6 space-y-6">
-          <Suspense fallback={<MetaOverviewSkeleton />}>
-            <MetaOverviewPanel />
-          </Suspense>
-          <MetaMonitoringView
-            initialRows={logPage.rows}
-            initialTotal={logPage.total}
-            initialOrderFilter={orderFilter}
-          />
-        </div>
+      <div className="space-y-6">
+        <AdminPageHeader title={a.meta.title} subtitle={a.meta.subtitle} />
+        <Suspense fallback={<MetaOverviewSkeleton />}>
+          <MetaOverviewPanel />
+        </Suspense>
+        <MetaMonitoringView
+          initialRows={logPage.rows}
+          initialTotal={logPage.total}
+          initialOrderFilter={orderFilter}
+        />
       </div>
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return (
-      <div>
-        <h1 className="text-2xl font-semibold">{a.meta.title}</h1>
-        <p className="mt-4 text-sm text-red-600">
+      <div className="space-y-4">
+        <AdminPageHeader title={a.meta.title} />
+        <p className="admin-alert-error">
           {a.meta.loadError} {message}
         </p>
       </div>

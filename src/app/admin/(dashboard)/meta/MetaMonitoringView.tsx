@@ -4,6 +4,22 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useMetaRealtime } from "@/hooks/useMetaRealtime";
+import {
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminSelect,
+  metaEventHue,
+} from "@/components/admin/ui";
+import { AdminInput } from "@/components/admin/ui/AdminInput";
+import {
+  AdminTable,
+  AdminTableBody,
+  AdminTableHead,
+  AdminTableRow,
+  AdminTd,
+  AdminTh,
+} from "@/components/admin/ui/AdminTable";
 import type { MetaEventLogRow } from "./types";
 
 const PAGE_SIZE = 50;
@@ -22,10 +38,10 @@ function formatTime(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? "—" : TIME_FORMATTER.format(date);
 }
 
-function stateBadgeClass(state: string): string {
-  if (state === "success") return "bg-emerald-100 text-emerald-800";
-  if (state === "failed") return "bg-red-100 text-red-800";
-  return "bg-amber-100 text-amber-800";
+function stateLabel(state: string): string {
+  if (state === "failed") return a.meta.stateFailed;
+  if (state === "skipped") return a.meta.stateSkipped;
+  return a.meta.stateSuccess;
 }
 
 type Props = {
@@ -92,14 +108,14 @@ export function MetaMonitoringView({
   };
 
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
-        <h2 className="text-lg font-semibold">{a.meta.logTitle}</h2>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <select
+    <AdminCard title={a.meta.logTitle} noPadding>
+      <div className="space-y-4 p-4 sm:p-5">
+        <div className="flex flex-wrap items-end gap-2">
+          <AdminSelect
+            label={a.meta.filterAllTypes}
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            className="!min-h-[40px] w-auto min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllTypes}</option>
             {Object.entries(a.meta.eventTypes).map(([key, label]) => (
@@ -107,93 +123,86 @@ export function MetaMonitoringView({
                 {label}
               </option>
             ))}
-          </select>
-          <select
+          </AdminSelect>
+          <AdminSelect
+            label={a.meta.filterAllStates}
             value={state}
             onChange={(e) => setState(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            className="!min-h-[40px] w-auto min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllStates}</option>
             <option value="failed">{a.meta.stateFailed}</option>
             <option value="skipped">{a.meta.stateSkipped}</option>
             <option value="success">{a.meta.stateSuccess}</option>
-          </select>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={a.meta.searchPlaceholder}
-            className="min-w-[12rem] flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={applyFilters}
-            disabled={loading}
-            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
+          </AdminSelect>
+          <div className="min-w-[12rem] flex-1">
+            <AdminInput
+              label={a.meta.searchPlaceholder}
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <AdminButton onClick={applyFilters} disabled={loading} className="!min-h-[40px]">
             {loading ? a.common.loading : a.meta.applyFilters}
-          </button>
+          </AdminButton>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-right text-[var(--muted)]">
-                <th className="px-2 py-2 font-medium">{a.meta.colTime}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colType}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colState}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colReason}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colOrder}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colEventId}</th>
+        <AdminTable>
+          <AdminTableHead>
+            <tr>
+              <AdminTh>{a.meta.colTime}</AdminTh>
+              <AdminTh>{a.meta.colType}</AdminTh>
+              <AdminTh>{a.meta.colState}</AdminTh>
+              <AdminTh>{a.meta.colReason}</AdminTh>
+              <AdminTh>{a.meta.colOrder}</AdminTh>
+              <AdminTh>{a.meta.colEventId}</AdminTh>
+            </tr>
+          </AdminTableHead>
+          <AdminTableBody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-sm text-[var(--muted)]">
+                  {a.meta.noRows}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-2 py-8 text-center text-[var(--muted)]">
-                    {a.meta.noRows}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`border-b border-[var(--border)] transition-colors ${
-                      highlightedIds.has(row.id) ? "bg-sky-50" : ""
-                    }`}
-                  >
-                    <td className="px-2 py-2 whitespace-nowrap">{formatTime(row.created_at)}</td>
-                    <td className="px-2 py-2">
-                      {a.meta.eventTypes[row.event_type as keyof typeof a.meta.eventTypes] ??
-                        row.event_type}
-                    </td>
-                    <td className="px-2 py-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeClass(row.state)}`}
+            ) : (
+              rows.map((row) => (
+                <AdminTableRow
+                  key={row.id}
+                  highlight={highlightedIds.has(row.id)}
+                  className={highlightedIds.has(row.id) ? "!bg-sky-400/10" : ""}
+                >
+                  <AdminTd mono className="whitespace-nowrap">
+                    <span dir="ltr">{formatTime(row.created_at)}</span>
+                  </AdminTd>
+                  <AdminTd>
+                    {a.meta.eventTypes[row.event_type as keyof typeof a.meta.eventTypes] ??
+                      row.event_type}
+                  </AdminTd>
+                  <AdminTd>
+                    <AdminBadge hue={metaEventHue(row.state)} size="sm">
+                      {stateLabel(row.state)}
+                    </AdminBadge>
+                  </AdminTd>
+                  <AdminTd className="max-w-[10rem] truncate">
+                    <span title={row.reason ?? ""}>{row.reason ?? "—"}</span>
+                  </AdminTd>
+                  <AdminTd>
+                    {row.order_id ? (
+                      <Link
+                        href={`/admin/orders?highlight=${row.order_id}`}
+                        className="font-mono text-xs text-[var(--accent)] hover:underline"
+                        dir="ltr"
                       >
-                        {row.state === "failed"
-                          ? a.meta.stateFailed
-                          : row.state === "skipped"
-                            ? a.meta.stateSkipped
-                            : a.meta.stateSuccess}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 max-w-[10rem] truncate" title={row.reason ?? ""}>
-                      {row.reason ?? "—"}
-                    </td>
-                    <td className="px-2 py-2">
-                      {row.order_id ? (
-                        <Link
-                          href={`/admin/orders?highlight=${row.order_id}`}
-                          className="text-[var(--primary)] hover:underline"
-                        >
-                          {row.order_id.slice(0, 8)}…
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-2 py-2 max-w-[8rem] truncate font-mono text-xs" title={row.event_id ?? ""}>
+                        {row.order_id.slice(0, 8)}…
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </AdminTd>
+                  <AdminTd className="max-w-[8rem] truncate font-mono text-xs">
+                    <span title={row.event_id ?? ""} dir="ltr">
                       {row.event_id ? (
                         <>
                           {row.event_id.slice(0, 16)}
@@ -202,37 +211,36 @@ export function MetaMonitoringView({
                       ) : (
                         "—"
                       )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </span>
+                  </AdminTd>
+                </AdminTableRow>
+              ))
+            )}
+          </AdminTableBody>
+        </AdminTable>
 
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-          <span className="text-[var(--muted)]">
-            {a.meta.pageInfo(page, totalPages, total)}
-          </span>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-[var(--muted)]">{a.meta.pageInfo(page, totalPages, total)}</span>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <AdminButton
+              variant="ghost"
+              className="!min-h-[36px] !px-3 !text-xs"
               disabled={page <= 1 || loading}
               onClick={() => goToPage(page - 1)}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-50"
             >
               {a.meta.prevPage}
-            </button>
-            <button
-              type="button"
+            </AdminButton>
+            <AdminButton
+              variant="ghost"
+              className="!min-h-[36px] !px-3 !text-xs"
               disabled={page >= totalPages || loading}
               onClick={() => goToPage(page + 1)}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-50"
             >
               {a.meta.nextPage}
-            </button>
+            </AdminButton>
           </div>
         </div>
-      </section>
+      </div>
+    </AdminCard>
   );
 }

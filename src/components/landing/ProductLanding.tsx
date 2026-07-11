@@ -343,7 +343,7 @@ function GuaranteeStrip({ locale }: { locale: "ar" | "fr" }) {
 }
 
 export function ProductLanding({ product }: Props) {
-  const { locale, setLocale } = useLanguage();
+  const { locale, dir, t } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -379,10 +379,6 @@ export function ProductLanding({ product }: Props) {
     (locale === "fr"
       ? "Paiement a la livraison disponible dans toutes les zones"
       : "الدفع عند الاستلام متاح في كل المناطق");
-
-  useEffect(() => {
-    setLocale(product.default_language ?? "ar");
-  }, [product.default_language, setLocale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -482,7 +478,7 @@ export function ProductLanding({ product }: Props) {
   return (
     <div
       className="storefront-light w-full min-w-0 overflow-x-clip bg-[var(--background)] pb-[max(10rem,calc(7.5rem+env(safe-area-inset-bottom)))] text-[var(--foreground)] md:pb-[max(11.25rem,calc(8.25rem+env(safe-area-inset-bottom)))]"
-      dir="ltr"
+      dir={dir}
       style={
         {
           "--accent": copy.brandColor,
@@ -549,7 +545,7 @@ export function ProductLanding({ product }: Props) {
 
       <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h2
-          className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionFeaturesDurationClass} will-change-transform ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          className={`${sectionTitleClass} relative z-10 break-words transition-[transform,opacity] ${motionFeaturesDurationClass} ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
         >
           {copy.featuresTitle}
         </h2>
@@ -776,7 +772,11 @@ export function ProductLanding({ product }: Props) {
             const lower = value.toLowerCase();
             const isEmail = lower.includes("@") || lower.includes("mail");
             const isWhatsApp = lower.includes("whatsapp") || lower.includes("واتساب");
-            const label = isEmail ? "الايميل" : isWhatsApp ? "الواتساب" : "الهاتف";
+            const label = isEmail
+              ? t("productContact.email")
+              : isWhatsApp
+                ? t("productContact.whatsapp")
+                : t("productContact.phone");
             const icon = isEmail ? "✉" : isWhatsApp ? "◉" : "☎";
             return (
               <div key={`${value}-${idx}`} className={`${softCardClass} rounded-2xl px-4 py-3 sm:py-4`}>
@@ -789,10 +789,6 @@ export function ProductLanding({ product }: Props) {
           })}
         </div>
       </section>
-
-      <footer className="bg-[var(--accent-muted)] px-4 py-5 text-center sm:py-6">
-        <p className="text-xs font-semibold text-[var(--muted)] sm:text-sm">{copy.footerNote}</p>
-      </footer>
 
       <LandingStickyFooter
         product={product}

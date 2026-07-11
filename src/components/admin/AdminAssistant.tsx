@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminAr as a } from "@/locales/admin-ar";
+import { CloseIcon } from "./AdminIcons";
 import { useAdminAssistant } from "./AdminAssistantContext";
 
 type ChatMessage = {
@@ -155,10 +156,10 @@ export function AdminAssistant() {
         onClick={() => setOpen(false)}
         className="absolute inset-0 bg-black/40"
       />
-      <div className="relative flex h-full w-full max-w-md flex-col bg-[var(--card)] shadow-2xl">
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-3">
+      <div className="relative flex h-full w-full max-w-md flex-col border-e border-[var(--admin-border)] bg-[var(--admin-elevated)] shadow-[var(--admin-shadow-lg)]">
+        <header className="admin-glass flex items-center justify-between gap-3 border-b px-4 py-3.5">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{a.assistant.title}</p>
+            <p className="truncate text-sm font-bold text-[var(--foreground)]">{a.assistant.title}</p>
             <p className="truncate text-xs text-[var(--muted)]">
               {a.assistant.subtitle}
             </p>
@@ -168,7 +169,7 @@ export function AdminAssistant() {
               type="button"
               onClick={startNewChat}
               disabled={sending}
-              className="rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:opacity-50"
+              className="admin-btn-ghost !min-h-[36px] !px-3 !py-1.5 !text-xs disabled:opacity-50"
             >
               {a.assistant.newChat}
             </button>
@@ -176,9 +177,9 @@ export function AdminAssistant() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={a.assistant.close}
-              className="rounded-lg px-2 py-1.5 text-lg leading-none text-[var(--muted)] transition hover:text-[var(--foreground)]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)] transition hover:text-[var(--foreground)]"
             >
-              ✕
+              <CloseIcon size={18} />
             </button>
           </div>
         </header>
@@ -188,8 +189,8 @@ export function AdminAssistant() {
           className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
         >
           {messages.length === 0 ? (
-            <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-4 text-sm">
-              <p className="font-semibold">{a.assistant.emptyTitle}</p>
+            <div className="admin-card p-4 text-sm">
+              <p className="font-semibold text-[var(--foreground)]">{a.assistant.emptyTitle}</p>
               <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
                 {a.assistant.emptyBody}
               </p>
@@ -200,10 +201,10 @@ export function AdminAssistant() {
                 key={m.id}
                 className={
                   m.role === "user"
-                    ? "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-[var(--accent)] px-4 py-2.5 text-sm text-white"
+                    ? "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-[0_6px_16px_-8px_rgba(34,197,94,0.6)]"
                     : m.role === "error"
-                      ? "me-auto max-w-[90%] rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-300"
-                      : "me-auto max-w-[90%] rounded-2xl rounded-ss-sm border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm"
+                      ? "me-auto max-w-[90%] rounded-2xl border border-red-400/35 bg-red-400/10 px-4 py-2.5 text-sm text-red-300"
+                      : "me-auto max-w-[90%] rounded-2xl rounded-ss-sm border border-[var(--admin-border-strong)] bg-[var(--admin-surface)] px-4 py-2.5 text-sm"
                 }
               >
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">
@@ -216,13 +217,13 @@ export function AdminAssistant() {
             ))
           )}
           {sending && (
-            <div className="me-auto max-w-[90%] rounded-2xl border border-[var(--accent-muted)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--muted)]">
+            <div className="me-auto max-w-[90%] rounded-2xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface)] px-4 py-2.5 text-sm text-[var(--muted)]">
               {a.assistant.sending}
             </div>
           )}
         </div>
 
-        <div className="border-t border-[var(--accent-muted)] p-3">
+        <div className="border-t border-[var(--admin-border)] p-3">
           <div className="flex items-end gap-2">
             <textarea
               value={input}
@@ -231,13 +232,13 @@ export function AdminAssistant() {
               rows={2}
               dir="auto"
               placeholder={a.assistant.placeholder}
-              className="min-h-[44px] flex-1 resize-none rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              className="admin-input min-h-[44px] flex-1 resize-none py-2.5"
             />
             <button
               type="button"
               onClick={() => void send()}
               disabled={sending || input.trim().length === 0}
-              className="min-h-[44px] rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="admin-btn-primary !min-h-[44px] !px-4"
             >
               {sending ? a.assistant.sending : a.assistant.send}
             </button>

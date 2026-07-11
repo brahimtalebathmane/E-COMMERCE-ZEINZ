@@ -10,6 +10,12 @@ import { adminAr as a } from "@/locales/admin-ar";
 import { PlusIcon } from "@/components/admin/AdminIcons";
 import { formatPrice } from "@/lib/currency";
 import {
+  AdminBadge,
+  AdminLinkButton,
+  AdminPageHeader,
+  productPipelineHue,
+} from "@/components/admin/ui";
+import {
   PIPELINE_TABS,
   codMarginPercent,
   filterProductsByTab,
@@ -38,24 +44,19 @@ const MarginBadge = memo(function MarginBadge({
   const pct = codMarginPercent(row.price, row.discount_price, row.cost_price);
   if (pct == null) {
     return (
-      <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-xs text-[var(--muted)]">
+      <AdminBadge hue="neutral" size="sm" dot={false}>
         {a.pipeline.marginUnset}
-      </span>
+      </AdminBadge>
     );
   }
   const rounded = Math.round(pct * 10) / 10;
   const good = rounded > 60;
   return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-        good
-          ? "bg-emerald-400/10 text-emerald-300 border border-emerald-400/30"
-          : "bg-amber-400/10 text-amber-300 border border-amber-400/30"
-      }`}
-      dir="ltr"
-    >
-      {a.pipeline.marginLabel}: {rounded}%
-    </span>
+    <AdminBadge hue={good ? "emerald" : "amber"} size="sm">
+      <span dir="ltr">
+        {a.pipeline.marginLabel}: {rounded}%
+      </span>
+    </AdminBadge>
   );
 });
 
@@ -268,18 +269,18 @@ export function ProductsAdminView({ products }: Props) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">{a.products.title}</h1>
-        </div>
-        <Link href="/admin/products/new" className="admin-btn-primary">
-          <PlusIcon size={18} />
-          {a.products.newProduct}
-        </Link>
-      </div>
+      <AdminPageHeader
+        title={a.products.title}
+        actions={
+          <AdminLinkButton href="/admin/products/new">
+            <PlusIcon size={18} />
+            {a.products.newProduct}
+          </AdminLinkButton>
+        }
+      />
 
       <div
-        className="mt-5 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2"
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2"
         role="tablist"
       >
         {PIPELINE_TABS.map((t) => (
@@ -289,17 +290,15 @@ export function ProductsAdminView({ products }: Props) {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              tab === t.id
-                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_8px_20px_-8px_rgba(31,170,80,0.6)]"
-                : "border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--foreground)] hover:bg-white/[0.06]"
-            }`}
+            className="admin-tab-pill"
+            data-active={tab === t.id}
           >
             {t.label}
             <span
               className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-                tab === t.id ? "bg-white/20" : "bg-white/[0.06] text-[var(--muted)]"
+                tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-white/[0.06] text-[var(--muted)]"
               }`}
+              dir="ltr"
             >
               {counts[t.id]}
             </span>
@@ -340,11 +339,18 @@ export function ProductsAdminView({ products }: Props) {
                       </span>
                       {tab === "research" ? <MarginBadge row={p} /> : null}
                       {tab === "ready" ? (
-                        <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-[11px] text-[var(--muted)]">
+                        <AdminBadge hue={productPipelineHue(p.test_status)} size="sm">
                           {p.test_status === "testing"
                             ? a.pipeline.statusTesting
                             : a.pipeline.statusReady}
-                        </span>
+                        </AdminBadge>
+                      ) : null}
+                      {(tab === "winner" || tab === "failed") ? (
+                        <AdminBadge hue={productPipelineHue(p.test_status)} size="sm">
+                          {p.test_status === "winner"
+                            ? a.pipeline.markWinner
+                            : a.pipeline.markFailed}
+                        </AdminBadge>
                       ) : null}
                     </div>
                   </div>

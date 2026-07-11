@@ -38,7 +38,7 @@ function validateMauritaniaLocalPhone(localDigits: string): string | null {
 }
 
 export function OrderFormModal({ product, open, onClose }: Props) {
-  const { locale, t } = useLanguage();
+  const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
 
@@ -70,15 +70,21 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
-    if (!phoneLocal.trim()) return "رقم الهاتف مطلوب";
-    return validateMauritaniaLocalPhone(phoneLocal);
-  }, [phoneLocal, touched.phone, busy]);
+    if (!phoneLocal.trim()) return t("orderForm.phoneRequired");
+    const d = onlyDigits(phoneLocal);
+    if (d.length !== 8) return t("orderForm.phoneLength");
+    const first = d[0];
+    if (first !== "2" && first !== "3" && first !== "4") {
+      return t("orderForm.phonePrefix");
+    }
+    return null;
+  }, [phoneLocal, touched.phone, busy, t]);
 
   const nameError = useMemo(() => {
     if (!touched.name && !busy) return null;
-    if (!name.trim()) return "الاسم مطلوب";
+    if (!name.trim()) return t("orderForm.nameRequired");
     return null;
-  }, [name, touched.name, busy]);
+  }, [name, touched.name, busy, t]);
 
   function reset() {
     setName("");
@@ -225,8 +231,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
-        dir="ltr"
+        className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] text-start shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
+        dir={dir}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--accent-muted)]/60 bg-[var(--card)] px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
@@ -257,7 +263,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           {/* Price summary */}
           <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
             <span className="text-sm font-semibold text-[var(--muted)]">{priceLabel}</span>
-            <div className="text-right">
+            <div className="text-end">
               <div className="flex items-baseline justify-end gap-2">
                 {hasDiscount ? (
                   <span
@@ -306,12 +312,15 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               <label className="block text-sm font-semibold text-[var(--foreground)]">
                 {t("orderForm.whatsappNumber")} <span className="text-red-500">*</span>
               </label>
-              <div className="mt-2 flex items-stretch gap-2" dir="ltr">
-                <span className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 text-sm font-mono font-semibold text-[var(--foreground)]">
+              <div className="mt-2 flex items-stretch gap-2">
+                <span
+                  className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 font-mono text-sm font-semibold text-[var(--foreground)]"
+                  dir="ltr"
+                >
                   +222
                 </span>
                 <input
-                  className="store-input flex-1"
+                  className="store-input flex-1 font-mono tabular-nums"
                   value={phoneLocal}
                   onChange={(e) => {
                     const next = onlyDigits(e.target.value);
@@ -321,21 +330,18 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                   onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                   inputMode="numeric"
                   autoComplete="tel"
-                  placeholder="XXXXXXXX"
+                  placeholder="2XXXXXXX"
+                  dir="ltr"
                   aria-invalid={Boolean(phoneError)}
                 />
               </div>
               {phoneError ? (
-                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
                   <span aria-hidden>⚠</span>
                   {phoneError}
                 </p>
               ) : (
-                <p className="mt-1.5 text-xs text-[var(--muted)]">
-                  {isFr
-                    ? "Entrez 8 chiffres commençant par 2, 3 ou 4"
-                    : "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4"}
-                </p>
+                <p className="mt-1.5 text-xs text-[var(--muted)]">{t("orderForm.phoneHint")}</p>
               )}
             </div>
 

@@ -4,6 +4,9 @@ export const BRAND_COLOR = "#006B0C";
 /** Canonical brand name shown in metadata and accessibility labels. */
 export const BRAND_NAME = "ZAINE";
 
+/** Public support email shown in site footer. */
+export const SUPPORT_EMAIL = "support@zeinaa.net";
+
 /**
  * Public site / admin header logo (PNG).
  * Hosted locally for reliability, offline PWA support, and consistent caching.

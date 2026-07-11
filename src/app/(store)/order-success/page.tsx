@@ -54,7 +54,11 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         totalPrice={totalPrice}
         currency={currency}
       />
-      <OrderSuccessContent />
+      <OrderSuccessContent
+        orderId={orderId}
+        productName={productName}
+        totalPrice={totalPrice}
+      />
     </>
   );
 }

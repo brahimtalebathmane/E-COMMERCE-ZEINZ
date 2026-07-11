@@ -1,11 +1,25 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatPrice } from "@/lib/currency";
 
 const WHATSAPP_HREF = "https://wa.me/22233713957";
 
-export function OrderSuccessContent() {
+type Props = {
+  orderId?: string | null;
+  productName?: string | null;
+  totalPrice?: number | null;
+};
+
+export function OrderSuccessContent({
+  orderId,
+  productName,
+  totalPrice,
+}: Props) {
   const { t, dir, locale } = useLanguage();
+
+  const hasSummary =
+    Boolean(orderId) || Boolean(productName) || (totalPrice != null && Number.isFinite(totalPrice));
 
   return (
     <div
@@ -36,6 +50,40 @@ export function OrderSuccessContent() {
         <p className="mt-2 text-base font-medium leading-relaxed text-[var(--muted)] sm:text-lg">
           {t("orderSuccess.subtitle")}
         </p>
+
+        {hasSummary ? (
+          <dl className="store-card mx-auto mt-6 max-w-md space-y-3 p-4 text-start sm:p-5">
+            {orderId ? (
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  {t("orderSuccess.orderId")}
+                </dt>
+                <dd className="font-mono text-sm font-bold text-[var(--foreground)]" dir="ltr">
+                  {orderId}
+                </dd>
+              </div>
+            ) : null}
+            {productName ? (
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  {t("orderSuccess.product")}
+                </dt>
+                <dd className="text-sm font-semibold text-[var(--foreground)]">{productName}</dd>
+              </div>
+            ) : null}
+            {totalPrice != null && Number.isFinite(totalPrice) ? (
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  {t("orderSuccess.total")}
+                </dt>
+                <dd className="text-lg font-extrabold tabular-nums text-[var(--accent)]" dir="ltr">
+                  {formatPrice(totalPrice)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
+
         <div className="mt-8 flex justify-center">
           <a
             href={WHATSAPP_HREF}

@@ -55,12 +55,26 @@
     "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول."
   },
   "orderForm": {
-    "whatsappNumber": "رقم واتساب"
+    "whatsappNumber": "رقم واتساب",
+    "nameRequired": "الاسم مطلوب",
+    "phoneLength": "رقم الهاتف يجب أن يكون 8 أرقام",
+    "phonePrefix": "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4",
+    "phoneHint": "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4",
+    "phoneRequired": "رقم الهاتف مطلوب",
+    "submitError": "حدث خطأ غير متوقع"
   },
   "orderSuccess": {
     "title": "تم استلام طلبكم بنجاح",
     "subtitle": "سيتواصل معكم فريقنا الآن لتأكيد طلبكم وإتمامه",
-    "whatsappCta": "تواصل معنا عبر واتساب"
+    "whatsappCta": "تواصل معنا عبر واتساب",
+    "orderId": "رقم الطلب",
+    "product": "المنتج",
+    "total": "المبلغ الإجمالي"
+  },
+  "productContact": {
+    "email": "البريد الإلكتروني",
+    "whatsapp": "واتساب",
+    "phone": "الهاتف"
   },
   "lang": {
     "ar": "عربي",

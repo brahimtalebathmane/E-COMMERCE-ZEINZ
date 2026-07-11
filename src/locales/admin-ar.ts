@@ -21,6 +21,8 @@ export const adminAr = {
     logout: "تسجيل الخروج",
     loggingOut: "جاري الخروج…",
     viewStore: "زيارة المتجر",
+    more: "المزيد",
+    moreNav: "المزيد من الخيارات",
   },
   common: {
     loading: "جاري التحميل…",

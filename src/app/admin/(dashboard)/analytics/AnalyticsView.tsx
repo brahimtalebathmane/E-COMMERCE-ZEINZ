@@ -14,6 +14,7 @@ import {
   updateAdSpendAction,
   updateCalculationStartDateAction,
 } from "./actions";
+import { AdminKpiTile, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 
 export type ProductMetaInput = {
   productId: string;
@@ -126,33 +127,35 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
   }
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="space-y-8">
+      <AdminPageHeader title={a.analytics.title} subtitle={a.analytics.subtitle} />
+
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiGrossRevenue}
           hint={a.analytics.kpiGrossRevenueHint}
           value={formatPrice(totals.grossRevenue)}
-          accent="revenue"
+          accent={KPI_ACCENT.revenue}
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiCogs}
           hint={a.analytics.kpiCogsHint}
           value={formatPrice(totals.cogs)}
-          accent="cost"
+          accent="var(--status-amber)"
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiAdSpend}
           hint={a.analytics.kpiAdSpendHint}
           value={formatPrice(totals.adSpend)}
-          accent="ad"
+          accent={KPI_ACCENT.orders}
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiNetProfit}
           hint={a.analytics.kpiNetProfitHint}
           value={formatPrice(totals.netProfit)}
-          accent="profit"
-          emphasizeTone={profitToneClass(totals.netProfit)}
+          accent={KPI_ACCENT.profit}
+          emphasize
         />
       </div>
 
@@ -314,42 +317,6 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
   );
 }
 
-function KpiCard({
-  label,
-  hint,
-  value,
-  accent,
-  emphasizeTone,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  accent: "revenue" | "cost" | "ad" | "profit";
-  emphasizeTone?: string;
-}) {
-  const accentBar = {
-    revenue: "bg-emerald-500",
-    cost: "bg-amber-500",
-    ad: "bg-sky-500",
-    profit: "bg-[var(--accent)]",
-  }[accent];
-
-  return (
-    <div className="admin-card relative overflow-hidden p-5">
-      <span className={`absolute inset-y-0 start-0 w-1.5 ${accentBar}`} aria-hidden />
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </p>
-      <p
-        className={`mt-3 text-2xl font-bold tabular-nums ${emphasizeTone ?? "text-[var(--foreground)]"}`}
-        dir="ltr"
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{hint}</p>
-    </div>
-  );
-}
 
 function Stat({
   label,
@@ -404,13 +371,13 @@ function AdSpendEditor({
             onSave();
           }
         }}
-        className="min-h-[40px] w-28 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+        className="admin-input !min-h-[40px] w-28 !py-2 tabular-nums disabled:opacity-60"
       />
       <button
         type="button"
         disabled={saving}
         onClick={onSave}
-        className="min-h-[40px] shrink-0 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="admin-btn-primary !min-h-[40px] !px-3 !text-xs"
       >
         {saving ? a.analytics.saving : a.analytics.save}
       </button>
@@ -435,14 +402,14 @@ function StartDateEditor({
         disabled={saving}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[40px] w-40 max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+        className="admin-input !min-h-[40px] w-40 max-w-full !py-2 tabular-nums disabled:opacity-60"
       />
       {value ? (
         <button
           type="button"
           disabled={saving}
           onClick={() => onChange("")}
-          className="min-h-[40px] shrink-0 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="admin-btn-ghost !min-h-[40px] !px-3 !text-xs"
         >
           {a.analytics.startDateClear}
         </button>

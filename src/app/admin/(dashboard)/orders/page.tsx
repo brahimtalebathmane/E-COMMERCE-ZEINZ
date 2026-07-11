@@ -15,7 +15,7 @@ export default async function AdminOrdersPage() {
 
   if (error) {
     return (
-      <p className="text-sm text-red-600">
+      <p className="admin-alert-error">
         {a.orders.loadError} {error.message}
       </p>
     );
@@ -23,11 +23,5 @@ export default async function AdminOrdersPage() {
 
   const rows = (data ?? []) as unknown as AdminOrderRow[];
 
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold">{a.orders.title}</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">{a.orders.subtitle}</p>
-      <OrdersAdminView orders={rows} />
-    </div>
-  );
+  return <OrdersAdminView orders={rows} />;
 }

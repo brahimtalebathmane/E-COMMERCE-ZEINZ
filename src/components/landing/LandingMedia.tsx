@@ -286,7 +286,7 @@ export function LandingMedia({
           height={LANDING_HERO_IMAGE.height}
           sizes={LANDING_HERO_IMAGE.sizes}
           quality={LANDING_HERO_IMAGE.quality}
-          className="mx-auto block h-auto w-full max-h-[min(92vh,56rem)] object-contain"
+          className="mx-auto block h-auto w-full object-contain"
           style={{ width: "100%", height: "auto" }}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}

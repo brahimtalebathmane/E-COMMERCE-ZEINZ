@@ -4,12 +4,12 @@ import Link from "next/link";
 import { SiteLogo } from "@/components/SiteLogo";
 import type { CSSProperties } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { BRAND_COLOR } from "@/lib/site-branding";
+import { BRAND_COLOR, SUPPORT_EMAIL } from "@/lib/site-branding";
 
 const PHONE_DISPLAY = "+222 33713957";
 const PHONE_TEL = "+22233713957";
 const WHATSAPP_HREF = "https://wa.me/22233713957";
-const EMAIL = "support@zeinaa.net";
+const EMAIL = SUPPORT_EMAIL;
 
 export function StoreSiteFooter() {
   const { t } = useLanguage();

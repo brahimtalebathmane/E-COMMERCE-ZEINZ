@@ -163,3 +163,13 @@ export function StaffIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function MoreIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    </Base>
+  );
+}
