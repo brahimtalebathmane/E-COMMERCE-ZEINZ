@@ -156,7 +156,6 @@ export async function dispatchMetaEvent(
       ? resolveLeadEventIdForOrder(order)
       : transactionalEventId(orderId, eventType);
   const pixelId = resolveServerMetaPixelId() || "";
-  let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
 
   const { data: product } = await supabase
     .from("products")
@@ -174,7 +173,7 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "product_not_found" };
   }
 
-  productCustomData = buildMetaProductCustomData({
+  const productCustomData = buildMetaProductCustomData({
     productId: order.product_id as string,
     productName: resolveMetaProductDisplayName({
       name_ar: product.name_ar as string | null,

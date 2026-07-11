@@ -130,7 +130,8 @@ export function trackInitiateCheckout(
     });
   }
 
-  if (!customData?.content_ids?.length) {
+  const contentIds = customData?.content_ids;
+  if (!Array.isArray(contentIds) || contentIds.length === 0) {
     console.error("[meta] InitiateCheckout skipped: unresolved content_ids", {
       productId: product.productId,
     });
