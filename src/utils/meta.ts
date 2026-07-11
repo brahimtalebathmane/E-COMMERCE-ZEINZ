@@ -270,7 +270,7 @@ async function safeMetaFetch(url: string, payload: unknown, timeoutMs = 3500) {
 
 /** Outcome of a Meta Conversions API (CAPI) request. */
 export type SendMetaEventResult =
-  | { ok: true }
+  | { ok: true; detail?: string }
   | {
       ok: false;
       reason:
@@ -279,6 +279,7 @@ export type SendMetaEventResult =
         | "http_error"
         | "network_error"
         | "rejected";
+      detail?: string;
     };
 
 /**
@@ -292,11 +293,11 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
     console.warn("[meta] CAPI skipped: META_CAPI_ACCESS_TOKEN is not set", {
       eventName: params.eventName,
     });
-    return { ok: false, reason: "missing_access_token" };
+    return { ok: false, reason: "missing_access_token", detail: "META_CAPI_ACCESS_TOKEN not set" };
   }
   if (!pixelId) {
     console.warn("[meta] CAPI skipped: pixel id missing", { eventName: params.eventName });
-    return { ok: false, reason: "missing_pixel_id" };
+    return { ok: false, reason: "missing_pixel_id", detail: "pixel id missing" };
   }
 
   const apiVersion = normalizeEnv(process.env.META_CAPI_VERSION) || "v22.0";
@@ -372,7 +373,9 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
             fbtrace_id:
               typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined,
           });
-          return { ok: true };
+          const fbtrace =
+            typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined;
+          return { ok: true, detail: fbtrace ? `fbtrace_id=${fbtrace}` : undefined };
         }
 
         if (isMetaCapiDedupOrAlreadyProcessed(parsed, eventsReceived)) {
@@ -383,7 +386,9 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
             fbtrace_id:
               typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined,
           });
-          return { ok: true };
+          const fbtrace =
+            typeof parsed?.fbtrace_id === "string" ? parsed.fbtrace_id : undefined;
+          return { ok: true, detail: fbtrace ? `fbtrace_id=${fbtrace}` : "deduplicated" };
         }
 
         console.error("[meta] CAPI event rejected by Meta", {
@@ -393,7 +398,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
           status: res.status,
           body: body.slice(0, 500),
         });
-        return { ok: false, reason: "rejected" };
+        return { ok: false, reason: "rejected", detail: body.slice(0, 500) };
       }
 
       const retryable = isRetryableMetaHttpStatus(res.status);
@@ -404,18 +409,23 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
         body: body.slice(0, 500),
       });
       if (!retryable || attempt === maxAttempts - 1) {
-        return { ok: false, reason: "http_error" };
+        return {
+          ok: false,
+          reason: "http_error",
+          detail: `status=${res.status} body=${body.slice(0, 400)}`,
+        };
       }
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       console.error("[meta] CAPI request error", {
         eventName: params.eventName,
         attempt: attempt + 1,
-        error: error instanceof Error ? error.message : String(error),
+        error: errMsg,
       });
       if (attempt === maxAttempts - 1) {
-        return { ok: false, reason: "network_error" };
+        return { ok: false, reason: "network_error", detail: errMsg };
       }
     }
   }
-  return { ok: false, reason: "http_error" };
+  return { ok: false, reason: "http_error", detail: "max attempts exhausted" };
 }

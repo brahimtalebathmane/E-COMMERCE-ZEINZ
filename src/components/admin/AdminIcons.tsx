@@ -68,6 +68,15 @@ export function AnalyticsIcon(props: IconProps) {
   );
 }
 
+export function MetaIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="10" r="3" />
+      <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Z" />
+    </Base>
+  );
+}
+
 export function StoreIcon(props: IconProps) {
   return (
     <Base {...props}>

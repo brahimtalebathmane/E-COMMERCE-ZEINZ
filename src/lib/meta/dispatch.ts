@@ -7,6 +7,10 @@ import {
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
 import { resolveLeadEventId } from "@/lib/meta-lead-event-id";
+import {
+  logMetaEventOutcomeFireAndForget,
+  mapDispatchEventTypeToLog,
+} from "@/lib/meta/event-log";
 import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
@@ -44,6 +48,70 @@ function resolveLeadEventIdForOrder(order: Record<string, unknown>): string {
   return resolveLeadEventId({
     orderId: order.id as string,
     metaEventId: order.meta_event_id as string | null,
+  });
+}
+
+function resolveLogEventId(
+  orderId: string,
+  eventType: MetaDispatchEventType,
+  order?: Record<string, unknown>,
+): string {
+  if (eventType === "lead" && order) {
+    return resolveLeadEventIdForOrder(order);
+  }
+  if (eventType === "lead") {
+    return resolveLeadEventId({ orderId, metaEventId: null });
+  }
+  return transactionalEventId(orderId, eventType);
+}
+
+function recordDispatchOutcome(
+  supabase: SupabaseClient,
+  params: {
+    orderId: string;
+    productId?: string | null;
+    eventType: MetaDispatchEventType;
+    eventId: string;
+    result: MetaDispatchResult;
+    detail?: string | null;
+  },
+): void {
+  const logType = mapDispatchEventTypeToLog(params.eventType);
+  if (params.result.sent) {
+    logMetaEventOutcomeFireAndForget({
+      supabase,
+      eventType: logType,
+      eventId: params.eventId,
+      orderId: params.orderId,
+      productId: params.productId ?? null,
+      state: "success",
+      detail: params.detail,
+    });
+    return;
+  }
+  if (params.result.skipped) {
+    logMetaEventOutcomeFireAndForget({
+      supabase,
+      eventType: logType,
+      eventId: params.eventId,
+      orderId: params.orderId,
+      productId: params.productId ?? null,
+      state: "skipped",
+      reason: params.result.reason,
+      detail: params.detail,
+      notifyOnFailure: false,
+    });
+    return;
+  }
+  logMetaEventOutcomeFireAndForget({
+    supabase,
+    eventType: logType,
+    eventId: params.eventId,
+    orderId: params.orderId,
+    productId: params.productId ?? null,
+    state: "failed",
+    reason: params.result.reason,
+    detail: params.detail,
   });
 }
 
@@ -127,28 +195,74 @@ export async function dispatchMetaEvent(
 
   if (error) throw new Error(error.message);
   if (!order || order.deleted_at != null) {
-    return { sent: false, skipped: true, reason: "order_not_found" };
+    const result = { sent: false, skipped: true, reason: "order_not_found" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType),
+      result,
+    });
+    return result;
   }
 
   if (order[flagColumn] === true) {
-    return { sent: false, skipped: true, reason: "already_sent" };
+    const result = { sent: false, skipped: true, reason: "already_sent" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string | null,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType, order),
+      result,
+    });
+    return result;
   }
 
   if (eventType === "purchase" && order.status !== "confirmed") {
-    return { sent: false, skipped: true, reason: "status_not_confirmed" };
+    const result = { sent: false, skipped: true, reason: "status_not_confirmed" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string | null,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType, order),
+      result,
+    });
+    return result;
   }
   if (eventType === "cancel" && order.status !== "cancelled") {
-    return { sent: false, skipped: true, reason: "status_not_cancelled" };
+    const result = { sent: false, skipped: true, reason: "status_not_cancelled" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string | null,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType, order),
+      result,
+    });
+    return result;
   }
 
   if (!order.product_id) {
     console.warn("[meta] CAPI skipped: order has no product_id", { orderId, eventType });
-    return { sent: false, skipped: true, reason: "missing_product_id" };
+    const result = { sent: false, skipped: true, reason: "missing_product_id" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType, order),
+      result,
+    });
+    return result;
   }
 
   const claimed = await claimMetaDispatch(supabase, orderId, eventType);
   if (!claimed) {
-    return { sent: false, skipped: true, reason: "already_sent" };
+    const result = { sent: false, skipped: true, reason: "already_sent" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId: resolveLogEventId(orderId, eventType, order),
+      result,
+    });
+    return result;
   }
 
   const eventId =
@@ -170,7 +284,15 @@ export async function dispatchMetaEvent(
       eventType,
       productId: order.product_id,
     });
-    return { sent: false, skipped: true, reason: "product_not_found" };
+    const result = { sent: false, skipped: true, reason: "product_not_found" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId,
+      result,
+    });
+    return result;
   }
 
   const productCustomData = buildMetaProductCustomData({
@@ -185,7 +307,15 @@ export async function dispatchMetaEvent(
   if (!productCustomData?.content_ids?.length) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);
     console.warn("[meta] CAPI skipped: unresolved content_ids", { orderId, eventType });
-    return { sent: false, skipped: true, reason: "missing_content_ids" };
+    const result = { sent: false, skipped: true, reason: "missing_content_ids" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId,
+      result,
+    });
+    return result;
   }
 
   console.warn("[meta] CAPI dispatch attempt", {
@@ -203,7 +333,15 @@ export async function dispatchMetaEvent(
       orderId,
       eventType,
     });
-    return { sent: false, skipped: true, reason: "missing_meta_data" };
+    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId,
+      result,
+    });
+    return result;
   }
 
   const headers =
@@ -233,7 +371,15 @@ export async function dispatchMetaEvent(
   ) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);
     console.warn("[meta] CAPI skipped: missing content_ids in payload", { orderId, eventType });
-    return { sent: false, skipped: true, reason: "missing_content_ids" };
+    const result = { sent: false, skipped: true, reason: "missing_content_ids" } as const;
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId,
+      result,
+    });
+    return result;
   }
 
   const session = orderCustomerSessionContext(order);
@@ -276,7 +422,16 @@ export async function dispatchMetaEvent(
         pixelIdPrefix: pixelId.slice(0, 6),
         reason: capi.reason,
       });
-      return { sent: false, reason: capi.reason ?? "capi_failed" };
+      const result = { sent: false, reason: capi.reason ?? "capi_failed" } as const;
+      recordDispatchOutcome(supabase, {
+        orderId,
+        productId: order.product_id as string,
+        eventType,
+        eventId,
+        result,
+        detail: capi.detail,
+      });
+      return result;
     }
 
     const { data: marked, error: markErr } = await supabase
@@ -290,9 +445,26 @@ export async function dispatchMetaEvent(
     if (markErr) throw new Error(markErr.message);
     if (!marked) {
       await releaseMetaDispatchClaim(supabase, orderId, eventType);
-      return { sent: false, skipped: true, reason: "already_sent" };
+      const result = { sent: false, skipped: true, reason: "already_sent" } as const;
+      recordDispatchOutcome(supabase, {
+        orderId,
+        productId: order.product_id as string,
+        eventType,
+        eventId,
+        result,
+        detail: capi.detail,
+      });
+      return result;
     }
 
+    recordDispatchOutcome(supabase, {
+      orderId,
+      productId: order.product_id as string,
+      eventType,
+      eventId,
+      result: { sent: true },
+      detail: capi.detail,
+    });
     return { sent: true };
   } catch (e) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);

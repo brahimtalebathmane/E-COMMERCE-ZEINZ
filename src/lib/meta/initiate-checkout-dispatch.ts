@@ -5,6 +5,7 @@ import {
   buildMetaOrderValueCustomData,
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
+import { logMetaEventOutcomeFireAndForget } from "@/lib/meta/event-log";
 import { sendMetaEvent, resolveClientIpAddress } from "@/utils/meta";
 
 export type InitiateCheckoutDispatchResult =
@@ -13,6 +14,54 @@ export type InitiateCheckoutDispatchResult =
   | { sent: false; skipped?: false; reason: string };
 
 const FUNNEL_EVENT_TYPE = "initiate_checkout" as const;
+
+function recordInitiateCheckoutOutcome(
+  supabase: SupabaseClient,
+  params: {
+    eventId: string;
+    productId?: string | null;
+    result: InitiateCheckoutDispatchResult;
+    detail?: string | null;
+    attemptCount?: number;
+  },
+): void {
+  if (params.result.sent) {
+    logMetaEventOutcomeFireAndForget({
+      supabase,
+      eventType: "initiate_checkout",
+      eventId: params.eventId,
+      productId: params.productId ?? null,
+      state: "success",
+      detail: params.detail,
+      attemptCount: params.attemptCount,
+    });
+    return;
+  }
+  if (params.result.skipped) {
+    logMetaEventOutcomeFireAndForget({
+      supabase,
+      eventType: "initiate_checkout",
+      eventId: params.eventId,
+      productId: params.productId ?? null,
+      state: "skipped",
+      reason: params.result.reason,
+      detail: params.detail,
+      attemptCount: params.attemptCount,
+      notifyOnFailure: false,
+    });
+    return;
+  }
+  logMetaEventOutcomeFireAndForget({
+    supabase,
+    eventType: "initiate_checkout",
+    eventId: params.eventId,
+    productId: params.productId ?? null,
+    state: "failed",
+    reason: params.result.reason,
+    detail: params.detail,
+    attemptCount: params.attemptCount,
+  });
+}
 
 async function claimFunnelMetaDispatch(
   supabase: SupabaseClient,
@@ -80,22 +129,30 @@ export async function dispatchInitiateCheckoutMetaEvent(
   const eventId = input.eventId.trim();
   const productId = input.productId.trim();
   if (!eventId || !productId) {
-    return { sent: false, skipped: true, reason: "missing_meta_data" };
+    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId: eventId || "unknown", productId, result });
+    return result;
   }
 
   const claimResult = await claimFunnelMetaDispatch(supabase, eventId, productId);
   if (claimResult === "product_mismatch") {
-    return { sent: false, reason: "event_id_product_mismatch" };
+    const result = { sent: false, reason: "event_id_product_mismatch" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
   }
   if (claimResult === "already_sent") {
-    return { sent: false, skipped: true, reason: "already_sent" };
+    const result = { sent: false, skipped: true, reason: "already_sent" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
   }
 
   const pixelId = resolveServerMetaPixelId() || "";
   if (!pixelId) {
     await releaseFunnelMetaDispatchClaim(supabase, eventId);
     console.warn("[meta] InitiateCheckout CAPI skipped: META_PIXEL_ID not set", { eventId });
-    return { sent: false, skipped: true, reason: "missing_meta_data" };
+    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
   }
 
   const { data: product, error: productErr } = await supabase
@@ -107,7 +164,9 @@ export async function dispatchInitiateCheckoutMetaEvent(
   if (productErr) throw new Error(productErr.message);
   if (!product || product.deleted_at != null) {
     await releaseFunnelMetaDispatchClaim(supabase, eventId);
-    return { sent: false, skipped: true, reason: "product_not_found" };
+    const result = { sent: false, skipped: true, reason: "product_not_found" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
   }
 
   const totalMru =
@@ -134,7 +193,9 @@ export async function dispatchInitiateCheckoutMetaEvent(
       eventIdPrefix: eventId.slice(0, 12),
       productId,
     });
-    return { sent: false, skipped: true, reason: "missing_content_ids" };
+    const result = { sent: false, skipped: true, reason: "missing_content_ids" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
   }
 
   const headers = input.requestHeaders ?? new Headers();
@@ -164,9 +225,22 @@ export async function dispatchInitiateCheckoutMetaEvent(
         eventIdPrefix: eventId.slice(0, 12),
         reason: capi.reason,
       });
-      return { sent: false, reason: capi.reason ?? "capi_failed" };
+      const result = { sent: false, reason: capi.reason ?? "capi_failed" } as const;
+      recordInitiateCheckoutOutcome(supabase, {
+        eventId,
+        productId,
+        result,
+        detail: capi.detail,
+      });
+      return result;
     }
 
+    recordInitiateCheckoutOutcome(supabase, {
+      eventId,
+      productId,
+      result: { sent: true },
+      detail: capi.detail,
+    });
     return { sent: true };
   } catch (e) {
     await releaseFunnelMetaDispatchClaim(supabase, eventId);

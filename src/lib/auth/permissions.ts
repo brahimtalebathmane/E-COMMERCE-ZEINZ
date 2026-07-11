@@ -5,6 +5,7 @@ export const PERMISSIONS = {
   cancel_orders: "cancel_orders",
   manage_products: "manage_products",
   view_analytics: "view_analytics",
+  view_meta_monitoring: "view_meta_monitoring",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -31,6 +32,7 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey | PermissionKey[] |
   "/admin/products": PERMISSIONS.manage_products,
   "/admin/orders": PERMISSIONS.view_orders,
   "/admin/analytics": PERMISSIONS.view_analytics,
+  "/admin/meta": PERMISSIONS.view_meta_monitoring,
 };
 
 export function parsePermissions(raw: unknown): PermissionKey[] {
@@ -135,5 +137,11 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
     labelAr: "عرض الأرباح",
     shortAr: "الأرباح",
     descriptionAr: "الوصول إلى تحليلات الربح ومصاريف الإعلانات.",
+  },
+  {
+    key: PERMISSIONS.view_meta_monitoring,
+    labelAr: "مراقبة Meta",
+    shortAr: "Meta",
+    descriptionAr: "متابعة أحداث Meta Pixel/CAPI والأعطال.",
   },
 ];

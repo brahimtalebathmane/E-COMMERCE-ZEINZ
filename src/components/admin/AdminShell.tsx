@@ -19,6 +19,7 @@ import {
   HomeIcon,
   LogoutIcon,
   MenuIcon,
+  MetaIcon,
   OrdersIcon,
   ProductsIcon,
   StaffIcon,
@@ -53,6 +54,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
     label: a.nav.analytics,
     icon: AnalyticsIcon,
     permission: PERMISSIONS.view_analytics,
+  },
+  {
+    href: "/admin/meta",
+    label: a.nav.meta,
+    icon: MetaIcon,
+    permission: PERMISSIONS.view_meta_monitoring,
   },
 ];
 

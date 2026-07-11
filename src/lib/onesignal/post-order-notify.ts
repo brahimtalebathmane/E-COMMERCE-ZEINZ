@@ -89,41 +89,36 @@ async function postOneSignalNotification(
   }
 }
 
-/** Sends a push notification to every subscribed admin device for a new order. */
-export async function notifyAdminsOfNewOrder(params: {
-  orderId: string;
-  productName: string;
+/** Sends a parameterized push notification to every subscribed admin device. */
+export async function notifyAdminsPush(params: {
+  headings: { en: string; ar: string };
+  contents: { en: string; ar: string };
+  data?: Record<string, string>;
+  url?: string;
+  logContext?: string;
 }): Promise<OneSignalNotifyResult> {
   const restApiKey = resolveOneSignalRestApiKey();
   if (!restApiKey) {
     console.error(
-      `[OneSignal] dispatch skipped for order ${params.orderId} — ONESIGNAL_REST_API_KEY is not set in the server environment (check Netlify/Railway env vars).`,
+      `[OneSignal] dispatch skipped${params.logContext ? ` (${params.logContext})` : ""} — ONESIGNAL_REST_API_KEY is not set in the server environment (check Netlify/Railway env vars).`,
     );
     return { sent: false, skipped: true, reason: "onesignal_unconfigured" };
   }
 
-  const productName = params.productName.trim() || "منتج غير معروف";
   const siteUrl = getPublicSiteUrl();
   const basePayload: Record<string, unknown> = {
     app_id: ONESIGNAL_APP_ID,
-    // Explicitly target the web/push channel so OneSignal never mis-routes to email/SMS.
     target_channel: "push",
-    // OneSignal REST requires the English (`en`) key in `contents`; a payload with only `ar`
-    // is rejected with HTTP 400 (this is why backend dispatch failed while client-side
-    // activation worked). `en` is the mandatory default; `ar` is the displayed Arabic copy.
-    headings: { en: "New order received", ar: "إشعار بطلب جديد" },
-    contents: {
-      en: `New order received for: ${productName}`,
-      ar: `تم استلام طلب جديد لمنتج: ${productName}`,
-    },
-    data: { order_id: params.orderId },
+    headings: params.headings,
+    contents: params.contents,
   };
-  if (siteUrl) {
-    basePayload.url = `${siteUrl}/admin/orders`;
+  if (params.data) basePayload.data = params.data;
+  if (params.url ?? siteUrl) {
+    basePayload.url = params.url ?? `${siteUrl}/admin`;
   }
 
   console.warn("[OneSignal] dispatch start", {
-    order_id: params.orderId,
+    context: params.logContext ?? null,
     app_id: ONESIGNAL_APP_ID,
     rest_key_present: true,
     site_url: siteUrl || null,
@@ -140,15 +135,14 @@ export async function notifyAdminsOfNewOrder(params: {
     if (result.kind === "network") {
       lastError = result.error;
       console.error(
-        `[OneSignal] request error for order ${params.orderId} via segment "${segment}": ${result.error}`,
+        `[OneSignal] request error${params.logContext ? ` (${params.logContext})` : ""} via segment "${segment}": ${result.error}`,
       );
       continue;
     }
 
     const { status, ok, json, rawBody } = result;
-    // Full response logged at every attempt — status, id, recipients, errors, raw body.
     console.warn("[OneSignal] notifications response", {
-      order_id: params.orderId,
+      context: params.logContext ?? null,
       segment,
       http_status: status,
       notification_id: json.id ?? null,
@@ -157,11 +151,9 @@ export async function notifyAdminsOfNewOrder(params: {
       raw_response: rawBody.slice(0, 1000),
     });
 
-    // Success: a segment delivered to at least one device. Stop immediately so no other
-    // segment can re-send the same order notification (prevents duplicate pushes).
     if (ok && json.id && (json.recipients ?? 0) > 0) {
       console.warn(
-        `[OneSignal] delivered order ${params.orderId} to ${json.recipients} recipient(s) via segment "${segment}" (notification ${json.id}).`,
+        `[OneSignal] delivered${params.logContext ? ` (${params.logContext})` : ""} to ${json.recipients} recipient(s) via segment "${segment}" (notification ${json.id}).`,
       );
       return { sent: true };
     }
@@ -173,31 +165,102 @@ export async function notifyAdminsOfNewOrder(params: {
           : rawBody.slice(0, 300) || "request_failed"
       }`;
       console.error(
-        `[OneSignal] delivery failed (${status}) for order ${params.orderId} via segment "${segment}": ${lastError}`,
+        `[OneSignal] delivery failed (${status})${params.logContext ? ` (${params.logContext})` : ""} via segment "${segment}": ${lastError}`,
       );
       continue;
     }
 
-    // HTTP 200 but zero recipients (segment valid but empty, or no match). Record and try
-    // the next candidate segment.
     lastReason =
       typeof json.errors !== "undefined"
         ? `no_recipients: ${JSON.stringify(json.errors).slice(0, 160)}`
         : "no_recipients";
     console.warn(
-      `[OneSignal] no recipients for order ${params.orderId} via segment "${segment}". Detail: ${lastReason}`,
+      `[OneSignal] no recipients${params.logContext ? ` (${params.logContext})` : ""} via segment "${segment}". Detail: ${lastReason}`,
     );
   }
 
   if (lastError) {
     console.error(
-      `[OneSignal] all targeting attempts failed for order ${params.orderId}: ${lastError}`,
+      `[OneSignal] all targeting attempts failed${params.logContext ? ` (${params.logContext})` : ""}: ${lastError}`,
     );
     return { sent: false, error: lastError };
   }
 
   console.warn(
-    `[OneSignal] no device subscribed for order ${params.orderId} across segments ${JSON.stringify(BROADCAST_SEGMENTS)}. Detail: ${lastReason}`,
+    `[OneSignal] no device subscribed${params.logContext ? ` (${params.logContext})` : ""} across segments ${JSON.stringify(BROADCAST_SEGMENTS)}. Detail: ${lastReason}`,
   );
   return { sent: false, skipped: true, reason: lastReason };
+}
+
+const META_EVENT_LABELS: Record<string, { en: string; ar: string }> = {
+  lead: { en: "Lead", ar: "Lead" },
+  purchase: { en: "Purchase", ar: "شراء" },
+  cancelled_lead: { en: "Cancelled Lead", ar: "إلغاء Lead" },
+  initiate_checkout: { en: "Initiate Checkout", ar: "بدء الشراء" },
+  view_content: { en: "View Content", ar: "عرض المحتوى" },
+  config_health: { en: "Meta config", ar: "إعدادات Meta" },
+  emq_check: { en: "Event Match Quality", ar: "جودة مطابقة الأحداث" },
+  pixel_load_failure: { en: "Pixel load", ar: "تحميل البكسل" },
+};
+
+/** Push alert when a Meta event fails definitively (dedup handled by caller). */
+export async function notifyAdminsOfMetaFailure(params: {
+  eventType: string;
+  orderId?: string;
+  productId?: string;
+  reason: string;
+  eventId?: string;
+}): Promise<OneSignalNotifyResult> {
+  const labels = META_EVENT_LABELS[params.eventType] ?? {
+    en: params.eventType,
+    ar: params.eventType,
+  };
+  const siteUrl = getPublicSiteUrl();
+  const query = params.orderId
+    ? `order=${params.orderId}`
+    : params.eventId
+      ? `event=${encodeURIComponent(params.eventId)}`
+      : "";
+  const url = siteUrl
+    ? `${siteUrl}/admin/meta${query ? `?${query}` : ""}`
+    : undefined;
+
+  return notifyAdminsPush({
+    headings: {
+      en: `Meta event failed: ${labels.en}`,
+      ar: `فشل حدث Meta: ${labels.ar}`,
+    },
+    contents: {
+      en: `Reason: ${params.reason}${params.orderId ? ` (order ${params.orderId.slice(0, 8)}…)` : ""}`,
+      ar: `السبب: ${params.reason}${params.orderId ? ` (طلب ${params.orderId.slice(0, 8)}…)` : ""}`,
+    },
+    data: {
+      event_type: params.eventType,
+      reason: params.reason,
+      ...(params.orderId ? { order_id: params.orderId } : {}),
+      ...(params.productId ? { product_id: params.productId } : {}),
+    },
+    url,
+    logContext: `meta_failure:${params.eventType}:${params.orderId ?? params.eventId ?? "global"}`,
+  });
+}
+
+/** Sends a push notification to every subscribed admin device for a new order. */
+export async function notifyAdminsOfNewOrder(params: {
+  orderId: string;
+  productName: string;
+}): Promise<OneSignalNotifyResult> {
+  const productName = params.productName.trim() || "منتج غير معروف";
+  const siteUrl = getPublicSiteUrl();
+
+  return notifyAdminsPush({
+    headings: { en: "New order received", ar: "إشعار بطلب جديد" },
+    contents: {
+      en: `New order received for: ${productName}`,
+      ar: `تم استلام طلب جديد لمنتج: ${productName}`,
+    },
+    data: { order_id: params.orderId },
+    url: siteUrl ? `${siteUrl}/admin/orders` : undefined,
+    logContext: `order:${params.orderId}`,
+  });
 }

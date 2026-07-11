@@ -12,6 +12,7 @@ import {
   tryBeginMetaLeadEffect,
   type MetaPendingLeadPayload,
 } from "@/lib/meta-lead-client";
+import { reportMetaClientFailure } from "@/lib/meta-client-failure-report";
 import { resolveOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 
 type Props = {
@@ -124,6 +125,21 @@ export function OrderSuccessMetaLead({
             capi: capiResult.state,
           });
         } else {
+          const reason =
+            capiResult.state === "failed" || capiResult.state === "error"
+              ? capiResult.reason === "network_error" ||
+                  capiResult.reason === "http_error"
+                ? capiResult.reason
+                : "client_retry_exhausted"
+              : "client_retry_exhausted";
+          reportMetaClientFailure({
+            eventType: "lead",
+            eventId: leadPayload.eventId,
+            orderId: leadPayload.orderId,
+            productId: leadPayload.productId,
+            reason,
+            attemptCount: 3,
+          });
           console.error(
             "[Meta] Lead Pixel fired but CAPI did not ingest — check Netlify env (META_CAPI_ACCESS_TOKEN, META_CAPI_TEST_EVENT_CODE)",
             {

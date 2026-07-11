@@ -21,5 +21,8 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+[functions."meta-stuck-events-scheduled"]
+  schedule = "*/30 * * * *"
+
 [build.environment]
   NODE_VERSION = "20"

@@ -11,7 +11,8 @@ import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trackInitiateCheckout } from "@/components/MetaPixel";
-import { dispatchInitiateCheckoutCapiWithRetry } from "@/lib/meta-initiate-checkout-client";
+import { dispatchInitiateCheckoutCapiWithRetry, isMetaInitiateCheckoutCapiComplete } from "@/lib/meta-initiate-checkout-client";
+import { reportMetaClientFailure } from "@/lib/meta-client-failure-report";
 import {
   ensureMetaFunnelSession,
   touchMetaFunnelActivity,
@@ -431,14 +432,32 @@ export function ProductLanding({ product }: Props) {
         currency: "MRU",
       });
       const metaCookies = getMetaBrowserCookies();
-      void dispatchInitiateCheckoutCapiWithRetry({
-        productId: product.id,
-        eventId,
-        eventTimeSec,
-        eventSourceUrl: typeof window !== "undefined" ? window.location.href : null,
-        metaFbp: metaCookies.fbp,
-        metaFbc: metaCookies.fbc,
-      });
+      void (async () => {
+        const capiResult = await dispatchInitiateCheckoutCapiWithRetry({
+          productId: product.id,
+          eventId,
+          eventTimeSec,
+          eventSourceUrl: typeof window !== "undefined" ? window.location.href : null,
+          metaFbp: metaCookies.fbp,
+          metaFbc: metaCookies.fbc,
+        });
+        if (!isMetaInitiateCheckoutCapiComplete(capiResult)) {
+          const reason =
+            capiResult.state === "failed" || capiResult.state === "error"
+              ? capiResult.reason === "network_error" ||
+                  capiResult.reason === "http_error"
+                ? capiResult.reason
+                : "client_retry_exhausted"
+              : "client_retry_exhausted";
+          reportMetaClientFailure({
+            eventType: "initiate_checkout",
+            eventId,
+            productId: product.id,
+            reason,
+            attemptCount: 3,
+          });
+        }
+      })();
     } catch {
       // ignore
     }
