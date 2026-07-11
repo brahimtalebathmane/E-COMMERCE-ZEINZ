@@ -64,17 +64,13 @@ export function buildMetaOrderValueCustomData(input: {
   productId: string;
   productName: string;
   quantity?: number;
-}): MetaProductCustomData & { value: number; currency: string } {
+}): (MetaProductCustomData & { value: number; currency: string }) | undefined {
   const product = resolveMetaContentData(input);
   if (!product) {
-    return {
-      value: input.value,
-      currency: input.currency,
-      content_type: "product",
-      content_ids: [],
-      content_name: input.productName.trim() || "Product",
-      contents: [],
-    };
+    console.warn("[meta] buildMetaOrderValueCustomData skipped: invalid productId", {
+      productId: input.productId,
+    });
+    return undefined;
   }
   return {
     value: input.value,

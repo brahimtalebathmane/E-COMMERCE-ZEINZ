@@ -394,9 +394,11 @@ export function ProductLanding({ product }: Props) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onScroll = () => touchMetaFunnelActivityThrottled();
+    const onScroll = () => touchMetaFunnelActivityThrottled(product.id);
     const onVis = () => {
-      if (document.visibilityState === "visible") touchMetaFunnelActivityThrottled();
+      if (document.visibilityState === "visible") {
+        touchMetaFunnelActivityThrottled(product.id);
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     document.addEventListener("visibilitychange", onVis);
@@ -404,12 +406,19 @@ export function ProductLanding({ product }: Props) {
       window.removeEventListener("scroll", onScroll, true);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [product.id]);
 
   const openCheckout = () => {
     try {
-      touchMetaFunnelActivity();
+      touchMetaFunnelActivity(product.id);
       const eventId = ensureMetaFunnelSession(product.id);
+      if (!eventId) {
+        console.error("[meta] InitiateCheckout skipped: missing funnel event_id", {
+          productId: product.id,
+        });
+        setOpen(true);
+        return;
+      }
       const eventTimeSec = Math.floor(Date.now() / 1000);
       const leadValue =
         product.discount_price != null

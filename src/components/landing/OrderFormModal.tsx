@@ -54,9 +54,11 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    const onScroll = () => touchMetaFunnelActivityThrottled();
+    const onScroll = () => touchMetaFunnelActivityThrottled(product.id);
     const onVis = () => {
-      if (document.visibilityState === "visible") touchMetaFunnelActivityThrottled();
+      if (document.visibilityState === "visible") {
+        touchMetaFunnelActivityThrottled(product.id);
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     document.addEventListener("visibilitychange", onVis);
@@ -64,7 +66,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       window.removeEventListener("scroll", onScroll, true);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [open]);
+  }, [open, product.id]);
 
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
@@ -102,6 +104,9 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     try {
       // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
       const generatedMetaEventId = ensureMetaFunnelSession(product.id);
+      if (!generatedMetaEventId) {
+        throw new Error("تعذر إعداد جلسة التتبع — يرجى تحديث الصفحة والمحاولة مرة أخرى");
+      }
       const phoneE164 = `+222${local}`;
       const leadValue =
         product.discount_price != null
@@ -167,7 +172,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         customerName: n,
       });
 
-      clearMetaSessionEventId();
+      clearMetaSessionEventId(product.id);
 
       onClose();
 
@@ -284,7 +289,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                 className="store-input mt-2"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onFocus={() => touchMetaFunnelActivityThrottled()}
+                onFocus={() => touchMetaFunnelActivityThrottled(product.id)}
                 onBlur={() => setTouched((p) => ({ ...p, name: true }))}
                 autoComplete="name"
                 aria-invalid={Boolean(nameError)}
@@ -312,7 +317,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                     const next = onlyDigits(e.target.value);
                     setPhoneLocal(next.slice(0, 8));
                   }}
-                  onFocus={() => touchMetaFunnelActivityThrottled()}
+                  onFocus={() => touchMetaFunnelActivityThrottled(product.id)}
                   onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                   inputMode="numeric"
                   autoComplete="tel"

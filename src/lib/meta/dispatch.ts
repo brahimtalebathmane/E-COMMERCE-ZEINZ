@@ -141,6 +141,11 @@ export async function dispatchMetaEvent(
     return { sent: false, skipped: true, reason: "status_not_cancelled" };
   }
 
+  if (!order.product_id) {
+    console.warn("[meta] CAPI skipped: order has no product_id", { orderId, eventType });
+    return { sent: false, skipped: true, reason: "missing_product_id" };
+  }
+
   const claimed = await claimMetaDispatch(supabase, orderId, eventType);
   if (!claimed) {
     return { sent: false, skipped: true, reason: "already_sent" };
@@ -153,28 +158,35 @@ export async function dispatchMetaEvent(
   const pixelId = resolveServerMetaPixelId() || "";
   let productCustomData: ReturnType<typeof buildMetaProductCustomData>;
 
-  if (order.product_id) {
-    const { data: product } = await supabase
-      .from("products")
-      .select("name_ar, name_fr, default_language")
-      .eq("id", order.product_id as string)
-      .maybeSingle();
+  const { data: product } = await supabase
+    .from("products")
+    .select("name_ar, name_fr, default_language, deleted_at")
+    .eq("id", order.product_id as string)
+    .maybeSingle();
 
-    if (product) {
-      productCustomData = buildMetaProductCustomData({
-        productId: order.product_id as string,
-        productName: resolveMetaProductDisplayName({
-          name_ar: product.name_ar as string | null,
-          name_fr: product.name_fr as string | null,
-          default_language: product.default_language as "ar" | "fr" | null,
-        }),
-      });
-    } else {
-      productCustomData = buildMetaProductCustomData({
-        productId: order.product_id as string,
-        productName: "Product",
-      });
-    }
+  if (!product || product.deleted_at != null) {
+    await releaseMetaDispatchClaim(supabase, orderId, eventType);
+    console.warn("[meta] CAPI skipped: product not found for order", {
+      orderId,
+      eventType,
+      productId: order.product_id,
+    });
+    return { sent: false, skipped: true, reason: "product_not_found" };
+  }
+
+  productCustomData = buildMetaProductCustomData({
+    productId: order.product_id as string,
+    productName: resolveMetaProductDisplayName({
+      name_ar: product.name_ar as string | null,
+      name_fr: product.name_fr as string | null,
+      default_language: product.default_language as "ar" | "fr" | null,
+    }),
+  });
+
+  if (!productCustomData?.content_ids?.length) {
+    await releaseMetaDispatchClaim(supabase, orderId, eventType);
+    console.warn("[meta] CAPI skipped: unresolved content_ids", { orderId, eventType });
+    return { sent: false, skipped: true, reason: "missing_content_ids" };
   }
 
   console.warn("[meta] CAPI dispatch attempt", {
@@ -207,14 +219,23 @@ export async function dispatchMetaEvent(
 
   const customData =
     eventType === "purchase" || eventType === "lead" || eventType === "cancel"
-      ? order.product_id
-        ? buildMetaOrderValueCustomData({
-            ...orderMoney,
-            productId: order.product_id as string,
-            productName: productCustomData?.content_name ?? "Product",
-          })
-        : orderMoney
+      ? buildMetaOrderValueCustomData({
+          ...orderMoney,
+          productId: order.product_id as string,
+          productName: productCustomData.content_name,
+        })
       : productCustomData;
+
+  if (
+    !customData ||
+    !("content_ids" in customData) ||
+    !Array.isArray(customData.content_ids) ||
+    customData.content_ids.length === 0
+  ) {
+    await releaseMetaDispatchClaim(supabase, orderId, eventType);
+    console.warn("[meta] CAPI skipped: missing content_ids in payload", { orderId, eventType });
+    return { sent: false, skipped: true, reason: "missing_content_ids" };
+  }
 
   const session = orderCustomerSessionContext(order);
   if (session.missingStoredSession) {

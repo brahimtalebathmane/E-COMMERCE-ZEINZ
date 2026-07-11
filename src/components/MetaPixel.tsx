@@ -101,9 +101,17 @@ export function trackInitiateCheckout(
     currency?: string;
   } | null,
 ) {
+  if (!eventId.trim()) {
+    console.error("[meta] InitiateCheckout skipped: missing event_id");
+    return;
+  }
+  if (!product?.productId?.trim()) {
+    console.error("[meta] InitiateCheckout skipped: missing productId");
+    return;
+  }
+
   let customData: Record<string, unknown> | undefined;
   if (
-    product?.productId &&
     product.value != null &&
     Number.isFinite(product.value) &&
     product.currency?.trim()
@@ -115,11 +123,18 @@ export function trackInitiateCheckout(
       productId: product.productId,
       productName: product.productName,
     });
-  } else if (product?.productId) {
+  } else {
     customData = buildMetaProductCustomData({
       productId: product.productId,
       productName: product.productName,
     });
+  }
+
+  if (!customData?.content_ids?.length) {
+    console.error("[meta] InitiateCheckout skipped: unresolved content_ids", {
+      productId: product.productId,
+    });
+    return;
   }
 
   void trackMetaEvent(undefined, "InitiateCheckout", customData, { eventID: eventId });
@@ -179,6 +194,14 @@ export async function trackLead(params: {
     productName: params.productName,
     quantity: params.quantity,
   });
+
+  if (!leadCustomData?.content_ids?.length) {
+    console.error("[meta] Browser Lead skipped: unresolved content_ids", {
+      orderId: params.orderId,
+      productId: params.productId,
+    });
+    return;
+  }
 
   const result = await trackMetaLead(pid, leadCustomData, {
     eventID: params.eventId,

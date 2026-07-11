@@ -18,14 +18,33 @@ async function claimFunnelMetaDispatch(
   supabase: SupabaseClient,
   eventId: string,
   productId: string,
-): Promise<boolean> {
+): Promise<"claimed" | "already_sent" | "product_mismatch"> {
   const { error } = await supabase.from("funnel_meta_dispatches").insert({
     event_id: eventId,
     event_type: FUNNEL_EVENT_TYPE,
     product_id: productId,
   });
-  if (!error) return true;
-  if (error.code === "23505") return false;
+  if (!error) return "claimed";
+  if (error.code === "23505") {
+    const { data: existing } = await supabase
+      .from("funnel_meta_dispatches")
+      .select("product_id")
+      .eq("event_id", eventId)
+      .eq("event_type", FUNNEL_EVENT_TYPE)
+      .maybeSingle();
+    if (
+      existing?.product_id &&
+      String(existing.product_id) !== productId
+    ) {
+      console.error("[meta] InitiateCheckout event_id reused across products", {
+        eventIdPrefix: eventId.slice(0, 12),
+        requestedProductId: productId,
+        ledgerProductId: existing.product_id,
+      });
+      return "product_mismatch";
+    }
+    return "already_sent";
+  }
   throw new Error(error.message);
 }
 
@@ -64,8 +83,11 @@ export async function dispatchInitiateCheckoutMetaEvent(
     return { sent: false, skipped: true, reason: "missing_meta_data" };
   }
 
-  const claimed = await claimFunnelMetaDispatch(supabase, eventId, productId);
-  if (!claimed) {
+  const claimResult = await claimFunnelMetaDispatch(supabase, eventId, productId);
+  if (claimResult === "product_mismatch") {
+    return { sent: false, reason: "event_id_product_mismatch" };
+  }
+  if (claimResult === "already_sent") {
     return { sent: false, skipped: true, reason: "already_sent" };
   }
 
@@ -105,6 +127,15 @@ export async function dispatchInitiateCheckoutMetaEvent(
     productId,
     productName,
   });
+
+  if (!customData?.content_ids?.length) {
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    console.warn("[meta] InitiateCheckout CAPI skipped: unresolved content_ids", {
+      eventIdPrefix: eventId.slice(0, 12),
+      productId,
+    });
+    return { sent: false, skipped: true, reason: "missing_content_ids" };
+  }
 
   const headers = input.requestHeaders ?? new Headers();
   const clientIp = resolveClientIpAddress(headers);

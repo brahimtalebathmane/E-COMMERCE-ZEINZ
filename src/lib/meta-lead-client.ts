@@ -3,6 +3,13 @@ import { clearOrderSuccessClientSession } from "@/lib/orders/order-success-sessi
 
 export { buildMetaLeadEventId, resolveLeadEventId };
 
+export const META_PENDING_LEAD_STORAGE_PREFIX = "meta_pending_lead_v2:";
+
+export function metaPendingLeadStorageKey(orderId: string): string {
+  return `${META_PENDING_LEAD_STORAGE_PREFIX}${orderId.trim()}`;
+}
+
+/** @deprecated Use metaPendingLeadStorageKey(orderId) — global key leaked across concurrent orders. */
 export const META_PENDING_LEAD_STORAGE_KEY = "meta_pending_lead_v1";
 
 const META_LEAD_DISPATCHED_PREFIX = "meta_lead_dispatched:";
@@ -145,8 +152,14 @@ export function releaseMetaLeadEffectLock(orderId: string): void {
 /** Persist Lead params for firing on the order-success page after navigation. */
 export function queueMetaPendingLead(payload: MetaPendingLeadPayload): void {
   if (typeof window === "undefined") return;
+  const orderId = payload.orderId.trim();
+  if (!orderId) {
+    console.error("[meta] queueMetaPendingLead skipped: missing orderId");
+    return;
+  }
   try {
-    sessionStorage.setItem(META_PENDING_LEAD_STORAGE_KEY, JSON.stringify(payload));
+    sessionStorage.setItem(metaPendingLeadStorageKey(orderId), JSON.stringify(payload));
+    sessionStorage.removeItem(META_PENDING_LEAD_STORAGE_KEY);
   } catch {
     // ignore quota / private mode
   }
@@ -158,7 +171,19 @@ export function readMetaPendingLead(orderId: string): MetaPendingLeadPayload | n
   const id = orderId.trim();
   if (!id) return null;
   try {
-    const raw = sessionStorage.getItem(META_PENDING_LEAD_STORAGE_KEY);
+    let raw = sessionStorage.getItem(metaPendingLeadStorageKey(id));
+    if (!raw) {
+      const legacyRaw = sessionStorage.getItem(META_PENDING_LEAD_STORAGE_KEY);
+      if (legacyRaw) {
+        const legacyParsed = JSON.parse(legacyRaw) as unknown;
+        if (
+          isValidPayload(legacyParsed) &&
+          legacyParsed.orderId.trim() === id
+        ) {
+          raw = legacyRaw;
+        }
+      }
+    }
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!isValidPayload(parsed) || parsed.orderId.trim() !== id) return null;
@@ -171,13 +196,17 @@ export function readMetaPendingLead(orderId: string): MetaPendingLeadPayload | n
 /** @deprecated Prefer readMetaPendingLead + clearMetaPendingLead after success. */
 export function consumeMetaPendingLead(orderId: string): MetaPendingLeadPayload | null {
   const payload = readMetaPendingLead(orderId);
-  if (payload) clearMetaPendingLead();
+  if (payload) clearMetaPendingLead(orderId);
   return payload;
 }
 
-export function clearMetaPendingLead(): void {
+export function clearMetaPendingLead(orderId?: string): void {
   if (typeof window === "undefined") return;
   try {
+    const id = orderId?.trim();
+    if (id) {
+      sessionStorage.removeItem(metaPendingLeadStorageKey(id));
+    }
     sessionStorage.removeItem(META_PENDING_LEAD_STORAGE_KEY);
   } catch {
     // ignore
@@ -231,7 +260,7 @@ export async function fetchMetaLeadPayloadFromServer(
 /** Marks tab session complete and clears pending payload after hybrid Lead settles. */
 export function finalizeMetaLeadDispatch(orderId: string): void {
   markMetaLeadDispatched(orderId);
-  clearMetaPendingLead();
+  clearMetaPendingLead(orderId);
   clearOrderSuccessClientSession(orderId);
 }
 

@@ -123,7 +123,7 @@ export function buildMetaPixelProductLandingScript(
 
   const productId = product.productId.trim();
   const productName = product.productName.trim() || "Product";
-  if (!productId) return buildMetaPixelCatalogPageViewScript(id);
+  if (!productId) return null;
 
   const safeId = JSON.stringify(id);
   const safePvPrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);

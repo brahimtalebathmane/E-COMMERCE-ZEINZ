@@ -12,7 +12,8 @@ import { isLandingVisible } from "@/lib/product-test-status";
 import type { ProductTestingStatus } from "@/types";
 import { notFound, permanentRedirect } from "next/navigation";
 
-export const revalidate = 60;
+/** Fresh product record on every ad landing — avoids stale content_ids in inline Pixel script. */
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   const slugs = await getAllProductSlugs();
