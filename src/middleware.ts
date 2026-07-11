@@ -32,7 +32,49 @@ function forbiddenRedirect(request: NextRequest, reason: "forbidden" | "suspende
   return NextResponse.redirect(url);
 }
 
+/** True for Next.js App Router link prefetch / RSC payload requests. */
+function isRscPrefetch(request: NextRequest): boolean {
+  return (
+    request.headers.get("rsc") === "1" ||
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.nextUrl.searchParams.has("_rsc")
+  );
+}
+
+/** Supabase SSR stores the session in sb-<project-ref>-auth-token cookies. */
+function hasSupabaseSessionCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => {
+    const name = cookie.name.toLowerCase();
+    return name.startsWith("sb-") && name.includes("auth");
+  });
+}
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // Prefetch requests fire in parallel for every sidebar <Link prefetch> while
+  // the user is already on an authenticated admin page. Running two Supabase
+  // network round-trips per prefetch (getUser + profiles) saturates Netlify edge
+  // concurrency and surfaces as HTTP 503, even though full navigations succeed.
+  // Session validity is still enforced in the dashboard layout via getAdminSession;
+  // route permissions remain enforced here on real navigations (non-prefetch).
+  if (
+    isRscPrefetch(request) &&
+    path.startsWith("/admin") &&
+    !path.startsWith("/admin/login")
+  ) {
+    if (!hasSupabaseSessionCookie(request)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      const nextPath = path.startsWith("/") ? path : "/admin";
+      if (nextPath.startsWith("/admin") && !nextPath.includes("//")) {
+        url.searchParams.set("next", nextPath);
+      }
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -69,8 +111,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
 
   if (path.startsWith("/admin") && !path.startsWith("/admin/login")) {
     if (!user) {

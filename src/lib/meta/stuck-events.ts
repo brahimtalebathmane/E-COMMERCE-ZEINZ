@@ -76,7 +76,7 @@ export async function findStuckMetaEvents(
 
   const { data: purchaseCandidates, error: purchaseErr } = await supabase
     .from("orders")
-    .select("id, product_id, status, updated_at, meta_purchase_sent")
+    .select("id, product_id, status, created_at, meta_purchase_sent")
     .in("status", ["confirmed", "shipped"])
     .eq("meta_purchase_sent", false)
     .is("deleted_at", null);
@@ -92,7 +92,7 @@ export async function findStuckMetaEvents(
       supabase,
       orderId,
       "confirmed",
-      String(order.updated_at ?? ""),
+      String(order.created_at ?? ""),
     );
     if (since > purchaseCutoff) continue;
 
@@ -108,7 +108,7 @@ export async function findStuckMetaEvents(
 
   const { data: cancelCandidates, error: cancelErr } = await supabase
     .from("orders")
-    .select("id, product_id, status, updated_at, meta_cancel_sent")
+    .select("id, product_id, status, created_at, meta_cancel_sent")
     .eq("status", "cancelled")
     .eq("meta_cancel_sent", false)
     .is("deleted_at", null);
@@ -124,7 +124,7 @@ export async function findStuckMetaEvents(
       supabase,
       orderId,
       "cancelled",
-      String(order.updated_at ?? ""),
+      String(order.created_at ?? ""),
     );
     if (since > cancelCutoff) continue;
 
@@ -204,11 +204,9 @@ export async function countCurrentlyStuck(supabase: SupabaseClient): Promise<num
 /**
  * Fast stuck-order count for the admin dashboard (3 indexed queries).
  *
- * `findStuckMetaEvents` walks every candidate with per-order history checks and
- * is correct for the scheduled stuck-event job, but it can exceed serverless
- * timeouts when the orders table is large — which aborts the RSC stream and
- * surfaces as "Connection closed" in the browser. This approximation is enough
- * for the monitoring overview card.
+ * Uses `created_at` (always present on orders) rather than `updated_at`, which
+ * was added later in migration 043 and may be absent on databases that have not
+ * yet applied it — referencing the missing column breaks /admin/meta outright.
  */
 export async function countStuckEventsFast(
   supabase: SupabaseClient,
@@ -224,14 +222,14 @@ export async function countStuckEventsFast(
       .in("status", ["confirmed", "shipped"])
       .eq("meta_purchase_sent", false)
       .is("deleted_at", null)
-      .lte("updated_at", purchaseCutoff),
+      .lte("created_at", purchaseCutoff),
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("status", "cancelled")
       .eq("meta_cancel_sent", false)
       .is("deleted_at", null)
-      .lte("updated_at", cancelCutoff),
+      .lte("created_at", cancelCutoff),
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
