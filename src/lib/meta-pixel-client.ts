@@ -191,7 +191,7 @@ function queueMetaPixelInit(
   // Reserve the init slot synchronously so concurrent callers cannot queue a second init.
   markMetaPixelInited(id);
 
-  // Keep SPA history from auto-firing PageView; first PageView comes from init (standard).
+  // Block Meta's SPA history auto-PageView; PageView is fired explicitly via trackMetaPageView.
   window.fbq.disablePushState = true;
 
   const userData = buildMetaPixelInitUserData(id, extra);
@@ -200,8 +200,6 @@ function queueMetaPixelInit(
   } else {
     window.fbq("init", id, {}, FBQ_INIT_OPTS);
   }
-  // Credit automatic init PageView for this route (Meta base-code behavior).
-  markPageViewSentForRoute(pageViewDedupeKey(id));
   if (initUserDataHasPii(userData)) {
     window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
     window.__metaPixelInitHadPii[id] = true;

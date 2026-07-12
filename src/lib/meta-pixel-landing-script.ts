@@ -11,9 +11,10 @@ export type MetaLandingProductContent = {
 };
 
 /**
- * Shared inline helpers. Init uses Meta's default autoConfig so the automatic
- * PageView from `fbq('init')` is classified as the standard base-code PageView
- * (not Manual Setup / Custom). disablePushState still blocks SPA history dupes.
+ * Shared inline helpers. Uses Meta's documented base code: `fbq('init', id)`
+ * followed by an explicit `fbq('track', 'PageView')` (init alone does NOT fire
+ * PageView). disablePushState blocks SPA history dupes; default autoConfig keeps
+ * PageView classified as the standard event.
  */
 function landingScriptShell(idJson: string, prefixJson: string, fireBody: string): string {
   return `(function(){
@@ -39,12 +40,9 @@ function ensureInit(){
   if(window.__metaPixelsInited&&window.__metaPixelsInited[id])return;
   if(!window.fbq)return;
   window.fbq.disablePushState=true;
-  // Default autoConfig — Meta fires the standard PageView on init (base-code behavior).
   window.fbq("init",id);
   window.__metaPixelsInited=window.__metaPixelsInited||{};
   window.__metaPixelsInited[id]=true;
-  // Credit the automatic init PageView so React does not fire a second one.
-  markSent(prefix,"__metaPixelPageViewSent");
 }
 function pixelRegistered(){
   try{
@@ -84,7 +82,7 @@ var timer=setInterval(function(){
 }
 
 /**
- * Catalog listing — init only (automatic standard PageView). No product content_ids.
+ * Catalog listing — standard PageView via `fbq('track','PageView')`. No product content_ids.
  */
 export function buildMetaPixelCatalogPageViewScript(
   pixelId?: string | null,
@@ -99,8 +97,10 @@ export function buildMetaPixelCatalogPageViewScript(
 var pvPrefix=${safePrefix};
 function fireEvents(){
   if(!readyToTrack())return false;
-  // PageView already credited in ensureInit (Meta automatic base-code PageView).
-  return alreadySent(pvPrefix,"__metaPixelPageViewSent");
+  if(alreadySent(pvPrefix,"__metaPixelPageViewSent"))return true;
+  window.fbq("track","PageView");
+  markSent(pvPrefix,"__metaPixelPageViewSent");
+  return true;
 }
 if(fireEvents())return;
 `;
@@ -116,7 +116,7 @@ export function buildMetaPixelLandingPageViewScript(
 }
 
 /**
- * Product landing — automatic PageView via init + ViewContent with product content_ids.
+ * Product landing — standard PageView + ViewContent with product content_ids.
  */
 export function buildMetaPixelProductLandingScript(
   product: MetaLandingProductContent,
@@ -150,6 +150,10 @@ function viewContentPayload(){
 }
 function fireEvents(){
   if(!readyToTrack())return false;
+  if(!alreadySent(pvPrefix,"__metaPixelPageViewSent")){
+    window.fbq("track","PageView");
+    markSent(pvPrefix,"__metaPixelPageViewSent");
+  }
   if(!alreadySent(vcPrefix,"__metaPixelViewContentSent")){
     window.fbq("track","ViewContent",viewContentPayload());
     markSent(vcPrefix,"__metaPixelViewContentSent");
