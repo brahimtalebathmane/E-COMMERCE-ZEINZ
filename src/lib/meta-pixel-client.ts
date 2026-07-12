@@ -2,11 +2,7 @@ import {
   buildMetaPixelInitUserData,
   type MetaPixelAdvancedMatchingPayload,
 } from "@/lib/meta-pixel-advanced-matching";
-import {
-  META_PAGEVIEW_STORAGE_PREFIX,
-  META_VIEWCONTENT_STORAGE_PREFIX,
-  metaContentDataToPixelPayload,
-} from "@/lib/meta-pixel-landing-script";
+import { metaContentDataToPixelPayload } from "@/lib/meta-pixel-landing-script";
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import type { MetaProductCustomData } from "@/lib/meta-product-custom-data";
 
@@ -33,6 +29,8 @@ declare global {
     __metaPixelViewContentSent?: Record<string, boolean>;
     /** `${pixelId}:${eventName}:${eventID}` keys already dispatched, to guarantee once-per-action. */
     __metaSentEvents?: Record<string, boolean>;
+    /** Route-scoped per-pageload event ids (pv_/vc_) shared with the inline landing script. */
+    __metaEventIds?: Record<string, string>;
   }
 }
 
@@ -260,45 +258,43 @@ export function refreshMetaPixelInitWithUserData(
   syncMetaPixelInit(pixelId, extra);
 }
 
+/**
+ * PageView/ViewContent dedupe is per PAGELOAD (window memory only, never sessionStorage):
+ * every full page load must re-fire them, while the inline landing script, this runtime,
+ * and StrictMode re-runs share the same window flags so one pageload never double-fires.
+ */
 function isPageViewSentForRoute(key: string): boolean {
   if (typeof window === "undefined") return false;
-  const storageKey = `${META_PAGEVIEW_STORAGE_PREFIX}${key}`;
-  try {
-    if (sessionStorage.getItem(storageKey) === "1") return true;
-  } catch {
-    // ignore private mode / quota
-  }
   return Boolean(window.__metaPixelPageViewSent?.[key]);
 }
 
 function markPageViewSentForRoute(key: string): void {
   if (!window.__metaPixelPageViewSent) window.__metaPixelPageViewSent = {};
   window.__metaPixelPageViewSent[key] = true;
-  try {
-    sessionStorage.setItem(`${META_PAGEVIEW_STORAGE_PREFIX}${key}`, "1");
-  } catch {
-    // ignore
-  }
 }
 
 function markViewContentSentForRoute(key: string): void {
   if (!window.__metaPixelViewContentSent) window.__metaPixelViewContentSent = {};
   window.__metaPixelViewContentSent[key] = true;
-  try {
-    sessionStorage.setItem(`${META_VIEWCONTENT_STORAGE_PREFIX}${key}`, "1");
-  } catch {
-    // ignore
-  }
 }
 
 function isViewContentSentForRoute(key: string): boolean {
   if (typeof window === "undefined") return false;
-  try {
-    if (sessionStorage.getItem(`${META_VIEWCONTENT_STORAGE_PREFIX}${key}`) === "1") return true;
-  } catch {
-    // ignore
-  }
   return Boolean(window.__metaPixelViewContentSent?.[key]);
+}
+
+/**
+ * Route-scoped event id, unique per event type (`pv_…`, `vc_…`) and per pageload.
+ * Stored on window.__metaEventIds with the same key format as the inline landing
+ * script so both paths attach the same eventID — Meta dedupes any residual overlap.
+ */
+function ensureRouteScopedEventId(type: "pv" | "vc", pixelId: string): string {
+  const map = (window.__metaEventIds = window.__metaEventIds || {});
+  const key = `${type}:${pixelId}:${window.location.pathname}${window.location.search}`;
+  if (!map[key]) {
+    map[key] = `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+  return map[key];
 }
 
 const META_TRACKED_EVENT_STORAGE_PREFIX = "meta_tracked_event_v1:";
@@ -366,7 +362,7 @@ function pushFbqTrack(
   return true;
 }
 
-/** Standard PageView for client-side route changes (init already fired the first one). */
+/** Standard PageView with a route-scoped `pv_…` eventID (dedupes with the inline script). */
 function pushFbqPageView(pixelId: string): boolean {
   if (!window.fbq) return false;
 
@@ -377,8 +373,9 @@ function pushFbqPageView(pixelId: string): boolean {
     );
   }
 
-  window.fbq("track", "PageView");
-  devLog("PageView track queued (client navigation)", { pixelId });
+  const eventID = ensureRouteScopedEventId("pv", pixelId);
+  window.fbq("track", "PageView", {}, { eventID });
+  devLog("PageView track queued", { pixelId, eventID });
   return true;
 }
 
@@ -454,8 +451,9 @@ export async function trackMetaPageView(pixelId?: string | null): Promise<void> 
 
 function pushFbqViewContent(pixelId: string, payload: Record<string, unknown>): boolean {
   if (!window.fbq) return false;
-  window.fbq("track", "ViewContent", payload);
-  devLog("ViewContent track queued", { pixelId });
+  const eventID = ensureRouteScopedEventId("vc", pixelId);
+  window.fbq("track", "ViewContent", payload, { eventID });
+  devLog("ViewContent track queued", { pixelId, eventID });
   return true;
 }
 
