@@ -492,46 +492,51 @@ export function ProductLanding({ product }: Props) {
 
       {/* Hero: title → media → name → description → testimonial → CTA → reassurance */}
       <section
-        className="bg-[var(--background)] px-4 pb-8 pt-5 text-center sm:px-6 sm:pb-10 md:px-8"
+        className="bg-[var(--background)] pb-8 pt-5 text-center sm:pb-10"
         aria-labelledby="hero-title"
       >
-        <h1 id="hero-title" className={`mx-auto max-w-[34rem] ${heroTitleClass}`}>
-          {copy.heroSubtitle}
-        </h1>
+        <div className="px-4 sm:px-6 md:px-8">
+          <h1 id="hero-title" className={`mx-auto max-w-[34rem] ${heroTitleClass}`}>
+            {copy.heroSubtitle}
+          </h1>
+        </div>
 
-        <div className={`${fullBleedStripClass} mt-4 sm:mt-5`}>
+        {/* Full-width media outside section padding so RTL/LTR both stay viewport-centered */}
+        <div className="mt-4 w-full sm:mt-5">
           <LandingMedia product={product} priority edgeToEdge primaryHero />
         </div>
 
-        <h2 className={`mt-4 sm:mt-5 ${productNameClass}`}>{copy.name}</h2>
+        <div className="px-4 sm:px-6 md:px-8">
+          <h2 className={`mt-4 sm:mt-5 ${productNameClass}`}>{copy.name}</h2>
 
-        {heroSummary ? (
-          <p className={`mx-auto mt-2 max-w-[34rem] break-words ${bodyTextClass}`}>{heroSummary}</p>
-        ) : null}
+          {heroSummary ? (
+            <p className={`mx-auto mt-2 max-w-[34rem] break-words ${bodyTextClass}`}>{heroSummary}</p>
+          ) : null}
 
-        {heroTestimonial ? (
-          <div className="mx-auto mt-4 max-w-lg rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)] sm:mt-5 sm:px-5 sm:py-4">
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{heroTestimonial.name}</p>
-                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--foreground)] sm:text-base">{heroTestimonial.quote}</p>
-                <p className="mt-1 text-sm text-[var(--accent)]">{starText(heroTestimonial.rating)}</p>
-              </div>
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
-                {heroTestimonial.image ? (
-                  <Image src={heroTestimonial.image} alt={heroTestimonial.name} fill className="object-cover" sizes="64px" />
-                ) : null}
+          {heroTestimonial ? (
+            <div className="mx-auto mt-4 max-w-lg rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(180deg,var(--card)_0%,var(--background)_100%)] px-4 py-3 text-right shadow-[0_12px_22px_rgba(22,75,22,0.15)] sm:mt-5 sm:px-5 sm:py-4">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-[0.95rem]">{heroTestimonial.name}</p>
+                  <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--foreground)] sm:text-base">{heroTestimonial.quote}</p>
+                  <p className="mt-1 text-sm text-[var(--accent)]">{starText(heroTestimonial.rating)}</p>
+                </div>
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--accent-muted)]">
+                  {heroTestimonial.image ? (
+                    <Image src={heroTestimonial.image} alt={heroTestimonial.name} fill className="object-cover" sizes="64px" />
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-4 w-full max-w-lg sm:mx-auto sm:mt-5`}>
-          {ctaText}
-        </button>
-        <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
+          <button type="button" onClick={openCheckout} className={`${primaryCtaClass} mt-4 w-full max-w-lg sm:mx-auto sm:mt-5`}>
+            {ctaText}
+          </button>
+          <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
 
-        <LandingTrustBadges t={t} />
+          <LandingTrustBadges t={t} />
+        </div>
       </section>
 
       <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
