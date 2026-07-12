@@ -277,7 +277,7 @@ export function LandingMedia({
 
   if (treatAsImage && primaryHero) {
     return (
-      <div className="relative aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
+      <div className="relative mx-auto aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
         <Image
           src={url}
           alt={displayName}
@@ -285,6 +285,7 @@ export function LandingMedia({
           sizes={LANDING_HERO_IMAGE.sizes}
           quality={LANDING_HERO_IMAGE.quality}
           className="object-cover object-center"
+          style={{ objectPosition: "center center" }}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
         />
@@ -295,12 +296,13 @@ export function LandingMedia({
   if (treatAsImage) {
     const imgSizes = edgeToEdge || immersive ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)";
     return (
-      <div className="relative aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
+      <div className="relative mx-auto aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
         <Image
           src={url}
           alt={displayName}
           fill
           className="object-cover object-center"
+          style={{ objectPosition: "center center" }}
           sizes={imgSizes}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}

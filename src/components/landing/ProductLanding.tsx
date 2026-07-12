@@ -38,7 +38,7 @@ type Props = {
 const landingShellClass =
   "mx-auto w-full max-w-[min(100%,24rem)] sm:max-w-[min(100%,26rem)] md:max-w-[min(100%,36rem)] lg:max-w-3xl xl:max-w-4xl";
 
-/** Full-bleed strip (translate-centered `100vw`). Wrapper uses `dir="ltr"` so centering stays stable vs `overflow-x-clip`. */
+/** Full-bleed strip (translate-centered `100vw`). Physical left/translate keeps centering stable in RTL and LTR. */
 const fullBleedStripClass =
   "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2";
 
@@ -499,7 +499,7 @@ export function ProductLanding({ product }: Props) {
           {copy.heroSubtitle}
         </h1>
 
-        <div className={`${fullBleedStripClass} mt-4 sm:mt-5`} dir="ltr">
+        <div className={`${fullBleedStripClass} mt-4 sm:mt-5`}>
           <LandingMedia product={product} priority edgeToEdge primaryHero />
         </div>
 
