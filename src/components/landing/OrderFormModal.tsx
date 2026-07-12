@@ -12,6 +12,7 @@ import {
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { queueMetaPendingLead, resolveLeadEventId } from "@/lib/meta-lead-client";
+import { trackLead } from "@/components/MetaPixel";
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
@@ -111,7 +112,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     submitLockRef.current = true;
     setBusy(true);
     try {
-      // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
+      // Funnel session id for InitiateCheckout pairing — stored on the order for tracing.
+      // Lead uses a separate order-scoped event_id (`lead_{orderId}`).
       const generatedMetaEventId = ensureMetaFunnelSession(product.id);
       if (!generatedMetaEventId) {
         throw new Error(t("orderForm.sessionError"));
@@ -169,8 +171,21 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         });
       }
 
-      // Queue Lead for order-success — Pixel first, then CAPI with same funnel event_id.
+      // Queue Lead for order-success — Pixel + CAPI share lead_{orderId} (not the IC funnel id).
       queueMetaPendingLead({
+        value: leadValue,
+        currency: "MRU",
+        eventId: leadEventId,
+        orderId: json.order_id,
+        productId: product.id,
+        productName: copy.name,
+        phone: phoneE164,
+        customerName: n,
+      });
+
+      // Fire browser Lead on the product landing so the Pixel records the shopper page URL.
+      // Order-success still runs CAPI with the same lead_{orderId} (browser is deduped).
+      await trackLead({
         value: leadValue,
         currency: "MRU",
         eventId: leadEventId,

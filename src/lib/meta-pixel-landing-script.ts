@@ -94,7 +94,7 @@ var pvPrefix=${safePrefix};
 function fireEvents(){
   if(!readyToTrack())return false;
   if(alreadySent(pvPrefix,"__metaPixelPageViewSent"))return true;
-  window.fbq("trackSingle",id,"PageView");
+  window.fbq("track","PageView");
   markSent(pvPrefix,"__metaPixelPageViewSent");
   return true;
 }
@@ -148,7 +148,7 @@ function fireEvents(){
   if(!readyToTrack())return false;
   var done=true;
   if(!alreadySent(pvPrefix,"__metaPixelPageViewSent")){
-    window.fbq("trackSingle",id,"PageView");
+    window.fbq("track","PageView");
     markSent(pvPrefix,"__metaPixelPageViewSent");
   }
   if(!alreadySent(vcPrefix,"__metaPixelViewContentSent")){

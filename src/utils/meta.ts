@@ -179,7 +179,24 @@ function resolveProductionBaseUrlFromEnv(): string | null {
 }
 
 /**
+ * Paths that reflect the API/admin request, not the shopper landing page.
+ * Reconstructing `https://host/` or `https://host/api/...` from proxy headers
+ * previously polluted CAPI `event_source_url` with the site root.
+ */
+function isNonShopperSourcePath(path: string): boolean {
+  const p = path.split("?")[0]?.toLowerCase() || "/";
+  if (p === "/" || p === "") return true;
+  return (
+    p.startsWith("/api/") ||
+    p.startsWith("/admin") ||
+    p.startsWith("/_next/") ||
+    p.startsWith("/order-success")
+  );
+}
+
+/**
  * Meta `event_source_url`: valid absolute https/http URL only, never localhost.
+ * Prefers an explicit stored/product URL, then a shopper referer, then env base.
  * Returns null if nothing trustworthy is available (caller omits the field).
  */
 export function resolveEventSourceUrl(input: {
@@ -191,18 +208,35 @@ export function resolveEventSourceUrl(input: {
   const h = input.headers;
   if (h) {
     const referer = trimUrl(h.get("referer"));
-    if (referer && isAcceptableEventSourceUrl(referer)) return referer;
+    if (referer && isAcceptableEventSourceUrl(referer)) {
+      try {
+        const refererPath = new URL(referer).pathname;
+        if (!isNonShopperSourcePath(refererPath)) return referer;
+      } catch {
+        return referer;
+      }
+    }
     const xUrl = trimUrl(h.get("x-url") ?? h.get("x-forwarded-url"));
-    if (xUrl && isAcceptableEventSourceUrl(xUrl)) return xUrl;
+    if (xUrl && isAcceptableEventSourceUrl(xUrl)) {
+      try {
+        if (!isNonShopperSourcePath(new URL(xUrl).pathname)) return xUrl;
+      } catch {
+        // ignore malformed
+      }
+    }
     const proto = trimUrl(h.get("x-forwarded-proto")) ?? "https";
     const hostRaw = trimUrl(h.get("x-forwarded-host") ?? h.get("host"));
     if (hostRaw) {
       const host = hostRaw.split(",")[0]?.trim() ?? hostRaw;
       if (!isLocalOrInvalidHostname(host.split(":")[0] ?? host)) {
-        const pathRaw = trimUrl(h.get("x-invoke-path") ?? h.get("x-original-uri")) ?? "/";
-        const path = pathRaw.startsWith("/") ? pathRaw : `/${pathRaw}`;
-        const built = `${proto}://${host}${path}`;
-        if (isAcceptableEventSourceUrl(built)) return built;
+        const pathRaw = trimUrl(h.get("x-invoke-path") ?? h.get("x-original-uri"));
+        if (pathRaw) {
+          const path = pathRaw.startsWith("/") ? pathRaw : `/${pathRaw}`;
+          if (!isNonShopperSourcePath(path)) {
+            const built = `${proto}://${host}${path}`;
+            if (isAcceptableEventSourceUrl(built)) return built;
+          }
+        }
       }
     }
   }
@@ -368,6 +402,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
           console.warn("[meta] CAPI event accepted", {
             eventName: params.eventName,
             eventIdPrefix: params.eventId?.slice(0, 12),
+            eventSourceUrl: resolvedSourceUrl,
             eventsReceived,
             testEventIncluded: Boolean(testEventCode),
             fbtrace_id:

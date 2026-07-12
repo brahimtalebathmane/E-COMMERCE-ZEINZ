@@ -367,7 +367,7 @@ function pushFbqTrack(
   return true;
 }
 
-/** Standard PageView — no custom eventID (Meta Test Events expects the default PageView event). */
+/** Standard PageView — use untargeted `track` (Meta's documented PageView form). */
 function pushFbqPageView(pixelId: string): boolean {
   if (!window.fbq) return false;
 
@@ -378,8 +378,11 @@ function pushFbqPageView(pixelId: string): boolean {
     );
   }
 
-  window.fbq("trackSingle", pixelId, "PageView");
-  devLog("PageView trackSingle queued", { pixelId });
+  // Meta docs use fbq('track','PageView') for the standard PageView event.
+  // trackSingle is reserved for selectively targeting one of multiple pixels;
+  // with a single site pixel, `track` is the correct standard-event path.
+  window.fbq("track", "PageView");
+  devLog("PageView track queued", { pixelId });
   return true;
 }
 

@@ -67,9 +67,9 @@ function startNewFunnelSession(
 }
 
 /**
- * Ensures a stable funnel event_id until 60m inactivity or explicit clear.
+ * Ensures a stable InitiateCheckout funnel event_id until 60m inactivity or explicit clear.
  * Storage: sessionStorage keyed by productId (tab-isolated; no cross-tab races).
- * Shared by InitiateCheckout and Lead so Meta can stitch the full funnel journey.
+ * Used only for InitiateCheckout (browser + CAPI pair). Lead uses `lead_{orderId}`.
  */
 export function ensureMetaFunnelSession(productId?: string | null): string {
   const normalizedProductId = normalizeFunnelProductId(productId);

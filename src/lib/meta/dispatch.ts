@@ -11,6 +11,7 @@ import {
   logMetaEventOutcomeFireAndForget,
   mapDispatchEventTypeToLog,
 } from "@/lib/meta/event-log";
+import { buildPublicProductUrl } from "@/lib/site-url";
 import { sendMetaEvent } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
@@ -32,9 +33,8 @@ function sentFlagColumn(eventType: MetaDispatchEventType): MetaSentFlagColumn {
  * Deterministic, per-event-type `event_id` tied to the immutable order id.
  *
  * `Purchase` and `CancelledLead` are server-only (no paired browser pixel).
- * `Lead` is hybrid: browser Pixel first, then CAPI on order-success with the same
- * `event_id` (`orders.meta_event_id`, shared with InitiateCheckout) for Meta deduplication.
- * `orders.meta_event_id` is the funnel session id captured at checkout.
+ * `Lead` is hybrid: browser Pixel + CAPI share `lead_{orderId}` (never the
+ * InitiateCheckout funnel session id stored in `orders.meta_event_id`).
  */
 function transactionalEventId(
   orderId: string,
@@ -273,7 +273,7 @@ export async function dispatchMetaEvent(
 
   const { data: product } = await supabase
     .from("products")
-    .select("name_ar, name_fr, default_language, deleted_at")
+    .select("name_ar, name_fr, default_language, deleted_at, slug")
     .eq("id", order.product_id as string)
     .maybeSingle();
 
@@ -349,6 +349,11 @@ export async function dispatchMetaEvent(
   const eventName =
     eventType === "lead" ? "Lead" : eventType === "purchase" ? "Purchase" : "CancelledLead";
 
+  const storedSourceUrl =
+    (order.meta_event_source_url as string | null)?.trim() ||
+    buildPublicProductUrl((product.slug as string | null) ?? "") ||
+    null;
+
   const orderMoney = metaPurchaseMoneyFromOrderTotal(
     Number(order.total_price),
     (order.currency as string) ?? "MRU",
@@ -399,7 +404,7 @@ export async function dispatchMetaEvent(
       pixelId,
       eventName,
       eventId,
-      eventSourceUrl: order.meta_event_source_url as string | null,
+      eventSourceUrl: storedSourceUrl,
       requestHeaders: headers,
       eventTimeSec: eventType === "lead" ? context.eventTimeSec : undefined,
       userData: {
