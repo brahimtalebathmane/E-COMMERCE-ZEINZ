@@ -354,7 +354,7 @@ function AdSpendEditor({
   onSave: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <input
         type="number"
         min={0}
@@ -371,13 +371,13 @@ function AdSpendEditor({
             onSave();
           }
         }}
-        className="admin-input !min-h-[40px] w-28 !py-2 tabular-nums disabled:opacity-60"
+        className="admin-input w-full tabular-nums disabled:opacity-60 sm:w-28"
       />
       <button
         type="button"
         disabled={saving}
         onClick={onSave}
-        className="admin-btn-primary !min-h-[40px] !px-3 !text-xs"
+        className="admin-btn-primary w-full !px-3 !text-xs sm:w-auto"
       >
         {saving ? a.analytics.saving : a.analytics.save}
       </button>
@@ -395,21 +395,21 @@ function StartDateEditor({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <input
         type="date"
         dir="ltr"
         disabled={saving}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="admin-input !min-h-[40px] w-40 max-w-full !py-2 tabular-nums disabled:opacity-60"
+        className="admin-input w-full max-w-full tabular-nums disabled:opacity-60 sm:w-40"
       />
       {value ? (
         <button
           type="button"
           disabled={saving}
           onClick={() => onChange("")}
-          className="admin-btn-ghost !min-h-[40px] !px-3 !text-xs"
+          className="admin-btn-ghost w-full !px-3 !text-xs sm:w-auto"
         >
           {a.analytics.startDateClear}
         </button>

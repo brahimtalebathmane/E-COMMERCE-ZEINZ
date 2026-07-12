@@ -106,7 +106,7 @@ function PermissionLegend() {
 
 function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {PERMISSION_CATALOG.map((perm) => {
         const granted = permissions.includes(perm.key);
         return (
@@ -114,13 +114,14 @@ function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
             key={perm.key}
             title={perm.labelAr}
             aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border text-[10px] ${
+            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${
               granted
                 ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/40"
+                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/50"
             }`}
           >
-            {granted ? <CheckIcon size={14} /> : "—"}
+            {granted ? <CheckIcon size={12} /> : null}
+            {perm.shortAr}
           </span>
         );
       })}
@@ -271,8 +272,11 @@ export function StaffAdminView({ initialStaff }: Props) {
         <p className="admin-card mt-6 p-6 text-sm text-[var(--muted)]">{a.staff.empty}</p>
       ) : (
         <>
+          <div className="mt-6">
+            <PermissionLegend />
+          </div>
+
           {/* Desktop / laptop: dense data table with at-a-glance permission matrix */}
-          <PermissionLegend />
           <div className="admin-card mt-4 hidden overflow-hidden lg:block">
             <table className="w-full table-fixed border-collapse text-sm">
               <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -356,7 +360,6 @@ export function StaffAdminView({ initialStaff }: Props) {
           </div>
 
           {/* Mobile / tablet: touch-friendly stackable cards */}
-          <PermissionLegend />
           <div className="mt-4 space-y-3 lg:hidden">
             {staff.map((row) => (
               <article key={row.id} className="admin-card p-4 sm:p-5">
@@ -392,21 +395,23 @@ export function StaffAdminView({ initialStaff }: Props) {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
+                  <AdminButton
                     type="button"
+                    variant="sm-ghost"
                     onClick={() => openEdit(row)}
-                    className="min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] px-4 py-2 text-sm font-semibold transition hover:bg-white/[0.06]"
+                    className="w-full"
                   >
                     {a.staff.edit}
-                  </button>
-                  <button
+                  </AdminButton>
+                  <AdminButton
                     type="button"
+                    variant="sm-ghost"
                     disabled={pending}
                     onClick={() => onToggleSuspend(row)}
-                    className="min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] px-4 py-2 text-sm font-semibold transition hover:bg-white/[0.06] disabled:opacity-60"
+                    className="w-full"
                   >
                     {row.isActive ? a.staff.suspend : a.staff.reactivate}
-                  </button>
+                  </AdminButton>
                 </div>
               </article>
             ))}

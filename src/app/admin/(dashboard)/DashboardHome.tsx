@@ -82,7 +82,7 @@ export function DashboardHome({
       <AdminPageHeader title={a.dashboard.title} subtitle={a.dashboard.subtitle} />
 
       {(visibility.analytics || visibility.orders) && (
-        <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {visibility.analytics ? (
             <>
               <AdminKpiTile
@@ -150,25 +150,27 @@ export function DashboardHome({
                 {data.recentOrders.map((o) => (
                   <li
                     key={o.id}
-                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.02] sm:px-5"
+                    className="flex flex-col gap-2 px-4 py-3 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:gap-3 sm:px-5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                      <p className="break-words text-sm font-medium text-[var(--foreground)]">
                         {o.productName}
                       </p>
                       <p className="mt-0.5 truncate font-mono text-xs text-[var(--muted)]" dir="ltr">
                         {o.phone ?? "—"} · {TIME_FORMATTER.format(new Date(o.createdAt))}
                       </p>
                     </div>
-                    <span
-                      className="shrink-0 text-sm font-bold tabular-nums text-[var(--foreground)]"
-                      dir="ltr"
-                    >
-                      {formatPrice(o.total)}
-                    </span>
-                    <AdminBadge hue={orderStatusHue(o.status)} size="sm" className="shrink-0">
-                      {a.orderStatus[o.status]}
-                    </AdminBadge>
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                      <span
+                        className="shrink-0 text-sm font-bold tabular-nums text-[var(--foreground)]"
+                        dir="ltr"
+                      >
+                        {formatPrice(o.total)}
+                      </span>
+                      <AdminBadge hue={orderStatusHue(o.status)} size="sm" className="shrink-0">
+                        {a.orderStatus[o.status]}
+                      </AdminBadge>
+                    </div>
                   </li>
                 ))}
               </ul>

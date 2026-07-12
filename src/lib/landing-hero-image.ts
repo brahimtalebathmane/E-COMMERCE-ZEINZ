@@ -1,7 +1,7 @@
-/** Shared Next/Image tuning for above-the-fold landing hero photos. */
+/** Shared Next/Image tuning for above-the-fold landing hero photos (16:9). */
 export const LANDING_HERO_IMAGE = {
   width: 1920,
-  height: 1280,
+  height: 1080,
   sizes: "100vw",
   quality: 85,
 } as const;

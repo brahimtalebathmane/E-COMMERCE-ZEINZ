@@ -260,7 +260,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setMoreOpen(false)}
             aria-label={a.shell.closeMenu}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)]"
+            className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)]"
           >
             <CloseIcon size={18} />
           </button>
@@ -362,7 +362,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setDrawerOpen(false)}
             aria-label={a.shell.closeMenu}
-            className="absolute end-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)] transition hover:text-[var(--foreground)]"
+            className="absolute end-3 top-3 inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)] transition hover:text-[var(--foreground)]"
           >
             <CloseIcon size={20} />
           </button>
@@ -402,7 +402,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             {a.shell.viewStore}
           </Link>
 
-          <Link href="/admin" className="lg:hidden" aria-label={a.nav.title}>
+          <Link
+            href="/admin"
+            className="hidden shrink-0 sm:block lg:hidden"
+            aria-label={a.nav.title}
+          >
             <SiteLogo alt="" objectAlign="end" />
           </Link>
         </div>

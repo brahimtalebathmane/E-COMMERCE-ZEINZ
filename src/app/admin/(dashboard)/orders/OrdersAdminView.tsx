@@ -410,22 +410,24 @@ export function OrdersAdminView({ orders }: Props) {
       {/* Product isolation tabs */}
       {rows.length > 0 ? (
       <div className="mt-6">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-          <ProductTabButton
-            label={a.orders.allProducts}
-            count={rows.length}
-            active={selectedProduct === ALL_PRODUCTS}
-            onClick={() => setSelectedProduct(ALL_PRODUCTS)}
-          />
-          {productTabs.map((tab) => (
+        <div className="admin-scroll-fade relative -mx-1">
+          <div className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ProductTabButton
-              key={tab.id}
-              label={tab.name}
-              count={tab.total}
-              active={selectedProduct === tab.id}
-              onClick={() => setSelectedProduct(tab.id)}
+              label={a.orders.allProducts}
+              count={rows.length}
+              active={selectedProduct === ALL_PRODUCTS}
+              onClick={() => setSelectedProduct(ALL_PRODUCTS)}
             />
-          ))}
+            {productTabs.map((tab) => (
+              <ProductTabButton
+                key={tab.id}
+                label={tab.name}
+                count={tab.total}
+                active={selectedProduct === tab.id}
+                onClick={() => setSelectedProduct(tab.id)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Aggregate metrics for the active segment */}
@@ -507,7 +509,7 @@ export function OrdersAdminView({ orders }: Props) {
       <div className="mt-6 space-y-8">
         {dayGroups.map((group) => (
           <section key={group.key}>
-            <div className="sticky top-0 z-10 -mx-1 mb-3 flex items-center gap-3 bg-[var(--background)]/95 px-1 py-1 backdrop-blur">
+            <div className="sticky top-14 z-10 -mx-1 mb-3 flex items-center gap-3 bg-[var(--background)]/95 px-1 py-1 backdrop-blur">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--foreground)]">
@@ -711,19 +713,21 @@ const OrderSelectCheckbox = memo(
     }
   >(function OrderSelectCheckbox({ checked, disabled, ariaLabel, onChange }, ref) {
     return (
-      <input
-        ref={ref}
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        className="h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--admin-border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          e.stopPropagation();
-          onChange();
-        }}
-      />
+      <label className="inline-flex min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer items-center justify-center">
+        <input
+          ref={ref}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          className="h-5 w-5 shrink-0 cursor-pointer rounded border-[var(--admin-border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            e.stopPropagation();
+            onChange();
+          }}
+        />
+      </label>
     );
   }),
 );

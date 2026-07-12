@@ -118,8 +118,8 @@ type Props = {
   /** Gallery blocks only: wider cinematic framing, full band layout — not used for the hero product image */
   immersive?: boolean;
   /**
-   * Hero product media only: preserve the asset’s natural aspect ratio (no fixed 16:9 box, no object-cover).
-   * Do not set on secondary/tertiary gallery strips — those keep cinematic/immersive styling.
+   * Hero product media — rendered in a fixed 16:9 frame with object-cover,
+   * matching secondary/tertiary landing media.
    */
   primaryHero?: boolean;
 };
@@ -277,17 +277,14 @@ export function LandingMedia({
 
   if (treatAsImage && primaryHero) {
     return (
-      <div className="relative w-full min-w-0 bg-[var(--accent-muted)]">
-        {/* Hero: responsive width + natural height via style; width/height props drive Next/Image srcset only. */}
+      <div className="relative aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
         <Image
           src={url}
           alt={displayName}
-          width={LANDING_HERO_IMAGE.width}
-          height={LANDING_HERO_IMAGE.height}
+          fill
           sizes={LANDING_HERO_IMAGE.sizes}
           quality={LANDING_HERO_IMAGE.quality}
-          className="mx-auto block h-auto w-full object-contain"
-          style={{ width: "100%", height: "auto" }}
+          className="object-cover object-center"
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
         />
@@ -296,20 +293,14 @@ export function LandingMedia({
   }
 
   if (treatAsImage) {
-    const imageShellClass = immersive
-      ? "relative w-full min-w-0 overflow-hidden bg-[var(--accent-muted)] aspect-[16/11] sm:aspect-[16/9] md:aspect-[21/9] max-h-[min(88vh,58rem)]"
-      : "relative aspect-video w-full min-w-0 max-h-[min(85vh,56rem)] bg-[var(--accent-muted)]";
     const imgSizes = edgeToEdge || immersive ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)";
-    const imgCover = immersive || edgeToEdge
-      ? "object-contain sm:object-cover"
-      : "object-contain sm:object-cover";
     return (
-      <div className={imageShellClass}>
+      <div className="relative aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
         <Image
           src={url}
           alt={displayName}
           fill
-          className={imgCover}
+          className="object-cover object-center"
           sizes={imgSizes}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
@@ -327,7 +318,7 @@ export function LandingMedia({
         data-landing-immersive={immersive ? "" : undefined}
         style={
           {
-            "--ar-w": immersive ? 21 : 16,
+            "--ar-w": 16,
             "--ar-h": 9,
           } as CSSProperties
         }
@@ -369,12 +360,14 @@ export function LandingMedia({
         className="landing-mux-shell relative min-h-0 min-w-0 overflow-hidden bg-black"
         style={
           {
-            "--ar-w": muxParts.w,
-            "--ar-h": muxParts.h,
+            "--ar-w": immersive || primaryHero ? 16 : muxParts.w,
+            "--ar-h": immersive || primaryHero ? 9 : muxParts.h,
           } as CSSProperties
         }
         data-landing-immersive={immersive ? "" : undefined}
-        data-landing-portrait={muxParts.h > muxParts.w ? "" : undefined}
+        data-landing-portrait={
+          immersive || primaryHero ? undefined : muxParts.h > muxParts.w ? "" : undefined
+        }
       >
         {muxPlaybackId ? (
           <MuxPlayer
@@ -430,22 +423,18 @@ export function LandingMedia({
         className="landing-native-shell relative w-full bg-black"
         style={
           {
-            "--ar-w": nativeParts.w,
-            "--ar-h": nativeParts.h,
+            "--ar-w": immersive || primaryHero ? 16 : nativeParts.w,
+            "--ar-h": immersive || primaryHero ? 9 : nativeParts.h,
           } as CSSProperties
         }
         data-landing-immersive={immersive ? "" : undefined}
-        data-landing-portrait={nativeParts.h > nativeParts.w ? "" : undefined}
+        data-landing-portrait={
+          immersive || primaryHero ? undefined : nativeParts.h > nativeParts.w ? "" : undefined
+        }
       >
         <video
           ref={nativeVideoRef}
-          className={
-            immersive
-              ? "mx-auto block w-full max-w-full max-h-[min(88vh,58rem)] bg-black object-cover sm:max-h-[min(88vh,58rem)]"
-              : primaryHero
-                ? "mx-auto block h-auto w-full max-h-[min(85vh,56rem)] bg-black object-contain sm:max-h-[min(85vh,56rem)] sm:w-full sm:max-w-full"
-                : "mx-auto block bg-black sm:h-auto sm:w-full sm:max-h-[min(85vh,56rem)] sm:max-w-full"
-          }
+          className="absolute inset-0 h-full w-full bg-black object-cover"
           src={url}
           controls
           playsInline

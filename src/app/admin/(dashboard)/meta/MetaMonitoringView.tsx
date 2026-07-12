@@ -44,6 +44,10 @@ function stateLabel(state: string): string {
   return a.meta.stateSuccess;
 }
 
+function eventTypeLabel(eventType: string): string {
+  return a.meta.eventTypes[eventType as keyof typeof a.meta.eventTypes] ?? eventType;
+}
+
 type Props = {
   initialRows: MetaEventLogRow[];
   initialTotal: number;
@@ -110,12 +114,12 @@ export function MetaMonitoringView({
   return (
     <AdminCard title={a.meta.logTitle} noPadding>
       <div className="space-y-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <AdminSelect
             label={a.meta.filterAllTypes}
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
-            className="!min-h-[40px] w-auto min-w-[10rem]"
+            className="w-full sm:w-auto sm:min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllTypes}</option>
             {Object.entries(a.meta.eventTypes).map(([key, label]) => (
@@ -128,14 +132,14 @@ export function MetaMonitoringView({
             label={a.meta.filterAllStates}
             value={state}
             onChange={(e) => setState(e.target.value)}
-            className="!min-h-[40px] w-auto min-w-[10rem]"
+            className="w-full sm:w-auto sm:min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllStates}</option>
             <option value="failed">{a.meta.stateFailed}</option>
             <option value="skipped">{a.meta.stateSkipped}</option>
             <option value="success">{a.meta.stateSuccess}</option>
           </AdminSelect>
-          <div className="min-w-[12rem] flex-1">
+          <div className="min-w-0 flex-1">
             <AdminInput
               label={a.meta.searchPlaceholder}
               type="search"
@@ -143,98 +147,159 @@ export function MetaMonitoringView({
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <AdminButton onClick={applyFilters} disabled={loading} className="!min-h-[40px]">
+          <AdminButton onClick={applyFilters} disabled={loading} className="w-full sm:w-auto">
             {loading ? a.common.loading : a.meta.applyFilters}
           </AdminButton>
         </div>
 
-        <AdminTable>
-          <AdminTableHead>
-            <tr>
-              <AdminTh>{a.meta.colTime}</AdminTh>
-              <AdminTh>{a.meta.colType}</AdminTh>
-              <AdminTh>{a.meta.colState}</AdminTh>
-              <AdminTh>{a.meta.colReason}</AdminTh>
-              <AdminTh>{a.meta.colOrder}</AdminTh>
-              <AdminTh>{a.meta.colEventId}</AdminTh>
-            </tr>
-          </AdminTableHead>
-          <AdminTableBody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-sm text-[var(--muted)]">
-                  {a.meta.noRows}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <AdminTableRow
+        {rows.length === 0 ? (
+          <p className="px-1 py-10 text-center text-sm text-[var(--muted)]">{a.meta.noRows}</p>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {rows.map((row) => (
+                <article
                   key={row.id}
-                  highlight={highlightedIds.has(row.id)}
-                  className={highlightedIds.has(row.id) ? "!bg-sky-400/10" : ""}
+                  className={`rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4 ${
+                    highlightedIds.has(row.id) ? "bg-sky-400/10 ring-1 ring-sky-400/30" : ""
+                  }`}
                 >
-                  <AdminTd mono className="whitespace-nowrap">
-                    <span dir="ltr">{formatTime(row.created_at)}</span>
-                  </AdminTd>
-                  <AdminTd>
-                    {a.meta.eventTypes[row.event_type as keyof typeof a.meta.eventTypes] ??
-                      row.event_type}
-                  </AdminTd>
-                  <AdminTd>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">
+                        {eventTypeLabel(row.event_type)}
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-[var(--muted)]" dir="ltr">
+                        {formatTime(row.created_at)}
+                      </p>
+                    </div>
                     <AdminBadge hue={metaEventHue(row.state)} size="sm">
                       {stateLabel(row.state)}
                     </AdminBadge>
-                  </AdminTd>
-                  <AdminTd className="max-w-[10rem] truncate">
-                    <span title={row.reason ?? ""}>{row.reason ?? "—"}</span>
-                  </AdminTd>
-                  <AdminTd>
-                    {row.order_id ? (
-                      <Link
-                        href={`/admin/orders?highlight=${row.order_id}`}
-                        className="font-mono text-xs text-[var(--accent)] hover:underline"
+                  </div>
+                  {row.reason ? (
+                    <p className="mt-3 break-words text-sm leading-relaxed text-[var(--muted)]">
+                      {row.reason}
+                    </p>
+                  ) : null}
+                  <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.meta.colOrder}
+                      </dt>
+                      <dd className="mt-0.5">
+                        {row.order_id ? (
+                          <Link
+                            href={`/admin/orders?highlight=${row.order_id}`}
+                            className="inline-flex min-h-[44px] items-center font-mono text-[var(--accent)] underline-offset-2 hover:underline"
+                            dir="ltr"
+                          >
+                            {row.order_id.slice(0, 8)}…
+                          </Link>
+                        ) : (
+                          <span className="text-[var(--muted)]">—</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.meta.colEventId}
+                      </dt>
+                      <dd
+                        className="mt-0.5 truncate font-mono text-[var(--foreground)]"
+                        title={row.event_id ?? undefined}
                         dir="ltr"
                       >
-                        {row.order_id.slice(0, 8)}…
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </AdminTd>
-                  <AdminTd className="max-w-[8rem] truncate font-mono text-xs">
-                    <span title={row.event_id ?? ""} dir="ltr">
-                      {row.event_id ? (
-                        <>
-                          {row.event_id.slice(0, 16)}
-                          {row.event_id.length > 16 ? "…" : ""}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </span>
-                  </AdminTd>
-                </AdminTableRow>
-              ))
-            )}
-          </AdminTableBody>
-        </AdminTable>
+                        {row.event_id ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
 
-        <div className="flex items-center justify-between gap-3 text-sm">
+            {/* Desktop table */}
+            <div className="hidden md:block">
+              <AdminTable>
+                <AdminTableHead>
+                  <tr>
+                    <AdminTh>{a.meta.colTime}</AdminTh>
+                    <AdminTh>{a.meta.colType}</AdminTh>
+                    <AdminTh>{a.meta.colState}</AdminTh>
+                    <AdminTh>{a.meta.colReason}</AdminTh>
+                    <AdminTh>{a.meta.colOrder}</AdminTh>
+                    <AdminTh>{a.meta.colEventId}</AdminTh>
+                  </tr>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {rows.map((row) => (
+                    <AdminTableRow
+                      key={row.id}
+                      highlight={highlightedIds.has(row.id)}
+                      className={highlightedIds.has(row.id) ? "!bg-sky-400/10" : ""}
+                    >
+                      <AdminTd mono className="whitespace-nowrap">
+                        <span dir="ltr">{formatTime(row.created_at)}</span>
+                      </AdminTd>
+                      <AdminTd>{eventTypeLabel(row.event_type)}</AdminTd>
+                      <AdminTd>
+                        <AdminBadge hue={metaEventHue(row.state)} size="sm">
+                          {stateLabel(row.state)}
+                        </AdminBadge>
+                      </AdminTd>
+                      <AdminTd className="max-w-[10rem] truncate">
+                        <span title={row.reason ?? ""}>{row.reason ?? "—"}</span>
+                      </AdminTd>
+                      <AdminTd>
+                        {row.order_id ? (
+                          <Link
+                            href={`/admin/orders?highlight=${row.order_id}`}
+                            className="font-mono text-xs text-[var(--accent)] hover:underline"
+                            dir="ltr"
+                          >
+                            {row.order_id.slice(0, 8)}…
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </AdminTd>
+                      <AdminTd className="max-w-[8rem] truncate font-mono text-xs">
+                        <span title={row.event_id ?? ""} dir="ltr">
+                          {row.event_id ? (
+                            <>
+                              {row.event_id.slice(0, 16)}
+                              {row.event_id.length > 16 ? "…" : ""}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                      </AdminTd>
+                    </AdminTableRow>
+                  ))}
+                </AdminTableBody>
+              </AdminTable>
+            </div>
+          </>
+        )}
+
+        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span className="text-[var(--muted)]">{a.meta.pageInfo(page, totalPages, total)}</span>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             <AdminButton
               variant="ghost"
-              className="!min-h-[36px] !px-3 !text-xs"
               disabled={page <= 1 || loading}
               onClick={() => goToPage(page - 1)}
+              className="w-full sm:w-auto"
             >
               {a.meta.prevPage}
             </AdminButton>
             <AdminButton
               variant="ghost"
-              className="!min-h-[36px] !px-3 !text-xs"
               disabled={page >= totalPages || loading}
               onClick={() => goToPage(page + 1)}
+              className="w-full sm:w-auto"
             >
               {a.meta.nextPage}
             </AdminButton>

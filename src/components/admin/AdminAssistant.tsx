@@ -169,7 +169,7 @@ export function AdminAssistant() {
               type="button"
               onClick={startNewChat}
               disabled={sending}
-              className="admin-btn-ghost !min-h-[36px] !px-3 !py-1.5 !text-xs disabled:opacity-50"
+              className="admin-btn-ghost !px-3 !text-xs disabled:opacity-50"
             >
               {a.assistant.newChat}
             </button>
@@ -177,7 +177,7 @@ export function AdminAssistant() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={a.assistant.close}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)] transition hover:text-[var(--foreground)]"
+              className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl border border-[var(--admin-border-strong)] text-[var(--muted)] transition hover:text-[var(--foreground)]"
             >
               <CloseIcon size={18} />
             </button>
@@ -223,7 +223,7 @@ export function AdminAssistant() {
           )}
         </div>
 
-        <div className="border-t border-[var(--admin-border)] p-3">
+        <div className="border-t border-[var(--admin-border)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex items-end gap-2">
             <textarea
               value={input}

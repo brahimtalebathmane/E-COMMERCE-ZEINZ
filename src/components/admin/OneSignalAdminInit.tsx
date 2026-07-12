@@ -138,12 +138,12 @@ export function OneSignalAdminInit() {
         onLoad={ensureInit}
       />
       {(state === "default" || state === "blocked") && (
-        <div className="fixed bottom-4 start-4 z-50">
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] start-3 z-40 max-w-[min(100%-1.5rem,20rem)] lg:bottom-4 lg:start-4">
           <button
             type="button"
             onClick={handleEnable}
             disabled={busy || state === "blocked"}
-            className="rounded-full bg-[var(--accent,#111)] px-4 py-2 text-sm font-medium text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-[44px] w-full touch-manipulation rounded-full bg-[var(--accent,#111)] px-4 py-2.5 text-sm font-medium text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "blocked"
               ? "الإشعارات محظورة — فعّلها من إعدادات المتصفح"

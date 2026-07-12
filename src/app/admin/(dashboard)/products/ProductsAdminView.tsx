@@ -103,7 +103,7 @@ function EditDeleteActions({
       <AdminLinkButton
         href={`/admin/products/${row.id}/edit`}
         variant="sm-ghost"
-        className="!min-h-0"
+        className="flex-1 sm:flex-none"
       >
         {a.products.edit}
       </AdminLinkButton>
@@ -112,7 +112,7 @@ function EditDeleteActions({
         variant="danger"
         disabled={busy || isDeleting}
         onClick={() => onDelete(row.id)}
-        className="!min-h-0"
+        className="flex-1 sm:flex-none"
       >
         {isDeleting ? a.pipeline.deleting : a.pipeline.delete}
       </AdminButton>
@@ -138,7 +138,7 @@ function PipelineActions({
   const canViewLanding = Boolean(row.slug) && row.test_status !== "failed";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex w-full flex-wrap items-stretch gap-2 sm:items-center sm:justify-end">
       {tab === "research" || tab === "ready" ? (
         <AdminLinkButton
           href={
@@ -147,7 +147,7 @@ function PipelineActions({
               : `/admin/products/${row.id}/edit`
           }
           variant="primary"
-          className="!min-h-0 !px-3 !py-1.5 !text-xs"
+          className="w-full !px-3 !text-xs sm:w-auto"
         >
           {a.pipeline.setupLanding}
         </AdminLinkButton>
@@ -159,7 +159,7 @@ function PipelineActions({
             variant="sm-ghost"
             disabled={busy}
             onClick={() => onStatus(row.id, "winner")}
-            className="!border-emerald-400/40 !bg-emerald-400/10 !text-emerald-300 hover:!bg-emerald-400/20"
+            className="flex-1 !border-emerald-400/40 !bg-emerald-400/10 !text-emerald-300 hover:!bg-emerald-400/20 sm:flex-none"
           >
             {a.pipeline.markWinner}
           </AdminButton>
@@ -168,6 +168,7 @@ function PipelineActions({
             variant="danger"
             disabled={busy}
             onClick={() => onStatus(row.id, "failed")}
+            className="flex-1 sm:flex-none"
           >
             {a.pipeline.markFailed}
           </AdminButton>
@@ -177,7 +178,7 @@ function PipelineActions({
         <AdminLinkButton
           href={`/${row.slug}`}
           variant="sm-ghost"
-          className="!min-h-0"
+          className="flex-1 sm:flex-none"
           target="_blank"
           rel="noopener noreferrer"
         >

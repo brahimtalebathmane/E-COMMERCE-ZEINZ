@@ -144,7 +144,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
         <label className="text-sm font-medium">{a.researchForm.productName}</label>
         <input
           required
-          className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+          className="admin-input mt-1"
           value={nameAr}
           onChange={(e) => setNameAr(e.target.value)}
         />
@@ -154,7 +154,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
         <label className="text-sm font-medium">{a.researchForm.mainImage}</label>
         <input
           required
-          className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+          className="admin-input mt-1"
           value={mediaUrl}
           onChange={(e) => setMediaUrl(e.target.value)}
           placeholder="https://"
@@ -191,7 +191,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
             type="number"
             step="0.01"
             min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="admin-input mt-1"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             dir="ltr"
@@ -204,7 +204,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
             type="number"
             step="0.01"
             min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="admin-input mt-1"
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value)}
             dir="ltr"
@@ -215,7 +215,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
       {marginPct != null ? (
         <p
           className={`text-sm font-semibold ${
-            marginPct > 60 ? "text-emerald-800" : "text-amber-900"
+            marginPct > 60 ? "text-emerald-400" : "text-amber-300"
           }`}
           dir="ltr"
         >
@@ -232,7 +232,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
         <label className="text-sm font-medium">{a.researchForm.sourcingType}</label>
         <select
           required
-          className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+          className="admin-input mt-1"
           value={sourcingType}
           onChange={(e) => setSourcingType(e.target.value as ProductSourcingType)}
         >
@@ -245,7 +245,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
         <label className="text-sm font-medium">{a.researchForm.sourcingLink}</label>
         <input
           required
-          className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+          className="admin-input mt-1"
           value={sourcingLink}
           onChange={(e) => setSourcingLink(e.target.value)}
           placeholder="https://"
@@ -259,11 +259,11 @@ export function ResearchProductForm({ mode, initial }: Props) {
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-[var(--admin-border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur sm:flex-row sm:flex-wrap sm:gap-3 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-50"
+          className="admin-btn-primary w-full sm:w-auto"
         >
           {busy
             ? a.researchForm.saving
@@ -273,7 +273,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
         </button>
         <button
           type="button"
-          className="rounded-xl border border-[var(--accent-muted)] px-5 py-2.5 text-sm"
+          className="admin-btn-ghost w-full sm:w-auto"
           onClick={() => router.push("/admin/products")}
         >
           {a.researchForm.cancel}
@@ -283,7 +283,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
             type="button"
             disabled={busy}
             onClick={() => void onDelete()}
-            className="rounded-xl border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-700 disabled:opacity-50"
+            className="admin-btn-ghost w-full !border-red-500/30 !text-red-300 hover:!bg-red-500/10 sm:w-auto"
           >
             {a.researchForm.delete}
           </button>
