@@ -5,7 +5,7 @@ import {
 } from "@/lib/meta-pixel-landing-script";
 
 type Props = {
-  /** When set, fires PageView + ViewContent with product content_ids (product landing). */
+  /** When set, fires ViewContent with content_ids (PageView comes from standard init). */
   productContent?: MetaLandingProductContent | null;
 };
 

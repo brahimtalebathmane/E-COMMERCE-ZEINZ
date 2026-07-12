@@ -2,7 +2,7 @@ import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel
 import type { MetaProductCustomData } from "@/lib/meta-product-custom-data";
 
 /** Must stay in sync with `meta-pixel-client.ts` route dedupe keys. Bump when dedupe logic changes. */
-export const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v3:";
+export const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v4:";
 export const META_VIEWCONTENT_STORAGE_PREFIX = "meta_viewcontent_v1:";
 
 export type MetaLandingProductContent = {
@@ -10,7 +10,11 @@ export type MetaLandingProductContent = {
   productName: string;
 };
 
-/** Shared inline bootstrap helpers (catalog + product landings). */
+/**
+ * Shared inline helpers. Init uses Meta's default autoConfig so the automatic
+ * PageView from `fbq('init')` is classified as the standard base-code PageView
+ * (not Manual Setup / Custom). disablePushState still blocks SPA history dupes.
+ */
 function landingScriptShell(idJson: string, prefixJson: string, fireBody: string): string {
   return `(function(){
 var id=${idJson};
@@ -35,10 +39,12 @@ function ensureInit(){
   if(window.__metaPixelsInited&&window.__metaPixelsInited[id])return;
   if(!window.fbq)return;
   window.fbq.disablePushState=true;
-  window.fbq("set","autoConfig","false",id);
-  window.fbq("init",id,{},{autoConfig:false,xfbml:false});
+  // Default autoConfig — Meta fires the standard PageView on init (base-code behavior).
+  window.fbq("init",id);
   window.__metaPixelsInited=window.__metaPixelsInited||{};
   window.__metaPixelsInited[id]=true;
+  // Credit the automatic init PageView so React does not fire a second one.
+  markSent(prefix,"__metaPixelPageViewSent");
 }
 function pixelRegistered(){
   try{
@@ -78,7 +84,7 @@ var timer=setInterval(function(){
 }
 
 /**
- * Catalog listing — generic PageView only (no product content_ids).
+ * Catalog listing — init only (automatic standard PageView). No product content_ids.
  */
 export function buildMetaPixelCatalogPageViewScript(
   pixelId?: string | null,
@@ -93,10 +99,8 @@ export function buildMetaPixelCatalogPageViewScript(
 var pvPrefix=${safePrefix};
 function fireEvents(){
   if(!readyToTrack())return false;
-  if(alreadySent(pvPrefix,"__metaPixelPageViewSent"))return true;
-  window.fbq("track","PageView");
-  markSent(pvPrefix,"__metaPixelPageViewSent");
-  return true;
+  // PageView already credited in ensureInit (Meta automatic base-code PageView).
+  return alreadySent(pvPrefix,"__metaPixelPageViewSent");
 }
 if(fireEvents())return;
 `;
@@ -112,7 +116,7 @@ export function buildMetaPixelLandingPageViewScript(
 }
 
 /**
- * Product landing — PageView + ViewContent with product content_ids before React hydrates.
+ * Product landing — automatic PageView via init + ViewContent with product content_ids.
  */
 export function buildMetaPixelProductLandingScript(
   product: MetaLandingProductContent,
@@ -146,13 +150,8 @@ function viewContentPayload(){
 }
 function fireEvents(){
   if(!readyToTrack())return false;
-  var done=true;
-  if(!alreadySent(pvPrefix,"__metaPixelPageViewSent")){
-    window.fbq("track","PageView");
-    markSent(pvPrefix,"__metaPixelPageViewSent");
-  }
   if(!alreadySent(vcPrefix,"__metaPixelViewContentSent")){
-    window.fbq("trackSingle",id,"ViewContent",viewContentPayload());
+    window.fbq("track","ViewContent",viewContentPayload());
     markSent(vcPrefix,"__metaPixelViewContentSent");
   }
   return alreadySent(pvPrefix,"__metaPixelPageViewSent")&&alreadySent(vcPrefix,"__metaPixelViewContentSent");

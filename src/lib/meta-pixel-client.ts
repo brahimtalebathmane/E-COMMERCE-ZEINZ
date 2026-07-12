@@ -111,8 +111,8 @@ function mergeMetaPixelUserData(
   }
 }
 
-/** Disable Meta's automatic PageView on `fbq('init')` — we fire exactly one manually per route. */
-const FBQ_INIT_OPTS = { autoConfig: false, xfbml: false } as const;
+/** Default init — allow Meta's automatic base-code PageView (standard event). */
+const FBQ_INIT_OPTS = { xfbml: false } as const;
 
 /** Module-level init lock — survives HMR and complements window.__metaPixelsInited. */
 const initedPixelIds = new Set<string>();
@@ -191,9 +191,8 @@ function queueMetaPixelInit(
   // Reserve the init slot synchronously so concurrent callers cannot queue a second init.
   markMetaPixelInited(id);
 
-  // Meta expects the string 'false' here — boolean false does not always disable auto PageView.
+  // Keep SPA history from auto-firing PageView; first PageView comes from init (standard).
   window.fbq.disablePushState = true;
-  window.fbq("set", "autoConfig", "false", id);
 
   const userData = buildMetaPixelInitUserData(id, extra);
   if (userData) {
@@ -201,6 +200,8 @@ function queueMetaPixelInit(
   } else {
     window.fbq("init", id, {}, FBQ_INIT_OPTS);
   }
+  // Credit automatic init PageView for this route (Meta base-code behavior).
+  markPageViewSentForRoute(pageViewDedupeKey(id));
   if (initUserDataHasPii(userData)) {
     window.__metaPixelInitHadPii = window.__metaPixelInitHadPii || {};
     window.__metaPixelInitHadPii[id] = true;
@@ -367,7 +368,7 @@ function pushFbqTrack(
   return true;
 }
 
-/** Standard PageView — use untargeted `track` (Meta's documented PageView form). */
+/** Standard PageView for client-side route changes (init already fired the first one). */
 function pushFbqPageView(pixelId: string): boolean {
   if (!window.fbq) return false;
 
@@ -378,11 +379,8 @@ function pushFbqPageView(pixelId: string): boolean {
     );
   }
 
-  // Meta docs use fbq('track','PageView') for the standard PageView event.
-  // trackSingle is reserved for selectively targeting one of multiple pixels;
-  // with a single site pixel, `track` is the correct standard-event path.
   window.fbq("track", "PageView");
-  devLog("PageView track queued", { pixelId });
+  devLog("PageView track queued (client navigation)", { pixelId });
   return true;
 }
 
@@ -458,8 +456,8 @@ export async function trackMetaPageView(pixelId?: string | null): Promise<void> 
 
 function pushFbqViewContent(pixelId: string, payload: Record<string, unknown>): boolean {
   if (!window.fbq) return false;
-  window.fbq("trackSingle", pixelId, "ViewContent", payload);
-  devLog("ViewContent trackSingle queued", { pixelId });
+  window.fbq("track", "ViewContent", payload);
+  devLog("ViewContent track queued", { pixelId });
   return true;
 }
 
