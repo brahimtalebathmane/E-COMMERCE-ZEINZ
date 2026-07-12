@@ -7,6 +7,18 @@ export const LOCALES: Locale[] = ["ar", "fr"];
 
 export const LOCALE_STORAGE_KEY = "zaine-locale";
 
+/** Reads the user's persisted locale preference (client-only). */
+export function readStoredLocale(): Locale | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (raw === "ar" || raw === "fr") return raw;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 const messages: Record<Locale, Record<string, unknown>> = {
   ar: ar as Record<string, unknown>,
   fr: fr as Record<string, unknown>,

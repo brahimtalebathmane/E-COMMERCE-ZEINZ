@@ -5,7 +5,7 @@ export const BRAND_COLOR = "#006B0C";
 export const BRAND_NAME = "ZAINE";
 
 /** Public support email shown in site footer. */
-export const SUPPORT_EMAIL = "support@zeinaa.net";
+export const SUPPORT_EMAIL = "support@zeinee.com";
 
 /**
  * Public site / admin header logo (PNG).

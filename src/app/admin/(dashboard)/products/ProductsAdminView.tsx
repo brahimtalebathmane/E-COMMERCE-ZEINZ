@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import { deleteProductAction, updateProductTestStatusAction } from "./actions";
@@ -11,6 +10,7 @@ import { PlusIcon } from "@/components/admin/AdminIcons";
 import { formatPrice } from "@/lib/currency";
 import {
   AdminBadge,
+  AdminButton,
   AdminLinkButton,
   AdminPageHeader,
   productPipelineHue,
@@ -100,21 +100,22 @@ function EditDeleteActions({
   const isDeleting = deletingId === row.id;
   return (
     <>
-      <Link
+      <AdminLinkButton
         href={`/admin/products/${row.id}/edit`}
-        className="text-[var(--accent)] underline text-xs"
+        variant="sm-ghost"
+        className="!min-h-0"
       >
         {a.products.edit}
-      </Link>
-      <span className="text-[var(--muted)]">·</span>
-      <button
+      </AdminLinkButton>
+      <AdminButton
         type="button"
+        variant="danger"
         disabled={busy || isDeleting}
         onClick={() => onDelete(row.id)}
-        className="text-xs font-semibold text-red-400 underline disabled:opacity-50"
+        className="!min-h-0"
       >
         {isDeleting ? a.pipeline.deleting : a.pipeline.delete}
-      </button>
+      </AdminButton>
     </>
   );
 }
@@ -139,46 +140,49 @@ function PipelineActions({
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {tab === "research" || tab === "ready" ? (
-        <Link
+        <AdminLinkButton
           href={
             tab === "research"
               ? `/admin/products/${row.id}/landing-setup`
               : `/admin/products/${row.id}/edit`
           }
-          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] transition hover:brightness-110"
+          variant="primary"
+          className="!min-h-0 !px-3 !py-1.5 !text-xs"
         >
           {a.pipeline.setupLanding}
-        </Link>
+        </AdminLinkButton>
       ) : null}
       {tab === "ready" ? (
         <>
-          <button
+          <AdminButton
             type="button"
+            variant="sm-ghost"
             disabled={busy}
             onClick={() => onStatus(row.id, "winner")}
-            className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            className="!border-emerald-400/40 !bg-emerald-400/10 !text-emerald-300 hover:!bg-emerald-400/20"
           >
             {a.pipeline.markWinner}
-          </button>
-          <button
+          </AdminButton>
+          <AdminButton
             type="button"
+            variant="danger"
             disabled={busy}
             onClick={() => onStatus(row.id, "failed")}
-            className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-50"
           >
             {a.pipeline.markFailed}
-          </button>
+          </AdminButton>
         </>
       ) : null}
       {canViewLanding ? (
-        <Link
+        <AdminLinkButton
           href={`/${row.slug}`}
-          className="text-[var(--muted)] underline text-xs"
+          variant="sm-ghost"
+          className="!min-h-0"
           target="_blank"
           rel="noopener noreferrer"
         >
           {a.products.view}
-        </Link>
+        </AdminLinkButton>
       ) : null}
       <EditDeleteActions row={row} busy={busy} deletingId={deletingId} onDelete={onDelete} />
     </div>
@@ -279,31 +283,41 @@ export function ProductsAdminView({ products }: Props) {
         }
       />
 
-      <div
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2"
-        role="tablist"
-      >
-        {PIPELINE_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className="admin-tab-pill"
-            data-active={tab === t.id}
-          >
-            {t.label}
-            <span
-              className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-                tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-white/[0.06] text-[var(--muted)]"
-              }`}
-              dir="ltr"
+      <div className="relative -mx-1">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 start-0 z-10 w-6 bg-gradient-to-r from-[var(--admin-surface)] to-transparent sm:w-8"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 end-0 z-10 w-6 bg-gradient-to-l from-[var(--admin-surface)] to-transparent sm:w-8"
+        />
+        <div
+          className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
+          {PIPELINE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className="admin-tab-pill"
+              data-active={tab === t.id}
             >
-              {counts[t.id]}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
+                  tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-white/[0.06] text-[var(--muted)]"
+                }`}
+                dir="ltr"
+              >
+                {counts[t.id]}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {error ? (

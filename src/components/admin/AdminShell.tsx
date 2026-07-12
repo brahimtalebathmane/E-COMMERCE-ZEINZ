@@ -209,9 +209,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="truncate">{a.nav.staff}</span>
             </Link>
           ) : null}
-          <Link href="/" className="admin-nav-link" target="_blank" rel="noopener noreferrer">
+          <Link
+            href="/"
+            className="admin-nav-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="يفتح المتجر العام في تبويب جديد — لا توجد صفحة إعدادات متجر بعد"
+          >
             <StoreIcon size={20} className="shrink-0" />
-            <span className="truncate">{a.nav.storefront}</span>
+            <span className="truncate">{a.shell.viewStore}</span>
           </Link>
         </div>
       </nav>
@@ -309,10 +315,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             target="_blank"
             rel="noopener noreferrer"
             className="admin-nav-link"
+            title="يفتح المتجر العام في تبويب جديد — لا توجد صفحة إعدادات متجر بعد"
             onClick={() => setMoreOpen(false)}
           >
             <StoreIcon size={20} className="shrink-0" />
-            <span>{a.nav.storefront}</span>
+            <span>{a.shell.viewStore}</span>
           </Link>
           <button
             type="button"

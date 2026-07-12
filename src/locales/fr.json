@@ -56,12 +56,33 @@
   },
   "orderForm": {
     "whatsappNumber": "Numéro WhatsApp",
+    "title": "Finaliser la commande",
+    "nameLabel": "Nom complet",
+    "close": "Fermer",
+    "submit": "Commander maintenant",
+    "submitting": "Envoi en cours...",
+    "codNote": "Paiement à la livraison — vous payez à la réception",
+    "priceLabel": "Total à payer",
+    "freeShipping": "Livraison gratuite incluse",
+    "sessionError": "Impossible de préparer le suivi — actualisez la page et réessayez",
+    "submitFailed": "Impossible d'envoyer la commande",
     "nameRequired": "Le nom est obligatoire",
     "phoneLength": "Le numéro doit comporter 8 chiffres",
     "phonePrefix": "Le numéro doit commencer par 2, 3 ou 4",
     "phoneHint": "Entrez 8 chiffres commençant par 2, 3 ou 4",
     "phoneRequired": "Le numéro est obligatoire",
     "submitError": "Une erreur inattendue s'est produite"
+  },
+  "landing": {
+    "trustCod": "Paiement à la livraison",
+    "trustDelivery": "Livraison rapide",
+    "trustGuarantee": "Satisfait ou remboursé",
+    "trustSecure": "Commande sécurisée",
+    "guaranteeTitle": "Garantie satisfait ou remboursé",
+    "guaranteeBody": "Commandez en toute confiance. Vous ne payez qu'à la réception de votre commande.",
+    "reviewsVerified": "{{count}} avis vérifiés",
+    "ctaDefault": "Profitez de l'offre maintenant",
+    "codReassuranceDefault": "Paiement à la livraison disponible dans toutes les zones"
   },
   "orderSuccess": {
     "title": "Votre commande a bien été reçue",

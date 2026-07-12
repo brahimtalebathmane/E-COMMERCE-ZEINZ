@@ -300,7 +300,9 @@ export function LandingMedia({
       ? "relative w-full min-w-0 overflow-hidden bg-[var(--accent-muted)] aspect-[16/11] sm:aspect-[16/9] md:aspect-[21/9] max-h-[min(88vh,58rem)]"
       : "relative aspect-video w-full min-w-0 max-h-[min(85vh,56rem)] bg-[var(--accent-muted)]";
     const imgSizes = edgeToEdge || immersive ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)";
-    const imgCover = immersive || edgeToEdge ? "object-cover" : "object-contain sm:object-cover";
+    const imgCover = immersive || edgeToEdge
+      ? "object-contain sm:object-cover"
+      : "object-contain sm:object-cover";
     return (
       <div className={imageShellClass}>
         <Image

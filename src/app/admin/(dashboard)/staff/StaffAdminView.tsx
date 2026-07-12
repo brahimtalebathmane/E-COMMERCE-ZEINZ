@@ -85,6 +85,25 @@ function PermissionToggles({
   );
 }
 
+function PermissionLegend() {
+  return (
+    <div className="rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+        {a.staff.permissionLegendTitle}
+      </p>
+      <ul className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        {PERMISSION_CATALOG.map((perm) => (
+          <li key={perm.key} className="text-xs leading-snug text-[var(--foreground)]">
+            <span className="font-semibold text-[var(--accent)]">{perm.shortAr}</span>
+            <span className="text-[var(--muted)]"> — </span>
+            <span>{perm.labelAr}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -94,7 +113,7 @@ function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
           <span
             key={perm.key}
             title={perm.labelAr}
-            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
+            aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
             className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border text-[10px] ${
               granted
                 ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
@@ -253,14 +272,23 @@ export function StaffAdminView({ initialStaff }: Props) {
       ) : (
         <>
           {/* Desktop / laptop: dense data table with at-a-glance permission matrix */}
-          <div className="admin-card mt-6 hidden overflow-hidden lg:block">
+          <PermissionLegend />
+          <div className="admin-card mt-4 hidden overflow-hidden lg:block">
             <table className="w-full table-fixed border-collapse text-sm">
               <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="w-[26%] px-4 py-3 text-start">{a.staff.colEmployee}</th>
                   {PERMISSION_CATALOG.map((perm) => (
-                    <th key={perm.key} className="px-1 py-3 text-center" title={perm.labelAr}>
-                      {perm.shortAr}
+                    <th
+                      key={perm.key}
+                      className="px-1 py-3 text-center"
+                      title={perm.descriptionAr}
+                      scope="col"
+                    >
+                      <span className="block">{perm.shortAr}</span>
+                      <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-[var(--muted)]">
+                        {perm.labelAr}
+                      </span>
                     </th>
                   ))}
                   <th className="w-[10%] px-3 py-3 text-center">{a.staff.colStatus}</th>
@@ -285,7 +313,7 @@ export function StaffAdminView({ initialStaff }: Props) {
                       return (
                         <td key={perm.key} className="px-1 py-3 text-center align-middle">
                           <span
-                            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
+                            aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${
                               granted
                                 ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
@@ -328,7 +356,8 @@ export function StaffAdminView({ initialStaff }: Props) {
           </div>
 
           {/* Mobile / tablet: touch-friendly stackable cards */}
-          <div className="mt-6 space-y-3 lg:hidden">
+          <PermissionLegend />
+          <div className="mt-4 space-y-3 lg:hidden">
             {staff.map((row) => (
               <article key={row.id} className="admin-card p-4 sm:p-5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -352,6 +381,9 @@ export function StaffAdminView({ initialStaff }: Props) {
                 ) : null}
 
                 <div className="mt-3">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    {a.staff.permissionsTitle}
+                  </p>
                   {row.permissions.length === 0 ? (
                     <span className="text-xs text-[var(--muted)]">{a.staff.noPermissions}</span>
                   ) : (

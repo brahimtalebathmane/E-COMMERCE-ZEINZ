@@ -92,6 +92,9 @@ export const adminAr = {
     colEmployee: "الموظف",
     colStatus: "الحالة",
     colActions: "إجراءات",
+    permissionLegendTitle: "دليل الصلاحيات",
+    permissionGranted: "مفعّل",
+    permissionDenied: "غير مفعّل",
   },
   products: {
     title: "المنتجات",

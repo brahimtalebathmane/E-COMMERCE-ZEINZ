@@ -27,12 +27,15 @@ function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
 }
 
-function validateMauritaniaLocalPhone(localDigits: string): string | null {
+function validateMauritaniaLocalPhone(
+  localDigits: string,
+  t: (key: string) => string,
+): string | null {
   const d = onlyDigits(localDigits);
-  if (d.length !== 8) return "رقم الهاتف يجب أن يكون 8 أرقام";
+  if (d.length !== 8) return t("orderForm.phoneLength");
   const first = d[0];
   if (first !== "2" && first !== "3" && first !== "4") {
-    return "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4";
+    return t("orderForm.phonePrefix");
   }
   return null;
 }
@@ -101,7 +104,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
     const n = name.trim();
     const local = onlyDigits(phoneLocal.trim());
-    const phoneErr = validateMauritaniaLocalPhone(local);
+    const phoneErr = validateMauritaniaLocalPhone(local, t);
     if (!n) return;
     if (phoneErr) return;
 
@@ -111,7 +114,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
       const generatedMetaEventId = ensureMetaFunnelSession(product.id);
       if (!generatedMetaEventId) {
-        throw new Error("تعذر إعداد جلسة التتبع — يرجى تحديث الصفحة والمحاولة مرة أخرى");
+        throw new Error(t("orderForm.sessionError"));
       }
       const phoneE164 = `+222${local}`;
       const leadValue =
@@ -147,11 +150,11 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           }
         | { error?: string };
       if (!res.ok) {
-        throw new Error("error" in json ? json.error ?? "تعذر إرسال الطلب" : "تعذر إرسال الطلب");
+        throw new Error("error" in json ? json.error ?? t("orderForm.submitFailed") : t("orderForm.submitFailed"));
       }
 
       if (!("success" in json) || !json.order_id) {
-        throw new Error("تعذر إرسال الطلب");
+        throw new Error(t("orderForm.submitFailed"));
       }
 
       const leadEventId = resolveLeadEventId({
@@ -190,7 +193,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       await unregisterLegacyRootSerwist();
       router.push(`/order-success?${qs.toString()}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");
+      toast.error(e instanceof Error ? e.message : t("orderForm.submitError"));
       submitLockRef.current = false;
       setBusy(false);
     }
@@ -198,17 +201,14 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   if (!open) return null;
 
-  const isFr = locale === "fr";
-  const title = isFr ? "Finaliser la commande" : "إتمام الطلب";
-  const nameLabel = isFr ? "Nom complet" : "الاسم الكامل";
-  const closeLabel = isFr ? "Fermer" : "إغلاق";
-  const submitLabel = isFr ? "Commander maintenant" : "اطلب الآن";
-  const submittingLabel = isFr ? "Envoi en cours..." : "جارٍ الإرسال...";
-  const codNote = isFr
-    ? "Paiement à la livraison — vous payez à la réception"
-    : "الدفع عند الاستلام — تدفع عند وصول الطلب";
-  const priceLabel = isFr ? "Total à payer" : "المبلغ الإجمالي";
-  const freeShippingLabel = isFr ? "Livraison gratuite incluse" : "يشمل التوصيل المجاني";
+  const title = t("orderForm.title");
+  const nameLabel = t("orderForm.nameLabel");
+  const closeLabel = t("orderForm.close");
+  const submitLabel = t("orderForm.submit");
+  const submittingLabel = t("orderForm.submitting");
+  const codNote = t("orderForm.codNote");
+  const priceLabel = t("orderForm.priceLabel");
+  const freeShippingLabel = t("orderForm.freeShipping");
 
   const originalPrice = Number(product.price);
   const discountedPrice =
@@ -312,15 +312,14 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               <label className="block text-sm font-semibold text-[var(--foreground)]">
                 {t("orderForm.whatsappNumber")} <span className="text-red-500">*</span>
               </label>
-              <div className="mt-2 flex items-stretch gap-2">
+              <div className="mt-2 flex items-stretch gap-2" dir="ltr">
                 <span
                   className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 font-mono text-sm font-semibold text-[var(--foreground)]"
-                  dir="ltr"
                 >
                   +222
                 </span>
                 <input
-                  className="store-input flex-1 font-mono tabular-nums"
+                  className="store-input min-w-0 flex-1 text-start font-mono tabular-nums"
                   value={phoneLocal}
                   onChange={(e) => {
                     const next = onlyDigits(e.target.value);
@@ -331,7 +330,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                   inputMode="numeric"
                   autoComplete="tel"
                   placeholder="2XXXXXXX"
-                  dir="ltr"
                   aria-invalid={Boolean(phoneError)}
                 />
               </div>

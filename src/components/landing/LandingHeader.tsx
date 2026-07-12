@@ -25,7 +25,7 @@ export function LandingHeader({ logoSrc, headerCtaText }: Props) {
           dir="ltr"
         >
           <div className="shrink-0">
-            <LanguageSwitcher storageKey="landing-locale" />
+            <LanguageSwitcher />
           </div>
 
           {hasCta ? (

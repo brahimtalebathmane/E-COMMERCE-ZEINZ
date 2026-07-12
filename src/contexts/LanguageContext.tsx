@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   LOCALE_STORAGE_KEY,
+  readStoredLocale,
   type Locale,
   isRtl,
   translate,
@@ -23,16 +24,6 @@ type Ctx = {
 };
 
 const LanguageContext = createContext<Ctx | null>(null);
-
-function readStoredLocale(): Locale | null {
-  try {
-    const raw = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (raw === "ar" || raw === "fr") return raw;
-  } catch {
-    // ignore
-  }
-  return null;
-}
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("ar");

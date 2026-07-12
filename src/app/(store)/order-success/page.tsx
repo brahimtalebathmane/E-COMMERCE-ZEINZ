@@ -4,7 +4,7 @@ import {
   ORDER_SUCCESS_CT_COOKIE,
   ORDER_SUCCESS_OID_COOKIE,
 } from "@/lib/orders/order-success-session";
-import { loadOrderSuccessContext } from "@/lib/orders/order-success-context";
+import { loadOrderSuccessContext, resolveProductNameFromId } from "@/lib/orders/order-success-context";
 import { OrderSuccessContent } from "./OrderSuccessContent";
 import { OrderSuccessEffects } from "./OrderSuccessEffects";
 
@@ -34,8 +34,12 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   }
 
   const orderContext = await loadOrderSuccessContext(orderId, cookieOrderId);
-  const productId = orderContext?.productId ?? sp?.product_id?.trim() ?? null;
-  const productName = orderContext?.productName ?? null;
+  const queryProductId = sp?.product_id?.trim() ?? null;
+  const productId = orderContext?.productId ?? queryProductId;
+  let productName = orderContext?.productName ?? null;
+  if (!productName && queryProductId) {
+    productName = await resolveProductNameFromId(queryProductId);
+  }
   const totalPrice =
     orderContext?.totalPrice ??
     (typeof queryTotalPrice === "number" && Number.isFinite(queryTotalPrice)

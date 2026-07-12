@@ -10,6 +10,7 @@ import { LandingHeader } from "./LandingHeader";
 import { LandingTopBanner } from "./LandingTopBanner";
 import { LandingStickyFooter } from "./LandingStickyFooter";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { readStoredLocale } from "@/lib/i18n";
 import { trackInitiateCheckout } from "@/components/MetaPixel";
 import { dispatchInitiateCheckoutCapiWithRetry, isMetaInitiateCheckoutCapiComplete } from "@/lib/meta-initiate-checkout-client";
 import { reportMetaClientFailure } from "@/lib/meta-client-failure-report";
@@ -49,7 +50,7 @@ const primaryCtaClass =
 
 /** FAQ → Contact strip: full-bleed band behind CTA; pill is centered with capped width (background from admin: image / color / gradient). */
 const preContactCtaButtonClass =
-  "store-btn-primary mx-auto flex w-full max-w-[14.5rem] justify-center rounded-full px-4 py-1.5 text-sm font-semibold shadow-[0_8px_20px_rgba(0,107,12,0.22)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:max-w-[16rem] sm:px-5 sm:py-2 sm:font-bold";
+  "store-btn-primary mx-auto flex w-full max-w-full justify-center rounded-full px-4 py-1.5 text-sm font-semibold shadow-[0_8px_20px_rgba(0,107,12,0.22)] transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.985] sm:max-w-[16rem] sm:px-5 sm:py-2 sm:font-bold";
 
 /** Edge-to-edge band behind the pre-contact CTA (pairs with `fullBleedStripClass`). */
 const preContactCtaBandClass =
@@ -189,12 +190,12 @@ function FeatureCard({
   const tiltHidden = idx % 2 === 0 ? "-rotate-[2.5deg]" : "rotate-[2.5deg]";
   const enter = visible
     ? "translate-y-0 scale-100 rotate-0 opacity-100"
-    : `translate-y-6 scale-[0.96] ${tiltHidden} opacity-0 sm:translate-y-7`;
+    : `translate-y-6 scale-[0.98] ${tiltHidden} opacity-0 sm:translate-y-7`;
   const delayMs = visible ? idx * 115 : 0;
 
   return (
     <div
-      className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-[transform,opacity] ${motionFeaturesDurationClass} will-change-transform ${enter} motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4 motion-reduce:hover:translate-y-0`}
+      className={`${softCardClass} flex min-h-[120px] flex-col justify-start p-3 text-center transition-[transform,opacity] ${motionFeaturesDurationClass} ${enter} motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0 motion-reduce:opacity-100 motion-reduce:transition-none hover:-translate-y-0.5 sm:min-h-[132px] sm:p-4 motion-reduce:hover:translate-y-0`}
       style={{ transitionDelay: `${delayMs}ms` }}
     >
       <FeatureIcon feature={feature ?? ""} color={accent} />
@@ -222,8 +223,8 @@ function FeatureIcon({ feature, color }: { feature: string; color: string }) {
   }
 
   return (
-    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--accent-muted)] bg-[var(--background)]">
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--accent)]/25 bg-[var(--accent-muted)]">
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d={path} />
       </svg>
     </span>
@@ -275,21 +276,13 @@ function TrustGlyph({ kind }: { kind: "cod" | "delivery" | "guarantee" | "secure
   );
 }
 
-function LandingTrustBadges({ locale }: { locale: "ar" | "fr" }) {
-  const items =
-    locale === "fr"
-      ? ([
-          { kind: "cod", label: "Paiement à la livraison" },
-          { kind: "delivery", label: "Livraison rapide" },
-          { kind: "guarantee", label: "Satisfait ou remboursé" },
-          { kind: "secure", label: "Commande sécurisée" },
-        ] as const)
-      : ([
-          { kind: "cod", label: "الدفع عند الاستلام" },
-          { kind: "delivery", label: "توصيل سريع" },
-          { kind: "guarantee", label: "ضمان الاسترجاع" },
-          { kind: "secure", label: "طلب آمن" },
-        ] as const);
+function LandingTrustBadges({ t }: { t: (key: string) => string }) {
+  const items = [
+    { kind: "cod" as const, label: t("landing.trustCod") },
+    { kind: "delivery" as const, label: t("landing.trustDelivery") },
+    { kind: "guarantee" as const, label: t("landing.trustGuarantee") },
+    { kind: "secure" as const, label: t("landing.trustSecure") },
+  ];
 
   return (
     <div className="mx-auto mt-5 grid max-w-lg grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
@@ -308,13 +301,9 @@ function LandingTrustBadges({ locale }: { locale: "ar" | "fr" }) {
   );
 }
 
-function GuaranteeStrip({ locale }: { locale: "ar" | "fr" }) {
-  const title =
-    locale === "fr" ? "Garantie satisfait ou remboursé" : "ضمان الرضا أو استرجاع المال";
-  const body =
-    locale === "fr"
-      ? "Commandez en toute confiance. Vous ne payez qu'à la réception de votre commande."
-      : "اطلب بثقة تامة. لا تدفع إلا عند استلام طلبك بين يديك.";
+function GuaranteeStrip({ t }: { t: (key: string) => string }) {
+  const title = t("landing.guaranteeTitle");
+  const body = t("landing.guaranteeBody");
   return (
     <div className="mx-auto flex max-w-lg items-center gap-3 rounded-3xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--card)_0%,var(--background)_100%)] p-4 text-start shadow-[0_14px_28px_rgba(12,28,12,0.08)] sm:gap-4 sm:p-5">
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent-muted)] text-[var(--accent)] sm:h-14 sm:w-14">
@@ -343,14 +332,13 @@ function GuaranteeStrip({ locale }: { locale: "ar" | "fr" }) {
 }
 
 export function ProductLanding({ product }: Props) {
-  const { locale, dir, t } = useLanguage();
+  const { locale, dir, t, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const accent = copy.brandColor;
 
   const stats = copy.stats;
-  const contacts = copy.contactLines;
   const descLines = copy.description
     .split("\n")
     .map((line) => line.trim())
@@ -371,14 +359,17 @@ export function ProductLanding({ product }: Props) {
   const featureItems = fixedSlots(copy.features, 4);
   const statItems = fixedSlots(stats, 3);
   const faqItems = fixedSlots(copy.faqs, 4);
-  const contactItems = fixedSlots(contacts, 3);
-  const ctaText = copy.ctaText.trim() || "اغتنم العرض الآن";
+  const ctaText = copy.ctaText.trim() || t("landing.ctaDefault");
   const heroSummary = descLines[0] ?? "";
-  const codReassurance =
-    descLines[1] ??
-    (locale === "fr"
-      ? "Paiement a la livraison disponible dans toutes les zones"
-      : "الدفع عند الاستلام متاح في كل المناطق");
+  const codReassurance = descLines[1] ?? t("landing.codReassuranceDefault");
+
+  useEffect(() => {
+    const stored = readStoredLocale();
+    const defaultLang = product.default_language;
+    if (!stored && (defaultLang === "ar" || defaultLang === "fr")) {
+      setLocale(defaultLang);
+    }
+  }, [product.default_language, setLocale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -469,8 +460,8 @@ export function ProductLanding({ product }: Props) {
   const [setStatsRef, statsVisible] = useInViewOnce();
 
   const featuresTitleMotion = featuresVisible
-    ? "translate-y-0 opacity-100"
-    : "translate-y-5 opacity-0 sm:translate-y-6";
+    ? "opacity-100"
+    : "opacity-0";
   const testimonialsHeaderMotion = testimonialsSectionVisible
     ? "translate-y-0 opacity-100"
     : "translate-y-4 opacity-0";
@@ -540,12 +531,12 @@ export function ProductLanding({ product }: Props) {
         </button>
         <p className={`mx-auto mt-2 max-w-lg ${bodyTextClass} font-medium`}>{codReassurance}</p>
 
-        <LandingTrustBadges locale={locale} />
+        <LandingTrustBadges t={t} />
       </section>
 
       <section ref={setFeaturesRef} className={`bg-[var(--card)] ${sectionPadClass}`}>
         <h2
-          className={`${sectionTitleClass} relative z-10 break-words transition-[transform,opacity] ${motionFeaturesDurationClass} ${featuresTitleMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          className={`${sectionTitleClass} break-words transition-opacity ${motionFeaturesDurationClass} ${featuresTitleMotion} motion-reduce:opacity-100 motion-reduce:transition-none`}
         >
           {copy.featuresTitle}
         </h2>
@@ -565,7 +556,7 @@ export function ProductLanding({ product }: Props) {
 
       <section className="w-full bg-[var(--card)] py-8 sm:py-10">
         <div className={sectionContentInsetClass}>
-          <h3 className={`${sectionTitleClass} break-words`}>{copy.mediaCaption}</h3>
+          <h3 className={`${sectionTitleClass} break-words px-1`}>{copy.mediaCaption}</h3>
         </div>
         <div className="mt-4 w-full">
           <LandingMedia
@@ -589,9 +580,7 @@ export function ProductLanding({ product }: Props) {
 
       {product.gallery.length > 0 ? (
         <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-          <h3 className={`${sectionTitleClass} break-words`}>
-            {locale === "fr" ? "Galerie" : "معرض الصور"}
-          </h3>
+          <h3 className={`${sectionTitleClass} break-words`}>{t("product.gallery")}</h3>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
             {product.gallery.map((src, gi) => (
               <div
@@ -626,9 +615,7 @@ export function ProductLanding({ product }: Props) {
               {avgRating.toFixed(1)}
             </span>
             <span className="text-xs font-medium text-[var(--muted)]">
-              {locale === "fr"
-                ? `${reviewCount} avis vérifiés`
-                : `${reviewCount} تقييم موثّق`}
+              {t("landing.reviewsVerified", { count: reviewCount })}
             </span>
           </div>
         ) : null}
@@ -665,7 +652,7 @@ export function ProductLanding({ product }: Props) {
       </section>
 
       <section className={`bg-[var(--background)] ${sectionPadClass}`}>
-        <GuaranteeStrip locale={locale} />
+        <GuaranteeStrip t={t} />
       </section>
 
       {product.tertiary_media_url ? (
@@ -756,37 +743,11 @@ export function ProductLanding({ product }: Props) {
             <button
               type="button"
               onClick={openCheckout}
-              className={`${preContactCtaButtonClass} ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_10px_26px_rgba(0,0,0,0.24)]" : ""}`}
+              className={`${preContactCtaButtonClass} whitespace-normal break-words text-center leading-snug ${ctaBannerImg ? "ring-2 ring-white/40 shadow-[0_10px_26px_rgba(0,0,0,0.24)]" : ""}`}
             >
               {ctaText}
             </button>
           </div>
-        </div>
-      </section>
-
-      <section className={`bg-[var(--card)] ${sectionPadClass}`}>
-        <h3 className={`${sectionTitleClass} break-words`}>{copy.contactTitle}</h3>
-        <div className="mt-5 space-y-3 sm:mx-auto sm:max-w-lg">
-          {contactItems.map((line, idx) => {
-            const value = line ?? "";
-            const lower = value.toLowerCase();
-            const isEmail = lower.includes("@") || lower.includes("mail");
-            const isWhatsApp = lower.includes("whatsapp") || lower.includes("واتساب");
-            const label = isEmail
-              ? t("productContact.email")
-              : isWhatsApp
-                ? t("productContact.whatsapp")
-                : t("productContact.phone");
-            const icon = isEmail ? "✉" : isWhatsApp ? "◉" : "☎";
-            return (
-              <div key={`${value}-${idx}`} className={`${softCardClass} rounded-2xl px-4 py-3 sm:py-4`}>
-                <p className="text-xs font-semibold tracking-wide text-[var(--accent)]">{icon} {label}</p>
-                <p className="mt-1 break-all text-sm font-semibold leading-snug text-[var(--foreground)] sm:text-base" dir="ltr">
-                  {value}
-                </p>
-              </div>
-            );
-          })}
         </div>
       </section>
 
