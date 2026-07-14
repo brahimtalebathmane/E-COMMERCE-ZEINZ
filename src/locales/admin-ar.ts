@@ -263,6 +263,40 @@ export const adminAr = {
     newOrderBadge: "جديد",
     noOrdersHint: "ستظهر الطلبات الجديدة هنا فور وصولها — لا حاجة لتحديث الصفحة.",
     readOnlyStatus: "الحالة",
+
+    // Confirmation dialog (replaces window.confirm)
+    confirmTitle: "تأكيد الإجراء",
+    confirm: "تأكيد",
+    cancel: "إلغاء",
+
+    // Order note (visible on the row/card, click to edit)
+    notePlaceholder: "أضف ملاحظة…",
+    noteAdd: "+ إضافة ملاحظة",
+    noteSaved: "تم حفظ الملاحظة",
+    noteSaveFailed: "تعذر حفظ الملاحظة",
+
+    // Call / WhatsApp quick actions
+    callTitle: "اتصال",
+    whatsappTitle: "واتساب",
+    phoneUnavailable: "لا يوجد رقم هاتف صالح",
+
+    // Search
+    searchPlaceholder: "ابحث بالاسم أو رقم الهاتف…",
+    searchNoResults: "لا توجد نتائج مطابقة للبحث.",
+
+    // Selection mode
+    selectionModeEnter: "تحديد",
+    selectionModeExit: "إلغاء التحديد",
+
+    // Bulk status change
+    bulkStatusLabel: "تغيير الحالة",
+    bulkStatusPlaceholder: "اختر الحالة الجديدة",
+    bulkStatusApply: "تطبيق",
+    bulkStatusApplying: "جاري التطبيق…",
+    bulkStatusConfirm: "هل تريد تغيير حالة {count} طلباً إلى «{status}»؟",
+    bulkStatusResult: "تم تحديث {okCount} طلباً بنجاح، وتعذر تحديث {failCount}.",
+    bulkStatusAllOk: "تم تحديث {okCount} طلباً بنجاح.",
+    bulkStatusFailed: "تعذر تغيير الحالة",
   },
   orderStatus: {
     pending: "قيد الانتظار",

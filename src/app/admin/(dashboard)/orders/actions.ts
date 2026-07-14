@@ -1,9 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { assertAdminUser, assertPermission, AuthError } from "@/lib/auth/admin";
-import { canEditOrderDetails, PERMISSIONS } from "@/lib/auth/permissions";
+import { canEditOrderDetails, PERMISSIONS, permissionForOrderStatus } from "@/lib/auth/permissions";
 import { createServiceClient } from "@/lib/supabase/service";
+import { updateOrderStatusWithEffects } from "@/lib/orders/update-status";
+import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
 export async function deleteOrderAction(id: string) {
@@ -78,6 +81,96 @@ export async function updateOrderDeliveryCostAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to save delivery cost.",
+    };
+  }
+}
+
+export type NoteActionResult = { ok: true; note: string | null } | { ok: false; error: string };
+
+/** Free-text admin note, editable directly from the order row/card and the detail modal. */
+export async function updateOrderNoteAction(
+  orderId: string,
+  note: string | null,
+): Promise<NoteActionResult> {
+  const id = orderId?.trim();
+  if (!id) {
+    return { ok: false, error: "order id is required." };
+  }
+
+  const trimmed = note?.trim() ?? "";
+  const value = trimmed === "" ? null : trimmed;
+
+  try {
+    const session = await assertAdminUser();
+    if (!canEditOrderDetails(session.access)) {
+      throw new AuthError(403, "Forbidden");
+    }
+
+    const supabase = createServiceClient();
+    const { error } = await supabase.from("orders").update({ note: value }).eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidatePath("/admin/orders");
+    return { ok: true, note: value };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to save note.",
+    };
+  }
+}
+
+export type BulkStatusActionResult =
+  | { ok: true; succeededIds: string[]; failedIds: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Bulk status change for selected orders. Loops `updateOrderStatusWithEffects`
+ * per order (not a raw bulk SQL UPDATE) so each order still gets state-machine
+ * validation, `order_status_history` logging, and the Meta Purchase/
+ * CancelledLead CAPI dispatch it would get from a single-order change —
+ * skipping that per-order logic would silently break Meta tracking parity.
+ * Returns per-order results (not just counts) so the client can patch exactly
+ * the orders that actually changed rather than guessing.
+ */
+export async function updateOrdersStatusBulkAction(
+  orderIds: string[],
+  nextStatus: OrderStatus,
+): Promise<BulkStatusActionResult> {
+  const uniqueIds = [...new Set(orderIds.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { ok: false, error: "No orders selected." };
+  }
+
+  try {
+    const requiredPermission = permissionForOrderStatus(nextStatus);
+    if (!requiredPermission) {
+      return { ok: false, error: "Invalid status." };
+    }
+    const session = await assertPermission(requiredPermission);
+    const requestHeaders = await headers();
+    const supabase = createServiceClient();
+
+    const succeededIds: string[] = [];
+    const failedIds: string[] = [];
+    for (const orderId of uniqueIds) {
+      const result = await updateOrderStatusWithEffects(supabase, orderId, nextStatus, {
+        requestHeaders,
+        changedBy: session.access.userId,
+      });
+      if (result.ok) succeededIds.push(orderId);
+      else failedIds.push(orderId);
+    }
+
+    revalidatePath("/admin/orders");
+    return { ok: true, succeededIds, failedIds };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to update status.",
     };
   }
 }

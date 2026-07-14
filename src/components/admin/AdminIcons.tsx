@@ -173,3 +173,31 @@ export function MoreIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function PhoneIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M6.5 3.5h2.2l1.3 4.2-1.9 1.6a11.5 11.5 0 0 0 5.1 5.1l1.6-1.9 4.2 1.3v2.2a1.5 1.5 0 0 1-1.6 1.5A16 16 0 0 1 5 5.1 1.5 1.5 0 0 1 6.5 3.5Z" />
+    </Base>
+  );
+}
+
+/** Generic chat-bubble icon (not a brand logo reproduction) used for the WhatsApp quick-action. */
+export function ChatIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 12a8 8 0 1 1 3.2 6.4L4 19.5l1.1-3.2A7.9 7.9 0 0 1 4 12Z" />
+      <path d="M8.5 11h7" />
+      <path d="M8.5 14h4.5" />
+    </Base>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.3-4.3" />
+    </Base>
+  );
+}

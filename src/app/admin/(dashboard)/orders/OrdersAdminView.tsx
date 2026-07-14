@@ -1,19 +1,30 @@
 "use client";
 
-import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { adminAr as a } from "@/locales/admin-ar";
-import { deleteOrderAction, deleteOrdersAction } from "./actions";
-import { useHasPermission } from "@/components/admin/AdminPermissionsContext";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import {
+  deleteOrderAction,
+  deleteOrdersAction,
+  updateOrderNoteAction,
+  updateOrdersStatusBulkAction,
+} from "./actions";
+import { useAdminAccess, useHasPermission } from "@/components/admin/AdminPermissionsContext";
+import { hasPermission, permissionForOrderStatus, PERMISSIONS } from "@/lib/auth/permissions";
 import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
+import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { ChatIcon, PhoneIcon, SearchIcon } from "@/components/admin/AdminIcons";
 import {
   AdminBadge,
+  AdminButton,
+  AdminInput,
   AdminMetricPill,
   AdminPageHeader,
+  AdminSelect,
   orderStatusHue,
 } from "@/components/admin/ui";
 
@@ -82,7 +93,21 @@ function formatRowTime(value: string | null | undefined): string {
   return date ? TIME_FORMATTER.format(date) : "—";
 }
 
+/** Strips everything but digits — used for loose phone-number search matching. */
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 const ALL_PRODUCTS = "__all__";
+
+const BULK_STATUS_OPTIONS: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "shipped",
+  "cancelled",
+  "requires_human_intervention",
+  "internal_return",
+];
 
 type ProductTab = {
   id: string;
@@ -138,7 +163,6 @@ function tallyStatus(counts: ReturnType<typeof emptyCounts>, status: OrderStatus
   }
 }
 
-
 const OrderStatusBadge = memo(function OrderStatusBadge({
   status,
 }: {
@@ -186,19 +210,185 @@ function MetricPill({
   return <AdminMetricPill label={label} value={value} hue={hueMap[tone]} />;
 }
 
+/** Call + WhatsApp icon buttons for a phone number, disabled (not hidden) when invalid/missing. */
+function PhoneActions({ phone }: { phone: string | null }) {
+  const digits = phone ? sanitizePhoneForMetaE164(phone) : null;
+  const telHref = digits ? `tel:+${digits}` : null;
+  const waHref = digits ? `https://wa.me/${digits}` : null;
+
+  const baseClass =
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition";
+  const enabledClass =
+    "border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--foreground)] hover:bg-white/[0.06]";
+  const disabledClass =
+    "cursor-not-allowed border-[var(--admin-border)] text-[var(--muted)] opacity-40";
+
+  return (
+    <span className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      {telHref ? (
+        <a
+          href={telHref}
+          title={a.orders.callTitle}
+          aria-label={a.orders.callTitle}
+          className={`${baseClass} ${enabledClass}`}
+        >
+          <PhoneIcon size={16} />
+        </a>
+      ) : (
+        <span
+          aria-disabled="true"
+          title={a.orders.phoneUnavailable}
+          aria-label={a.orders.phoneUnavailable}
+          className={`${baseClass} ${disabledClass}`}
+        >
+          <PhoneIcon size={16} />
+        </span>
+      )}
+      {waHref ? (
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={a.orders.whatsappTitle}
+          aria-label={a.orders.whatsappTitle}
+          className={`${baseClass} ${enabledClass}`}
+        >
+          <ChatIcon size={16} />
+        </a>
+      ) : (
+        <span
+          aria-disabled="true"
+          title={a.orders.phoneUnavailable}
+          aria-label={a.orders.phoneUnavailable}
+          className={`${baseClass} ${disabledClass}`}
+        >
+          <ChatIcon size={16} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Click-to-edit order note, always visible on the row/card (never hidden
+ * behind the detail modal). Saves on blur and via an explicit small save
+ * button; Escape reverts the draft without saving.
+ */
+function NoteEditor({
+  order,
+  onSaved,
+}: {
+  order: AdminOrderRow;
+  onSaved: (note: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(order.note ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(order.note ?? "");
+  }, [order.id, order.note]);
+
+  async function save() {
+    if (saving) return;
+    const trimmed = draft.trim();
+    if (trimmed === (order.note ?? "")) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await updateOrderNoteAction(order.id, trimmed === "" ? null : trimmed);
+      if (!res.ok) throw new Error(res.error);
+      onSaved(res.note);
+      setEditing(false);
+      toast.success(a.orders.noteSaved);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.orders.noteSaveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+        }}
+        className="block w-full text-start text-xs leading-relaxed text-[var(--muted)] hover:text-[var(--foreground)]"
+      >
+        {order.note ? (
+          <span className="line-clamp-2 break-words">{order.note}</span>
+        ) : (
+          <span className="italic">{a.orders.noteAdd}</span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2" onClick={(e) => e.stopPropagation()}>
+      <textarea
+        autoFocus
+        rows={2}
+        disabled={saving}
+        value={draft}
+        placeholder={a.orders.notePlaceholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => void save()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setDraft(order.note ?? "");
+            setEditing(false);
+          }
+        }}
+        className="admin-input flex-1 !text-xs"
+      />
+      <AdminButton
+        type="button"
+        variant="primary"
+        disabled={saving}
+        className="!min-h-0 !px-2.5 !py-1.5 !text-[11px]"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => void save()}
+      >
+        {saving ? a.analytics.saving : a.analytics.save}
+      </AdminButton>
+    </div>
+  );
+}
+
+type ConfirmState = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  tone?: "danger" | "default";
+  onConfirm: () => void;
+};
+
 type Props = {
   orders: AdminOrderRow[];
 };
 
 export function OrdersAdminView({ orders }: Props) {
+  const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>(ALL_PRODUCTS);
+  const [search, setSearch] = useState("");
+  const [bulkStatusValue, setBulkStatusValue] = useState<OrderStatus | "">("");
+  const [bulkStatusApplying, setBulkStatusApplying] = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [renderCount, setRenderCount] = useState(() =>
     Math.min(INITIAL_RENDER, orders.length),
   );
@@ -208,6 +398,8 @@ export function OrdersAdminView({ orders }: Props) {
   useEffect(() => {
     trackRows(rows);
   }, [rows, trackRows]);
+
+  const showCheckboxes = selectionMode && canDeleteOrders;
 
   // Aggregate per-product metrics. Order of appearance mirrors `rows` (newest
   // first), so the most recently active products surface at the front.
@@ -238,13 +430,24 @@ export function OrdersAdminView({ orders }: Props) {
     }
   }, [productTabs, selectedProduct]);
 
-  const filteredRows = useMemo(
-    () =>
+  const filteredRows = useMemo(() => {
+    let list =
       selectedProduct === ALL_PRODUCTS
         ? rows
-        : rows.filter((r) => r.product_id === selectedProduct),
-    [rows, selectedProduct],
-  );
+        : rows.filter((r) => r.product_id === selectedProduct);
+
+    const term = search.trim();
+    if (term) {
+      const nameQuery = term.toLocaleLowerCase();
+      const digitsQuery = digitsOnly(term);
+      list = list.filter((r) => {
+        const nameMatch = (r.customer_name ?? "").toLocaleLowerCase().includes(nameQuery);
+        const phoneMatch = digitsQuery.length > 0 && digitsOnly(r.phone ?? "").includes(digitsQuery);
+        return nameMatch || phoneMatch;
+      });
+    }
+    return list;
+  }, [rows, selectedProduct, search]);
 
   const segmentCounts = useMemo(() => {
     if (selectedProduct === ALL_PRODUCTS) {
@@ -261,6 +464,16 @@ export function OrdersAdminView({ orders }: Props) {
     filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
   const someFilteredSelected = filteredRows.some((row) => selectedIds.has(row.id));
   const deleteBusy = deletingId !== null || bulkDeleting;
+
+  // Statuses the current user is allowed to bulk-apply.
+  const allowedBulkStatuses = useMemo(
+    () =>
+      BULK_STATUS_OPTIONS.filter((status) => {
+        const required = permissionForOrderStatus(status);
+        return required ? hasPermission(access, required) : false;
+      }),
+    [access],
+  );
 
   // Reset the progressive window whenever the active segment changes so a
   // freshly selected product paints its first page instantly.
@@ -321,12 +534,22 @@ export function OrdersAdminView({ orders }: Props) {
     patch: Partial<
       Pick<
         AdminOrderRow,
-        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+        | "status"
+        | "meta_lead_sent"
+        | "meta_purchase_sent"
+        | "meta_cancel_sent"
+        | "delivery_cost"
+        | "note"
       >
     >,
   ) {
     setRows((prev) => prev.map((row) => (row.id === orderId ? { ...row, ...patch } : row)));
     setActive((prev) => (prev && prev.id === orderId ? { ...prev, ...patch } : prev));
+  }
+
+  function toggleSelectionMode() {
+    setSelectionMode((cur) => !cur);
+    setSelectedIds(new Set());
   }
 
   function toggleSelected(orderId: string) {
@@ -356,7 +579,6 @@ export function OrdersAdminView({ orders }: Props) {
 
   async function onDelete(orderId: string) {
     if (deleteBusy) return;
-    if (!confirm(a.orders.deleteConfirm)) return;
     setDeletingId(orderId);
     const prev = rows;
     setRows((r) => r.filter((x) => x.id !== orderId));
@@ -377,15 +599,21 @@ export function OrdersAdminView({ orders }: Props) {
     }
   }
 
-  async function onDeleteSelected() {
-    if (deleteBusy || selectedCount === 0) return;
-    const ids = [...selectedIds];
-    const confirmMessage = a.orders.deleteBulkConfirm.replace(
-      "{count}",
-      String(ids.length),
-    );
-    if (!confirm(confirmMessage)) return;
+  function requestDelete(orderId: string) {
+    if (deleteBusy) return;
+    setConfirmState({
+      title: a.orders.confirmTitle,
+      message: a.orders.deleteConfirm,
+      tone: "danger",
+      onConfirm: () => {
+        setConfirmState(null);
+        void onDelete(orderId).catch(() => {});
+      },
+    });
+  }
 
+  async function onDeleteSelected(ids: string[]) {
+    if (deleteBusy || ids.length === 0) return;
     setBulkDeleting(true);
     const prev = rows;
     const idSet = new Set(ids);
@@ -402,6 +630,66 @@ export function OrdersAdminView({ orders }: Props) {
     }
   }
 
+  function requestDeleteSelected() {
+    if (deleteBusy || selectedCount === 0) return;
+    const ids = [...selectedIds];
+    setConfirmState({
+      title: a.orders.confirmTitle,
+      message: a.orders.deleteBulkConfirm.replace("{count}", String(ids.length)),
+      tone: "danger",
+      onConfirm: () => {
+        setConfirmState(null);
+        void onDeleteSelected(ids);
+      },
+    });
+  }
+
+  async function onBulkStatusChange(ids: string[], nextStatus: OrderStatus) {
+    setBulkStatusApplying(true);
+    try {
+      const res = await updateOrdersStatusBulkAction(ids, nextStatus);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      for (const id of res.succeededIds) {
+        patchOrder(id, { status: nextStatus });
+      }
+      setSelectedIds(new Set());
+      setBulkStatusValue("");
+      if (res.failedIds.length > 0) {
+        toast.warning(
+          a.orders.bulkStatusResult
+            .replace("{okCount}", String(res.succeededIds.length))
+            .replace("{failCount}", String(res.failedIds.length)),
+        );
+      } else {
+        toast.success(a.orders.bulkStatusAllOk.replace("{okCount}", String(res.succeededIds.length)));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : a.orders.bulkStatusFailed);
+    } finally {
+      setBulkStatusApplying(false);
+    }
+  }
+
+  function requestBulkStatusChange() {
+    if (!bulkStatusValue || selectedCount === 0 || bulkStatusApplying) return;
+    const ids = [...selectedIds];
+    const nextStatus = bulkStatusValue;
+    setConfirmState({
+      title: a.orders.confirmTitle,
+      message: a.orders.bulkStatusConfirm
+        .replace("{count}", String(ids.length))
+        .replace("{status}", a.orderStatus[nextStatus]),
+      tone: "default",
+      onConfirm: () => {
+        setConfirmState(null);
+        void onBulkStatusChange(ids, nextStatus);
+      },
+    });
+  }
+
   return (
     <>
       <AdminPageHeader title={a.orders.title} subtitle={a.orders.subtitle} />
@@ -410,9 +698,32 @@ export function OrdersAdminView({ orders }: Props) {
         <p className="text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
       ) : null}
 
+      {rows.length > 0 ? (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon
+              size={16}
+              className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+            />
+            <AdminInput
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={a.orders.searchPlaceholder}
+              className="ps-10"
+            />
+          </div>
+          {canDeleteOrders ? (
+            <AdminButton type="button" variant="ghost" onClick={toggleSelectionMode}>
+              {selectionMode ? a.orders.selectionModeExit : a.orders.selectionModeEnter}
+            </AdminButton>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Product isolation tabs */}
       {rows.length > 0 ? (
-      <div className="mt-6">
+      <div className="mt-4">
         <div className="admin-scroll-fade relative -mx-1">
           <div className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ProductTabButton
@@ -468,7 +779,7 @@ export function OrdersAdminView({ orders }: Props) {
       </div>
       ) : null}
 
-      {canDeleteOrders && rows.length > 0 ? (
+      {showCheckboxes && rows.length > 0 ? (
         <div className="sticky top-14 z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-3 shadow-lg">
           <div className="flex flex-wrap items-center gap-3">
             <OrderSelectCheckbox
@@ -494,11 +805,36 @@ export function OrdersAdminView({ orders }: Props) {
               >
                 {a.orders.deselectAll}
               </button>
+              {allowedBulkStatuses.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <AdminSelect
+                    value={bulkStatusValue}
+                    disabled={bulkStatusApplying}
+                    onChange={(e) => setBulkStatusValue(e.target.value as OrderStatus | "")}
+                    className="!min-h-[40px] !py-1.5 !text-xs"
+                  >
+                    <option value="">{a.orders.bulkStatusPlaceholder}</option>
+                    {allowedBulkStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {a.orderStatus[status]}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                  <button
+                    type="button"
+                    disabled={!bulkStatusValue || bulkStatusApplying}
+                    className="min-h-[40px] rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={requestBulkStatusChange}
+                  >
+                    {bulkStatusApplying ? a.orders.bulkStatusApplying : a.orders.bulkStatusApply}
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 disabled={deleteBusy}
                 className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-60"
-                onClick={() => void onDeleteSelected().catch(() => {})}
+                onClick={requestDeleteSelected}
               >
                 {bulkDeleting ? a.orders.deletingBulk : a.orders.deleteSelected}
               </button>
@@ -508,7 +844,11 @@ export function OrdersAdminView({ orders }: Props) {
       ) : null}
 
       {/* Day-by-day chronological sections */}
-      {rows.length > 0 ? (
+      {rows.length > 0 && filteredRows.length === 0 ? (
+        <p className="mt-6 text-sm text-[var(--muted)]">{a.orders.searchNoResults}</p>
+      ) : null}
+
+      {rows.length > 0 && filteredRows.length > 0 ? (
       <div className="mt-6 space-y-8">
         {dayGroups.map((group) => (
           <section key={group.key}>
@@ -544,7 +884,7 @@ export function OrdersAdminView({ orders }: Props) {
                   className={`admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                 >
                   <div className="flex gap-4">
-                    {canDeleteOrders ? (
+                    {showCheckboxes ? (
                       <div
                         className="flex shrink-0 items-start pt-1"
                         onClick={(e) => e.stopPropagation()}
@@ -563,9 +903,12 @@ export function OrdersAdminView({ orders }: Props) {
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                             {a.orders.phone}
                           </p>
-                          <p className="mt-0.5 break-all font-mono text-sm" dir="ltr">
-                            {o.phone ?? "—"}
-                          </p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                            <span className="break-all font-mono text-sm" dir="ltr">
+                              {o.phone ?? "—"}
+                            </span>
+                            <PhoneActions phone={o.phone} />
+                          </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           {isNew ? <NewOrderBadge /> : null}
@@ -574,6 +917,9 @@ export function OrdersAdminView({ orders }: Props) {
                           </span>
                         </div>
                       </div>
+
+                      <NoteEditor order={o} onSaved={(note) => patchOrder(o.id, { note })} />
+
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <OrderStatusBadge status={o.status} />
                         <div className="flex items-center gap-3">
@@ -588,7 +934,7 @@ export function OrdersAdminView({ orders }: Props) {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              void onDelete(o.id).catch(() => {});
+                              requestDelete(o.id);
                             }}
                           >
                             {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
@@ -608,19 +954,20 @@ export function OrdersAdminView({ orders }: Props) {
               <table className="w-full table-fixed border-collapse text-sm">
                 <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
-                    {canDeleteOrders ? <th className="w-[4%] px-3 py-3" aria-hidden /> : null}
-                    <th className="w-[26%] px-4 py-3 text-start">{a.orders.phone}</th>
-                    <th className="w-[44%] px-4 py-3 text-start">{a.orders.status}</th>
+                    {showCheckboxes ? <th className="w-[4%] px-3 py-3" aria-hidden /> : null}
+                    <th className="w-[30%] px-4 py-3 text-start">{a.orders.phone}</th>
+                    <th className="w-[38%] px-4 py-3 text-start">{a.orders.status}</th>
                     <th className="w-[12%] px-4 py-3 text-start">{a.orders.orderDate}</th>
-                    <th className="w-[14%] px-4 py-3 text-start">{a.orders.actions}</th>
+                    <th className="w-[16%] px-4 py-3 text-start">{a.orders.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--admin-border)]">
                   {group.rows.map((o) => {
                     const isNew = highlightedIds.has(o.id);
+                    const colCount = showCheckboxes ? 5 : 4;
                     return (
+                    <Fragment key={o.id}>
                     <tr
-                      key={o.id}
                       tabIndex={0}
                       className={`cursor-pointer transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                       onClick={() => setActive(o)}
@@ -631,7 +978,7 @@ export function OrdersAdminView({ orders }: Props) {
                         }
                       }}
                     >
-                      {canDeleteOrders ? (
+                      {showCheckboxes ? (
                         <td
                           className="px-3 py-4 align-middle text-center"
                           onClick={(e) => e.stopPropagation()}
@@ -649,6 +996,7 @@ export function OrdersAdminView({ orders }: Props) {
                           <span className="break-all font-mono text-sm" dir="ltr">
                             {o.phone ?? "—"}
                           </span>
+                          <PhoneActions phone={o.phone} />
                           {isNew ? <NewOrderBadge /> : null}
                         </div>
                       </td>
@@ -674,7 +1022,7 @@ export function OrdersAdminView({ orders }: Props) {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            void onDelete(o.id).catch(() => {});
+                            requestDelete(o.id);
                           }}
                         >
                           {deletingId === o.id ? a.orders.deleting : a.orderActions.delete}
@@ -684,6 +1032,12 @@ export function OrdersAdminView({ orders }: Props) {
                         )}
                       </td>
                     </tr>
+                    <tr className="border-none">
+                      <td colSpan={colCount} className="bg-white/[0.01] px-4 pb-3 pt-0">
+                        <NoteEditor order={o} onSaved={(note) => patchOrder(o.id, { note })} />
+                      </td>
+                    </tr>
+                    </Fragment>
                   );
                   })}
                 </tbody>
@@ -698,8 +1052,19 @@ export function OrdersAdminView({ orders }: Props) {
         order={active}
         open={active !== null}
         onClose={() => setActive(null)}
-        onDeleted={(orderId) => void onDelete(orderId).catch(() => {})}
+        onDeleted={(orderId) => requestDelete(orderId)}
         onOrderUpdated={patchOrder}
+      />
+
+      <ConfirmDialog
+        open={confirmState !== null}
+        title={confirmState?.title ?? ""}
+        message={confirmState?.message ?? ""}
+        confirmLabel={confirmState?.confirmLabel ?? a.orders.confirm}
+        cancelLabel={a.orders.cancel}
+        tone={confirmState?.tone}
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
       />
     </>
   );
