@@ -100,6 +100,18 @@ export function canChangeOrderStatus(
   return required ? hasPermission(access, required) : false;
 }
 
+/**
+ * Whether a staff member can edit order-detail fields that aren't a status
+ * transition (e.g. delivery cost) — anyone who can confirm or cancel orders at
+ * all, same gate the order detail modal already uses for its status editor.
+ */
+export function canEditOrderDetails(access: Pick<AdminAccess, "isOwner" | "permissions">): boolean {
+  return (
+    hasPermission(access, PERMISSIONS.view_orders) &&
+    hasAnyPermission(access, [PERMISSIONS.confirm_orders, PERMISSIONS.cancel_orders])
+  );
+}
+
 export type PermissionMeta = {
   key: PermissionKey;
   labelAr: string;

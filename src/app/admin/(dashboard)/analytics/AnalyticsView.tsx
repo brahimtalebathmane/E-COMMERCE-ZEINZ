@@ -1,32 +1,40 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
+import { buildProductProfitRows, netProfit, sumProfitTotals } from "@/lib/analytics/profit";
 import {
-  buildProductProfitRows,
-  netProfit,
-  sumProfitTotals,
-  type ProfitOrderInput,
-} from "@/lib/analytics/profit";
+  bucketWeekly,
+  computeLossStreak,
+  computeTrend,
+  type CombinedDailyProfit,
+  type DailyProductProfit,
+  type Granularity,
+} from "@/lib/analytics/daily-profit";
+import type { AnalyticsData, LinkedCampaign } from "./data";
 import {
-  updateAdSpendAction,
+  linkAdCampaignAction,
+  unlinkAdCampaignAction,
   updateCalculationStartDateAction,
 } from "./actions";
 
-export type ProductMetaInput = {
-  productId: string;
-  name: string;
-  costPrice: number | null;
-  calculationStartDate: string | null;
-};
-
-type Props = {
-  orders: ProfitOrderInput[];
-  products: ProductMetaInput[];
-  adSpend: Record<string, number>;
-};
+const FRESHNESS_TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 function profitToneClass(value: number): string {
   if (value > 0) return "text-emerald-400";
@@ -34,67 +42,50 @@ function profitToneClass(value: number): string {
   return "text-[var(--foreground)]";
 }
 
-export function AnalyticsView({ orders, products, adSpend }: Props) {
-  const [adSpendMap, setAdSpendMap] = useState<Record<string, number>>(adSpend);
-  const [startDates, setStartDates] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      products.map((p) => [p.productId, p.calculationStartDate ?? ""]),
-    ),
-  );
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [savingDateId, setSavingDateId] = useState<string | null>(null);
+function tickDateLabel(dateKey: string): string {
+  const parts = dateKey.split("-");
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : dateKey;
+}
 
-  // Pure, deterministic recompute: the same engine that backs the server render
-  // also powers instant client-side updates when ad spend or a start date change.
+export function AnalyticsView({ data }: { data: AnalyticsData }) {
+  const router = useRouter();
+  const [startDates, setStartDates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(data.products.map((p) => [p.productId, p.calculationStartDate ?? ""])),
+  );
+  const [savingDateId, setSavingDateId] = useState<string | null>(null);
+  const [granularity, setGranularity] = useState<Granularity>("daily");
+  const [expandedCampaigns, setExpandedCampaigns] = useState<string | null>(null);
+
+  // Instant client-side recompute on start-date change, same engine as the
+  // server render — ad spend itself is live/server-computed now, so it's held
+  // constant here (not re-derived) while only the date cutoff changes.
   const rows = useMemo(() => {
     const productsMap = new Map(
-      products.map((p) => [
+      data.products.map((p) => [
         p.productId,
-        {
-          name: p.name,
-          costPrice: p.costPrice,
-          calculationStartDate: startDates[p.productId] || null,
-        },
+        { name: p.name, costPrice: p.costPrice, calculationStartDate: startDates[p.productId] || null },
       ]),
     );
-    const adSpendByProduct = new Map(
-      Object.entries(adSpendMap).map(([id, amount]) => [id, amount]),
-    );
-    return buildProductProfitRows({ orders, products: productsMap, adSpendByProduct });
-  }, [orders, products, startDates, adSpendMap]);
+    const adSpendByProduct = new Map(data.rows.map((r) => [r.productId, r.adSpend]));
+    return buildProductProfitRows({ orders: data.orders, products: productsMap, adSpendByProduct });
+  }, [data.orders, data.products, data.rows, startDates]);
 
   const totals = useMemo(() => sumProfitTotals(rows), [rows]);
 
-  async function onSaveAdSpend(productId: string) {
-    if (savingId) return;
-    const raw = drafts[productId] ?? String(adSpendMap[productId] ?? 0);
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      toast.error(a.analytics.saveFailed);
-      return;
+  const dailyByProduct = useMemo(() => {
+    const map = new Map<string, DailyProductProfit[]>();
+    for (const row of data.daily) {
+      const list = map.get(row.productId);
+      if (list) list.push(row);
+      else map.set(row.productId, [row]);
     }
-    const amount = Math.round(parsed * 100) / 100;
+    return map;
+  }, [data.daily]);
 
-    setSavingId(productId);
-    const prev = adSpendMap;
-    setAdSpendMap((cur) => ({ ...cur, [productId]: amount }));
-
-    try {
-      const res = await updateAdSpendAction(productId, amount);
-      if (!res.ok) {
-        throw new Error(res.error);
-      }
-      setAdSpendMap((cur) => ({ ...cur, [productId]: res.amount }));
-      setDrafts((d) => ({ ...d, [productId]: String(res.amount) }));
-      toast.success(a.analytics.saved);
-    } catch (error) {
-      setAdSpendMap(prev);
-      toast.error(error instanceof Error ? error.message : a.analytics.saveFailed);
-    } finally {
-      setSavingId(null);
-    }
-  }
+  const combinedBucketed = useMemo(
+    () => bucketWeekly(data.combined, granularity) as CombinedDailyProfit[],
+    [data.combined, granularity],
+  );
 
   async function onChangeStartDate(productId: string, nextDate: string) {
     if (savingDateId) return;
@@ -106,20 +97,14 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
     setStartDates((cur) => ({ ...cur, [productId]: value }));
 
     try {
-      const res = await updateCalculationStartDateAction(
-        productId,
-        value === "" ? null : value,
-      );
-      if (!res.ok) {
-        throw new Error(res.error);
-      }
+      const res = await updateCalculationStartDateAction(productId, value === "" ? null : value);
+      if (!res.ok) throw new Error(res.error);
       setStartDates((cur) => ({ ...cur, [productId]: res.startDate ?? "" }));
       toast.success(value === "" ? a.analytics.startDateCleared : a.analytics.startDateSaved);
+      router.refresh();
     } catch (error) {
       setStartDates(prev);
-      toast.error(
-        error instanceof Error ? error.message : a.analytics.startDateSaveFailed,
-      );
+      toast.error(error instanceof Error ? error.message : a.analytics.startDateSaveFailed);
     } finally {
       setSavingDateId(null);
     }
@@ -127,8 +112,16 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
 
   return (
     <div className="mt-8 space-y-8">
+      <SummaryBar data={data} />
+
+      <CombinedTrendChart
+        rows={combinedBucketed}
+        granularity={granularity}
+        onGranularityChange={setGranularity}
+      />
+
       {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label={a.analytics.kpiGrossRevenue}
           hint={a.analytics.kpiGrossRevenueHint}
@@ -139,6 +132,12 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
           label={a.analytics.kpiCogs}
           hint={a.analytics.kpiCogsHint}
           value={formatPrice(totals.cogs)}
+          accent="cost"
+        />
+        <KpiCard
+          label={a.analytics.kpiDeliveryCost}
+          hint={a.analytics.kpiDeliveryCostHint}
+          value={formatPrice(totals.deliveryCost)}
           accent="cost"
         />
         <KpiCard
@@ -156,6 +155,10 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
         />
       </div>
 
+      {!data.adSpendFreshness.refreshed && data.adSpendFreshness.lastError ? (
+        <p className="text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
+      ) : null}
+
       {/* Per-product breakdown */}
       <section className="admin-card overflow-hidden">
         <div className="border-b border-[var(--admin-border)] px-4 py-4 sm:px-5">
@@ -170,146 +173,390 @@ export function AnalyticsView({ orders, products, adSpend }: Props) {
             {a.analytics.noData}
           </p>
         ) : (
-          <>
-            {/* Mobile cards */}
-            <div className="space-y-3 p-3 md:hidden">
-              {rows.map((row) => {
-                const profit = netProfit(row);
-                return (
-                  <div
-                    key={row.productId}
-                    className="rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="min-w-0 break-words font-semibold text-[var(--foreground)]">
-                        {row.name}
-                      </p>
-                      <span className={`shrink-0 text-sm font-bold ${profitToneClass(profit)}`} dir="ltr">
-                        {formatPrice(profit)}
-                      </span>
-                    </div>
-                    <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <Stat label={a.analytics.colUnits} value={String(row.unitsSold)} />
-                      <Stat label={a.analytics.colRevenue} value={formatPrice(row.grossRevenue)} />
-                      <Stat
-                        label={a.analytics.colCogs}
-                        value={row.hasCost ? formatPrice(row.cogs) : a.analytics.costMissing}
-                        muted={!row.hasCost}
-                      />
-                      {row.internalReturns > 0 ? (
-                        <Stat
-                          label={a.analytics.colReturns}
-                          value={String(row.internalReturns)}
-                        />
-                      ) : null}
-                    </dl>
-                    <div className="mt-3">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                        {a.analytics.colAdSpend}
-                      </label>
-                      <AdSpendEditor
-                        value={drafts[row.productId] ?? String(row.adSpend)}
-                        saving={savingId === row.productId}
-                        onChange={(v) =>
-                          setDrafts((d) => ({ ...d, [row.productId]: v }))
-                        }
-                        onSave={() => void onSaveAdSpend(row.productId)}
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                        {a.analytics.colStartDate}
-                      </label>
-                      <StartDateEditor
-                        value={startDates[row.productId] ?? ""}
-                        saving={savingDateId === row.productId}
-                        onChange={(v) => void onChangeStartDate(row.productId, v)}
-                      />
-                      <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">
-                        {a.analytics.startDateHint}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="divide-y divide-[var(--admin-border)]">
+            {rows.map((row) => {
+              const profit = netProfit(row);
+              const productDaily = dailyByProduct.get(row.productId) ?? [];
+              const trend = computeTrend({ productDaily, todayKey: data.todayKey });
+              const lossStreak = computeLossStreak({ productDaily, todayKey: data.todayKey });
+              const campaigns = data.campaignsByProduct.get(row.productId) ?? [];
 
-            {/* Desktop table */}
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full border-collapse text-sm">
-                <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  <tr>
-                    <th className="px-4 py-3 text-start">{a.analytics.colProduct}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colUnits}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colRevenue}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colCogs}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colAdSpend}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colStartDate}</th>
-                    <th className="px-4 py-3 text-start">{a.analytics.colNetProfit}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--admin-border)]">
-                  {rows.map((row) => {
-                    const profit = netProfit(row);
-                    return (
-                      <tr key={row.productId} className="align-middle">
-                        <td className="px-4 py-3">
-                          <span className="font-medium text-[var(--foreground)]">
-                            {row.name}
+              return (
+                <div key={row.productId} className="p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/admin/analytics/${row.productId}`}
+                          className="break-words font-semibold text-[var(--foreground)] underline-offset-2 hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                        <TrendArrow direction={trend.direction} hasEnoughData={trend.hasEnoughData} />
+                        {lossStreak.flagged ? <LossStreakBadge streak={lossStreak.streak} /> : null}
+                        {row.internalReturns > 0 ? (
+                          <span
+                            className="inline-flex items-center rounded-full border border-slate-400/30 bg-slate-400/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300"
+                            title={a.analytics.returnsNote}
+                          >
+                            {a.analytics.colReturns}: {row.internalReturns}
                           </span>
-                          {row.internalReturns > 0 ? (
-                            <span
-                              className="ms-2 inline-flex items-center rounded-full border border-slate-400/30 bg-slate-400/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300"
-                              title={a.analytics.returnsNote}
-                            >
-                              {a.analytics.colReturns}: {row.internalReturns}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-3 tabular-nums" dir="ltr">
-                          {row.unitsSold}
-                        </td>
-                        <td className="px-4 py-3 tabular-nums" dir="ltr">
-                          {formatPrice(row.grossRevenue)}
-                        </td>
-                        <td className="px-4 py-3 tabular-nums" dir="ltr">
-                          {row.hasCost ? (
-                            formatPrice(row.cogs)
-                          ) : (
-                            <span className="text-[var(--muted)]">
-                              {a.analytics.costMissing}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <AdSpendEditor
-                            value={drafts[row.productId] ?? String(row.adSpend)}
-                            saving={savingId === row.productId}
-                            onChange={(v) =>
-                              setDrafts((d) => ({ ...d, [row.productId]: v }))
-                            }
-                            onSave={() => void onSaveAdSpend(row.productId)}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <StartDateEditor
-                            value={startDates[row.productId] ?? ""}
-                            saving={savingDateId === row.productId}
-                            onChange={(v) => void onChangeStartDate(row.productId, v)}
-                          />
-                        </td>
-                        <td className={`px-4 py-3 font-bold tabular-nums ${profitToneClass(profit)}`} dir="ltr">
-                          {formatPrice(profit)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
+                        ) : null}
+                      </div>
+                      <Sparkline daily={productDaily} />
+                    </div>
+                    <span className={`shrink-0 text-lg font-bold ${profitToneClass(profit)}`} dir="ltr">
+                      {formatPrice(profit)}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                    <Stat label={a.analytics.colUnits} value={String(row.unitsSold)} />
+                    <Stat label={a.analytics.colRevenue} value={formatPrice(row.grossRevenue)} />
+                    <Stat
+                      label={a.analytics.colCogs}
+                      value={row.hasCost ? formatPrice(row.cogs) : a.analytics.costMissing}
+                      muted={!row.hasCost}
+                    />
+                    <Stat label={a.analytics.colDeliveryCost} value={formatPrice(row.deliveryCost)} />
+                    <Stat label={a.analytics.colAdSpend} value={formatPrice(row.adSpend)} />
+                    <div className="flex flex-col gap-0.5">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.analytics.colStartDate}
+                      </dt>
+                      <dd>
+                        <StartDateEditor
+                          value={startDates[row.productId] ?? ""}
+                          saving={savingDateId === row.productId}
+                          onChange={(v) => void onChangeStartDate(row.productId, v)}
+                        />
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {campaigns.length > 0 ? (
+                    <p className="mt-2 text-[10px] text-[var(--muted)]" dir="ltr">
+                      {a.analytics.adSpendFreshAsOf.replace(
+                        "{time}",
+                        (() => {
+                          const fetchedAt = data.adSpendFetchedAtByProduct.get(row.productId);
+                          return fetchedAt ? FRESHNESS_TIME_FORMATTER.format(new Date(fetchedAt)) : "—";
+                        })(),
+                      )}
+                    </p>
+                  ) : null}
+
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedCampaigns((cur) => (cur === row.productId ? null : row.productId))
+                      }
+                      className="text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                    >
+                      {a.analytics.manageCampaigns} ({campaigns.length})
+                    </button>
+                    {expandedCampaigns === row.productId ? (
+                      <CampaignManager
+                        productId={row.productId}
+                        initialCampaigns={campaigns}
+                        onChanged={() => router.refresh()}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function SummaryBar({ data }: { data: AnalyticsData }) {
+  const { summary } = data;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <SummaryTile label={a.analytics.summaryToday} value={formatPrice(summary.todayProfit)} tone={profitToneClass(summary.todayProfit)} />
+      <SummaryTile label={a.analytics.summary7d} value={formatPrice(summary.avg7d)} tone={profitToneClass(summary.avg7d)} />
+      <SummaryTile label={a.analytics.summary30d} value={formatPrice(summary.avg30d)} tone={profitToneClass(summary.avg30d)} />
+      <SummaryTile
+        label={a.analytics.summaryBestProduct}
+        value={summary.bestProduct ? summary.bestProduct.name : a.analytics.summaryNoProduct}
+        sub={summary.bestProduct ? formatPrice(summary.bestProduct.avgDailyNetProfit) : undefined}
+        tone={summary.bestProduct ? profitToneClass(summary.bestProduct.avgDailyNetProfit) : undefined}
+      />
+      <SummaryTile
+        label={a.analytics.summaryWorstProduct}
+        value={summary.worstProduct ? summary.worstProduct.name : a.analytics.summaryNoProduct}
+        sub={summary.worstProduct ? formatPrice(summary.worstProduct.avgDailyNetProfit) : undefined}
+        tone={summary.worstProduct ? profitToneClass(summary.worstProduct.avgDailyNetProfit) : undefined}
+      />
+    </div>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: string;
+}) {
+  return (
+    <div className="admin-card p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</p>
+      <p className={`mt-2 truncate text-base font-bold ${tone ?? "text-[var(--foreground)]"}`}>{value}</p>
+      {sub ? (
+        <p className={`mt-0.5 text-xs tabular-nums ${tone ?? "text-[var(--muted)]"}`} dir="ltr">
+          {sub}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function CombinedTrendChart({
+  rows,
+  granularity,
+  onGranularityChange,
+}: {
+  rows: CombinedDailyProfit[];
+  granularity: Granularity;
+  onGranularityChange: (g: Granularity) => void;
+}) {
+  return (
+    <section className="admin-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">
+          {a.analytics.combinedChartTitle}
+        </h2>
+        <div className="inline-flex overflow-hidden rounded-lg border border-[var(--accent-muted)]">
+          {(["daily", "weekly"] as Granularity[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => onGranularityChange(g)}
+              className={`px-3 py-1.5 text-xs font-semibold transition ${
+                granularity === g
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {g === "daily" ? a.analytics.granularityDaily : a.analytics.granularityWeekly}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-4 h-64 w-full">
+        {rows.length === 0 ? (
+          <p className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
+            {a.analytics.noData}
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={rows}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={tickDateLabel}
+                stroke="var(--muted)"
+                fontSize={11}
+              />
+              <YAxis stroke="var(--muted)" fontSize={11} width={70} tickFormatter={(v) => formatPrice(Number(v))} />
+              <Tooltip
+                formatter={(value) => formatPrice(Number(value))}
+                labelFormatter={(label) => String(label)}
+                contentStyle={{
+                  background: "var(--admin-elevated)",
+                  border: "1px solid var(--admin-border-strong)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              />
+              <Line type="monotone" dataKey="netProfit" stroke="var(--accent)" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Sparkline({ daily }: { daily: DailyProductProfit[] }) {
+  const recent = useMemo(() => [...daily].sort((x, y) => x.date.localeCompare(y.date)).slice(-14), [daily]);
+  if (recent.length < 2) return null;
+  return (
+    <div className="mt-1 h-8 w-28">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={recent}>
+          <Line type="monotone" dataKey="netProfit" stroke="var(--accent)" strokeWidth={1.5} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function TrendArrow({
+  direction,
+  hasEnoughData,
+}: {
+  direction: "up" | "down" | "flat";
+  hasEnoughData: boolean;
+}) {
+  if (!hasEnoughData) {
+    return (
+      <span className="text-[10px] text-[var(--muted)]" title={a.analytics.trendInsufficientData}>
+        —
+      </span>
+    );
+  }
+  if (direction === "up") {
+    return (
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-emerald-400" aria-label={a.analytics.trendUp}>
+        <path d="M8 3l5 6H3z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (direction === "down") {
+    return (
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-red-400" aria-label={a.analytics.trendDown}>
+        <path d="M8 13l-5-6h10z" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <span className="text-[10px] text-[var(--muted)]" title={a.analytics.trendFlat}>
+      →
+    </span>
+  );
+}
+
+function LossStreakBadge({ streak }: { streak: number }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-400/10 px-2 py-0.5 text-[10px] font-semibold text-red-300"
+      title={a.analytics.lossStreakWarning.replace("{count}", String(streak))}
+    >
+      <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden>
+        <path
+          d="M8 1.5 1 14h14L8 1.5Zm0 4.5v4M8 11.5h.01"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          fill="none"
+          strokeLinecap="round"
+        />
+      </svg>
+      {a.analytics.lossStreakWarning.replace("{count}", String(streak))}
+    </span>
+  );
+}
+
+function CampaignManager({
+  productId,
+  initialCampaigns,
+  onChanged,
+}: {
+  productId: string;
+  initialCampaigns: LinkedCampaign[];
+  onChanged: () => void;
+}) {
+  const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [draft, setDraft] = useState("");
+  const [linking, setLinking] = useState(false);
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+
+  async function onLink() {
+    const id = draft.trim();
+    if (!id || linking) return;
+    setLinking(true);
+    try {
+      const res = await linkAdCampaignAction(productId, id);
+      if (!res.ok) throw new Error(res.error);
+      setCampaigns((cur) => [...cur, { id: res.campaign.id, metaCampaignId: res.campaign.metaCampaignId, label: res.campaign.label }]);
+      setDraft("");
+      toast.success(a.analytics.campaignLinked);
+      if (res.syncWarning) toast.warning(res.syncWarning);
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.analytics.campaignLinkFailed);
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  async function onUnlink(campaignRowId: string) {
+    if (unlinkingId) return;
+    setUnlinkingId(campaignRowId);
+    try {
+      const res = await unlinkAdCampaignAction(productId, campaignRowId);
+      if (!res.ok) throw new Error(res.error);
+      setCampaigns((cur) => cur.filter((c) => c.id !== campaignRowId));
+      toast.success(a.analytics.campaignUnlinked);
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.analytics.campaignUnlinkFailed);
+    } finally {
+      setUnlinkingId(null);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--admin-border)] bg-white/[0.02] p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+        {a.analytics.campaignsTitle}
+      </p>
+      {campaigns.length === 0 ? (
+        <p className="mt-2 text-xs text-[var(--muted)]">{a.analytics.noCampaignsLinked}</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {campaigns.map((c) => (
+            <li key={c.id} className="flex items-center justify-between gap-2 text-xs">
+              <span className="truncate font-mono" dir="ltr">
+                {c.label ? `${c.label} (${c.metaCampaignId})` : c.metaCampaignId}
+              </span>
+              <button
+                type="button"
+                disabled={unlinkingId === c.id}
+                onClick={() => void onUnlink(c.id)}
+                className="shrink-0 text-[11px] font-semibold text-red-300 underline-offset-2 hover:underline disabled:opacity-60"
+              >
+                {a.analytics.unlinkCampaign}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="text"
+          dir="ltr"
+          disabled={linking}
+          value={draft}
+          placeholder={a.analytics.campaignIdPlaceholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void onLink();
+            }
+          }}
+          className="min-h-[36px] w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-2 py-1 text-xs disabled:opacity-60"
+        />
+        <button
+          type="button"
+          disabled={linking || !draft.trim()}
+          onClick={() => void onLink()}
+          className="min-h-[36px] shrink-0 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {linking ? a.analytics.linking : a.analytics.linkCampaign}
+        </button>
+      </div>
     </div>
   );
 }
@@ -375,49 +622,6 @@ function Stat({
   );
 }
 
-function AdSpendEditor({
-  value,
-  saving,
-  onChange,
-  onSave,
-}: {
-  value: string;
-  saving: boolean;
-  onChange: (value: string) => void;
-  onSave: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        type="number"
-        min={0}
-        step="0.01"
-        inputMode="decimal"
-        dir="ltr"
-        disabled={saving}
-        value={value}
-        placeholder={a.analytics.adSpendPlaceholder}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSave();
-          }
-        }}
-        className="min-h-[40px] w-28 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
-      />
-      <button
-        type="button"
-        disabled={saving}
-        onClick={onSave}
-        className="min-h-[40px] shrink-0 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {saving ? a.analytics.saving : a.analytics.save}
-      </button>
-    </div>
-  );
-}
-
 function StartDateEditor({
   value,
   saving,
@@ -435,14 +639,14 @@ function StartDateEditor({
         disabled={saving}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[40px] w-40 max-w-full rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+        className="min-h-[36px] w-36 max-w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-2 py-1 text-xs tabular-nums disabled:opacity-60"
       />
       {value ? (
         <button
           type="button"
           disabled={saving}
           onClick={() => onChange("")}
-          className="min-h-[40px] shrink-0 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="shrink-0 text-[11px] font-semibold text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
         >
           {a.analytics.startDateClear}
         </button>

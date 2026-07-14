@@ -34,7 +34,7 @@ export default async function AdminHomePage() {
       ? supabase
           .from("orders")
           .select(
-            "id, product_id, phone, total_price, status, created_at, products(name_ar)",
+            "id, product_id, phone, total_price, status, created_at, delivery_cost, products(name_ar)",
           )
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
@@ -45,8 +45,11 @@ export default async function AdminHomePage() {
             "id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at",
           )
       : Promise.resolve({ data: [], error: null }),
+    // Live ad spend cache (see /admin/analytics, which is the only page that
+    // triggers a live Meta refresh) — this home KPI just reads whatever's
+    // already cached, no sync call, to keep the home page fast.
     canViewAnalytics
-      ? supabase.from("product_ad_spend").select("product_id, amount")
+      ? supabase.from("product_ad_spend_daily").select("product_id, amount")
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -77,9 +80,11 @@ export default async function AdminHomePage() {
       },
     ]),
   );
-  const adSpendByProduct = new Map(
-    (adSpendRes.data ?? []).map((r) => [String(r.product_id), Number(r.amount) || 0]),
-  );
+  const adSpendByProduct = new Map<string, number>();
+  for (const r of adSpendRes.data ?? []) {
+    const productId = String(r.product_id);
+    adSpendByProduct.set(productId, (adSpendByProduct.get(productId) ?? 0) + (Number(r.amount) || 0));
+  }
 
   let grossRevenue = 0;
   let netProfit = 0;
@@ -89,6 +94,7 @@ export default async function AdminHomePage() {
       total_price: Number(o.total_price) || 0,
       status: o.status as OrderStatus,
       created_at: String(o.created_at ?? ""),
+      delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
     }));
     const totals = sumProfitTotals(
       buildProductProfitRows({ orders: profitOrders, products, adSpendByProduct }),

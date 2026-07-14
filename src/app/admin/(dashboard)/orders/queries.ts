@@ -11,6 +11,7 @@ export const ADMIN_ORDER_SELECT = `
   status,
   completion_token,
   created_at,
+  delivery_cost,
   meta_lead_sent,
   meta_purchase_sent,
   meta_cancel_sent,
@@ -34,6 +35,7 @@ export type RealtimeOrderPayload = {
   status: AdminOrderRow["status"];
   completion_token: string;
   created_at: string;
+  delivery_cost?: number | null;
   deleted_at?: string | null;
 };
 
@@ -52,6 +54,7 @@ export function mergeOrderPayload(
     status: payload.status,
     completion_token: payload.completion_token,
     created_at: payload.created_at,
+    delivery_cost: payload.delivery_cost ?? existing.delivery_cost,
   };
 }
 

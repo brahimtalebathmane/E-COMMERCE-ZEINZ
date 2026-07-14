@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { assertPermission } from "@/lib/auth/admin";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import { assertAdminUser, assertPermission, AuthError } from "@/lib/auth/admin";
+import { canEditOrderDetails, PERMISSIONS } from "@/lib/auth/permissions";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -34,4 +34,50 @@ export async function deleteOrdersAction(ids: string[]) {
     throw new Error("Some orders could not be deleted");
   }
   revalidatePath("/admin/orders");
+}
+
+export type DeliveryCostActionResult =
+  | { ok: true; amount: number | null }
+  | { ok: false; error: string };
+
+/** Per-order delivery cost, editable from the order detail view (feeds profit analytics). */
+export async function updateOrderDeliveryCostAction(
+  orderId: string,
+  amount: number | null,
+): Promise<DeliveryCostActionResult> {
+  const id = orderId?.trim();
+  if (!id) {
+    return { ok: false, error: "order id is required." };
+  }
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+    return { ok: false, error: "Delivery cost must be a number greater than or equal to zero." };
+  }
+
+  const rounded = amount === null ? null : Math.round(amount * 100) / 100;
+
+  try {
+    const session = await assertAdminUser();
+    if (!canEditOrderDetails(session.access)) {
+      throw new AuthError(403, "Forbidden");
+    }
+
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ delivery_cost: rounded })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/analytics");
+    return { ok: true, amount: rounded };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to save delivery cost.",
+    };
+  }
 }

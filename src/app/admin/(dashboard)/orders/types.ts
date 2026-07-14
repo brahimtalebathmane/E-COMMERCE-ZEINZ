@@ -19,6 +19,7 @@ export type AdminOrderRow = {
   status: OrderStatus;
   completion_token: string;
   created_at: string;
+  delivery_cost: number | null;
   meta_lead_sent: boolean | null;
   meta_purchase_sent: boolean | null;
   meta_cancel_sent: boolean | null;

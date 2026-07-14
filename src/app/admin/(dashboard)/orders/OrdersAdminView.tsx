@@ -340,7 +340,10 @@ export function OrdersAdminView({ orders }: Props) {
   function patchOrder(
     orderId: string,
     patch: Partial<
-      Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">
+      Pick<
+        AdminOrderRow,
+        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+      >
     >,
   ) {
     setRows((prev) => prev.map((row) => (row.id === orderId ? { ...row, ...patch } : row)));

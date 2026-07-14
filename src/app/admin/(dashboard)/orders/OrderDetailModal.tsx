@@ -12,15 +12,25 @@ import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import { useAdminAccess, useHasPermission } from "@/components/admin/AdminPermissionsContext";
 import {
   canChangeOrderStatus,
+  canEditOrderDetails,
   PERMISSIONS,
 } from "@/lib/auth/permissions";
+import { updateOrderDeliveryCostAction } from "./actions";
 
 type Props = {
   order: AdminOrderRow | null;
   open: boolean;
   onClose: () => void;
   onDeleted: (orderId: string) => void;
-  onOrderUpdated: (orderId: string, patch: Partial<Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">>) => void;
+  onOrderUpdated: (
+    orderId: string,
+    patch: Partial<
+      Pick<
+        AdminOrderRow,
+        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+      >
+    >,
+  ) => void;
 };
 
 const DETAIL_DATE_FORMATTER = new Intl.DateTimeFormat("ar", {
@@ -351,7 +361,12 @@ type SectionsProps = {
   onDeleted: (orderId: string) => void;
   onOrderUpdated: (
     orderId: string,
-    patch: Partial<Pick<AdminOrderRow, "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent">>,
+    patch: Partial<
+      Pick<
+        AdminOrderRow,
+        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+      >
+    >,
   ) => void;
 };
 
@@ -373,10 +388,7 @@ function OrderDetailSections({
 }: SectionsProps) {
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
-  const canEditStatus =
-    canChangeOrderStatus(access, draftStatus) ||
-    canChangeOrderStatus(access, "confirmed") ||
-    canChangeOrderStatus(access, "cancelled");
+  const canEditStatus = canEditOrderDetails(access);
   const product = normalizeProduct(order?.products);
   const dateStr = formatDetailDate(order?.created_at);
   const [metaRetrying, setMetaRetrying] = useState<MetaRetryKind | null>(null);
@@ -590,6 +602,14 @@ function OrderDetailSections({
             {saving ? a.orders.savingChanges : a.orders.saveChanges}
           </button>
         </div>
+        <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {a.orders.deliveryCost}
+          </label>
+          <div className="mt-2">
+            <DeliveryCostEditor order={order} onOrderUpdated={onOrderUpdated} />
+          </div>
+        </div>
         {canDeleteOrders ? (
         <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
           <button
@@ -604,6 +624,77 @@ function OrderDetailSections({
         ) : null}
       </section>
       ) : null}
+    </div>
+  );
+}
+
+function DeliveryCostEditor({
+  order,
+  onOrderUpdated,
+}: {
+  order: AdminOrderRow;
+  onOrderUpdated: SectionsProps["onOrderUpdated"];
+}) {
+  const [draft, setDraft] = useState(() => String(order.delivery_cost ?? ""));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(order.delivery_cost ?? ""));
+  }, [order.id, order.delivery_cost]);
+
+  async function onSave() {
+    if (saving) return;
+    const trimmed = draft.trim();
+    const amount = trimmed === "" ? null : Number(trimmed);
+    if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+      toast.error(a.orders.deliveryCostInvalid);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await updateOrderDeliveryCostAction(order.id, amount);
+      if (!res.ok) {
+        throw new Error(res.error);
+      }
+      setDraft(String(res.amount ?? ""));
+      onOrderUpdated(order.id, { delivery_cost: res.amount });
+      toast.success(a.orders.deliveryCostSaved);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.orders.deliveryCostSaveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        min={0}
+        step="0.01"
+        inputMode="decimal"
+        dir="ltr"
+        disabled={saving}
+        value={draft}
+        placeholder={a.orders.deliveryCostPlaceholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void onSave();
+          }
+        }}
+        className="min-h-[40px] w-full max-w-[10rem] rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void onSave()}
+        className="min-h-[40px] shrink-0 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {saving ? a.analytics.saving : a.analytics.save}
+      </button>
     </div>
   );
 }

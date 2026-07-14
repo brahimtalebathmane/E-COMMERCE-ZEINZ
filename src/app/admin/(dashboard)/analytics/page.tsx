@@ -1,53 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
-import type { ProfitOrderInput } from "@/lib/analytics/profit";
-import type { OrderStatus } from "@/types";
-import { AnalyticsView, type ProductMetaInput } from "./AnalyticsView";
+import { AnalyticsView } from "./AnalyticsView";
+import { loadAnalyticsData } from "./data";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
+  const result = await loadAnalyticsData(supabase);
 
-  const [ordersRes, productsRes, adSpendRes] = await Promise.all([
-    supabase.from("orders").select("product_id, total_price, status, created_at"),
-    supabase
-      .from("products")
-      .select("id, name_ar, cost_price, profit_calculation_start_date"),
-    supabase.from("product_ad_spend").select("product_id, amount"),
-  ]);
-
-  const error = ordersRes.error ?? productsRes.error ?? adSpendRes.error;
-  if (error) {
+  if (!result.ok) {
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.analytics.title}</h1>
         <p className="mt-4 text-sm text-red-600">
-          {a.orders.loadError} {error.message}
+          {a.orders.loadError} {result.error}
         </p>
       </div>
     );
   }
-
-  const products: ProductMetaInput[] = (productsRes.data ?? []).map((p) => ({
-    productId: String(p.id),
-    name: String(p.name_ar ?? "—"),
-    costPrice: p.cost_price == null ? null : Number(p.cost_price),
-    calculationStartDate: p.profit_calculation_start_date
-      ? String(p.profit_calculation_start_date).slice(0, 10)
-      : null,
-  }));
-
-  const adSpend: Record<string, number> = Object.fromEntries(
-    (adSpendRes.data ?? []).map((r) => [String(r.product_id), Number(r.amount) || 0]),
-  );
-
-  const orders: ProfitOrderInput[] = (ordersRes.data ?? []).map((o) => ({
-    product_id: String(o.product_id),
-    total_price: Number(o.total_price) || 0,
-    status: o.status as OrderStatus,
-    created_at: String(o.created_at ?? ""),
-  }));
 
   return (
     <div>
@@ -55,7 +26,7 @@ export default async function AdminAnalyticsPage() {
       <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
         {a.analytics.subtitle}
       </p>
-      <AnalyticsView orders={orders} products={products} adSpend={adSpend} />
+      <AnalyticsView data={result.data} />
     </div>
   );
 }

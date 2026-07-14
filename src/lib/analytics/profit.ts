@@ -1,15 +1,19 @@
 import type { OrderStatus } from "@/types";
 
 /**
- * Statuses that represent a realized sale and therefore contribute to gross
- * revenue / COGS. `cancelled`, `pending`, `requires_human_intervention` and
- * `internal_return` are intentionally excluded:
- *   - cancelled / pending / needs-attention: never a completed sale.
- *   - internal_return: was a sale but has been returned, so its value is
- *     removed from the profit metrics for accurate bookkeeping.
+ * Statuses that count toward realized revenue for the INTERNAL profit calculation.
+ * Only `shipped` counts: a `confirmed` order can still be cancelled before it ships,
+ * so it isn't a realized sale yet. `internal_return` is excluded — it was a sale but
+ * has been returned, so its value is removed from profit metrics for accurate
+ * bookkeeping.
+ *
+ * This is deliberately independent of the Meta Purchase CAPI event, which fires on
+ * `confirmed` (see `src/lib/orders/update-status.ts`) and must keep doing so — that
+ * event marks a conversion for ad-platform optimization, not realized revenue, and
+ * changing this function has no effect on it.
  */
 export function isRevenueStatus(status: OrderStatus): boolean {
-  return status === "confirmed" || status === "shipped";
+  return status === "shipped";
 }
 
 /** Minimal order shape required to compute profit aggregates. */
@@ -19,6 +23,8 @@ export type ProfitOrderInput = {
   status: OrderStatus;
   /** ISO timestamp the order was created; used for the per-product cutoff. */
   created_at: string;
+  /** Per-order delivery/shipping cost (MRU). Null/undefined treated as 0. */
+  delivery_cost?: number | null;
 };
 
 /**
@@ -45,13 +51,15 @@ export type ProductProfitRow = {
   name: string;
   /** Acquisition cost per unit (0 when not configured). */
   costPrice: number;
-  /** Count of revenue-generating orders (confirmed + shipped). */
+  /** Count of revenue-generating orders (shipped only). */
   unitsSold: number;
   /** Sum of selling prices for revenue-generating orders. */
   grossRevenue: number;
   /** unitsSold * costPrice. */
   cogs: number;
-  /** Manually maintained cumulative ad spend (editable). */
+  /** Sum of delivery_cost across revenue-generating (shipped) orders. */
+  deliveryCost: number;
+  /** Live ad spend, summed across all of this product's linked Meta campaigns. */
   adSpend: number;
   /** Count of orders flagged internal_return (informational). */
   internalReturns: number;
@@ -61,18 +69,20 @@ export type ProductProfitRow = {
   calculationStartDate: string | null;
 };
 
-/** Net Profit = Gross Revenue - (COGS + Ad Spend). */
+/** Net Profit = Gross Revenue - (COGS + Delivery Cost + Ad Spend). */
 export function netProfit(input: {
   grossRevenue: number;
   cogs: number;
+  deliveryCost: number;
   adSpend: number;
 }): number {
-  return input.grossRevenue - (input.cogs + input.adSpend);
+  return input.grossRevenue - (input.cogs + input.deliveryCost + input.adSpend);
 }
 
 export type ProfitTotals = {
   grossRevenue: number;
   cogs: number;
+  deliveryCost: number;
   adSpend: number;
   netProfit: number;
   unitsSold: number;
@@ -83,6 +93,7 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
   const totals: ProfitTotals = {
     grossRevenue: 0,
     cogs: 0,
+    deliveryCost: 0,
     adSpend: 0,
     netProfit: 0,
     unitsSold: 0,
@@ -91,6 +102,7 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
   for (const row of rows) {
     totals.grossRevenue += row.grossRevenue;
     totals.cogs += row.cogs;
+    totals.deliveryCost += row.deliveryCost;
     totals.adSpend += row.adSpend;
     totals.unitsSold += row.unitsSold;
     totals.internalReturns += row.internalReturns;
@@ -107,8 +119,9 @@ type ProductMeta = {
 
 /**
  * Builds per-product profit rows from raw orders, product metadata, and the
- * manual ad spend ledger. Pure & deterministic so the same logic backs the
- * server render and the client-side live recalculation.
+ * live ad-spend map (summed per product from `product_ad_spend_daily`). Pure &
+ * deterministic so the same logic backs the server render and the client-side
+ * live recalculation.
  */
 export function buildProductProfitRows(params: {
   orders: ProfitOrderInput[];
@@ -130,6 +143,7 @@ export function buildProductProfitRows(params: {
         unitsSold: 0,
         grossRevenue: 0,
         cogs: 0,
+        deliveryCost: 0,
         adSpend: adSpendByProduct.get(productId) ?? 0,
         internalReturns: 0,
         hasCost: cost != null && Number.isFinite(cost),
@@ -151,14 +165,16 @@ export function buildProductProfitRows(params: {
     }
     if (isRevenueStatus(order.status)) {
       const price = Number(order.total_price);
+      const delivery = Number(order.delivery_cost);
       row.unitsSold += 1;
       row.grossRevenue += Number.isFinite(price) ? price : 0;
       row.cogs += row.costPrice;
+      row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
     }
   }
 
-  // Include products that only have ad spend (no orders yet) so the spend is
-  // still visible and reflected in the totals.
+  // Include products that only have ad spend (no revenue-generating orders yet)
+  // so the spend is still visible and reflected in the totals.
   for (const [productId, amount] of adSpendByProduct) {
     if (amount > 0 && !byProduct.has(productId)) {
       ensureRow(productId);
@@ -166,7 +182,6 @@ export function buildProductProfitRows(params: {
   }
 
   return Array.from(byProduct.values()).sort(
-    (a, b) =>
-      netProfit(b) - netProfit(a) || b.grossRevenue - a.grossRevenue,
+    (a, b) => netProfit(b) - netProfit(a) || b.grossRevenue - a.grossRevenue,
   );
 }
