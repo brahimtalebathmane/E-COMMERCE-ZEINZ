@@ -6,7 +6,10 @@ function normalizeEnv(value: string | undefined): string {
   return value.trim().replace(/^['"]|['"]$/g, "");
 }
 
-/** campaignId -> (YYYY-MM-DD -> spend amount, in the ad account's reporting currency). */
+/** Meta ad account reports spend in USD; convert to MRU (store currency) at read time. */
+const USD_TO_MRU_RATE = 43;
+
+/** campaignId -> (YYYY-MM-DD -> spend amount, in MRU). */
 export type CampaignDailySpend = Map<string, Map<string, number>>;
 
 export type FetchCampaignSpendResult =
@@ -116,10 +119,11 @@ export async function fetchCampaignDailySpend(params: {
       for (const row of parsed?.data ?? []) {
         const campaignId = row.campaign_id;
         const dateKey = row.date_start;
-        const spend = Number(row.spend);
-        if (!campaignId || !dateKey || !Number.isFinite(spend)) continue;
+        const spendUSD = Number(row.spend);
+        if (!campaignId || !dateKey || !Number.isFinite(spendUSD)) continue;
+        const spendMRU = spendUSD * USD_TO_MRU_RATE;
         const byDate = result.get(campaignId) ?? new Map<string, number>();
-        byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + spend);
+        byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + spendMRU);
         result.set(campaignId, byDate);
       }
 
