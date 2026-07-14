@@ -55,12 +55,47 @@
     "supabaseEnvMissing": "إعدادات الخادم غير مكتملة. أبلغ المسؤول."
   },
   "orderForm": {
-    "whatsappNumber": "رقم واتساب"
+    "whatsappNumber": "رقم واتساب",
+    "title": "إتمام الطلب",
+    "nameLabel": "الاسم الكامل",
+    "close": "إغلاق",
+    "submit": "اطلب الآن",
+    "submitting": "جارٍ الإرسال...",
+    "codNote": "الدفع عند الاستلام — تدفع عند وصول الطلب",
+    "priceLabel": "المبلغ الإجمالي",
+    "freeShipping": "يشمل التوصيل المجاني",
+    "sessionError": "تعذر إعداد جلسة التتبع — يرجى تحديث الصفحة والمحاولة مرة أخرى",
+    "submitFailed": "تعذر إرسال الطلب",
+    "nameRequired": "الاسم مطلوب",
+    "phoneLength": "رقم الهاتف يجب أن يكون 8 أرقام",
+    "phonePrefix": "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4",
+    "phoneHint": "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4",
+    "phoneRequired": "رقم الهاتف مطلوب",
+    "submitError": "حدث خطأ غير متوقع"
+  },
+  "landing": {
+    "trustCod": "الدفع عند الاستلام",
+    "trustDelivery": "توصيل سريع",
+    "trustGuarantee": "ضمان الاسترجاع",
+    "trustSecure": "طلب آمن",
+    "guaranteeTitle": "ضمان الرضا أو استرجاع المال",
+    "guaranteeBody": "اطلب بثقة تامة. لا تدفع إلا عند استلام طلبك بين يديك.",
+    "reviewsVerified": "{{count}} تقييم موثّق",
+    "ctaDefault": "اغتنم العرض الآن",
+    "codReassuranceDefault": "الدفع عند الاستلام متاح في كل المناطق"
   },
   "orderSuccess": {
     "title": "تم استلام طلبكم بنجاح",
     "subtitle": "سيتواصل معكم فريقنا الآن لتأكيد طلبكم وإتمامه",
-    "whatsappCta": "تواصل معنا عبر واتساب"
+    "whatsappCta": "تواصل معنا عبر واتساب",
+    "orderId": "رقم الطلب",
+    "product": "المنتج",
+    "total": "المبلغ الإجمالي"
+  },
+  "productContact": {
+    "email": "البريد الإلكتروني",
+    "whatsapp": "واتساب",
+    "phone": "الهاتف"
   },
   "lang": {
     "ar": "عربي",

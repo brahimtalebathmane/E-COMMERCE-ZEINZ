@@ -3,6 +3,7 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/service";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { createClient } from "@/lib/supabase/server";
 
 export type OrderSuccessContext = {
   metaPixelId: string | null;
@@ -51,4 +52,22 @@ export async function loadOrderSuccessContext(
     totalPrice: Number.isFinite(total) ? total : null,
     currency: (order.currency as string) ?? "MRU",
   };
+}
+
+/** Display name from product_id when the HttpOnly success cookie is unavailable. */
+export async function resolveProductNameFromId(
+  productId: string | null,
+): Promise<string | null> {
+  const id = productId?.trim();
+  if (!id) return null;
+
+  const supabase = await createClient();
+  const { data: product, error } = await supabase
+    .from("products")
+    .select("name_ar, name_fr, default_language")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !product) return null;
+  return resolveMetaProductDisplayName(product);
 }

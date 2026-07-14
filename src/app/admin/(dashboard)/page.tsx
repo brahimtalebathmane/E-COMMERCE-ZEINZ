@@ -157,10 +157,6 @@ export default async function AdminHomePage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold sm:text-2xl">{a.dashboard.greeting}</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{a.dashboard.subtitle}</p>
-      </div>
       <DashboardHome data={data} visibility={visibility} />
     </div>
   );

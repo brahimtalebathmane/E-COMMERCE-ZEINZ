@@ -594,10 +594,10 @@ export function ProductForm({ mode, initial }: Props) {
       <section className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4 text-sm">
           <label className="text-sm font-medium">{a.productForm.slugLabel}</label>
           <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.slugHint}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2" dir="ltr">
-            <span className="shrink-0 text-[var(--muted)]">{siteBase}/</span>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" dir="ltr">
+            <span className="shrink-0 text-xs text-[var(--muted)] sm:text-sm">{siteBase}/</span>
             <input
-              className="min-w-[12rem] flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 font-mono text-sm"
+              className="admin-input min-w-0 flex-1 font-mono"
               value={slugInput}
               onChange={(e) => setSlugInput(e.target.value)}
               placeholder={previewSlug}
@@ -631,7 +631,7 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">{a.productForm.defaultLanguage}</label>
           <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.defaultLanguageHint}</p>
           <select
-            className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-2 w-full admin-input"
             value={defaultLanguage}
             onChange={(e) => setDefaultLanguage(e.target.value as "ar" | "fr")}
           >
@@ -649,7 +649,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">لون التمييز (Hex)</label>
               <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={brandColor}
                 onChange={(e) => setBrandColor(e.target.value)}
                 placeholder={BRAND_COLOR}
@@ -659,7 +659,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">شعار أعلى الصفحة (رابط HTTPS)</label>
               <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={logoUrl}
                 onChange={(e) => setLogoUrl(e.target.value)}
                 placeholder="https://"
@@ -690,7 +690,7 @@ export function ProductForm({ mode, initial }: Props) {
             <input
               type="text"
               maxLength={280}
-              className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              className="mt-1 w-full admin-input"
               value={topBannerOfferText}
               onChange={(e) => setTopBannerOfferText(e.target.value)}
               placeholder={a.productForm.topBannerOfferPlaceholder}
@@ -700,7 +700,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">نداء الرأس (سطر إضافي) — عربي</label>
               <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={headerCtaAr}
                 onChange={(e) => setHeaderCtaAr(e.target.value)}
               />
@@ -708,7 +708,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-xs font-medium text-[var(--muted)]">Header CTA — FR</label>
               <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={headerCtaFr}
                 onChange={(e) => setHeaderCtaFr(e.target.value)}
                 dir="ltr"
@@ -723,7 +723,7 @@ export function ProductForm({ mode, initial }: Props) {
           </label>
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={nameAr}
             onChange={(e) => setNameAr(e.target.value)}
           />
@@ -733,7 +733,7 @@ export function ProductForm({ mode, initial }: Props) {
             {a.productForm.name} — {a.productForm.langFrench}
           </label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={nameFr}
             onChange={(e) => setNameFr(e.target.value)}
             dir="ltr"
@@ -749,7 +749,7 @@ export function ProductForm({ mode, initial }: Props) {
           <textarea
             required={!isLandingSetup}
             rows={4}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={descriptionAr}
             onChange={(e) => setDescriptionAr(e.target.value)}
           />
@@ -760,7 +760,7 @@ export function ProductForm({ mode, initial }: Props) {
           </label>
           <textarea
             rows={4}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={descriptionFr}
             onChange={(e) => setDescriptionFr(e.target.value)}
             dir="ltr"
@@ -778,7 +778,7 @@ export function ProductForm({ mode, initial }: Props) {
           <textarea
             required={!isLandingSetup}
             rows={3}
-            className="mt-1 w-full resize-y whitespace-pre-wrap rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm leading-relaxed"
+            className="mt-1 w-full resize-y whitespace-pre-wrap admin-input leading-relaxed"
             value={heroSubtitleAr}
             onChange={(e) => setHeroSubtitleAr(e.target.value)}
           />
@@ -792,7 +792,7 @@ export function ProductForm({ mode, initial }: Props) {
           </p>
           <textarea
             rows={3}
-            className="mt-1 w-full resize-y whitespace-pre-wrap rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm leading-relaxed"
+            className="mt-1 w-full resize-y whitespace-pre-wrap admin-input leading-relaxed"
             value={heroSubtitleFr}
             onChange={(e) => setHeroSubtitleFr(e.target.value)}
             dir="ltr"
@@ -803,7 +803,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={ctaTextAr}
             onChange={(e) => setCtaTextAr(e.target.value)}
           />
@@ -811,7 +811,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">CTA text — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={ctaTextFr}
             onChange={(e) => setCtaTextFr(e.target.value)}
             dir="ltr"
@@ -822,7 +822,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={featuresTitleAr}
             onChange={(e) => setFeaturesTitleAr(e.target.value)}
           />
@@ -830,7 +830,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">Features title — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={featuresTitleFr}
             onChange={(e) => setFeaturesTitleFr(e.target.value)}
             dir="ltr"
@@ -839,7 +839,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.statsSectionTitle} — عربي</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={statsSectionTitleAr}
             onChange={(e) => setStatsSectionTitleAr(e.target.value)}
           />
@@ -847,7 +847,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.statsSectionTitle} — FR</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={statsSectionTitleFr}
             onChange={(e) => setStatsSectionTitleFr(e.target.value)}
             dir="ltr"
@@ -863,7 +863,7 @@ export function ProductForm({ mode, initial }: Props) {
           <textarea
             required={!isLandingSetup}
             rows={3}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={statsArText}
             onChange={(e) => setStatsArText(e.target.value)}
           />
@@ -874,7 +874,7 @@ export function ProductForm({ mode, initial }: Props) {
           </label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={statsFrText}
             onChange={(e) => setStatsFrText(e.target.value)}
             dir="ltr"
@@ -890,7 +890,7 @@ export function ProductForm({ mode, initial }: Props) {
           <textarea
             required={!isLandingSetup}
             rows={4}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={contactArText}
             onChange={(e) => setContactArText(e.target.value)}
           />
@@ -901,7 +901,7 @@ export function ProductForm({ mode, initial }: Props) {
           </label>
           <textarea
             rows={4}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={contactFrText}
             onChange={(e) => setContactFrText(e.target.value)}
             dir="ltr"
@@ -914,7 +914,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">{a.productForm.testStatus}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm disabled:opacity-60"
+                className="mt-1 w-full admin-input disabled:opacity-60"
                 value={testStatus}
                 disabled={isLandingSetup}
                 onChange={(e) =>
@@ -933,7 +933,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div>
               <label className="text-sm font-medium">{a.productForm.sourcingType}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={sourcingType}
                 onChange={(e) =>
                   setSourcingType(
@@ -951,7 +951,7 @@ export function ProductForm({ mode, initial }: Props) {
             <div className="sm:col-span-2">
               <label className="text-sm font-medium">{a.productForm.sourcingLink}</label>
               <input
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={sourcingLink}
                 onChange={(e) => setSourcingLink(e.target.value)}
                 placeholder={a.productForm.sourcingLinkPlaceholder}
@@ -964,7 +964,7 @@ export function ProductForm({ mode, initial }: Props) {
                 type="number"
                 step="0.01"
                 min="0"
-                className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                className="mt-1 w-full admin-input"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
                 placeholder={a.productForm.costPricePlaceholder}
@@ -980,7 +980,7 @@ export function ProductForm({ mode, initial }: Props) {
             type="number"
             step="0.01"
             min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder={a.productForm.pricePlaceholder}
@@ -993,7 +993,7 @@ export function ProductForm({ mode, initial }: Props) {
             type="number"
             step="0.01"
             min="0"
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={discount}
             onChange={(e) => setDiscount(e.target.value)}
             placeholder={a.productForm.discountPlaceholder}
@@ -1003,7 +1003,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">{a.productForm.mediaType}</label>
           <select
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={mediaType}
             onChange={(e) => setMediaType(e.target.value as "image" | "video")}
           >
@@ -1015,7 +1015,7 @@ export function ProductForm({ mode, initial }: Props) {
           <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={mediaUrl}
             onChange={(e) => setMediaUrl(e.target.value)}
             placeholder="https://"
@@ -1025,7 +1025,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">الوسيط الثاني: النوع</label>
           <select
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={secondaryMediaType}
             onChange={(e) => setSecondaryMediaType(e.target.value as "image" | "video")}
           >
@@ -1036,7 +1036,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">الوسيط الثاني: الرابط</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={secondaryMediaUrl}
             onChange={(e) => setSecondaryMediaUrl(e.target.value)}
             placeholder="https://"
@@ -1046,7 +1046,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">الوسيط الثالث: النوع</label>
           <select
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={tertiaryMediaType}
             onChange={(e) => setTertiaryMediaType(e.target.value as "image" | "video")}
           >
@@ -1057,7 +1057,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div>
           <label className="text-sm font-medium">الوسيط الثالث: الرابط</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={tertiaryMediaUrl}
             onChange={(e) => setTertiaryMediaUrl(e.target.value)}
             placeholder="https://"
@@ -1070,7 +1070,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.testimonialsBadgeLabel} — عربي</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={testimonialsBadgeAr}
             onChange={(e) => setTestimonialsBadgeAr(e.target.value)}
           />
@@ -1078,7 +1078,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.testimonialsBadgeLabel} — FR</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={testimonialsBadgeFr}
             onChange={(e) => setTestimonialsBadgeFr(e.target.value)}
             dir="ltr"
@@ -1090,7 +1090,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={testimonialsTitleAr}
             onChange={(e) => setTestimonialsTitleAr(e.target.value)}
           />
@@ -1098,7 +1098,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">Testimonials title — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={testimonialsTitleFr}
             onChange={(e) => setTestimonialsTitleFr(e.target.value)}
             dir="ltr"
@@ -1109,7 +1109,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={mediaCaptionAr}
             onChange={(e) => setMediaCaptionAr(e.target.value)}
           />
@@ -1117,7 +1117,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">Media section title — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={mediaCaptionFr}
             onChange={(e) => setMediaCaptionFr(e.target.value)}
             dir="ltr"
@@ -1128,7 +1128,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={faqTitleAr}
             onChange={(e) => setFaqTitleAr(e.target.value)}
           />
@@ -1136,7 +1136,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">FAQ title — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={faqTitleFr}
             onChange={(e) => setFaqTitleFr(e.target.value)}
             dir="ltr"
@@ -1183,7 +1183,7 @@ export function ProductForm({ mode, initial }: Props) {
           {!isLandingSetup ? <p className="mt-1 text-xs text-[var(--muted)]">إلزامي</p> : null}
           <input
             required={!isLandingSetup}
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={contactTitleAr}
             onChange={(e) => setContactTitleAr(e.target.value)}
           />
@@ -1191,7 +1191,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">Contact title — {a.productForm.langFrench}</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={contactTitleFr}
             onChange={(e) => setContactTitleFr(e.target.value)}
             dir="ltr"
@@ -1201,7 +1201,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.footerNoteLabel} — عربي</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={footerNoteAr}
             onChange={(e) => setFooterNoteAr(e.target.value)}
           />
@@ -1209,7 +1209,7 @@ export function ProductForm({ mode, initial }: Props) {
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.footerNoteLabel} — FR</label>
           <input
-            className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+            className="mt-1 w-full admin-input"
             value={footerNoteFr}
             onChange={(e) => setFooterNoteFr(e.target.value)}
             dir="ltr"
@@ -1250,7 +1250,7 @@ export function ProductForm({ mode, initial }: Props) {
             <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.whatsappTemplateHint}</p>
             <textarea
               rows={4}
-              className="mt-2 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+              className="mt-2 w-full admin-input"
               value={whatsAppTemplate}
               onChange={(e) => setWhatsAppTemplate(e.target.value)}
               placeholder="مثال: شكراً لطلبكم! سيتم التواصل معكم قريباً."
@@ -1263,11 +1263,11 @@ export function ProductForm({ mode, initial }: Props) {
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-[var(--admin-border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur sm:flex-row sm:flex-wrap sm:gap-3 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-[var(--accent-foreground)] disabled:opacity-60"
+          className="admin-btn-primary w-full sm:w-auto"
         >
           {busy
             ? isLandingSetup
@@ -1284,7 +1284,7 @@ export function ProductForm({ mode, initial }: Props) {
             type="button"
             disabled={busy}
             onClick={(e) => void onCompleteResearch(e)}
-            className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-6 py-3 text-sm font-semibold text-[var(--foreground)] disabled:opacity-60"
+            className="admin-btn-ghost w-full sm:w-auto"
           >
             {a.landingSetup.completeResearch}
           </button>
@@ -1294,7 +1294,7 @@ export function ProductForm({ mode, initial }: Props) {
             type="button"
             disabled={busy}
             onClick={() => void onDelete()}
-            className="rounded-xl border border-red-300 px-6 py-3 text-sm font-semibold text-red-700 disabled:opacity-60 dark:border-red-800 dark:text-red-400"
+            className="admin-btn-ghost w-full !border-red-500/30 !text-red-300 hover:!bg-red-500/10 sm:w-auto"
           >
             {a.productForm.delete}
           </button>

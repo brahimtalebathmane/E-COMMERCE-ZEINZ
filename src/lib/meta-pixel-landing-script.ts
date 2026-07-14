@@ -1,42 +1,48 @@
 import { normalizeMetaPixelId, resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import type { MetaProductCustomData } from "@/lib/meta-product-custom-data";
 
-/** Must stay in sync with `meta-pixel-client.ts` route dedupe keys. Bump when dedupe logic changes. */
-export const META_PAGEVIEW_STORAGE_PREFIX = "meta_pageview_v3:";
-export const META_VIEWCONTENT_STORAGE_PREFIX = "meta_viewcontent_v1:";
-
 export type MetaLandingProductContent = {
   productId: string;
   productName: string;
 };
 
-/** Shared inline bootstrap helpers (catalog + product landings). */
-function landingScriptShell(idJson: string, prefixJson: string, fireBody: string): string {
+/**
+ * Shared inline helpers. Uses Meta's documented base code: `fbq('init', id)`
+ * followed by an explicit `fbq('track', 'PageView')` (init alone does NOT fire
+ * PageView). disablePushState blocks SPA history dupes; default autoConfig keeps
+ * PageView classified as the standard event.
+ *
+ * Dedupe is per PAGELOAD (window memory only — never sessionStorage): every full
+ * page load must fire its own PageView/ViewContent, while the inline script, the
+ * React runtime, and StrictMode re-runs share the same window flags so a single
+ * pageload can never double-fire. Route-scoped event ids (`pv_…` / `vc_…`) live in
+ * window.__metaEventIds and are shared with `meta-pixel-client.ts`.
+ */
+function landingScriptShell(idJson: string, fireBody: string): string {
   return `(function(){
 var id=${idJson};
 if(!id)return;
-var prefix=${prefixJson};
 function routeKey(){return id+":"+location.pathname+location.search;}
-function storageKey(suffix){return suffix+routeKey();}
-function alreadySent(suffix,mem){
+function alreadySent(mem){
   var rk=routeKey();
-  var sk=storageKey(suffix);
-  try{if(sessionStorage.getItem(sk)==="1")return true;}catch(e){}
   return !!(window[mem]&&window[mem][rk]);
 }
-function markSent(suffix,mem){
+function markSent(mem){
   var rk=routeKey();
-  var sk=storageKey(suffix);
-  try{sessionStorage.setItem(sk,"1");}catch(e){}
   window[mem]=window[mem]||{};
   window[mem][rk]=true;
+}
+function eventIdFor(type){
+  var map=window.__metaEventIds=window.__metaEventIds||{};
+  var key=type+":"+routeKey();
+  if(!map[key])map[key]=type+"_"+Date.now()+"_"+Math.random().toString(36).slice(2,10);
+  return map[key];
 }
 function ensureInit(){
   if(window.__metaPixelsInited&&window.__metaPixelsInited[id])return;
   if(!window.fbq)return;
   window.fbq.disablePushState=true;
-  window.fbq("set","autoConfig","false",id);
-  window.fbq("init",id,{},{autoConfig:false,xfbml:false});
+  window.fbq("init",id);
   window.__metaPixelsInited=window.__metaPixelsInited||{};
   window.__metaPixelsInited[id]=true;
 }
@@ -78,7 +84,7 @@ var timer=setInterval(function(){
 }
 
 /**
- * Catalog listing — generic PageView only (no product content_ids).
+ * Catalog listing — standard PageView via `fbq('track','PageView')`. No product content_ids.
  */
 export function buildMetaPixelCatalogPageViewScript(
   pixelId?: string | null,
@@ -87,21 +93,19 @@ export function buildMetaPixelCatalogPageViewScript(
   if (!id) return null;
 
   const safeId = JSON.stringify(id);
-  const safePrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);
 
   const fireBody = `
-var pvPrefix=${safePrefix};
 function fireEvents(){
   if(!readyToTrack())return false;
-  if(alreadySent(pvPrefix,"__metaPixelPageViewSent"))return true;
-  window.fbq("trackSingle",id,"PageView");
-  markSent(pvPrefix,"__metaPixelPageViewSent");
+  if(alreadySent("__metaPixelPageViewSent"))return true;
+  window.fbq("track","PageView",{},{eventID:eventIdFor("pv")});
+  markSent("__metaPixelPageViewSent");
   return true;
 }
 if(fireEvents())return;
 `;
 
-  return landingScriptShell(safeId, safePrefix, fireBody);
+  return landingScriptShell(safeId, fireBody);
 }
 
 /** @deprecated Use buildMetaPixelCatalogPageViewScript */
@@ -112,7 +116,7 @@ export function buildMetaPixelLandingPageViewScript(
 }
 
 /**
- * Product landing — PageView + ViewContent with product content_ids before React hydrates.
+ * Product landing — standard PageView + ViewContent with product content_ids.
  */
 export function buildMetaPixelProductLandingScript(
   product: MetaLandingProductContent,
@@ -126,14 +130,10 @@ export function buildMetaPixelProductLandingScript(
   if (!productId) return null;
 
   const safeId = JSON.stringify(id);
-  const safePvPrefix = JSON.stringify(META_PAGEVIEW_STORAGE_PREFIX);
-  const safeVcPrefix = JSON.stringify(META_VIEWCONTENT_STORAGE_PREFIX);
   const safeProductId = JSON.stringify(productId);
   const safeProductName = JSON.stringify(productName);
 
   const fireBody = `
-var pvPrefix=${safePvPrefix};
-var vcPrefix=${safeVcPrefix};
 var productId=${safeProductId};
 var productName=${safeProductName};
 function viewContentPayload(){
@@ -146,21 +146,20 @@ function viewContentPayload(){
 }
 function fireEvents(){
   if(!readyToTrack())return false;
-  var done=true;
-  if(!alreadySent(pvPrefix,"__metaPixelPageViewSent")){
-    window.fbq("trackSingle",id,"PageView");
-    markSent(pvPrefix,"__metaPixelPageViewSent");
+  if(!alreadySent("__metaPixelPageViewSent")){
+    window.fbq("track","PageView",{},{eventID:eventIdFor("pv")});
+    markSent("__metaPixelPageViewSent");
   }
-  if(!alreadySent(vcPrefix,"__metaPixelViewContentSent")){
-    window.fbq("trackSingle",id,"ViewContent",viewContentPayload());
-    markSent(vcPrefix,"__metaPixelViewContentSent");
+  if(!alreadySent("__metaPixelViewContentSent")){
+    window.fbq("track","ViewContent",viewContentPayload(),{eventID:eventIdFor("vc")});
+    markSent("__metaPixelViewContentSent");
   }
-  return alreadySent(pvPrefix,"__metaPixelPageViewSent")&&alreadySent(vcPrefix,"__metaPixelViewContentSent");
+  return alreadySent("__metaPixelPageViewSent")&&alreadySent("__metaPixelViewContentSent");
 }
 if(fireEvents())return;
 `;
 
-  return landingScriptShell(safeId, safePvPrefix, fireBody);
+  return landingScriptShell(safeId, fireBody);
 }
 
 /** Browser ViewContent payload shape (matches resolveMetaContentData). */

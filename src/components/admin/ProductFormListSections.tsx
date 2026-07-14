@@ -423,7 +423,7 @@ export const ProductFormFeaturesSection = memo(function ProductFormFeaturesSecti
             <div className="mt-2 flex flex-wrap gap-1">
               <button
                 type="button"
-                className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
+                className="admin-btn-ghost !min-h-[44px] !px-3 !text-xs disabled:opacity-40"
                 onClick={() => setFeatureRows((prev) => moveAt(prev, i, -1))}
                 disabled={i === 0}
               >
@@ -431,7 +431,7 @@ export const ProductFormFeaturesSection = memo(function ProductFormFeaturesSecti
               </button>
               <button
                 type="button"
-                className="rounded border border-[var(--accent-muted)] px-2 py-1 text-xs text-[var(--muted)] disabled:opacity-40"
+                className="admin-btn-ghost !min-h-[44px] !px-3 !text-xs disabled:opacity-40"
                 onClick={() => setFeatureRows((prev) => moveAt(prev, i, 1))}
                 disabled={i === featureRows.length - 1}
               >
@@ -439,7 +439,7 @@ export const ProductFormFeaturesSection = memo(function ProductFormFeaturesSecti
               </button>
               <button
                 type="button"
-                className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 dark:border-red-800 dark:text-red-400"
+                className="admin-btn-ghost !min-h-[44px] !border-red-500/30 !px-3 !text-xs !text-red-300"
                 onClick={() => setFeatureRows((prev) => prev.filter((_, j) => j !== i))}
               >
                 {a.productForm.removeItem}

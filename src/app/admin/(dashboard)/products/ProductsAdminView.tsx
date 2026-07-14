@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useEffect, useMemo, useState, useTransition } from "react";
 import { deleteProductAction, updateProductTestStatusAction } from "./actions";
@@ -9,6 +8,13 @@ import type { AdminProductPipelineRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
 import { PlusIcon } from "@/components/admin/AdminIcons";
 import { formatPrice } from "@/lib/currency";
+import {
+  AdminBadge,
+  AdminButton,
+  AdminLinkButton,
+  AdminPageHeader,
+  productPipelineHue,
+} from "@/components/admin/ui";
 import {
   PIPELINE_TABS,
   codMarginPercent,
@@ -38,24 +44,19 @@ const MarginBadge = memo(function MarginBadge({
   const pct = codMarginPercent(row.price, row.discount_price, row.cost_price);
   if (pct == null) {
     return (
-      <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-xs text-[var(--muted)]">
+      <AdminBadge hue="neutral" size="sm" dot={false}>
         {a.pipeline.marginUnset}
-      </span>
+      </AdminBadge>
     );
   }
   const rounded = Math.round(pct * 10) / 10;
   const good = rounded > 60;
   return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-        good
-          ? "bg-emerald-400/10 text-emerald-300 border border-emerald-400/30"
-          : "bg-amber-400/10 text-amber-300 border border-amber-400/30"
-      }`}
-      dir="ltr"
-    >
-      {a.pipeline.marginLabel}: {rounded}%
-    </span>
+    <AdminBadge hue={good ? "emerald" : "amber"} size="sm">
+      <span dir="ltr">
+        {a.pipeline.marginLabel}: {rounded}%
+      </span>
+    </AdminBadge>
   );
 });
 
@@ -99,21 +100,22 @@ function EditDeleteActions({
   const isDeleting = deletingId === row.id;
   return (
     <>
-      <Link
+      <AdminLinkButton
         href={`/admin/products/${row.id}/edit`}
-        className="text-[var(--accent)] underline text-xs"
+        variant="sm-ghost"
+        className="flex-1 sm:flex-none"
       >
         {a.products.edit}
-      </Link>
-      <span className="text-[var(--muted)]">·</span>
-      <button
+      </AdminLinkButton>
+      <AdminButton
         type="button"
+        variant="danger"
         disabled={busy || isDeleting}
         onClick={() => onDelete(row.id)}
-        className="text-xs font-semibold text-red-400 underline disabled:opacity-50"
+        className="flex-1 sm:flex-none"
       >
         {isDeleting ? a.pipeline.deleting : a.pipeline.delete}
-      </button>
+      </AdminButton>
     </>
   );
 }
@@ -136,48 +138,52 @@ function PipelineActions({
   const canViewLanding = Boolean(row.slug) && row.test_status !== "failed";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex w-full flex-wrap items-stretch gap-2 sm:items-center sm:justify-end">
       {tab === "research" || tab === "ready" ? (
-        <Link
+        <AdminLinkButton
           href={
             tab === "research"
               ? `/admin/products/${row.id}/landing-setup`
               : `/admin/products/${row.id}/edit`
           }
-          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] transition hover:brightness-110"
+          variant="primary"
+          className="w-full !px-3 !text-xs sm:w-auto"
         >
           {a.pipeline.setupLanding}
-        </Link>
+        </AdminLinkButton>
       ) : null}
       {tab === "ready" ? (
         <>
-          <button
+          <AdminButton
             type="button"
+            variant="sm-ghost"
             disabled={busy}
             onClick={() => onStatus(row.id, "winner")}
-            className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            className="flex-1 !border-emerald-400/40 !bg-emerald-400/10 !text-emerald-300 hover:!bg-emerald-400/20 sm:flex-none"
           >
             {a.pipeline.markWinner}
-          </button>
-          <button
+          </AdminButton>
+          <AdminButton
             type="button"
+            variant="danger"
             disabled={busy}
             onClick={() => onStatus(row.id, "failed")}
-            className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-50"
+            className="flex-1 sm:flex-none"
           >
             {a.pipeline.markFailed}
-          </button>
+          </AdminButton>
         </>
       ) : null}
       {canViewLanding ? (
-        <Link
+        <AdminLinkButton
           href={`/${row.slug}`}
-          className="text-[var(--muted)] underline text-xs"
+          variant="sm-ghost"
+          className="flex-1 sm:flex-none"
           target="_blank"
           rel="noopener noreferrer"
         >
           {a.products.view}
-        </Link>
+        </AdminLinkButton>
       ) : null}
       <EditDeleteActions row={row} busy={busy} deletingId={deletingId} onDelete={onDelete} />
     </div>
@@ -268,43 +274,51 @@ export function ProductsAdminView({ products }: Props) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">{a.products.title}</h1>
-        </div>
-        <Link href="/admin/products/new" className="admin-btn-primary">
-          <PlusIcon size={18} />
-          {a.products.newProduct}
-        </Link>
-      </div>
+      <AdminPageHeader
+        title={a.products.title}
+        actions={
+          <AdminLinkButton href="/admin/products/new">
+            <PlusIcon size={18} />
+            {a.products.newProduct}
+          </AdminLinkButton>
+        }
+      />
 
-      <div
-        className="mt-5 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2"
-        role="tablist"
-      >
-        {PIPELINE_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              tab === t.id
-                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_8px_20px_-8px_rgba(31,170,80,0.6)]"
-                : "border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--foreground)] hover:bg-white/[0.06]"
-            }`}
-          >
-            {t.label}
-            <span
-              className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-                tab === t.id ? "bg-white/20" : "bg-white/[0.06] text-[var(--muted)]"
-              }`}
+      <div className="relative -mx-1">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 start-0 z-10 w-6 bg-gradient-to-r from-[var(--admin-surface)] to-transparent sm:w-8"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 end-0 z-10 w-6 bg-gradient-to-l from-[var(--admin-surface)] to-transparent sm:w-8"
+        />
+        <div
+          className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
+          {PIPELINE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className="admin-tab-pill"
+              data-active={tab === t.id}
             >
-              {counts[t.id]}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
+                  tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-white/[0.06] text-[var(--muted)]"
+                }`}
+                dir="ltr"
+              >
+                {counts[t.id]}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {error ? (
@@ -340,11 +354,18 @@ export function ProductsAdminView({ products }: Props) {
                       </span>
                       {tab === "research" ? <MarginBadge row={p} /> : null}
                       {tab === "ready" ? (
-                        <span className="rounded-full border border-[var(--admin-border-strong)] px-2.5 py-1 text-[11px] text-[var(--muted)]">
+                        <AdminBadge hue={productPipelineHue(p.test_status)} size="sm">
                           {p.test_status === "testing"
                             ? a.pipeline.statusTesting
                             : a.pipeline.statusReady}
-                        </span>
+                        </AdminBadge>
+                      ) : null}
+                      {(tab === "winner" || tab === "failed") ? (
+                        <AdminBadge hue={productPipelineHue(p.test_status)} size="sm">
+                          {p.test_status === "winner"
+                            ? a.pipeline.markWinner
+                            : a.pipeline.markFailed}
+                        </AdminBadge>
                       ) : null}
                     </div>
                   </div>

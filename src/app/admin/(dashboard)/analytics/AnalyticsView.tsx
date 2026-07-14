@@ -24,6 +24,7 @@ import {
   type DailyProductProfit,
   type Granularity,
 } from "@/lib/analytics/daily-profit";
+import { AdminKpiTile, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 import type { AnalyticsData, LinkedCampaign } from "./data";
 import {
   linkAdCampaignAction,
@@ -111,7 +112,9 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
   }
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="space-y-8">
+      <AdminPageHeader title={a.analytics.title} subtitle={a.analytics.subtitle} />
+
       <SummaryBar data={data} />
 
       <CombinedTrendChart
@@ -122,36 +125,36 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiGrossRevenue}
           hint={a.analytics.kpiGrossRevenueHint}
           value={formatPrice(totals.grossRevenue)}
-          accent="revenue"
+          accent={KPI_ACCENT.revenue}
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiCogs}
           hint={a.analytics.kpiCogsHint}
           value={formatPrice(totals.cogs)}
-          accent="cost"
+          accent="var(--status-amber)"
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiDeliveryCost}
           hint={a.analytics.kpiDeliveryCostHint}
           value={formatPrice(totals.deliveryCost)}
-          accent="cost"
+          accent="var(--status-violet)"
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiAdSpend}
           hint={a.analytics.kpiAdSpendHint}
           value={formatPrice(totals.adSpend)}
-          accent="ad"
+          accent={KPI_ACCENT.orders}
         />
-        <KpiCard
+        <AdminKpiTile
           label={a.analytics.kpiNetProfit}
           hint={a.analytics.kpiNetProfitHint}
           value={formatPrice(totals.netProfit)}
-          accent="profit"
-          emphasizeTone={profitToneClass(totals.netProfit)}
+          accent={KPI_ACCENT.profit}
+          emphasize
         />
       </div>
 
@@ -532,7 +535,7 @@ function CampaignManager({
           ))}
         </ul>
       )}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           type="text"
           dir="ltr"
@@ -546,54 +549,17 @@ function CampaignManager({
               void onLink();
             }
           }}
-          className="min-h-[36px] w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-2 py-1 text-xs disabled:opacity-60"
+          className="admin-input w-full !text-xs"
         />
         <button
           type="button"
           disabled={linking || !draft.trim()}
           onClick={() => void onLink()}
-          className="min-h-[36px] shrink-0 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="admin-btn-primary w-full !px-3 !text-xs sm:w-auto"
         >
           {linking ? a.analytics.linking : a.analytics.linkCampaign}
         </button>
       </div>
-    </div>
-  );
-}
-
-function KpiCard({
-  label,
-  hint,
-  value,
-  accent,
-  emphasizeTone,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  accent: "revenue" | "cost" | "ad" | "profit";
-  emphasizeTone?: string;
-}) {
-  const accentBar = {
-    revenue: "bg-emerald-500",
-    cost: "bg-amber-500",
-    ad: "bg-sky-500",
-    profit: "bg-[var(--accent)]",
-  }[accent];
-
-  return (
-    <div className="admin-card relative overflow-hidden p-5">
-      <span className={`absolute inset-y-0 start-0 w-1.5 ${accentBar}`} aria-hidden />
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </p>
-      <p
-        className={`mt-3 text-2xl font-bold tabular-nums ${emphasizeTone ?? "text-[var(--foreground)]"}`}
-        dir="ltr"
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{hint}</p>
     </div>
   );
 }
@@ -632,21 +598,21 @@ function StartDateEditor({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <input
         type="date"
         dir="ltr"
         disabled={saving}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[36px] w-36 max-w-full rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] px-2 py-1 text-xs tabular-nums disabled:opacity-60"
+        className="admin-input w-full max-w-full !text-xs tabular-nums sm:w-36"
       />
       {value ? (
         <button
           type="button"
           disabled={saving}
           onClick={() => onChange("")}
-          className="shrink-0 text-[11px] font-semibold text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          className="admin-btn-ghost w-full !px-3 !text-xs sm:w-auto"
         >
           {a.analytics.startDateClear}
         </button>

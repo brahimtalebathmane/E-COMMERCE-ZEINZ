@@ -12,6 +12,7 @@ import {
   touchMetaFunnelActivityThrottled,
 } from "@/lib/meta-client";
 import { queueMetaPendingLead, resolveLeadEventId } from "@/lib/meta-lead-client";
+import { trackLead } from "@/components/MetaPixel";
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
@@ -27,18 +28,21 @@ function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
 }
 
-function validateMauritaniaLocalPhone(localDigits: string): string | null {
+function validateMauritaniaLocalPhone(
+  localDigits: string,
+  t: (key: string) => string,
+): string | null {
   const d = onlyDigits(localDigits);
-  if (d.length !== 8) return "رقم الهاتف يجب أن يكون 8 أرقام";
+  if (d.length !== 8) return t("orderForm.phoneLength");
   const first = d[0];
   if (first !== "2" && first !== "3" && first !== "4") {
-    return "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4";
+    return t("orderForm.phonePrefix");
   }
   return null;
 }
 
 export function OrderFormModal({ product, open, onClose }: Props) {
-  const { locale, t } = useLanguage();
+  const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
 
@@ -70,15 +74,21 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
-    if (!phoneLocal.trim()) return "رقم الهاتف مطلوب";
-    return validateMauritaniaLocalPhone(phoneLocal);
-  }, [phoneLocal, touched.phone, busy]);
+    if (!phoneLocal.trim()) return t("orderForm.phoneRequired");
+    const d = onlyDigits(phoneLocal);
+    if (d.length !== 8) return t("orderForm.phoneLength");
+    const first = d[0];
+    if (first !== "2" && first !== "3" && first !== "4") {
+      return t("orderForm.phonePrefix");
+    }
+    return null;
+  }, [phoneLocal, touched.phone, busy, t]);
 
   const nameError = useMemo(() => {
     if (!touched.name && !busy) return null;
-    if (!name.trim()) return "الاسم مطلوب";
+    if (!name.trim()) return t("orderForm.nameRequired");
     return null;
-  }, [name, touched.name, busy]);
+  }, [name, touched.name, busy, t]);
 
   function reset() {
     setName("");
@@ -95,17 +105,18 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
     const n = name.trim();
     const local = onlyDigits(phoneLocal.trim());
-    const phoneErr = validateMauritaniaLocalPhone(local);
+    const phoneErr = validateMauritaniaLocalPhone(local, t);
     if (!n) return;
     if (phoneErr) return;
 
     submitLockRef.current = true;
     setBusy(true);
     try {
-      // Same funnel session id as InitiateCheckout — shared verbatim with CAPI via meta_event_id.
+      // Funnel session id for InitiateCheckout pairing — stored on the order for tracing.
+      // Lead uses a separate order-scoped event_id (`lead_{orderId}`).
       const generatedMetaEventId = ensureMetaFunnelSession(product.id);
       if (!generatedMetaEventId) {
-        throw new Error("تعذر إعداد جلسة التتبع — يرجى تحديث الصفحة والمحاولة مرة أخرى");
+        throw new Error(t("orderForm.sessionError"));
       }
       const phoneE164 = `+222${local}`;
       const leadValue =
@@ -141,11 +152,11 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           }
         | { error?: string };
       if (!res.ok) {
-        throw new Error("error" in json ? json.error ?? "تعذر إرسال الطلب" : "تعذر إرسال الطلب");
+        throw new Error("error" in json ? json.error ?? t("orderForm.submitFailed") : t("orderForm.submitFailed"));
       }
 
       if (!("success" in json) || !json.order_id) {
-        throw new Error("تعذر إرسال الطلب");
+        throw new Error(t("orderForm.submitFailed"));
       }
 
       const leadEventId = resolveLeadEventId({
@@ -160,8 +171,21 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         });
       }
 
-      // Queue Lead for order-success — Pixel first, then CAPI with same funnel event_id.
+      // Queue Lead for order-success — Pixel + CAPI share lead_{orderId} (not the IC funnel id).
       queueMetaPendingLead({
+        value: leadValue,
+        currency: "MRU",
+        eventId: leadEventId,
+        orderId: json.order_id,
+        productId: product.id,
+        productName: copy.name,
+        phone: phoneE164,
+        customerName: n,
+      });
+
+      // Fire browser Lead on the product landing so the Pixel records the shopper page URL.
+      // Order-success still runs CAPI with the same lead_{orderId} (browser is deduped).
+      await trackLead({
         value: leadValue,
         currency: "MRU",
         eventId: leadEventId,
@@ -184,7 +208,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       await unregisterLegacyRootSerwist();
       router.push(`/order-success?${qs.toString()}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "حدث خطأ غير متوقع");
+      toast.error(e instanceof Error ? e.message : t("orderForm.submitError"));
       submitLockRef.current = false;
       setBusy(false);
     }
@@ -192,17 +216,14 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   if (!open) return null;
 
-  const isFr = locale === "fr";
-  const title = isFr ? "Finaliser la commande" : "إتمام الطلب";
-  const nameLabel = isFr ? "Nom complet" : "الاسم الكامل";
-  const closeLabel = isFr ? "Fermer" : "إغلاق";
-  const submitLabel = isFr ? "Commander maintenant" : "اطلب الآن";
-  const submittingLabel = isFr ? "Envoi en cours..." : "جارٍ الإرسال...";
-  const codNote = isFr
-    ? "Paiement à la livraison — vous payez à la réception"
-    : "الدفع عند الاستلام — تدفع عند وصول الطلب";
-  const priceLabel = isFr ? "Total à payer" : "المبلغ الإجمالي";
-  const freeShippingLabel = isFr ? "Livraison gratuite incluse" : "يشمل التوصيل المجاني";
+  const title = t("orderForm.title");
+  const nameLabel = t("orderForm.nameLabel");
+  const closeLabel = t("orderForm.close");
+  const submitLabel = t("orderForm.submit");
+  const submittingLabel = t("orderForm.submitting");
+  const codNote = t("orderForm.codNote");
+  const priceLabel = t("orderForm.priceLabel");
+  const freeShippingLabel = t("orderForm.freeShipping");
 
   const originalPrice = Number(product.price);
   const discountedPrice =
@@ -225,8 +246,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
-        dir="ltr"
+        className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] text-start shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
+        dir={dir}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--accent-muted)]/60 bg-[var(--card)] px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
@@ -257,7 +278,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           {/* Price summary */}
           <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
             <span className="text-sm font-semibold text-[var(--muted)]">{priceLabel}</span>
-            <div className="text-right">
+            <div className="text-end">
               <div className="flex items-baseline justify-end gap-2">
                 {hasDiscount ? (
                   <span
@@ -307,11 +328,13 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                 {t("orderForm.whatsappNumber")} <span className="text-red-500">*</span>
               </label>
               <div className="mt-2 flex items-stretch gap-2" dir="ltr">
-                <span className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 text-sm font-mono font-semibold text-[var(--foreground)]">
+                <span
+                  className="inline-flex items-center rounded-xl border border-[var(--accent-muted)] bg-[var(--accent-muted)]/30 px-3 font-mono text-sm font-semibold text-[var(--foreground)]"
+                >
                   +222
                 </span>
                 <input
-                  className="store-input flex-1"
+                  className="store-input min-w-0 flex-1 text-start font-mono tabular-nums"
                   value={phoneLocal}
                   onChange={(e) => {
                     const next = onlyDigits(e.target.value);
@@ -321,21 +344,17 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                   onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                   inputMode="numeric"
                   autoComplete="tel"
-                  placeholder="XXXXXXXX"
+                  placeholder="2XXXXXXX"
                   aria-invalid={Boolean(phoneError)}
                 />
               </div>
               {phoneError ? (
-                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
                   <span aria-hidden>⚠</span>
                   {phoneError}
                 </p>
               ) : (
-                <p className="mt-1.5 text-xs text-[var(--muted)]">
-                  {isFr
-                    ? "Entrez 8 chiffres commençant par 2, 3 ou 4"
-                    : "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4"}
-                </p>
+                <p className="mt-1.5 text-xs text-[var(--muted)]">{t("orderForm.phoneHint")}</p>
               )}
             </div>
 

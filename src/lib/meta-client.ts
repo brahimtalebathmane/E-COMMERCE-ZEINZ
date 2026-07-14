@@ -2,21 +2,19 @@ export const META_EVENT_ID_STORAGE_KEY = "meta_event_id_session";
 export const META_EVENT_PRODUCT_ID_KEY = "meta_event_product_id_session";
 export const META_LAST_ACTIVITY_MS_KEY = "meta_event_last_activity_ms";
 
-/** Product-scoped funnel session keys (sessionStorage — isolated per browser tab). */
+/** Legacy product-scoped funnel session keys (pre-pageload-scoped ids) — cleanup only. */
 export const META_FUNNEL_STORAGE_VERSION = "v2";
-
-const SESSION_TTL_MS = 60 * 60 * 1000;
-const ACTIVITY_TOUCH_THROTTLE_MS = 25_000;
-
-let lastThrottledTouchWrite = 0;
-/** Last product whose funnel session was touched in this tab (module state is tab-local). */
-let activeFunnelProductId: string | null = null;
 
 export function createClientMetaEventId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `${Date.now()}_${crypto.randomUUID()}`;
   }
   return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+/** InitiateCheckout funnel id — `ic_` prefix keeps event_ids unique per event type. */
+export function createMetaFunnelEventId(): string {
+  return `ic_${createClientMetaEventId()}`;
 }
 
 function normalizeFunnelProductId(productId?: string | null): string | null {
@@ -32,15 +30,6 @@ export function metaFunnelActivityStorageKey(productId: string): string {
   return `meta_funnel_${META_FUNNEL_STORAGE_VERSION}:${productId.trim()}:last_activity_ms`;
 }
 
-function getFunnelStorage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
 /** Remove pre-v2 origin-wide localStorage funnel keys (cross-tab leak vector). */
 export function clearLegacyFunnelLocalStorage(): void {
   if (typeof window === "undefined") return;
@@ -54,23 +43,15 @@ export function clearLegacyFunnelLocalStorage(): void {
   }
 }
 
-function startNewFunnelSession(
-  storage: Storage,
-  now: number,
-  productId: string,
-): string {
-  const next = createClientMetaEventId();
-  storage.setItem(metaFunnelEventIdStorageKey(productId), next);
-  storage.setItem(metaFunnelActivityStorageKey(productId), String(now));
-  activeFunnelProductId = productId;
-  return next;
-}
-
 /**
- * Ensures a stable funnel event_id until 60m inactivity or explicit clear.
- * Storage: sessionStorage keyed by productId (tab-isolated; no cross-tab races).
- * Shared by InitiateCheckout and Lead so Meta can stitch the full funnel journey.
+ * Per-pageload InitiateCheckout funnel ids (module state resets on every full page load).
+ * Each fresh landing visit gets a new `ic_…` id so its browser + CAPI InitiateCheckout
+ * pair actually fires; repeat CTA taps within the same pageload reuse the id, and the
+ * pixel session lock plus the server `funnel_meta_dispatches` ledger keep each id
+ * exactly-once on both channels. Lead is untouched (`lead_{orderId}`).
  */
+const funnelEventIdByProduct = new Map<string, string>();
+
 export function ensureMetaFunnelSession(productId?: string | null): string {
   const normalizedProductId = normalizeFunnelProductId(productId);
   if (!normalizedProductId) {
@@ -82,86 +63,39 @@ export function ensureMetaFunnelSession(productId?: string | null): string {
 
   clearLegacyFunnelLocalStorage();
 
-  const now = Date.now();
-  const storage = getFunnelStorage();
-  if (!storage) {
-    activeFunnelProductId = normalizedProductId;
-    return createClientMetaEventId();
-  }
+  const existing = funnelEventIdByProduct.get(normalizedProductId);
+  if (existing) return existing;
 
-  try {
-    const eventKey = metaFunnelEventIdStorageKey(normalizedProductId);
-    const activityKey = metaFunnelActivityStorageKey(normalizedProductId);
-    const existingId = storage.getItem(eventKey)?.trim();
-    const lastRaw = storage.getItem(activityKey);
-    const lastMs = lastRaw ? Number(lastRaw) : 0;
-    const lastOk = Number.isFinite(lastMs) && lastMs > 0;
-    const expired = !lastOk || now - lastMs > SESSION_TTL_MS;
-
-    activeFunnelProductId = normalizedProductId;
-
-    if (existingId && !expired) {
-      storage.setItem(activityKey, String(now));
-      return existingId;
-    }
-
-    return startNewFunnelSession(storage, now, normalizedProductId);
-  } catch {
-    activeFunnelProductId = normalizedProductId;
-    return createClientMetaEventId();
-  }
+  const next = createMetaFunnelEventId();
+  funnelEventIdByProduct.set(normalizedProductId, next);
+  return next;
 }
 
-/** Updates last-activity only (extends TTL). Safe when no session exists yet. */
+/** No-op — funnel ids are per pageload now; kept so existing activity call sites compile. */
 export function touchMetaFunnelActivity(productId?: string | null): void {
-  if (typeof window === "undefined") return;
-  const id = normalizeFunnelProductId(productId) ?? activeFunnelProductId;
-  if (!id) return;
-
-  const storage = getFunnelStorage();
-  if (!storage) return;
-
-  try {
-    const eventKey = metaFunnelEventIdStorageKey(id);
-    if (!storage.getItem(eventKey)?.trim()) return;
-    storage.setItem(metaFunnelActivityStorageKey(id), String(Date.now()));
-    activeFunnelProductId = id;
-  } catch {
-    // ignore
-  }
+  void productId;
 }
 
-/**
- * Throttled activity bump for high-frequency signals (scroll, visibility).
- * Does not change event_id.
- */
+/** No-op — funnel ids are per pageload now; kept so existing activity call sites compile. */
 export function touchMetaFunnelActivityThrottled(productId?: string | null): void {
-  if (typeof window === "undefined") return;
-  const now = Date.now();
-  if (now - lastThrottledTouchWrite < ACTIVITY_TOUCH_THROTTLE_MS) return;
-  lastThrottledTouchWrite = now;
-  touchMetaFunnelActivity(productId);
+  void productId;
 }
 
-/** Clears funnel session state so the next visit can start a new attribution session. */
+/** Clears funnel state (and legacy storage keys) so the next visit starts a new session. */
 export function clearMetaSessionEventId(productId?: string | null): void {
   if (typeof window === "undefined") return;
 
   clearLegacyFunnelLocalStorage();
 
-  const id = normalizeFunnelProductId(productId) ?? activeFunnelProductId;
-  const storage = getFunnelStorage();
-  if (storage && id) {
+  const id = normalizeFunnelProductId(productId);
+  if (id) {
+    funnelEventIdByProduct.delete(id);
     try {
-      storage.removeItem(metaFunnelEventIdStorageKey(id));
-      storage.removeItem(metaFunnelActivityStorageKey(id));
+      sessionStorage.removeItem(metaFunnelEventIdStorageKey(id));
+      sessionStorage.removeItem(metaFunnelActivityStorageKey(id));
     } catch {
       // ignore
     }
-  }
-
-  if (id && activeFunnelProductId === id) {
-    activeFunnelProductId = null;
   }
 
   try {

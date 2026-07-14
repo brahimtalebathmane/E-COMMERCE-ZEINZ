@@ -21,6 +21,8 @@ export const adminAr = {
     logout: "تسجيل الخروج",
     loggingOut: "جاري الخروج…",
     viewStore: "زيارة المتجر",
+    more: "المزيد",
+    moreNav: "المزيد من الخيارات",
   },
   common: {
     loading: "جاري التحميل…",
@@ -90,6 +92,9 @@ export const adminAr = {
     colEmployee: "الموظف",
     colStatus: "الحالة",
     colActions: "إجراءات",
+    permissionLegendTitle: "دليل الصلاحيات",
+    permissionGranted: "مفعّل",
+    permissionDenied: "غير مفعّل",
   },
   products: {
     title: "المنتجات",

@@ -15,3 +15,10 @@ export function getPublicSiteUrlClient(): string {
     process.env.NEXT_PUBLIC_SITE_URL?.trim() || DEFAULT_PUBLIC_SITE_URL;
   return raw.replace(/\/$/, "");
 }
+
+/** Absolute storefront URL for a product landing (`/{slug}`). */
+export function buildPublicProductUrl(slug: string): string | null {
+  const cleaned = slug.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!cleaned) return null;
+  return `${getPublicSiteUrl()}/${cleaned}`;
+}

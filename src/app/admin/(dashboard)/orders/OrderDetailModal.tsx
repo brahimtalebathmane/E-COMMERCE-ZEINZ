@@ -516,7 +516,7 @@ function OrderDetailSections({
                 type="button"
                 disabled={Boolean(metaRetrying) || saving}
                 onClick={() => void onMetaRetry("lead")}
-                className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                className="min-h-[44px] rounded-xl border border-[var(--accent-muted)] px-3 py-2 text-xs font-semibold disabled:opacity-60"
               >
                 {metaRetrying === "lead" ? a.orders.metaRetrying : a.orders.metaRetryLead}
               </button>
@@ -534,7 +534,7 @@ function OrderDetailSections({
                   type="button"
                   disabled={Boolean(metaRetrying) || saving}
                   onClick={() => void onMetaRetry("purchase")}
-                  className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                  className="min-h-[44px] rounded-xl border border-[var(--accent-muted)] px-3 py-2 text-xs font-semibold disabled:opacity-60"
                 >
                   {metaRetrying === "purchase" ? a.orders.metaRetrying : a.orders.metaRetryPurchase}
                 </button>
@@ -553,7 +553,7 @@ function OrderDetailSections({
                   type="button"
                   disabled={Boolean(metaRetrying) || saving}
                   onClick={() => void onMetaRetry("cancel")}
-                  className="min-h-[36px] rounded-lg border border-[var(--accent-muted)] px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
+                  className="min-h-[44px] rounded-xl border border-[var(--accent-muted)] px-3 py-2 text-xs font-semibold disabled:opacity-60"
                 >
                   {metaRetrying === "cancel" ? a.orders.metaRetrying : a.orders.metaRetryCancel}
                 </button>

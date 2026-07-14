@@ -6,6 +6,7 @@ import {
   resolveMetaProductDisplayName,
 } from "@/lib/meta-product-custom-data";
 import { logMetaEventOutcomeFireAndForget } from "@/lib/meta/event-log";
+import { buildPublicProductUrl } from "@/lib/site-url";
 import { sendMetaEvent, resolveClientIpAddress } from "@/utils/meta";
 
 export type InitiateCheckoutDispatchResult =
@@ -157,7 +158,7 @@ export async function dispatchInitiateCheckoutMetaEvent(
 
   const { data: product, error: productErr } = await supabase
     .from("products")
-    .select("id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status")
+    .select("id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug")
     .eq("id", productId)
     .maybeSingle();
 
@@ -201,13 +202,17 @@ export async function dispatchInitiateCheckoutMetaEvent(
   const headers = input.requestHeaders ?? new Headers();
   const clientIp = resolveClientIpAddress(headers);
   const clientUa = headers.get("user-agent")?.trim() || null;
+  const eventSourceUrl =
+    input.eventSourceUrl?.trim() ||
+    buildPublicProductUrl((product.slug as string | null) ?? "") ||
+    null;
 
   try {
     const capi = await sendMetaEvent({
       pixelId,
       eventName: "InitiateCheckout",
       eventId,
-      eventSourceUrl: input.eventSourceUrl,
+      eventSourceUrl,
       requestHeaders: headers,
       eventTimeSec: input.eventTimeSec,
       userData: {

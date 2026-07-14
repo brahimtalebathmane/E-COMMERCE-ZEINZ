@@ -38,8 +38,8 @@ async function fireBrowserLead(payload: MetaPendingLeadPayload): Promise<void> {
 }
 
 /**
- * Hybrid Lead on order-success: browser Pixel fires first, then CAPI with the same
- * `event_id` (`orders.meta_event_id`) so Meta deduplicates into one Lead.
+ * Hybrid Lead on order-success: browser Pixel may already have fired on the product
+ * landing (preferred URL); if not, fire here, then CAPI with the same `lead_{orderId}`.
  */
 export function OrderSuccessMetaLead({
   orderId,
@@ -119,7 +119,7 @@ export function OrderSuccessMetaLead({
 
         if (isMetaLeadCapiComplete(capiResult)) {
           finalizeMetaLeadDispatch(id);
-          console.info("[Meta] Lead hybrid complete (Pixel → CAPI, shared event_id)", {
+          console.info("[Meta] Lead hybrid complete (Pixel → CAPI, shared lead event_id)", {
             orderId: leadPayload.orderId,
             eventId: leadPayload.eventId,
             capi: capiResult.state,

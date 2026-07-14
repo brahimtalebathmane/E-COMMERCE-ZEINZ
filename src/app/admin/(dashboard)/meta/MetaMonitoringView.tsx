@@ -1,10 +1,26 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useMetaRealtime } from "@/hooks/useMetaRealtime";
-import type { MetaEventLogRow, MetaOverviewStats } from "./types";
+import {
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminSelect,
+  metaEventHue,
+} from "@/components/admin/ui";
+import { AdminInput } from "@/components/admin/ui/AdminInput";
+import {
+  AdminTable,
+  AdminTableBody,
+  AdminTableHead,
+  AdminTableRow,
+  AdminTd,
+  AdminTh,
+} from "@/components/admin/ui/AdminTable";
+import type { MetaEventLogRow } from "./types";
 
 const PAGE_SIZE = 50;
 
@@ -22,23 +38,25 @@ function formatTime(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? "—" : TIME_FORMATTER.format(date);
 }
 
-function stateBadgeClass(state: string): string {
-  if (state === "success") return "bg-emerald-100 text-emerald-800";
-  if (state === "failed") return "bg-red-100 text-red-800";
-  return "bg-amber-100 text-amber-800";
+function stateLabel(state: string): string {
+  if (state === "failed") return a.meta.stateFailed;
+  if (state === "skipped") return a.meta.stateSkipped;
+  return a.meta.stateSuccess;
+}
+
+function eventTypeLabel(eventType: string): string {
+  return a.meta.eventTypes[eventType as keyof typeof a.meta.eventTypes] ?? eventType;
 }
 
 type Props = {
   initialRows: MetaEventLogRow[];
   initialTotal: number;
-  overview: MetaOverviewStats;
   initialOrderFilter?: string;
 };
 
 export function MetaMonitoringView({
   initialRows,
   initialTotal,
-  overview,
   initialOrderFilter = "",
 }: Props) {
   const [rows, setRows] = useState(initialRows);
@@ -48,11 +66,6 @@ export function MetaMonitoringView({
   const [eventType, setEventType] = useState("all");
   const [state, setState] = useState("all");
   const [search, setSearch] = useState(initialOrderFilter);
-  const [healthStatus, setHealthStatus] = useState<{
-    loading: boolean;
-    ok: boolean | null;
-    message: string | null;
-  }>({ loading: false, ok: null, message: null });
 
   const { highlightedIds } = useMetaRealtime({ setRows, setTotal });
 
@@ -98,100 +111,15 @@ export function MetaMonitoringView({
     void fetchPage(nextPage);
   };
 
-  const checkHealth = async () => {
-    setHealthStatus({ loading: true, ok: null, message: null });
-    try {
-      const res = await fetch("/api/meta/health");
-      const json = (await res.json()) as {
-        ok?: boolean;
-        error?: string | null;
-        hints?: string[];
-      };
-      setHealthStatus({
-        loading: false,
-        ok: Boolean(json.ok),
-        message: json.error ?? json.hints?.[0] ?? (json.ok ? a.meta.healthOk : a.meta.healthFail),
-      });
-    } catch {
-      setHealthStatus({
-        loading: false,
-        ok: false,
-        message: a.meta.healthFetchError,
-      });
-    }
-  };
-
-  const dispatchEventTypes = useMemo(
-    () => ["lead", "purchase", "cancelled_lead", "initiate_checkout"],
-    [],
-  );
-
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
-        <h2 className="text-lg font-semibold">{a.meta.overviewTitle}</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">{a.meta.overviewSubtitle}</p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg bg-red-50 px-3 py-2">
-            <p className="text-xs text-red-700">{a.meta.failures24h}</p>
-            <p className="text-2xl font-semibold text-red-900">{overview.failures24h}</p>
-          </div>
-          <div className="rounded-lg bg-amber-50 px-3 py-2">
-            <p className="text-xs text-amber-700">{a.meta.skips24h}</p>
-            <p className="text-2xl font-semibold text-amber-900">{overview.skips24h}</p>
-          </div>
-          <div className="rounded-lg bg-emerald-50 px-3 py-2">
-            <p className="text-xs text-emerald-700">{a.meta.successes24h}</p>
-            <p className="text-2xl font-semibold text-emerald-900">{overview.successes24h}</p>
-          </div>
-          <div className="rounded-lg bg-orange-50 px-3 py-2">
-            <p className="text-xs text-orange-700">{a.meta.stuckNow}</p>
-            <p className="text-2xl font-semibold text-orange-900">{overview.stuckCount}</p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void checkHealth()}
-            disabled={healthStatus.loading}
-            className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium hover:bg-[var(--background)] disabled:opacity-60"
-          >
-            {healthStatus.loading ? a.meta.checkingHealth : a.meta.checkHealth}
-          </button>
-          {healthStatus.ok != null && (
-            <span
-              className={`text-sm font-medium ${healthStatus.ok ? "text-emerald-700" : "text-red-700"}`}
-            >
-              {healthStatus.message}
-            </span>
-          )}
-        </div>
-
-        <div className="mt-4">
-          <p className="text-sm font-medium">{a.meta.lastSuccessTitle}</p>
-          <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
-            {dispatchEventTypes.map((type) => (
-              <li key={type} className="flex justify-between gap-2 border-b border-[var(--border)] py-1">
-                <span>{a.meta.eventTypes[type as keyof typeof a.meta.eventTypes] ?? type}</span>
-                <span className="text-[var(--muted)]">
-                  {formatTime(overview.lastSuccessByType[type])}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
-        <h2 className="text-lg font-semibold">{a.meta.logTitle}</h2>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <select
+    <AdminCard title={a.meta.logTitle} noPadding>
+      <div className="space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <AdminSelect
+            label={a.meta.filterAllTypes}
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            className="w-full sm:w-auto sm:min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllTypes}</option>
             {Object.entries(a.meta.eventTypes).map(([key, label]) => (
@@ -199,127 +127,185 @@ export function MetaMonitoringView({
                 {label}
               </option>
             ))}
-          </select>
-          <select
+          </AdminSelect>
+          <AdminSelect
+            label={a.meta.filterAllStates}
             value={state}
             onChange={(e) => setState(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            className="w-full sm:w-auto sm:min-w-[10rem]"
           >
             <option value="all">{a.meta.filterAllStates}</option>
             <option value="failed">{a.meta.stateFailed}</option>
             <option value="skipped">{a.meta.stateSkipped}</option>
             <option value="success">{a.meta.stateSuccess}</option>
-          </select>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={a.meta.searchPlaceholder}
-            className="min-w-[12rem] flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={applyFilters}
-            disabled={loading}
-            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
+          </AdminSelect>
+          <div className="min-w-0 flex-1">
+            <AdminInput
+              label={a.meta.searchPlaceholder}
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <AdminButton onClick={applyFilters} disabled={loading} className="w-full sm:w-auto">
             {loading ? a.common.loading : a.meta.applyFilters}
-          </button>
+          </AdminButton>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-right text-[var(--muted)]">
-                <th className="px-2 py-2 font-medium">{a.meta.colTime}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colType}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colState}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colReason}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colOrder}</th>
-                <th className="px-2 py-2 font-medium">{a.meta.colEventId}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-2 py-8 text-center text-[var(--muted)]">
-                    {a.meta.noRows}
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`border-b border-[var(--border)] transition-colors ${
-                      highlightedIds.has(row.id) ? "bg-sky-50" : ""
-                    }`}
-                  >
-                    <td className="px-2 py-2 whitespace-nowrap">{formatTime(row.created_at)}</td>
-                    <td className="px-2 py-2">
-                      {a.meta.eventTypes[row.event_type as keyof typeof a.meta.eventTypes] ??
-                        row.event_type}
-                    </td>
-                    <td className="px-2 py-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeClass(row.state)}`}
+        {rows.length === 0 ? (
+          <p className="px-1 py-10 text-center text-sm text-[var(--muted)]">{a.meta.noRows}</p>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {rows.map((row) => (
+                <article
+                  key={row.id}
+                  className={`rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4 ${
+                    highlightedIds.has(row.id) ? "bg-sky-400/10 ring-1 ring-sky-400/30" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">
+                        {eventTypeLabel(row.event_type)}
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-[var(--muted)]" dir="ltr">
+                        {formatTime(row.created_at)}
+                      </p>
+                    </div>
+                    <AdminBadge hue={metaEventHue(row.state)} size="sm">
+                      {stateLabel(row.state)}
+                    </AdminBadge>
+                  </div>
+                  {row.reason ? (
+                    <p className="mt-3 break-words text-sm leading-relaxed text-[var(--muted)]">
+                      {row.reason}
+                    </p>
+                  ) : null}
+                  <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.meta.colOrder}
+                      </dt>
+                      <dd className="mt-0.5">
+                        {row.order_id ? (
+                          <Link
+                            href={`/admin/orders?highlight=${row.order_id}`}
+                            className="inline-flex min-h-[44px] items-center font-mono text-[var(--accent)] underline-offset-2 hover:underline"
+                            dir="ltr"
+                          >
+                            {row.order_id.slice(0, 8)}…
+                          </Link>
+                        ) : (
+                          <span className="text-[var(--muted)]">—</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        {a.meta.colEventId}
+                      </dt>
+                      <dd
+                        className="mt-0.5 truncate font-mono text-[var(--foreground)]"
+                        title={row.event_id ?? undefined}
+                        dir="ltr"
                       >
-                        {row.state === "failed"
-                          ? a.meta.stateFailed
-                          : row.state === "skipped"
-                            ? a.meta.stateSkipped
-                            : a.meta.stateSuccess}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 max-w-[10rem] truncate" title={row.reason ?? ""}>
-                      {row.reason ?? "—"}
-                    </td>
-                    <td className="px-2 py-2">
-                      {row.order_id ? (
-                        <Link
-                          href={`/admin/orders?highlight=${row.order_id}`}
-                          className="text-[var(--primary)] hover:underline"
-                        >
-                          {row.order_id.slice(0, 8)}…
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-2 py-2 max-w-[8rem] truncate font-mono text-xs" title={row.event_id}>
-                      {row.event_id.slice(0, 16)}
-                      {row.event_id.length > 16 ? "…" : ""}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        {row.event_id ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-          <span className="text-[var(--muted)]">
-            {a.meta.pageInfo(page, totalPages, total)}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
+            {/* Desktop table */}
+            <div className="hidden md:block">
+              <AdminTable>
+                <AdminTableHead>
+                  <tr>
+                    <AdminTh>{a.meta.colTime}</AdminTh>
+                    <AdminTh>{a.meta.colType}</AdminTh>
+                    <AdminTh>{a.meta.colState}</AdminTh>
+                    <AdminTh>{a.meta.colReason}</AdminTh>
+                    <AdminTh>{a.meta.colOrder}</AdminTh>
+                    <AdminTh>{a.meta.colEventId}</AdminTh>
+                  </tr>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {rows.map((row) => (
+                    <AdminTableRow
+                      key={row.id}
+                      highlight={highlightedIds.has(row.id)}
+                      className={highlightedIds.has(row.id) ? "!bg-sky-400/10" : ""}
+                    >
+                      <AdminTd mono className="whitespace-nowrap">
+                        <span dir="ltr">{formatTime(row.created_at)}</span>
+                      </AdminTd>
+                      <AdminTd>{eventTypeLabel(row.event_type)}</AdminTd>
+                      <AdminTd>
+                        <AdminBadge hue={metaEventHue(row.state)} size="sm">
+                          {stateLabel(row.state)}
+                        </AdminBadge>
+                      </AdminTd>
+                      <AdminTd className="max-w-[10rem] truncate">
+                        <span title={row.reason ?? ""}>{row.reason ?? "—"}</span>
+                      </AdminTd>
+                      <AdminTd>
+                        {row.order_id ? (
+                          <Link
+                            href={`/admin/orders?highlight=${row.order_id}`}
+                            className="font-mono text-xs text-[var(--accent)] hover:underline"
+                            dir="ltr"
+                          >
+                            {row.order_id.slice(0, 8)}…
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </AdminTd>
+                      <AdminTd className="max-w-[8rem] truncate font-mono text-xs">
+                        <span title={row.event_id ?? ""} dir="ltr">
+                          {row.event_id ? (
+                            <>
+                              {row.event_id.slice(0, 16)}
+                              {row.event_id.length > 16 ? "…" : ""}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                      </AdminTd>
+                    </AdminTableRow>
+                  ))}
+                </AdminTableBody>
+              </AdminTable>
+            </div>
+          </>
+        )}
+
+        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[var(--muted)]">{a.meta.pageInfo(page, totalPages, total)}</span>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <AdminButton
+              variant="ghost"
               disabled={page <= 1 || loading}
               onClick={() => goToPage(page - 1)}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-50"
+              className="w-full sm:w-auto"
             >
               {a.meta.prevPage}
-            </button>
-            <button
-              type="button"
+            </AdminButton>
+            <AdminButton
+              variant="ghost"
               disabled={page >= totalPages || loading}
               onClick={() => goToPage(page + 1)}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 disabled:opacity-50"
+              className="w-full sm:w-auto"
             >
               {a.meta.nextPage}
-            </button>
+            </AdminButton>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </AdminCard>
   );
 }

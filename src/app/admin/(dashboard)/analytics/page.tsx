@@ -20,13 +20,5 @@ export default async function AdminAnalyticsPage() {
     );
   }
 
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold">{a.analytics.title}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-        {a.analytics.subtitle}
-      </p>
-      <AnalyticsView data={result.data} />
-    </div>
-  );
+  return <AnalyticsView data={result.data} />;
 }

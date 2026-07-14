@@ -200,3 +200,53 @@ export async function countCurrentlyStuck(supabase: SupabaseClient): Promise<num
   const events = await findStuckMetaEvents(supabase);
   return events.length;
 }
+
+/**
+ * Fast stuck-order count for the admin dashboard (3 indexed queries).
+ *
+ * Uses `updated_at` for the purchase/cancel cutoffs — same column
+ * `findStuckMetaEvents` uses via `resolveStatusSince` — since migration 043
+ * added it with a trigger that keeps it current on every order update, so it
+ * reflects the actual status-change time rather than the order's original
+ * creation time (an old order confirmed moments ago shouldn't look "stuck").
+ * The pending-lead cutoff still uses `created_at`, matching the lead check in
+ * `findStuckMetaEvents`, since a lead's clock starts at order creation.
+ */
+export async function countStuckEventsFast(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const purchaseCutoff = minutesAgoIso(PURCHASE_STUCK_MINUTES);
+  const cancelCutoff = minutesAgoIso(CANCEL_STUCK_MINUTES);
+  const leadCutoff = minutesAgoIso(LEAD_STUCK_MINUTES);
+
+  const [purchaseRes, cancelRes, leadRes] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["confirmed", "shipped"])
+      .eq("meta_purchase_sent", false)
+      .is("deleted_at", null)
+      .lte("updated_at", purchaseCutoff),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "cancelled")
+      .eq("meta_cancel_sent", false)
+      .is("deleted_at", null)
+      .lte("updated_at", cancelCutoff),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .eq("meta_lead_sent", false)
+      .not("meta_event_id", "is", null)
+      .is("deleted_at", null)
+      .lte("created_at", leadCutoff),
+  ]);
+
+  if (purchaseRes.error) throw new Error(purchaseRes.error.message);
+  if (cancelRes.error) throw new Error(cancelRes.error.message);
+  if (leadRes.error) throw new Error(leadRes.error.message);
+
+  return (purchaseRes.count ?? 0) + (cancelRes.count ?? 0) + (leadRes.count ?? 0);
+}

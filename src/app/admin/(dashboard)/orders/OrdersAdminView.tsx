@@ -10,6 +10,12 @@ import { deleteOrderAction, deleteOrdersAction } from "./actions";
 import { useHasPermission } from "@/components/admin/AdminPermissionsContext";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
+import {
+  AdminBadge,
+  AdminMetricPill,
+  AdminPageHeader,
+  orderStatusHue,
+} from "@/components/admin/ui";
 
 /**
  * How many rows are committed to the DOM on first paint, plus the size of each
@@ -132,24 +138,6 @@ function tallyStatus(counts: ReturnType<typeof emptyCounts>, status: OrderStatus
   }
 }
 
-function statusBadgeClass(status: OrderStatus): string {
-  switch (status) {
-    case "pending":
-      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
-    case "confirmed":
-      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300";
-    case "shipped":
-      return "border-sky-400/30 bg-sky-400/10 text-sky-300";
-    case "cancelled":
-      return "border-red-400/30 bg-red-400/10 text-red-300";
-    case "requires_human_intervention":
-      return "border-violet-400/30 bg-violet-400/10 text-violet-300";
-    case "internal_return":
-      return "border-slate-400/30 bg-slate-400/10 text-slate-300";
-    default:
-      return "border-[var(--admin-border-strong)] bg-white/[0.04] text-[var(--foreground)]";
-  }
-}
 
 const OrderStatusBadge = memo(function OrderStatusBadge({
   status,
@@ -157,19 +145,17 @@ const OrderStatusBadge = memo(function OrderStatusBadge({
   status: OrderStatus;
 }) {
   return (
-    <span
-      className={`inline-flex max-w-full truncate rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(status)}`}
-    >
+    <AdminBadge hue={orderStatusHue(status)}>
       {a.orderStatus[status]}
-    </span>
+    </AdminBadge>
   );
 });
 
 const NewOrderBadge = memo(function NewOrderBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--accent)]">
+    <AdminBadge hue="emerald" size="sm">
       {a.orders.newOrderBadge}
-    </span>
+    </AdminBadge>
   );
 });
 
@@ -189,22 +175,15 @@ function MetricPill({
     | "attention"
     | "return";
 }) {
-  const toneClass = {
-    pending: "border-amber-400/30 bg-amber-400/10 text-amber-300",
-    confirmed: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
-    shipped: "border-sky-400/30 bg-sky-400/10 text-sky-300",
-    cancelled: "border-red-400/30 bg-red-400/10 text-red-300",
-    attention: "border-violet-400/30 bg-violet-400/10 text-violet-300",
-    return: "border-slate-400/30 bg-slate-400/10 text-slate-300",
-  }[tone];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${toneClass}`}
-    >
-      <span className="tabular-nums">{value}</span>
-      <span className="font-medium opacity-80">{label}</span>
-    </span>
-  );
+  const hueMap = {
+    pending: "amber",
+    confirmed: "emerald",
+    shipped: "sky",
+    cancelled: "red",
+    attention: "violet",
+    return: "slate",
+  } as const;
+  return <AdminMetricPill label={label} value={value} hue={hueMap[tone]} />;
 }
 
 type Props = {
@@ -425,29 +404,33 @@ export function OrdersAdminView({ orders }: Props) {
 
   return (
     <>
+      <AdminPageHeader title={a.orders.title} subtitle={a.orders.subtitle} />
+
       {rows.length === 0 ? (
-        <p className="mt-8 text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
+        <p className="text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
       ) : null}
 
       {/* Product isolation tabs */}
       {rows.length > 0 ? (
-      <div className="mt-8">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-          <ProductTabButton
-            label={a.orders.allProducts}
-            count={rows.length}
-            active={selectedProduct === ALL_PRODUCTS}
-            onClick={() => setSelectedProduct(ALL_PRODUCTS)}
-          />
-          {productTabs.map((tab) => (
+      <div className="mt-6">
+        <div className="admin-scroll-fade relative -mx-1">
+          <div className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ProductTabButton
-              key={tab.id}
-              label={tab.name}
-              count={tab.total}
-              active={selectedProduct === tab.id}
-              onClick={() => setSelectedProduct(tab.id)}
+              label={a.orders.allProducts}
+              count={rows.length}
+              active={selectedProduct === ALL_PRODUCTS}
+              onClick={() => setSelectedProduct(ALL_PRODUCTS)}
             />
-          ))}
+            {productTabs.map((tab) => (
+              <ProductTabButton
+                key={tab.id}
+                label={tab.name}
+                count={tab.total}
+                active={selectedProduct === tab.id}
+                onClick={() => setSelectedProduct(tab.id)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Aggregate metrics for the active segment */}
@@ -529,7 +512,7 @@ export function OrdersAdminView({ orders }: Props) {
       <div className="mt-6 space-y-8">
         {dayGroups.map((group) => (
           <section key={group.key}>
-            <div className="sticky top-0 z-10 -mx-1 mb-3 flex items-center gap-3 bg-[var(--background)]/95 px-1 py-1 backdrop-blur">
+            <div className="sticky top-14 z-10 -mx-1 mb-3 flex items-center gap-3 bg-[var(--background)]/95 px-1 py-1 backdrop-blur">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
                 <h2 className="text-sm font-semibold text-[var(--foreground)]">
@@ -733,19 +716,21 @@ const OrderSelectCheckbox = memo(
     }
   >(function OrderSelectCheckbox({ checked, disabled, ariaLabel, onChange }, ref) {
     return (
-      <input
-        ref={ref}
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        className="h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--admin-border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          e.stopPropagation();
-          onChange();
-        }}
-      />
+      <label className="inline-flex min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer items-center justify-center">
+        <input
+          ref={ref}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          className="h-5 w-5 shrink-0 cursor-pointer rounded border-[var(--admin-border-strong)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            e.stopPropagation();
+            onChange();
+          }}
+        />
+      </label>
     );
   }),
 );
@@ -766,17 +751,15 @@ function ProductTabButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-sm"
-          : "border-[var(--accent-muted)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent-muted)]/20"
-      }`}
+      className={`admin-tab-pill ${active ? "" : ""}`}
+      data-active={active}
     >
       <span className="max-w-[14rem] truncate">{label}</span>
       <span
         className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-          active ? "bg-white/20 text-white" : "bg-[var(--accent-muted)]/40 text-[var(--muted)]"
+          active ? "bg-white/20 text-white" : "bg-white/[0.06] text-[var(--muted)]"
         }`}
+        dir="ltr"
       >
         {count}
       </span>

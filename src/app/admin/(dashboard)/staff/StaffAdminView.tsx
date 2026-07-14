@@ -14,6 +14,7 @@ import {
   type StaffRow,
 } from "./actions";
 import { CheckIcon, PlusIcon } from "@/components/admin/AdminIcons";
+import { AdminBadge, AdminButton, AdminPageHeader } from "@/components/admin/ui";
 
 type Props = {
   initialStaff: StaffRow[];
@@ -84,23 +85,43 @@ function PermissionToggles({
   );
 }
 
+function PermissionLegend() {
+  return (
+    <div className="rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+        {a.staff.permissionLegendTitle}
+      </p>
+      <ul className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        {PERMISSION_CATALOG.map((perm) => (
+          <li key={perm.key} className="text-xs leading-snug text-[var(--foreground)]">
+            <span className="font-semibold text-[var(--accent)]">{perm.shortAr}</span>
+            <span className="text-[var(--muted)]"> — </span>
+            <span>{perm.labelAr}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {PERMISSION_CATALOG.map((perm) => {
         const granted = permissions.includes(perm.key);
         return (
           <span
             key={perm.key}
             title={perm.labelAr}
-            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border text-[10px] ${
+            aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
+            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${
               granted
                 ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/40"
+                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/50"
             }`}
           >
-            {granted ? <CheckIcon size={14} /> : "—"}
+            {granted ? <CheckIcon size={12} /> : null}
+            {perm.shortAr}
           </span>
         );
       })}
@@ -230,19 +251,19 @@ export function StaffAdminView({ initialStaff }: Props) {
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">{a.staff.title}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{a.staff.subtitle}</p>
-        </div>
-        <button type="button" onClick={openCreate} className="admin-btn-primary inline-flex items-center justify-center gap-2">
-          <PlusIcon size={18} />
-          {a.staff.addEmployee}
-        </button>
-      </div>
+      <AdminPageHeader
+        title={a.staff.title}
+        subtitle={a.staff.subtitle}
+        actions={
+          <AdminButton onClick={openCreate}>
+            <PlusIcon size={18} />
+            {a.staff.addEmployee}
+          </AdminButton>
+        }
+      />
 
       {error ? (
-        <p className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-300" role="alert">
+        <p className="admin-alert-error" role="alert">
           {error}
         </p>
       ) : null}
@@ -251,15 +272,27 @@ export function StaffAdminView({ initialStaff }: Props) {
         <p className="admin-card mt-6 p-6 text-sm text-[var(--muted)]">{a.staff.empty}</p>
       ) : (
         <>
+          <div className="mt-6">
+            <PermissionLegend />
+          </div>
+
           {/* Desktop / laptop: dense data table with at-a-glance permission matrix */}
-          <div className="admin-card mt-6 hidden overflow-hidden lg:block">
+          <div className="admin-card mt-4 hidden overflow-hidden lg:block">
             <table className="w-full table-fixed border-collapse text-sm">
               <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="w-[26%] px-4 py-3 text-start">{a.staff.colEmployee}</th>
                   {PERMISSION_CATALOG.map((perm) => (
-                    <th key={perm.key} className="px-1 py-3 text-center" title={perm.labelAr}>
-                      {perm.shortAr}
+                    <th
+                      key={perm.key}
+                      className="px-1 py-3 text-center"
+                      title={perm.descriptionAr}
+                      scope="col"
+                    >
+                      <span className="block">{perm.shortAr}</span>
+                      <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-[var(--muted)]">
+                        {perm.labelAr}
+                      </span>
                     </th>
                   ))}
                   <th className="w-[10%] px-3 py-3 text-center">{a.staff.colStatus}</th>
@@ -284,7 +317,7 @@ export function StaffAdminView({ initialStaff }: Props) {
                       return (
                         <td key={perm.key} className="px-1 py-3 text-center align-middle">
                           <span
-                            aria-label={`${perm.labelAr}: ${granted ? "مفعّل" : "غير مفعّل"}`}
+                            aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${
                               granted
                                 ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
@@ -297,15 +330,9 @@ export function StaffAdminView({ initialStaff }: Props) {
                       );
                     })}
                     <td className="px-3 py-3 text-center align-middle">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                          row.isActive
-                            ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                            : "border border-red-400/30 bg-red-400/10 text-red-300"
-                        }`}
-                      >
+                      <AdminBadge hue={row.isActive ? "emerald" : "red"} size="sm">
                         {row.isActive ? a.staff.active : a.staff.suspended}
-                      </span>
+                      </AdminBadge>
                     </td>
                     <td className="px-4 py-3 align-middle">
                       <div className="flex items-center justify-end gap-2">
@@ -333,7 +360,7 @@ export function StaffAdminView({ initialStaff }: Props) {
           </div>
 
           {/* Mobile / tablet: touch-friendly stackable cards */}
-          <div className="mt-6 space-y-3 lg:hidden">
+          <div className="mt-4 space-y-3 lg:hidden">
             {staff.map((row) => (
               <article key={row.id} className="admin-card p-4 sm:p-5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -357,6 +384,9 @@ export function StaffAdminView({ initialStaff }: Props) {
                 ) : null}
 
                 <div className="mt-3">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    {a.staff.permissionsTitle}
+                  </p>
                   {row.permissions.length === 0 ? (
                     <span className="text-xs text-[var(--muted)]">{a.staff.noPermissions}</span>
                   ) : (
@@ -365,21 +395,23 @@ export function StaffAdminView({ initialStaff }: Props) {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
+                  <AdminButton
                     type="button"
+                    variant="sm-ghost"
                     onClick={() => openEdit(row)}
-                    className="min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] px-4 py-2 text-sm font-semibold transition hover:bg-white/[0.06]"
+                    className="w-full"
                   >
                     {a.staff.edit}
-                  </button>
-                  <button
+                  </AdminButton>
+                  <AdminButton
                     type="button"
+                    variant="sm-ghost"
                     disabled={pending}
                     onClick={() => onToggleSuspend(row)}
-                    className="min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] px-4 py-2 text-sm font-semibold transition hover:bg-white/[0.06] disabled:opacity-60"
+                    className="w-full"
                   >
                     {row.isActive ? a.staff.suspend : a.staff.reactivate}
-                  </button>
+                  </AdminButton>
                 </div>
               </article>
             ))}

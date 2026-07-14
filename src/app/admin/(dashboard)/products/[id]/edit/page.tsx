@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { AdminLinkButton, AdminPageHeader } from "@/components/admin/ui";
 import { createClient } from "@/lib/supabase/server";
 import { mapProductRow } from "@/lib/products";
 import { adminAr as a } from "@/locales/admin-ar";
@@ -24,22 +24,17 @@ export default async function EditProductPage({ params }: PageProps) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{a.editProduct.title}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {product.test_status === "under_research" ? (
-            <Link
-              href={`/admin/products/${id}/landing-setup`}
-              className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--accent-muted)]/20"
-            >
+      <AdminPageHeader
+        title={a.editProduct.title}
+        actions={
+          product.test_status === "under_research" ? (
+            <AdminLinkButton href={`/admin/products/${id}/landing-setup`} variant="ghost">
               {a.pipeline.setupLanding}
-            </Link>
-          ) : null}
-        </div>
-      </div>
-      <div className="mt-8">
-        <ProductForm mode="edit" initial={product} />
-      </div>
+            </AdminLinkButton>
+          ) : null
+        }
+      />
+      <ProductForm mode="edit" initial={product} />
     </div>
   );
 }
