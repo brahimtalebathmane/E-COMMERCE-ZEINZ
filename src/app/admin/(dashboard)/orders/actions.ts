@@ -272,10 +272,14 @@ export async function listActiveProductsForManualSaleAction(): Promise<ManualSal
 
 export type ManualSaleLineInput = { productId: string; quantity: number };
 
+export type ManualSaleChannel = "phone_call" | "other";
+
 export type ManualSaleInput = {
   customerName: string;
   phone: string;
   initialStatus: Extract<OrderStatus, "pending" | "confirmed">;
+  /** How the sale happened — drives Meta CAPI `action_source` for the Purchase event. */
+  channel: ManualSaleChannel;
   lines: ManualSaleLineInput[];
 };
 
@@ -321,6 +325,8 @@ export async function createManualSaleAction(
     }
     const phone = phoneParsed.data;
 
+    const channel: ManualSaleChannel = input.channel === "other" ? "other" : "phone_call";
+
     const lines = (input.lines ?? []).filter((line) => line.productId);
     if (lines.length === 0) {
       return { ok: false, error: "أضف منتجاً واحداً على الأقل." };
@@ -364,6 +370,7 @@ export async function createManualSaleAction(
         status: "pending" as const,
         source: "manual" as const,
         manual_sale_group_id: manualSaleGroupId,
+        manual_sale_channel: channel,
         form_data: {},
       };
     });

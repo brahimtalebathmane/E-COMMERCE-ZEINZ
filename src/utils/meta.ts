@@ -33,6 +33,8 @@ type MetaCustomData = {
   contents?: Array<{ id: string; quantity: number }>;
 };
 
+export type MetaActionSource = "website" | "phone_call" | "other";
+
 type SendMetaEventParams = {
   pixelId: string | null | undefined;
   eventName: "Lead" | "InitiateCheckout" | "Purchase" | "CancelledLead";
@@ -44,6 +46,13 @@ type SendMetaEventParams = {
   customData?: MetaCustomData;
   /** Unix seconds — align CAPI `event_time` with a paired browser Pixel fire. */
   eventTimeSec?: number;
+  /**
+   * Meta CAPI `action_source`. Defaults to "website" (every browser-originated
+   * event). Admin-entered offline sales pass "phone_call" or "other" instead —
+   * `event_source_url` is only meaningful for "website" and is omitted otherwise,
+   * per Meta's CAPI parameter guidance.
+   */
+  actionSource?: MetaActionSource;
 };
 
 function normalizeEnv(value: string | undefined): string {
@@ -343,15 +352,17 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
   });
 
   const customDataForCapi = params.customData || undefined;
+  const actionSource: MetaActionSource = params.actionSource ?? "website";
 
   const dataRowBase: Record<string, unknown> = {
     event_name: params.eventName,
     event_id: params.eventId,
-    action_source: "website",
+    action_source: actionSource,
     user_data: buildUserData(params.userData),
     custom_data: customDataForCapi,
   };
-  if (resolvedSourceUrl) {
+  // event_source_url only makes sense for a browser-originated ("website") event.
+  if (actionSource === "website" && resolvedSourceUrl) {
     dataRowBase.event_source_url = resolvedSourceUrl;
   }
 

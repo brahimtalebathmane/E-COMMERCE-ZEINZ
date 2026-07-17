@@ -9,6 +9,7 @@ import { AdminButton, AdminInput, AdminSelect } from "@/components/admin/ui";
 import {
   createManualSaleAction,
   listActiveProductsForManualSaleAction,
+  type ManualSaleChannel,
   type ManualSaleProductOption,
 } from "./actions";
 
@@ -41,6 +42,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
   const [phone, setPhone] = useState("");
   const [lines, setLines] = useState<DraftLine[]>(() => [newLine()]);
   const [initialStatus, setInitialStatus] = useState<"pending" | "confirmed">("confirmed");
+  const [channel, setChannel] = useState<ManualSaleChannel>("phone_call");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
     setPhone("");
     setLines([newLine()]);
     setInitialStatus("confirmed");
+    setChannel("phone_call");
     setLoadError(false);
     setProducts(null);
     listActiveProductsForManualSaleAction()
@@ -119,6 +122,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
         customerName,
         phone,
         initialStatus,
+        channel,
         lines: preparedLines,
       });
       if (!res.ok) {
@@ -248,19 +252,35 @@ export function ManualSaleForm({ open, onClose }: Props) {
             </span>
           </div>
 
-          <div>
-            <span className="text-xs font-semibold text-[var(--foreground)]">
-              {a.manualSale.initialStatus}
-            </span>
-            <select
-              disabled={submitting}
-              value={initialStatus}
-              onChange={(e) => setInitialStatus(e.target.value as "pending" | "confirmed")}
-              className="admin-input mt-1.5"
-            >
-              <option value="confirmed">{a.manualSale.statusConfirmed}</option>
-              <option value="pending">{a.manualSale.statusPending}</option>
-            </select>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <span className="text-xs font-semibold text-[var(--foreground)]">
+                {a.manualSale.channel}
+              </span>
+              <select
+                disabled={submitting}
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as ManualSaleChannel)}
+                className="admin-input mt-1.5"
+              >
+                <option value="phone_call">{a.manualSale.channelPhoneCall}</option>
+                <option value="other">{a.manualSale.channelOther}</option>
+              </select>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-[var(--foreground)]">
+                {a.manualSale.initialStatus}
+              </span>
+              <select
+                disabled={submitting}
+                value={initialStatus}
+                onChange={(e) => setInitialStatus(e.target.value as "pending" | "confirmed")}
+                className="admin-input mt-1.5"
+              >
+                <option value="confirmed">{a.manualSale.statusConfirmed}</option>
+                <option value="pending">{a.manualSale.statusPending}</option>
+              </select>
+            </div>
           </div>
         </div>
 

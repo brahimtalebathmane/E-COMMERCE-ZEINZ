@@ -12,7 +12,7 @@ import {
   mapDispatchEventTypeToLog,
 } from "@/lib/meta/event-log";
 import { buildPublicProductUrl } from "@/lib/site-url";
-import { sendMetaEvent } from "@/utils/meta";
+import { sendMetaEvent, type MetaActionSource } from "@/utils/meta";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -149,6 +149,17 @@ type MetaClientContext = {
   eventTimeSec?: number;
 };
 
+/**
+ * Meta CAPI `action_source`: "website" for real storefront checkouts, or the
+ * admin-chosen channel ("phone_call" / "other") for a manual offline sale.
+ * Falls back to "phone_call" if a manual order somehow has no channel stored.
+ */
+function resolveOrderActionSource(order: Record<string, unknown>): MetaActionSource {
+  if (order.source !== "manual") return "website";
+  const channel = order.manual_sale_channel as MetaActionSource | null;
+  return channel === "other" ? "other" : "phone_call";
+}
+
 /** Shopper session fields captured at order creation — never substituted from admin retries. */
 function orderCustomerSessionContext(order: Record<string, unknown>): {
   clientIpAddress: string | null;
@@ -188,7 +199,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, quantity, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
+      "id, product_id, status, customer_name, phone, total_price, currency, quantity, source, manual_sale_channel, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -409,6 +420,7 @@ export async function dispatchMetaEvent(
       eventSourceUrl: storedSourceUrl,
       requestHeaders: headers,
       eventTimeSec: eventType === "lead" ? context.eventTimeSec : undefined,
+      actionSource: resolveOrderActionSource(order),
       userData: {
         name: order.customer_name as string | null,
         phone: order.phone as string | null,
