@@ -15,7 +15,12 @@ import {
 } from "recharts";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatPrice } from "@/lib/currency";
-import { buildProductProfitRows, netProfit, sumProfitTotals } from "@/lib/analytics/profit";
+import {
+  buildProductProfitRows,
+  netProfit,
+  sumProfitTotals,
+  type ProfitTotals,
+} from "@/lib/analytics/profit";
 import {
   bucketWeekly,
   computeLossStreak,
@@ -24,7 +29,7 @@ import {
   type DailyProductProfit,
   type Granularity,
 } from "@/lib/analytics/daily-profit";
-import { AdminKpiTile, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
+import { AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 import type { AnalyticsData, LinkedCampaign } from "./data";
 import {
   linkAdCampaignAction,
@@ -115,7 +120,14 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
     <div className="space-y-8">
       <AdminPageHeader title={a.analytics.title} subtitle={a.analytics.subtitle} />
 
-      <SummaryBar data={data} />
+      <section className="admin-card p-4 sm:p-5">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">
+          {a.analytics.sectionOverviewTitle}
+        </h2>
+        <div className="mt-4">
+          <SummaryBar data={data} />
+        </div>
+      </section>
 
       <CombinedTrendChart
         rows={combinedBucketed}
@@ -123,44 +135,12 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
         onGranularityChange={setGranularity}
       />
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <AdminKpiTile
-          label={a.analytics.kpiGrossRevenue}
-          hint={a.analytics.kpiGrossRevenueHint}
-          value={formatPrice(totals.grossRevenue)}
-          accent={KPI_ACCENT.revenue}
-        />
-        <AdminKpiTile
-          label={a.analytics.kpiCogs}
-          hint={a.analytics.kpiCogsHint}
-          value={formatPrice(totals.cogs)}
-          accent="var(--status-amber)"
-        />
-        <AdminKpiTile
-          label={a.analytics.kpiDeliveryCost}
-          hint={a.analytics.kpiDeliveryCostHint}
-          value={formatPrice(totals.deliveryCost)}
-          accent="var(--status-violet)"
-        />
-        <AdminKpiTile
-          label={a.analytics.kpiAdSpend}
-          hint={a.analytics.kpiAdSpendHint}
-          value={formatPrice(totals.adSpend)}
-          accent={KPI_ACCENT.orders}
-        />
-        <AdminKpiTile
-          label={a.analytics.kpiNetProfit}
-          hint={a.analytics.kpiNetProfitHint}
-          value={formatPrice(totals.netProfit)}
-          accent={KPI_ACCENT.profit}
-          emphasize
-        />
+      <div>
+        <FinancialSummaryCard totals={totals} />
+        {!data.adSpendFreshness.refreshed && data.adSpendFreshness.lastError ? (
+          <p className="mt-2 text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
+        ) : null}
       </div>
-
-      {!data.adSpendFreshness.refreshed && data.adSpendFreshness.lastError ? (
-        <p className="text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
-      ) : null}
 
       {/* Per-product breakdown */}
       <section className="admin-card overflow-hidden">
@@ -320,6 +300,102 @@ function SummaryTile({
           {sub}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Mini P&L: gross revenue at top, costs subtracted as subordinate rows, then
+ * net profit set off by a divider — so the relationship between the numbers
+ * (what's subtracted from what) is visible at a glance instead of five
+ * equal-weight tiles that all read the same regardless of role.
+ */
+function FinancialSummaryCard({ totals }: { totals: ProfitTotals }) {
+  return (
+    <section className="admin-card p-4 sm:p-5">
+      <h2 className="text-base font-semibold text-[var(--foreground)]">
+        {a.analytics.sectionFinancialTitle}
+      </h2>
+      <div className="mt-4 space-y-1">
+        <PnlRow
+          label={a.analytics.kpiGrossRevenue}
+          hint={a.analytics.kpiGrossRevenueHint}
+          value={totals.grossRevenue}
+          accent={KPI_ACCENT.revenue}
+        />
+        <PnlRow
+          label={a.analytics.kpiCogs}
+          hint={a.analytics.kpiCogsHint}
+          value={totals.cogs}
+          sign="−"
+        />
+        <PnlRow
+          label={a.analytics.kpiDeliveryCost}
+          hint={a.analytics.kpiDeliveryCostHint}
+          value={totals.deliveryCost}
+          sign="−"
+        />
+        <PnlRow
+          label={a.analytics.kpiAdSpend}
+          hint={a.analytics.kpiAdSpendHint}
+          value={totals.adSpend}
+          sign="−"
+        />
+        <div className="my-2 border-t border-[var(--admin-border)]" />
+        <PnlRow
+          label={a.analytics.kpiNetProfit}
+          hint={a.analytics.kpiNetProfitHint}
+          value={totals.netProfit}
+          sign="="
+          emphasize
+        />
+      </div>
+    </section>
+  );
+}
+
+function PnlRow({
+  label,
+  hint,
+  value,
+  sign = "",
+  accent,
+  emphasize,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  sign?: "" | "−" | "=";
+  accent?: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className={`flex items-start justify-between gap-3 ${emphasize ? "pt-1" : "py-1.5"}`}>
+      <div className="min-w-0">
+        <p
+          className={`flex items-center gap-2 ${emphasize ? "text-sm font-bold text-[var(--foreground)]" : "text-sm font-medium text-[var(--foreground)]"}`}
+        >
+          {accent ? (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: accent }}
+              aria-hidden
+            />
+          ) : (
+            <span className="w-2 shrink-0 text-center text-[var(--muted)]" aria-hidden>
+              {sign}
+            </span>
+          )}
+          <span>{label}</span>
+        </p>
+        {hint ? <p className="mt-0.5 text-[11px] text-[var(--muted)]">{hint}</p> : null}
+      </div>
+      <span
+        className={`shrink-0 tabular-nums ${emphasize ? "text-lg font-bold" : "text-sm font-semibold"} ${emphasize ? profitToneClass(value) : "text-[var(--foreground)]"}`}
+        dir="ltr"
+      >
+        {formatPrice(value)}
+      </span>
     </div>
   );
 }

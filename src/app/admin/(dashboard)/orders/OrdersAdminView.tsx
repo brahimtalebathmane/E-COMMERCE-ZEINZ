@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
+import { ManualSaleForm } from "./ManualSaleForm";
 import { adminAr as a } from "@/locales/admin-ar";
 import {
   deleteOrderAction,
@@ -179,6 +180,14 @@ const NewOrderBadge = memo(function NewOrderBadge() {
   return (
     <AdminBadge hue="emerald" size="sm">
       {a.orders.newOrderBadge}
+    </AdminBadge>
+  );
+});
+
+const ManualSaleBadge = memo(function ManualSaleBadge() {
+  return (
+    <AdminBadge hue="violet" size="sm">
+      {a.orders.manualSaleBadge}
     </AdminBadge>
   );
 });
@@ -377,6 +386,8 @@ type Props = {
 export function OrdersAdminView({ orders }: Props) {
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
+  const canCreateManualSale = useHasPermission(PERMISSIONS.confirm_orders);
+  const [manualSaleOpen, setManualSaleOpen] = useState(false);
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -540,6 +551,8 @@ export function OrdersAdminView({ orders }: Props) {
         | "meta_cancel_sent"
         | "delivery_cost"
         | "note"
+        | "quantity"
+        | "total_price"
       >
     >,
   ) {
@@ -692,7 +705,17 @@ export function OrdersAdminView({ orders }: Props) {
 
   return (
     <>
-      <AdminPageHeader title={a.orders.title} subtitle={a.orders.subtitle} />
+      <AdminPageHeader
+        title={a.orders.title}
+        subtitle={a.orders.subtitle}
+        actions={
+          canCreateManualSale ? (
+            <AdminButton type="button" onClick={() => setManualSaleOpen(true)}>
+              {a.orders.addManualSale}
+            </AdminButton>
+          ) : null
+        }
+      />
 
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
@@ -921,7 +944,10 @@ export function OrdersAdminView({ orders }: Props) {
                       <NoteEditor order={o} onSaved={(note) => patchOrder(o.id, { note })} />
 
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                        <OrderStatusBadge status={o.status} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <OrderStatusBadge status={o.status} />
+                          {o.source === "manual" ? <ManualSaleBadge /> : null}
+                        </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-medium text-[var(--accent)]">
                             {a.orders.tapForDetails}
@@ -1003,6 +1029,7 @@ export function OrdersAdminView({ orders }: Props) {
                       <td className="px-4 py-4 align-middle">
                         <div className="flex flex-wrap items-center gap-2">
                           <OrderStatusBadge status={o.status} />
+                          {o.source === "manual" ? <ManualSaleBadge /> : null}
                           <span className="text-xs text-[var(--muted)]">
                             {a.orders.openDetailHint}
                           </span>
@@ -1055,6 +1082,8 @@ export function OrdersAdminView({ orders }: Props) {
         onDeleted={(orderId) => requestDelete(orderId)}
         onOrderUpdated={patchOrder}
       />
+
+      <ManualSaleForm open={manualSaleOpen} onClose={() => setManualSaleOpen(false)} />
 
       <ConfirmDialog
         open={confirmState !== null}

@@ -25,6 +25,8 @@ export type ProfitOrderInput = {
   created_at: string;
   /** Per-order delivery/shipping cost (MRU). Null/undefined treated as 0. */
   delivery_cost?: number | null;
+  /** Units of product_id in this order line. Null/undefined treated as 1. */
+  quantity?: number | null;
 };
 
 /**
@@ -166,9 +168,10 @@ export function buildProductProfitRows(params: {
     if (isRevenueStatus(order.status)) {
       const price = Number(order.total_price);
       const delivery = Number(order.delivery_cost);
-      row.unitsSold += 1;
+      const quantity = Number(order.quantity) > 0 ? Number(order.quantity) : 1;
+      row.unitsSold += quantity;
       row.grossRevenue += Number.isFinite(price) ? price : 0;
-      row.cogs += row.costPrice;
+      row.cogs += row.costPrice * quantity;
       row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
     }
   }

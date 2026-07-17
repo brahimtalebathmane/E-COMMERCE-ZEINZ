@@ -188,7 +188,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
+      "id, product_id, status, customer_name, phone, total_price, currency, quantity, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -302,6 +302,7 @@ export async function dispatchMetaEvent(
       name_fr: product.name_fr as string | null,
       default_language: product.default_language as "ar" | "fr" | null,
     }),
+    quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
   });
 
   if (!productCustomData?.content_ids?.length) {
@@ -365,6 +366,7 @@ export async function dispatchMetaEvent(
           ...orderMoney,
           productId: order.product_id as string,
           productName: productCustomData.content_name,
+          quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
         })
       : productCustomData;
 

@@ -34,7 +34,7 @@ export default async function AdminHomePage() {
       ? supabase
           .from("orders")
           .select(
-            "id, product_id, phone, total_price, status, created_at, delivery_cost, products(name_ar)",
+            "id, product_id, phone, total_price, status, created_at, delivery_cost, quantity, products(name_ar)",
           )
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
@@ -95,6 +95,7 @@ export default async function AdminHomePage() {
       status: o.status as OrderStatus,
       created_at: String(o.created_at ?? ""),
       delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
+      quantity: o.quantity == null ? 1 : Number(o.quantity),
     }));
     const totals = sumProfitTotals(
       buildProductProfitRows({ orders: profitOrders, products, adSpendByProduct }),

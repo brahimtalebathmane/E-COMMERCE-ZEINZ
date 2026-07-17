@@ -97,10 +97,11 @@ export function buildDailyProfitSeries(params: {
     const costPrice = meta?.costPrice != null && Number.isFinite(meta.costPrice) ? meta.costPrice : 0;
     const price = Number(order.total_price);
     const delivery = Number(order.delivery_cost);
+    const quantity = Number(order.quantity) > 0 ? Number(order.quantity) : 1;
 
     const row = ensure(order.product_id, date);
     row.revenue += Number.isFinite(price) ? price : 0;
-    row.cogs += costPrice;
+    row.cogs += costPrice * quantity;
     row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
   }
 

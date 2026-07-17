@@ -9,6 +9,8 @@ export type AdminOrderProduct = {
   media_url: string;
 } | null;
 
+export type OrderSource = "storefront" | "manual";
+
 export type AdminOrderRow = {
   id: string;
   product_id: string;
@@ -21,6 +23,9 @@ export type AdminOrderRow = {
   created_at: string;
   delivery_cost: number | null;
   note: string | null;
+  quantity: number;
+  source: OrderSource;
+  manual_sale_group_id: string | null;
   meta_lead_sent: boolean | null;
   meta_purchase_sent: boolean | null;
   meta_cancel_sent: boolean | null;

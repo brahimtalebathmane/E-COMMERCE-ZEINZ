@@ -15,7 +15,8 @@ import {
   canEditOrderDetails,
   PERMISSIONS,
 } from "@/lib/auth/permissions";
-import { updateOrderDeliveryCostAction } from "./actions";
+import { updateOrderDeliveryCostAction, updateOrderQuantityAction } from "./actions";
+import { AdminBadge } from "@/components/admin/ui";
 
 type Props = {
   order: AdminOrderRow | null;
@@ -27,7 +28,13 @@ type Props = {
     patch: Partial<
       Pick<
         AdminOrderRow,
-        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+        | "status"
+        | "meta_lead_sent"
+        | "meta_purchase_sent"
+        | "meta_cancel_sent"
+        | "delivery_cost"
+        | "quantity"
+        | "total_price"
       >
     >,
   ) => void;
@@ -286,9 +293,16 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-4 sm:px-5">
           <div className="min-w-0">
-            <h2 id={titleId} className="text-lg font-semibold leading-snug">
-              {a.orders.orderDetailTitle}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id={titleId} className="text-lg font-semibold leading-snug">
+                {a.orders.orderDetailTitle}
+              </h2>
+              {order.source === "manual" ? (
+                <AdminBadge hue="violet" size="sm">
+                  {a.orders.manualSaleBadge}
+                </AdminBadge>
+              ) : null}
+            </div>
             <p className="mt-1 break-all font-mono text-[11px] text-[var(--muted)]" dir="ltr">
               {order.id}
             </p>
@@ -364,7 +378,13 @@ type SectionsProps = {
     patch: Partial<
       Pick<
         AdminOrderRow,
-        "status" | "meta_lead_sent" | "meta_purchase_sent" | "meta_cancel_sent" | "delivery_cost"
+        | "status"
+        | "meta_lead_sent"
+        | "meta_purchase_sent"
+        | "meta_cancel_sent"
+        | "delivery_cost"
+        | "quantity"
+        | "total_price"
       >
     >,
   ) => void;
@@ -447,6 +467,9 @@ function OrderDetailSections({
           <div className="mt-3 space-y-2 text-sm">
             <p className="font-medium text-[var(--foreground)]">
               {product?.name_ar ?? a.orders.productUnknown}
+              {order.quantity > 1 ? (
+                <span className="text-[var(--muted)]"> × {order.quantity}</span>
+              ) : null}
             </p>
             {product?.slug ? (
               <p className="text-[var(--muted)]">
@@ -604,6 +627,14 @@ function OrderDetailSections({
         </div>
         <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
           <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {a.orders.quantity}
+          </label>
+          <div className="mt-2">
+            <QuantityEditor order={order} onOrderUpdated={onOrderUpdated} />
+          </div>
+        </div>
+        <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
             {a.orders.deliveryCost}
           </label>
           <div className="mt-2">
@@ -624,6 +655,76 @@ function OrderDetailSections({
         ) : null}
       </section>
       ) : null}
+    </div>
+  );
+}
+
+function QuantityEditor({
+  order,
+  onOrderUpdated,
+}: {
+  order: AdminOrderRow;
+  onOrderUpdated: SectionsProps["onOrderUpdated"];
+}) {
+  const [draft, setDraft] = useState(() => String(order.quantity ?? 1));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(order.quantity ?? 1));
+  }, [order.id, order.quantity]);
+
+  async function onSave() {
+    if (saving) return;
+    const quantity = Number(draft.trim());
+    if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity < 1) {
+      toast.error(a.orders.quantityInvalid);
+      return;
+    }
+    if (quantity === order.quantity) return;
+
+    setSaving(true);
+    try {
+      const res = await updateOrderQuantityAction(order.id, quantity);
+      if (!res.ok) {
+        throw new Error(res.error);
+      }
+      setDraft(String(res.quantity));
+      onOrderUpdated(order.id, { quantity: res.quantity, total_price: res.totalPrice });
+      toast.success(a.orders.quantitySaved);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.orders.quantitySaveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        min={1}
+        step={1}
+        inputMode="numeric"
+        dir="ltr"
+        disabled={saving}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void onSave();
+          }
+        }}
+        className="min-h-[40px] w-full max-w-[10rem] rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void onSave()}
+        className="min-h-[40px] shrink-0 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {saving ? a.analytics.saving : a.analytics.save}
+      </button>
     </div>
   );
 }

@@ -186,6 +186,12 @@ export type OrderRow = {
   status: OrderStatus;
   completion_token: string;
   created_at: string;
+  /** Units of product_id in this order line; total_price already reflects unit_price * quantity. */
+  quantity: number;
+  /** storefront = customer checkout (default); manual = admin-entered offline sale. */
+  source: "storefront" | "manual";
+  /** Shared id across order rows created from the same admin manual-sale submission. */
+  manual_sale_group_id: string | null;
   /** Set when soft-deleted from admin; row is retained for auditing. */
   deleted_at?: string | null;
 };

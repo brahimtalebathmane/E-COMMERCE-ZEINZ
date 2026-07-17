@@ -297,6 +297,41 @@ export const adminAr = {
     bulkStatusResult: "تم تحديث {okCount} طلباً بنجاح، وتعذر تحديث {failCount}.",
     bulkStatusAllOk: "تم تحديث {okCount} طلباً بنجاح.",
     bulkStatusFailed: "تعذر تغيير الحالة",
+
+    // Quantity (editable per order line)
+    quantity: "الكمية",
+    quantitySaved: "تم تحديث الكمية",
+    quantitySaveFailed: "تعذر تحديث الكمية",
+    quantityInvalid: "الكمية يجب أن تكون رقماً صحيحاً 1 أو أكثر",
+
+    // Manual (offline) sales
+    manualSaleBadge: "بيع يدوي",
+    addManualSale: "+ بيع يدوي",
+  },
+  manualSale: {
+    title: "بيع يدوي جديد",
+    subtitle: "سجّل عملية بيع تمت شخصياً أو عبر الهاتف.",
+    customerName: "اسم العميل",
+    customerNamePlaceholder: "اسم العميل",
+    phone: "رقم الهاتف / واتساب",
+    phonePlaceholder: "2xxxxxxx",
+    product: "المنتج",
+    selectProduct: "اختر منتجاً",
+    quantity: "الكمية",
+    addLine: "+ إضافة منتج آخر",
+    removeLine: "إزالة",
+    total: "الإجمالي",
+    initialStatus: "حالة الطلب عند الإنشاء",
+    statusPending: "قيد الانتظار",
+    statusConfirmed: "مؤكد (سيُرسل حدث Purchase إلى Meta فوراً)",
+    submit: "تسجيل البيع",
+    submitting: "جاري التسجيل…",
+    success: "تم تسجيل البيع بنجاح",
+    cancel: "إلغاء",
+    close: "إغلاق",
+    loadProductsFailed: "تعذر تحميل قائمة المنتجات",
+    noProducts: "لا توجد منتجات متاحة",
+    metaPurchaseFailedNote: "تنبيه: تعذر إرسال حدث Purchase إلى Meta لبعض العناصر.",
   },
   orderStatus: {
     pending: "قيد الانتظار",
@@ -310,6 +345,10 @@ export const adminAr = {
     title: "تحليلات الأرباح",
     subtitle:
       "صافي الربح = الإيرادات (الطلبات المشحونة فقط) − تكلفة البضاعة − تكلفة التوصيل − الإنفاق الإعلاني (مباشر من Meta). المرتجعات الداخلية تُستثنى تلقائياً من الإيرادات والتكلفة.",
+
+    sectionOverviewTitle: "نظرة عامة",
+    sectionFinancialTitle: "الملخص المالي",
+
     kpiGrossRevenue: "إجمالي الإيرادات",
     kpiGrossRevenueHint: "مجموع أسعار بيع الطلبات المشحونة فقط",
     kpiCogs: "تكلفة البضاعة (COGS)",

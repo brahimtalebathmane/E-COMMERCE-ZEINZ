@@ -13,6 +13,9 @@ export const ADMIN_ORDER_SELECT = `
   created_at,
   delivery_cost,
   note,
+  quantity,
+  source,
+  manual_sale_group_id,
   meta_lead_sent,
   meta_purchase_sent,
   meta_cancel_sent,
@@ -38,6 +41,7 @@ export type RealtimeOrderPayload = {
   created_at: string;
   delivery_cost?: number | null;
   note?: string | null;
+  quantity?: number;
   deleted_at?: string | null;
 };
 
@@ -58,6 +62,7 @@ export function mergeOrderPayload(
     created_at: payload.created_at,
     delivery_cost: payload.delivery_cost ?? existing.delivery_cost,
     note: payload.note ?? existing.note,
+    quantity: payload.quantity ?? existing.quantity,
   };
 }
 

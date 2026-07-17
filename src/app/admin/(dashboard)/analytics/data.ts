@@ -77,7 +77,7 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
   const [ordersRes, adSpendDailyRes] = await Promise.all([
     cookieClient
       .from("orders")
-      .select("product_id, total_price, status, created_at, delivery_cost"),
+      .select("product_id, total_price, status, created_at, delivery_cost, quantity"),
     cookieClient.from("product_ad_spend_daily").select("product_id, date, amount, fetched_at"),
   ]);
 
@@ -125,6 +125,7 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
     status: o.status as OrderStatus,
     created_at: String(o.created_at ?? ""),
     delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
+    quantity: o.quantity == null ? 1 : Number(o.quantity),
   }));
 
   const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
