@@ -371,7 +371,6 @@ export async function createManualSaleAction(
         source: "manual" as const,
         manual_sale_group_id: manualSaleGroupId,
         manual_sale_channel: channel,
-        form_data: {},
       };
     });
 
