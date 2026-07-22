@@ -266,7 +266,12 @@ async function getQrDataUrl() {
   });
 }
 
-async function sendWhatsAppMessage(phone, message) {
+/**
+ * @param {string} phone
+ * @param {string} message
+ * @param {{ imageUrl?: string }} [options] - imageUrl: send as an image with `message` as caption.
+ */
+async function sendWhatsAppMessage(phone, message, options = {}) {
   await connectWhatsApp();
   if (!sock || connectionStatus !== "connected") {
     throw new Error("WhatsApp not connected");
@@ -274,10 +279,15 @@ async function sendWhatsAppMessage(phone, message) {
   const jid = jidFromPhone(phone);
   if (!jid) throw new Error("Invalid phone number");
   const text = String(message || "").trim();
-  if (!text) throw new Error("Empty message");
+  const imageUrl = options.imageUrl ? String(options.imageUrl).trim() : "";
+  if (!text && !imageUrl) throw new Error("Empty message");
 
-  await sock.sendMessage(jid, { text });
-  logEvent(`Message sent to ${normalizeE164(phone)}`);
+  if (imageUrl) {
+    await sock.sendMessage(jid, { image: { url: imageUrl }, caption: text || undefined });
+  } else {
+    await sock.sendMessage(jid, { text });
+  }
+  logEvent(`Message sent to ${normalizeE164(phone)}${imageUrl ? " (with image)" : ""}`);
 }
 
 function sleep(ms) {

@@ -43,6 +43,22 @@ Netlify frontend/proxy:
 - Set `WHATSAPP_SERVICE_URL` on Netlify to the **HTTPS base URL** of the always-on WhatsApp service (no trailing slash). **Required** for post-order WhatsApp messages (`/api/whatsapp/send` → `/api/send-whatsapp`) and for OTP proxy routes.
 - The site can call `POST /api/send-otp` and `POST /api/verify-otp` on Netlify; those routes forward to the WhatsApp service.
 
+### Marketing Messages (WhatsApp broadcast campaigns)
+
+Reuses the same always-on WhatsApp service above — one Baileys connection, one linked device, no second service to deploy. Adds two new routes to it (`POST /send`, `GET /status`) plus a background worker (`marketing-worker.js`) that paces sends 20–45s apart with a hard 80/day cap and an auto-pause after 3 consecutive failures (all hardcoded, not configurable from the admin UI or env).
+
+WhatsApp service (Railway) — new variables:
+
+- `SENDER_API_KEY` — shared secret checked on `POST /send` (`x-api-key` header). Generate any long random string.
+- `SUPABASE_SERVICE_ROLE_KEY` — needed here too now, so `marketing-worker.js` can read/write `marketing_campaigns`/`marketing_campaign_recipients`. (Already required above for OTP — same value.)
+
+Netlify (Next.js admin) — new variables:
+
+- `MARKETING_SENDER_URL` — optional; falls back to `WHATSAPP_SERVICE_URL` if unset (same Railway deployment).
+- `MARKETING_SENDER_API_KEY` — must match the Railway service's `SENDER_API_KEY`.
+
+Both marketing env vars are server-only — never exposed to the browser. The admin panel never calls the Railway service directly; it goes through `GET /api/admin/marketing-sender-status` on the Next.js side.
+
 ## Local development
 
 ```bash
@@ -69,6 +85,7 @@ Use [Railway](https://railway.app) for the **always-on** WhatsApp (Baileys) + OT
    - `WHATSAPP_AUTH_DIR=/var/data/baileys_auth` (must be **under** the volume mount)
    - `OTP_HASH_SECRET` (any long random string)
    - `OTP_TTL_SECONDS=300` (optional)
+   - `SENDER_API_KEY` (any long random string — protects the marketing `/send` route)
 
 After deploy, open the **public URL** Railway assigns to the service. The WhatsApp dashboard is at `/`. With a volume + `WHATSAPP_AUTH_DIR` under that mount, the session can survive redeploys (until logout or invalid session).
 

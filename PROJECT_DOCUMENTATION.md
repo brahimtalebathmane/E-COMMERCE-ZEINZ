@@ -625,6 +625,17 @@ This entire flow is **safe to retry** at every step: the order row is keyed by i
 
 > The current codebase does not actually call `/api/send-otp` from the order form (the form goes straight to `/api/orders`). The OTP routes exist so they can be wired into any flow that needs phone verification (e.g. account creation, sensitive operations) — they are first-class building blocks.
 
+### 9.5 Marketing Messages sender (`/send`, `/status`, `marketing-worker.js`)
+
+Added to this same `server.js`/`whatsapp.js` process rather than a second standalone service — deliberately, to avoid a second WhatsApp linked device on the number that also handles order confirmations above. The existing routes in §9.3 are untouched.
+
+| Method | Path | Auth | Behavior |
+|---|---|---|---|
+| `POST` | `/send` | `x-api-key` header, checked against `SENDER_API_KEY` (timing-safe compare) | Body `{ phone, text, imageUrl? }`. Sends an image+caption if `imageUrl` is set, else plain text. Always returns `200 { success, error? }` — never throws, never crashes the process. |
+| `GET`  | `/status` | none | `{ connected: boolean }`, derived from the existing `getStatus()`. |
+
+**`marketing-worker.js`** — background loop started at boot alongside the Baileys connection. Hardcoded, not configurable from the DB/UI/env: 20–45s random delay between sends, 80/day global cap (all campaigns combined), auto-pause after 3 consecutive failures on a campaign. Stateless polling (no in-memory cursor) against `marketing_campaigns`/`marketing_campaign_recipients` — safe to restart mid-campaign. Needs its own Supabase service-role credentials (`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`) since this process previously never talked to Supabase. No-ops with a log line if those aren't set.
+
 ---
 
 ## 10. Admin dashboard

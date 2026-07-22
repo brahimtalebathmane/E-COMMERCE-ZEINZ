@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requirePermissionApi } from "@/lib/auth/api-access";
+import { requireAnyPermissionApi } from "@/lib/auth/api-access";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 const FIVE_YEARS_SECONDS = 60 * 60 * 24 * 365 * 5;
@@ -28,7 +28,7 @@ function extensionFromMime(mimeType: string): string {
 }
 
 export async function POST(request: Request) {
-  const admin = await requirePermissionApi(PERMISSIONS.manage_products);
+  const admin = await requireAnyPermissionApi([PERMISSIONS.manage_products, PERMISSIONS.marketing_messages]);
   if (!admin.ok) {
     return admin.response;
   }

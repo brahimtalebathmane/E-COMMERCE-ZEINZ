@@ -1,4 +1,5 @@
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const next = require("next");
 
@@ -12,6 +13,7 @@ const {
   normalizeE164,
   getConnectionInfo,
 } = require("./whatsapp");
+const { startMarketingWorker } = require("./marketing-worker");
 
 const dev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT || 3000);
@@ -94,6 +96,65 @@ async function main() {
       return res.status(500).json({ error: msg });
     }
   });
+
+  /**
+   * Marketing Messages sender API — separate from /api/send-whatsapp above
+   * (which stays untouched; it's the order-confirmation path). Protected by
+   * a shared secret so only the Next.js admin's server-side worker/actions
+   * can reach it, not the public internet.
+   */
+  function timingSafeEqualStr(a, b) {
+    const bufA = Buffer.from(String(a || ""));
+    const bufB = Buffer.from(String(b || ""));
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  }
+
+  function requireSenderApiKey(req, res, next_) {
+    const expected = process.env.SENDER_API_KEY || "";
+    const provided = req.get("x-api-key") || "";
+    if (!expected || !timingSafeEqualStr(provided, expected)) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    next_();
+  }
+
+  server.post("/send", requireSenderApiKey, async (req, res) => {
+    try {
+      const phone = req.body?.phone;
+      const text = req.body?.text;
+      const imageUrl = req.body?.imageUrl || undefined;
+      const phoneE164 = normalizeE164(phone);
+      if (!phoneE164) return res.json({ success: false, error: "phone required" });
+      if (typeof text !== "string" || (!text.trim() && !imageUrl)) {
+        return res.json({ success: false, error: "text required" });
+      }
+
+      const connected = await waitForConnected(45000);
+      if (!connected) {
+        return res.json({ success: false, error: "WhatsApp not connected" });
+      }
+
+      await sendWhatsAppMessage(phoneE164, text.trim(), { imageUrl });
+      return res.json({ success: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // eslint-disable-next-line no-console
+      console.error("[POST /send] send failed", msg);
+      // Never throw — the marketing worker relies on this always resolving
+      // with a JSON body, never crashing the process on a single bad send.
+      return res.json({ success: false, error: msg });
+    }
+  });
+
+  server.get("/status", (_req, res) => {
+    res.json({ connected: getStatus() === "connected" });
+  });
+
+  // Background campaign sender — lives inside this same always-on process so
+  // it shares the one Baileys connection above rather than opening a second
+  // linked device. No-ops if Supabase env vars aren't configured.
+  startMarketingWorker({ sendWhatsAppMessage });
 
   // Delegate all other routes (including existing Next.js APIs) to Next.
   server.all(/.*/, (req, res) => handle(req, res));

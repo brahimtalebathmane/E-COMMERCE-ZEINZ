@@ -15,6 +15,7 @@ import {
 import {
   AnalyticsIcon,
   AssistantIcon,
+  ChatIcon,
   CloseIcon,
   HomeIcon,
   LogoutIcon,
@@ -62,6 +63,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
     icon: MetaIcon,
     permission: PERMISSIONS.view_meta_monitoring,
   },
+  {
+    href: "/admin/marketing",
+    label: a.nav.marketing,
+    icon: ChatIcon,
+    permission: PERMISSIONS.marketing_messages,
+  },
 ];
 
 /** Primary bottom-bar slots (most-used routes). */
@@ -102,6 +109,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (assistantOpen) return true;
     if (pathname.startsWith("/admin/staff")) return true;
     if (pathname.startsWith("/admin/meta")) return true;
+    if (pathname.startsWith("/admin/marketing")) return true;
     return navItems.some(
       (item) => !PRIMARY_BOTTOM_HREFS.has(item.href) && isActive(pathname, item),
     );
