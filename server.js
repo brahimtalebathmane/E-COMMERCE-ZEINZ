@@ -154,7 +154,15 @@ async function main() {
   // Background campaign sender — lives inside this same always-on process so
   // it shares the one Baileys connection above rather than opening a second
   // linked device. No-ops if Supabase env vars aren't configured.
-  startMarketingWorker({ sendWhatsAppMessage });
+  startMarketingWorker({
+    sendWhatsAppMessage: async (phone, text, opts) => {
+      const connected = await waitForConnected(45000);
+      if (!connected) {
+        throw new Error("WhatsApp not connected");
+      }
+      return sendWhatsAppMessage(phone, text, opts);
+    },
+  });
 
   // Delegate all other routes (including existing Next.js APIs) to Next.
   server.all(/.*/, (req, res) => handle(req, res));
