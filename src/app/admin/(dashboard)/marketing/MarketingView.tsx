@@ -107,6 +107,7 @@ export function MarketingView({ data }: { data: MarketingData }) {
 
   const [audienceType, setAudienceType] = useState<AudienceType>("all_confirmed");
   const [productId, setProductId] = useState<string>("");
+  const [excludeProductIds, setExcludeProductIds] = useState<string[]>([]);
 
   const [previewRecipients, setPreviewRecipients] = useState<RecipientRow[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -147,7 +148,7 @@ export function MarketingView({ data }: { data: MarketingData }) {
     }
     let cancelled = false;
     setPreviewLoading(true);
-    previewAudienceAction(audienceType, audienceType === "by_product" ? productId : null)
+    previewAudienceAction(audienceType, audienceType === "by_product" ? productId : null, excludeProductIds)
       .then((res) => {
         if (cancelled) return;
         if (res.ok) setPreviewRecipients(res.recipients);
@@ -162,12 +163,12 @@ export function MarketingView({ data }: { data: MarketingData }) {
     return () => {
       cancelled = true;
     };
-  }, [audienceType, productId]);
+  }, [audienceType, productId, excludeProductIds]);
 
   async function onManualSearch() {
     setManualSearching(true);
     try {
-      const res = await searchCustomersAction(manualSearch);
+      const res = await searchCustomersAction(manualSearch, excludeProductIds);
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -176,6 +177,10 @@ export function MarketingView({ data }: { data: MarketingData }) {
     } finally {
       setManualSearching(false);
     }
+  }
+
+  function toggleExcludeProduct(id: string) {
+    setExcludeProductIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
   function addManualRecipient(recipient: RecipientRow) {
@@ -223,6 +228,7 @@ export function MarketingView({ data }: { data: MarketingData }) {
         imageUrl,
         audienceType,
         productId: audienceType === "by_product" ? productId : null,
+        excludeShippedProductIds: excludeProductIds,
         manualRecipients: audienceType === "manual" ? manualSelected : undefined,
       });
       if (!createRes.ok) {
@@ -240,6 +246,7 @@ export function MarketingView({ data }: { data: MarketingData }) {
       setManualSelected([]);
       setManualSearchResults([]);
       setProductId("");
+      setExcludeProductIds([]);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : a.marketing.sendError);
@@ -420,6 +427,26 @@ export function MarketingView({ data }: { data: MarketingData }) {
               ) : null}
             </div>
           ) : null}
+
+          <div className="rounded-xl border border-[var(--admin-border)] p-3">
+            <p className="text-xs font-semibold text-[var(--foreground)]">{a.marketing.excludeShippedTitle}</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">{a.marketing.excludeShippedHint}</p>
+            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+              {data.products.map((p) => (
+                <li key={p.id}>
+                  <label className="flex items-center gap-2 py-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={excludeProductIds.includes(p.id)}
+                      onChange={() => toggleExcludeProduct(p.id)}
+                      className="h-4 w-4 shrink-0 rounded accent-[var(--accent)]"
+                    />
+                    <span className="truncate">{p.nameAr}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <p className="text-sm font-medium text-[var(--foreground)]">
             {previewLoading

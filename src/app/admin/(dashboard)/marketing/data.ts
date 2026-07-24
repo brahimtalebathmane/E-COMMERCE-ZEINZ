@@ -10,6 +10,7 @@ export type CampaignRow = {
   imageUrl: string | null;
   audienceType: AudienceType;
   productId: string | null;
+  excludeShippedProductIds: string[];
   status: CampaignStatus;
   totalRecipients: number;
   sentCount: number;
@@ -32,7 +33,7 @@ export async function loadMarketingData(cookieClient: SupabaseClient): Promise<L
     cookieClient
       .from("marketing_campaigns")
       .select(
-        "id, message_text, image_url, audience_type, product_id, status, total_recipients, sent_count, failed_count, created_at",
+        "id, message_text, image_url, audience_type, product_id, exclude_shipped_product_ids, status, total_recipients, sent_count, failed_count, created_at",
       )
       .order("created_at", { ascending: false }),
     cookieClient.from("products").select("id, name_ar").is("deleted_at", null).order("name_ar"),
@@ -50,6 +51,7 @@ export async function loadMarketingData(cookieClient: SupabaseClient): Promise<L
         imageUrl: c.image_url,
         audienceType: c.audience_type as AudienceType,
         productId: c.product_id,
+        excludeShippedProductIds: (c.exclude_shipped_product_ids ?? []) as string[],
         status: c.status as CampaignStatus,
         totalRecipients: c.total_recipients,
         sentCount: c.sent_count,
@@ -67,27 +69,54 @@ export type RecipientRow = {
 };
 
 /**
+ * Phones that have a shipped order (current status='shipped', OR ever
+ * reached 'shipped' per order_status_history — a shipped order later marked
+ * internal_return still means the customer received the product, which is
+ * exactly the pricing-conflict scenario this exists to avoid) for any of the
+ * given products. Empty input returns an empty set (no exclusion).
+ */
+export async function shippedPhonesForProducts(productIds: string[]): Promise<Set<string>> {
+  if (productIds.length === 0) return new Set();
+  const service = createServiceClient();
+  const { data, error } = await service.rpc("marketing_shipped_phones", { p_product_ids: productIds });
+  if (error) throw new Error(error.message);
+  return new Set((data ?? []).map((row: { phone: string }) => row.phone));
+}
+
+function excludeByPhone(recipients: RecipientRow[], excluded: Set<string>): RecipientRow[] {
+  if (excluded.size === 0) return recipients;
+  return recipients.filter((r) => !excluded.has(r.phone));
+}
+
+/**
  * Audience for the two automatic modes, via the marketing_audience_confirmed
  * RPC (service-role client — order_status_history has RLS enabled with zero
- * policies, so it can only be read via service role).
+ * policies, so it can only be read via service role). Applies the
+ * already-shipped exclusion filter after the base audience is resolved.
  */
 export async function resolveAudience(
   audienceType: "all_confirmed" | "by_product",
   productId?: string | null,
+  excludeShippedProductIds: string[] = [],
 ): Promise<RecipientRow[]> {
   const service = createServiceClient();
   const { data, error } = await service.rpc("marketing_audience_confirmed", {
     p_product_id: audienceType === "by_product" ? productId ?? null : null,
   });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row: { phone: string; customer_name: string | null }) => ({
+  const recipients = (data ?? []).map((row: { phone: string; customer_name: string | null }) => ({
     phone: row.phone,
     customerName: row.customer_name,
   }));
+  const excluded = await shippedPhonesForProducts(excludeShippedProductIds);
+  return excludeByPhone(recipients, excluded);
 }
 
 /** Manual mode: ALL past customers (not gated to confirmed), searchable by name or phone. */
-export async function searchAllCustomers(searchTerm: string): Promise<RecipientRow[]> {
+export async function searchAllCustomers(
+  searchTerm: string,
+  excludeShippedProductIds: string[] = [],
+): Promise<RecipientRow[]> {
   const service = createServiceClient();
   const term = searchTerm.trim();
 
@@ -116,5 +145,7 @@ export async function searchAllCustomers(searchTerm: string): Promise<RecipientR
     seen.add(phone);
     result.push({ phone, customerName: (o.customer_name as string | null) ?? null });
   }
-  return result;
+
+  const excluded = await shippedPhonesForProducts(excludeShippedProductIds);
+  return excludeByPhone(result, excluded);
 }

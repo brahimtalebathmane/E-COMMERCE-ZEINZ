@@ -665,6 +665,9 @@ export const adminAr = {
     loadingRecipients: "جاري حساب عدد المستلمين…",
     noRecipients: "لا يوجد مستلمون مطابقون لهذا الاختيار.",
 
+    excludeShippedTitle: "استبعاد العملاء الذين تم شحن منتج معين لهم (اختياري)",
+    excludeShippedHint: "لتفادي تعارض الأسعار — مثال: إرسال خصم لعميل اشترى المنتج بالسعر الكامل بالفعل.",
+
     reviewTitle: "المراجعة والإرسال",
     reviewMessagePreview: "معاينة الرسالة",
     reviewAudience: "الجمهور",

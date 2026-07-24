@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createServiceClient } from "@/lib/supabase/service";
-import { resolveAudience, searchAllCustomers, type AudienceType, type RecipientRow } from "./data";
+import {
+  resolveAudience,
+  searchAllCustomers,
+  shippedPhonesForProducts,
+  type AudienceType,
+  type RecipientRow,
+} from "./data";
 
 export type PreviewAudienceResult = { ok: true; recipients: RecipientRow[] } | { ok: false; error: string };
 
@@ -12,21 +18,25 @@ export type PreviewAudienceResult = { ok: true; recipients: RecipientRow[] } | {
 export async function previewAudienceAction(
   audienceType: "all_confirmed" | "by_product",
   productId?: string | null,
+  excludeShippedProductIds: string[] = [],
 ): Promise<PreviewAudienceResult> {
   try {
     await assertPermission(PERMISSIONS.marketing_messages);
-    const recipients = await resolveAudience(audienceType, productId);
+    const recipients = await resolveAudience(audienceType, productId, excludeShippedProductIds);
     return { ok: true, recipients };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Failed to load audience." };
   }
 }
 
-/** Manual-mode customer search (name or phone substring). */
-export async function searchCustomersAction(term: string): Promise<PreviewAudienceResult> {
+/** Manual-mode customer search (name or phone substring); already-shipped customers for the excluded products never appear in results. */
+export async function searchCustomersAction(
+  term: string,
+  excludeShippedProductIds: string[] = [],
+): Promise<PreviewAudienceResult> {
   try {
     await assertPermission(PERMISSIONS.marketing_messages);
-    const recipients = await searchAllCustomers(term);
+    const recipients = await searchAllCustomers(term, excludeShippedProductIds);
     return { ok: true, recipients };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Failed to search customers." };
@@ -47,6 +57,7 @@ export async function createCampaignAction(input: {
   imageUrl?: string | null;
   audienceType: AudienceType;
   productId?: string | null;
+  excludeShippedProductIds?: string[];
   manualRecipients?: RecipientRow[];
 }): Promise<CreateCampaignResult> {
   try {
@@ -61,6 +72,19 @@ export async function createCampaignAction(input: {
       return { ok: false, error: "أضف مستلماً واحداً على الأقل." };
     }
 
+    const excludeShippedProductIds = input.excludeShippedProductIds ?? [];
+
+    // Manual mode locks its recipient list in at creation time, so the
+    // exclusion filter has to be applied here too, not just at Send.
+    let manualRecipients = input.manualRecipients ?? [];
+    if (input.audienceType === "manual" && excludeShippedProductIds.length > 0) {
+      const excluded = await shippedPhonesForProducts(excludeShippedProductIds);
+      manualRecipients = manualRecipients.filter((r) => !excluded.has(r.phone));
+      if (manualRecipients.length === 0) {
+        return { ok: false, error: "تم استبعاد جميع المستلمين المختارين (تم شحن المنتج المستبعد لهم)." };
+      }
+    }
+
     const supabase = createServiceClient();
 
     const { data: campaign, error: cErr } = await supabase
@@ -70,15 +94,16 @@ export async function createCampaignAction(input: {
         image_url: input.imageUrl || null,
         audience_type: input.audienceType,
         product_id: input.audienceType === "by_product" ? input.productId : null,
+        exclude_shipped_product_ids: excludeShippedProductIds,
         status: "draft",
-        total_recipients: input.audienceType === "manual" ? input.manualRecipients?.length ?? 0 : 0,
+        total_recipients: input.audienceType === "manual" ? manualRecipients.length : 0,
       })
       .select("id")
       .single();
     if (cErr || !campaign) return { ok: false, error: cErr?.message || "Failed to create campaign." };
 
-    if (input.audienceType === "manual" && input.manualRecipients?.length) {
-      const rows = input.manualRecipients.map((r) => ({
+    if (input.audienceType === "manual" && manualRecipients.length) {
+      const rows = manualRecipients.map((r) => ({
         campaign_id: campaign.id,
         phone: r.phone,
         customer_name: r.customerName,
@@ -114,7 +139,7 @@ export async function sendCampaignAction(campaignId: string): Promise<SendCampai
 
     const { data: campaign, error: gErr } = await supabase
       .from("marketing_campaigns")
-      .select("id, audience_type, product_id, status")
+      .select("id, audience_type, product_id, exclude_shipped_product_ids, status")
       .eq("id", campaignId)
       .maybeSingle();
     if (gErr || !campaign) return { ok: false, error: gErr?.message || "الحملة غير موجودة." };
@@ -133,6 +158,7 @@ export async function sendCampaignAction(campaignId: string): Promise<SendCampai
       const recipients = await resolveAudience(
         campaign.audience_type as "all_confirmed" | "by_product",
         campaign.product_id,
+        (campaign.exclude_shipped_product_ids ?? []) as string[],
       );
       if (recipients.length === 0) return { ok: false, error: "لا يوجد عملاء مطابقون لهذا الاختيار." };
 
