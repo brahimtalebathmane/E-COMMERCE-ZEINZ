@@ -69,8 +69,17 @@
     "nameRequired": "الاسم مطلوب",
     "phoneLength": "رقم الهاتف يجب أن يكون 8 أرقام",
     "phonePrefix": "رقم الهاتف يجب أن يبدأ بـ 2 أو 3 أو 4",
-    "phoneHint": "أدخل 8 أرقام تبدأ بـ 2 أو 3 أو 4",
+    "phoneHint": "اختر الدولة وأدخل رقم الهاتف",
     "phoneRequired": "رقم الهاتف مطلوب",
+    "phoneInvalid": "رقم الهاتف غير صالح",
+    "phonePlaceholder": "رقم الهاتف",
+    "phoneNumberLabel": "رقم الهاتف",
+    "addressLabel": "العنوان الكامل",
+    "addressPlaceholder": "الحي، الشارع، رقم المبنى…",
+    "addressRequired": "العنوان مطلوب",
+    "cityLabel": "المدينة",
+    "cityPlaceholder": "مثال: الكويت",
+    "cityRequired": "المدينة مطلوبة",
     "submitError": "حدث خطأ غير متوقع"
   },
   "landing": {

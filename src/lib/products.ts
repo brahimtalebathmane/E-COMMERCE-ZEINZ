@@ -147,6 +147,17 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
         ? null
         : String(row.profit_calculation_start_date).slice(0, 10),
     created_at: row.created_at as string,
+    fulfillment_type: (row.fulfillment_type as ProductRow["fulfillment_type"]) ?? "owned",
+    affiliate_commission_type:
+      (row.affiliate_commission_type as ProductRow["affiliate_commission_type"]) ?? null,
+    affiliate_sku: (row.affiliate_sku as string) ?? null,
+    affiliate_country: (row.affiliate_country as string) ?? null,
+    affiliate_currency: (row.affiliate_currency as string) ?? null,
+    affiliate_sheet_url: (row.affiliate_sheet_url as string) ?? null,
+    affiliate_fixed_commission:
+      row.affiliate_fixed_commission == null ? null : Number(row.affiliate_fixed_commission),
+    affiliate_sell_price:
+      row.affiliate_sell_price == null ? null : Number(row.affiliate_sell_price),
   };
 }
 

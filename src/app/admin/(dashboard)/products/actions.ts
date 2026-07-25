@@ -13,6 +13,8 @@ import type {
   FAQ,
   ProductTestingStatus,
   ProductSourcingType,
+  FulfillmentType,
+  AffiliateCommissionType,
 } from "@/types";
 import { revalidatePath } from "next/cache";
 import type { ResearchProductPayload } from "./research-types";
@@ -105,6 +107,14 @@ export type ProductPayload = {
   sourcing_type: ProductSourcingType | null;
   sourcing_link: string;
   cost_price: number | null;
+  fulfillment_type: FulfillmentType;
+  affiliate_commission_type: AffiliateCommissionType | null;
+  affiliate_sku: string;
+  affiliate_country: string;
+  affiliate_currency: string;
+  affiliate_sheet_url: string;
+  affiliate_fixed_commission: number | null;
+  affiliate_sell_price: number | null;
 };
 
 const TEST_STATUSES: ProductTestingStatus[] = [
@@ -230,6 +240,61 @@ function validateLandingProductPayloadFormats(payload: ProductPayload) {
   ) {
     throw new Error("Cost price must be a valid non-negative number.");
   }
+
+  validateAffiliateFields(payload);
+}
+
+/**
+ * Affiliate-only required fields. Intentionally does not touch WhatsApp/MRU
+ * fields — those stay irrelevant for affiliate products (COD Partner handles
+ * confirmation by phone in their own currency).
+ */
+function validateAffiliateFields(payload: ProductPayload) {
+  if (payload.fulfillment_type !== "affiliate") return;
+
+  if (
+    payload.affiliate_commission_type !== "fixed" &&
+    payload.affiliate_commission_type !== "set_price"
+  ) {
+    throw new Error("Select a commission type for the affiliate product.");
+  }
+  if (!payload.affiliate_sku.trim()) {
+    throw new Error("Affiliate SKU is required.");
+  }
+  if (!payload.affiliate_country.trim()) {
+    throw new Error("Affiliate target country is required.");
+  }
+  if (!payload.affiliate_currency.trim()) {
+    throw new Error("Affiliate currency is required.");
+  }
+  if (!payload.affiliate_sheet_url.trim()) {
+    throw new Error("Affiliate Google Sheet URL is required.");
+  }
+
+  if (payload.affiliate_commission_type === "fixed") {
+    if (
+      payload.affiliate_fixed_commission == null ||
+      !Number.isFinite(payload.affiliate_fixed_commission) ||
+      payload.affiliate_fixed_commission < 0
+    ) {
+      throw new Error("Fixed commission amount is required and must be zero or greater.");
+    }
+  } else {
+    if (
+      payload.cost_price == null ||
+      !Number.isFinite(payload.cost_price) ||
+      payload.cost_price < 0
+    ) {
+      throw new Error("Product cost (told by COD Partner) is required and must be zero or greater.");
+    }
+    if (
+      payload.affiliate_sell_price == null ||
+      !Number.isFinite(payload.affiliate_sell_price) ||
+      payload.affiliate_sell_price <= 0
+    ) {
+      throw new Error("Sell price to customer is required and must be greater than zero.");
+    }
+  }
 }
 
 function pipelineFieldsFromPayload(payload: ProductPayload) {
@@ -238,6 +303,27 @@ function pipelineFieldsFromPayload(payload: ProductPayload) {
     sourcing_type: payload.sourcing_type,
     sourcing_link: payload.sourcing_link.trim(),
     cost_price: payload.cost_price,
+    ...affiliateFieldsFromPayload(payload),
+  };
+}
+
+function affiliateFieldsFromPayload(payload: ProductPayload) {
+  const isAffiliate = payload.fulfillment_type === "affiliate";
+  return {
+    fulfillment_type: payload.fulfillment_type,
+    affiliate_commission_type: isAffiliate ? payload.affiliate_commission_type : null,
+    affiliate_sku: isAffiliate ? payload.affiliate_sku.trim() : null,
+    affiliate_country: isAffiliate ? payload.affiliate_country.trim() : null,
+    affiliate_currency: isAffiliate ? payload.affiliate_currency.trim().toUpperCase() : null,
+    affiliate_sheet_url: isAffiliate ? payload.affiliate_sheet_url.trim() : null,
+    affiliate_fixed_commission:
+      isAffiliate && payload.affiliate_commission_type === "fixed"
+        ? payload.affiliate_fixed_commission
+        : null,
+    affiliate_sell_price:
+      isAffiliate && payload.affiliate_commission_type === "set_price"
+        ? payload.affiliate_sell_price
+        : null,
   };
 }
 
@@ -665,6 +751,7 @@ export async function saveLandingConfigurationAction(
         sourcing_type: payload.sourcing_type,
         sourcing_link: payload.sourcing_link.trim(),
         cost_price: payload.cost_price,
+        ...affiliateFieldsFromPayload(payload),
       })
       .eq("id", id);
 

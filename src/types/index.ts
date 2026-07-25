@@ -21,6 +21,12 @@ export type ProductTestingStatus =
 
 export type ProductSourcingType = "local" | "import";
 
+/** owned = we confirm/ship/deliver (COD, MRU). affiliate = COD Partner owns fulfillment. */
+export type FulfillmentType = "owned" | "affiliate";
+
+/** fixed = flat commission per shipped order. set_price = sell_price - cost_price - other_costs. */
+export type AffiliateCommissionType = "fixed" | "set_price";
+
 export type ProductRow = {
   id: string;
   /** Default storefront language for this landing page. */
@@ -121,6 +127,21 @@ export type ProductRow = {
   /** Optional inclusive cutoff for profit analytics (YYYY-MM-DD). Null = life-to-date. */
   profit_calculation_start_date: string | null;
   created_at: string;
+  /** owned (default, MRU/COD) or affiliate (COD Partner fulfills; we only market). */
+  fulfillment_type: FulfillmentType;
+  affiliate_commission_type: AffiliateCommissionType | null;
+  /** COD Partner SKU. Required for affiliate products; written to their Google Sheet. */
+  affiliate_sku: string | null;
+  /** Target country (e.g. "Kuwait"). Sheet Country value + default phone country code. */
+  affiliate_country: string | null;
+  /** e.g. "KWD". Written to the sheet and used for this product's own profit totals. */
+  affiliate_currency: string | null;
+  /** Google Sheet URL affiliate orders for this product are appended to. */
+  affiliate_sheet_url: string | null;
+  /** Per shipped order, when affiliate_commission_type = 'fixed'. */
+  affiliate_fixed_commission: number | null;
+  /** Price charged to the customer, when affiliate_commission_type = 'set_price'. */
+  affiliate_sell_price: number | null;
 };
 
 /**
@@ -183,6 +204,8 @@ export type OrderRow = {
   customer_name: string | null;
   phone: string | null;
   total_price: number;
+  /** MRU for owned orders; the product's own affiliate_currency for affiliate orders. */
+  currency: string;
   status: OrderStatus;
   completion_token: string;
   created_at: string;
@@ -194,6 +217,14 @@ export type OrderRow = {
   manual_sale_group_id: string | null;
   /** Set when soft-deleted from admin; row is retained for auditing. */
   deleted_at?: string | null;
+  /** Affiliate order fields (null for owned orders). */
+  affiliate_address?: string | null;
+  affiliate_country?: string | null;
+  affiliate_city?: string | null;
+  /** Extra costs COD Partner reports after the sale, for set_price affiliate orders. */
+  affiliate_other_costs?: number | null;
+  /** set_price affiliate profit only counts once this is true, even if status is already shipped. */
+  affiliate_costs_finalized?: boolean;
 };
 
 export type OrderStatusHistoryRow = {

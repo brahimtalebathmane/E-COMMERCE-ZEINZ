@@ -30,6 +30,14 @@ const OrderFormModal = dynamic(
   { ssr: false },
 );
 
+const AffiliateOrderFormModal = dynamic(
+  () =>
+    import("@/components/landing/AffiliateOrderFormModal").then((m) => ({
+      default: m.AffiliateOrderFormModal,
+    })),
+  { ssr: false },
+);
+
 type Props = {
   product: ProductRow;
 };
@@ -416,7 +424,7 @@ export function ProductLanding({ product }: Props) {
         productId: product.id,
         productName: copy.name,
         value: leadValue,
-        currency: "MRU",
+        currency: product.fulfillment_type === "affiliate" ? product.affiliate_currency || "MRU" : "MRU",
       });
       const metaCookies = getMetaBrowserCookies();
       void (async () => {
@@ -763,11 +771,19 @@ export function ProductLanding({ product }: Props) {
         onCheckout={openCheckout}
       />
 
-      <OrderFormModal
-        product={product}
-        open={open}
-        onClose={() => setOpen(false)}
-      />
+      {product.fulfillment_type === "affiliate" ? (
+        <AffiliateOrderFormModal
+          product={product}
+          open={open}
+          onClose={() => setOpen(false)}
+        />
+      ) : (
+        <OrderFormModal
+          product={product}
+          open={open}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }

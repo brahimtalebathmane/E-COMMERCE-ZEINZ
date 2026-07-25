@@ -11,7 +11,9 @@ export type OrderCommunicationEvent =
   | "ai_agent_human_escalation"
   | "onesignal_sent"
   | "onesignal_skipped"
-  | "onesignal_failed";
+  | "onesignal_failed"
+  | "affiliate_sheet_write_succeeded"
+  | "affiliate_sheet_write_failed";
 
 export async function logOrderCommunicationEvent(
   supabase: SupabaseClient,

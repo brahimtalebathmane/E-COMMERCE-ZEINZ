@@ -16,10 +16,11 @@ import { trackLead } from "@/components/MetaPixel";
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import { PhoneCountryInput } from "@/components/landing/PhoneCountryInput";
-import { OWNED_DEFAULT_COUNTRY } from "@/lib/countries";
-import { isValidPhoneNumber } from "libphonenumber-js";
+import { countryNameFromCode } from "@/lib/countries";
+import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
+import type { Country } from "react-phone-number-input";
 
 type Props = {
   product: ProductRow;
@@ -27,19 +28,20 @@ type Props = {
   onClose: () => void;
 };
 
-export function OrderFormModal({ product, open, onClose }: Props) {
+/** Order form for affiliate (COD Partner) landing pages: name, phone, full address, city. */
+export function AffiliateOrderFormModal({ product, open, onClose }: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
+  const currencyCode = product.affiliate_currency || "USD";
+  const defaultCountry = (product.affiliate_country as Country | null) || "US";
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
   const [busy, setBusy] = useState(false);
-  const [touched, setTouched] = useState<{ name: boolean; phone: boolean }>({
-    name: false,
-    phone: false,
-  });
-  // Synchronous lock: blocks a second tap before React re-renders `busy`.
+  const [touched, setTouched] = useState({ name: false, phone: false, address: false, city: false });
   const submitLockRef = useRef(false);
 
   useEffect(() => {
@@ -58,6 +60,11 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     };
   }, [open, product.id]);
 
+  const nameError = useMemo(() => {
+    if (!touched.name && !busy) return null;
+    return name.trim() ? null : t("orderForm.nameRequired");
+  }, [name, touched.name, busy, t]);
+
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
     if (!phone.trim()) return t("orderForm.phoneRequired");
@@ -65,43 +72,60 @@ export function OrderFormModal({ product, open, onClose }: Props) {
     return null;
   }, [phone, touched.phone, busy, t]);
 
-  const nameError = useMemo(() => {
-    if (!touched.name && !busy) return null;
-    if (!name.trim()) return t("orderForm.nameRequired");
-    return null;
-  }, [name, touched.name, busy, t]);
+  const addressError = useMemo(() => {
+    if (!touched.address && !busy) return null;
+    return address.trim() ? null : t("orderForm.addressRequired");
+  }, [address, touched.address, busy, t]);
+
+  const cityError = useMemo(() => {
+    if (!touched.city && !busy) return null;
+    return city.trim() ? null : t("orderForm.cityRequired");
+  }, [city, touched.city, busy, t]);
 
   function reset() {
     setName("");
     setPhone("");
+    setAddress("");
+    setCity("");
     setBusy(false);
-    setTouched({ name: false, phone: false });
+    setTouched({ name: false, phone: false, address: false, city: false });
   }
 
   async function submit(e?: React.SyntheticEvent) {
     e?.preventDefault();
-
     if (submitLockRef.current || busy) return;
-    setTouched({ name: true, phone: true });
+    setTouched({ name: true, phone: true, address: true, city: true });
 
     const n = name.trim();
     const phoneE164 = phone.trim();
-    if (!n) return;
+    const addr = address.trim();
+    const cityVal = city.trim();
+    if (!n || !addr || !cityVal) return;
     if (!phoneE164 || !isValidPhoneNumber(phoneE164)) return;
 
     submitLockRef.current = true;
     setBusy(true);
     try {
-      // Funnel session id for InitiateCheckout pairing — stored on the order for tracing.
-      // Lead uses a separate order-scoped event_id (`lead_{orderId}`).
       const generatedMetaEventId = ensureMetaFunnelSession(product.id);
       if (!generatedMetaEventId) {
         throw new Error(t("orderForm.sessionError"));
       }
+
+      // Country submitted with the order follows whatever the customer
+      // picked in the phone country selector (defaults from the product's
+      // target country, changeable — same selector drives both).
+      let submittedCountry = product.affiliate_country ?? "";
+      try {
+        const parsed = parsePhoneNumberWithError(phoneE164);
+        if (parsed.country) {
+          submittedCountry = countryNameFromCode(parsed.country);
+        }
+      } catch {
+        // Keep the product default if parsing somehow fails post-validation.
+      }
+
       const leadValue =
-        product.discount_price != null
-          ? Number(product.discount_price)
-          : Number(product.price);
+        product.discount_price != null ? Number(product.discount_price) : Number(product.price);
 
       const eventSourceUrl = typeof window !== "undefined" ? window.location.href : null;
       const metaCookies = getMetaBrowserCookies();
@@ -113,6 +137,9 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           product_id: product.id,
           customer_name: n,
           phone: phoneE164,
+          affiliate_address: addr,
+          affiliate_city: cityVal,
+          affiliate_country: submittedCountry,
           meta_event_id: generatedMetaEventId,
           event_source_url: eventSourceUrl,
           meta_fbp: metaCookies.fbp,
@@ -131,9 +158,10 @@ export function OrderFormModal({ product, open, onClose }: Props) {
           }
         | { error?: string };
       if (!res.ok) {
-        throw new Error("error" in json ? json.error ?? t("orderForm.submitFailed") : t("orderForm.submitFailed"));
+        throw new Error(
+          "error" in json ? json.error ?? t("orderForm.submitFailed") : t("orderForm.submitFailed"),
+        );
       }
-
       if (!("success" in json) || !json.order_id) {
         throw new Error(t("orderForm.submitFailed"));
       }
@@ -150,10 +178,9 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         });
       }
 
-      // Queue Lead for order-success — Pixel + CAPI share lead_{orderId} (not the IC funnel id).
       queueMetaPendingLead({
         value: leadValue,
-        currency: "MRU",
+        currency: currencyCode,
         eventId: leadEventId,
         orderId: json.order_id,
         productId: product.id,
@@ -162,11 +189,9 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         customerName: n,
       });
 
-      // Fire browser Lead on the product landing so the Pixel records the shopper page URL.
-      // Order-success still runs CAPI with the same lead_{orderId} (browser is deduped).
       await trackLead({
         value: leadValue,
-        currency: "MRU",
+        currency: currencyCode,
         eventId: leadEventId,
         orderId: json.order_id,
         productId: product.id,
@@ -176,7 +201,6 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       });
 
       clearMetaSessionEventId(product.id);
-
       onClose();
 
       const qs = new URLSearchParams({
@@ -195,20 +219,9 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
   if (!open) return null;
 
-  const title = t("orderForm.title");
-  const nameLabel = t("orderForm.nameLabel");
-  const closeLabel = t("orderForm.close");
-  const submitLabel = t("orderForm.submit");
-  const submittingLabel = t("orderForm.submitting");
-  const codNote = t("orderForm.codNote");
-  const priceLabel = t("orderForm.priceLabel");
-  const freeShippingLabel = t("orderForm.freeShipping");
-
   const originalPrice = Number(product.price);
-  const discountedPrice =
-    product.discount_price != null ? Number(product.discount_price) : null;
-  const hasDiscount =
-    discountedPrice != null && discountedPrice < originalPrice;
+  const discountedPrice = product.discount_price != null ? Number(product.discount_price) : null;
+  const hasDiscount = discountedPrice != null && discountedPrice < originalPrice;
   const priceValue = hasDiscount ? discountedPrice : originalPrice;
 
   return (
@@ -216,7 +229,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
       <button
         type="button"
         className="absolute inset-0"
-        aria-label={closeLabel}
+        aria-label={t("orderForm.close")}
         onClick={() => {
           reset();
           onClose();
@@ -228,11 +241,10 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         className="buy-modal-step-panel relative max-h-[min(94dvh,760px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--accent-muted)] bg-[var(--card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] text-start shadow-[0_-20px_60px_rgba(0,0,0,0.35)] sm:rounded-3xl sm:pb-6 sm:shadow-2xl"
         dir={dir}
       >
-        {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--accent-muted)]/60 bg-[var(--card)] px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
           <div className="min-w-0">
             <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--accent)]">
-              {title}
+              {t("orderForm.title")}
             </p>
             <h2 className="mt-1 truncate text-lg font-extrabold leading-snug text-[var(--foreground)] sm:text-xl">
               {copy.name}
@@ -244,7 +256,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               reset();
               onClose();
             }}
-            aria-label={closeLabel}
+            aria-label={t("orderForm.close")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--accent-muted)] bg-[var(--background)] text-[var(--muted)] transition hover:bg-[var(--accent-muted)]/30"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
@@ -254,9 +266,8 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         </div>
 
         <div className="px-4 sm:px-6">
-          {/* Price summary */}
           <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl border border-[var(--accent-muted)] bg-[linear-gradient(135deg,var(--background)_0%,var(--card)_100%)] px-4 py-3">
-            <span className="text-sm font-semibold text-[var(--muted)]">{priceLabel}</span>
+            <span className="text-sm font-semibold text-[var(--muted)]">{t("orderForm.priceLabel")}</span>
             <div className="text-end">
               <div className="flex items-baseline justify-end gap-2">
                 {hasDiscount ? (
@@ -264,26 +275,20 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                     className="text-xl font-black tabular-nums tracking-tight text-[var(--muted)] line-through decoration-[var(--muted)]/70"
                     dir="ltr"
                   >
-                    {formatPrice(originalPrice)}
+                    {formatMoney(originalPrice, currencyCode)}
                   </span>
                 ) : null}
-                <span
-                  className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]"
-                  dir="ltr"
-                >
-                  {formatPrice(priceValue)}
+                <span className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]" dir="ltr">
+                  {formatMoney(priceValue, currencyCode)}
                 </span>
               </div>
-              <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-                {freeShippingLabel}
-              </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-[var(--foreground)]">
-                {nameLabel} <span className="text-red-500">*</span>
+                {t("orderForm.nameLabel")} <span className="text-red-500">*</span>
               </label>
               <input
                 className="store-input mt-2"
@@ -304,13 +309,13 @@ export function OrderFormModal({ product, open, onClose }: Props) {
 
             <div>
               <label className="block text-sm font-semibold text-[var(--foreground)]">
-                {t("orderForm.whatsappNumber")} <span className="text-red-500">*</span>
+                {t("orderForm.phoneNumberLabel")} <span className="text-red-500">*</span>
               </label>
               <div className="mt-2">
                 <PhoneCountryInput
                   value={phone}
                   onChange={setPhone}
-                  defaultCountry={OWNED_DEFAULT_COUNTRY}
+                  defaultCountry={defaultCountry}
                   onFocus={() => touchMetaFunnelActivityThrottled(product.id)}
                   onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                   ariaInvalid={Boolean(phoneError)}
@@ -327,6 +332,49 @@ export function OrderFormModal({ product, open, onClose }: Props) {
               )}
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold text-[var(--foreground)]">
+                {t("orderForm.cityLabel")} <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="store-input mt-2"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                onFocus={() => touchMetaFunnelActivityThrottled(product.id)}
+                onBlur={() => setTouched((p) => ({ ...p, city: true }))}
+                placeholder={t("orderForm.cityPlaceholder")}
+                aria-invalid={Boolean(cityError)}
+              />
+              {cityError ? (
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
+                  <span aria-hidden>⚠</span>
+                  {cityError}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[var(--foreground)]">
+                {t("orderForm.addressLabel")} <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                className="store-textarea mt-2"
+                rows={3}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onFocus={() => touchMetaFunnelActivityThrottled(product.id)}
+                onBlur={() => setTouched((p) => ({ ...p, address: true }))}
+                placeholder={t("orderForm.addressPlaceholder")}
+                aria-invalid={Boolean(addressError)}
+              />
+              {addressError ? (
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
+                  <span aria-hidden>⚠</span>
+                  {addressError}
+                </p>
+              ) : null}
+            </div>
+
             <button
               type="button"
               disabled={busy}
@@ -339,24 +387,15 @@ export function OrderFormModal({ product, open, onClose }: Props) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
                   </svg>
-                  {submittingLabel}
+                  {t("orderForm.submitting")}
                 </>
               ) : (
-                submitLabel
+                t("orderForm.submit")
               )}
             </button>
-
-            <div className="flex items-center justify-center gap-1.5 text-center text-xs font-medium text-[var(--muted)]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-              {codNote}
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

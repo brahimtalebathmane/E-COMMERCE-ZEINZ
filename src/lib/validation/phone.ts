@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 function onlyDigits(s: string): string {
   return s.replace(/\D/g, "");
@@ -36,6 +37,7 @@ export function canonicalizeMauritaniaPhone(input: string): string {
   return `+222${parsed.data}`;
 }
 
+/** Mauritania-only. Used by the admin manual-sale form (offline/phone-call sales). */
 export const createOrderPhoneSchema = z
   .string()
   .min(1, "phone required")
@@ -49,4 +51,27 @@ export const createOrderPhoneSchema = z
       });
       return z.NEVER;
     }
+  });
+
+/**
+ * General international validator used by the public storefront order form
+ * (`POST /api/orders`), for both owned and affiliate landing pages. The
+ * country-code picker on the landing page always submits a full E.164
+ * string, so no default-country guessing is needed here. Owned-product
+ * phones are no longer restricted to Mauritania — the number is just a
+ * WhatsApp contact, not a shipping constraint.
+ */
+export const createStorefrontPhoneSchema = z
+  .string()
+  .min(1, "phone required")
+  .transform((raw, ctx) => {
+    const trimmed = raw.trim();
+    if (!isValidPhoneNumber(trimmed)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "رقم الهاتف غير صالح",
+      });
+      return z.NEVER;
+    }
+    return trimmed;
   });

@@ -1,13 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AnalyticsView } from "./AnalyticsView";
-import { loadAnalyticsData } from "./data";
+import { AffiliateAnalyticsSection } from "./AffiliateAnalyticsSection";
+import { loadAnalyticsData, loadAffiliateAnalyticsData } from "./data";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
-  const result = await loadAnalyticsData(supabase);
+  const [result, affiliateResult] = await Promise.all([
+    loadAnalyticsData(supabase),
+    loadAffiliateAnalyticsData(supabase),
+  ]);
 
   if (!result.ok) {
     return (
@@ -20,5 +24,10 @@ export default async function AdminAnalyticsPage() {
     );
   }
 
-  return <AnalyticsView data={result.data} />;
+  return (
+    <div className="space-y-8">
+      <AnalyticsView data={result.data} />
+      {affiliateResult.ok ? <AffiliateAnalyticsSection data={affiliateResult.data} /> : null}
+    </div>
+  );
 }

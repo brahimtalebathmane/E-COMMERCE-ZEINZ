@@ -158,7 +158,9 @@ export async function dispatchInitiateCheckoutMetaEvent(
 
   const { data: product, error: productErr } = await supabase
     .from("products")
-    .select("id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug")
+    .select(
+      "id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug, fulfillment_type, affiliate_currency",
+    )
     .eq("id", productId)
     .maybeSingle();
 
@@ -170,11 +172,13 @@ export async function dispatchInitiateCheckoutMetaEvent(
     return result;
   }
 
-  const totalMru =
+  const totalLocal =
     product.discount_price != null
       ? Number(product.discount_price)
       : Number(product.price);
-  const { value, currency } = toMetaPixelPurchaseMoney(totalMru, "MRU");
+  const productCurrency =
+    product.fulfillment_type === "affiliate" ? String(product.affiliate_currency || "MRU") : "MRU";
+  const { value, currency } = toMetaPixelPurchaseMoney(totalLocal, productCurrency);
   const productName = resolveMetaProductDisplayName({
     name_ar: product.name_ar as string | null,
     name_fr: product.name_fr as string | null,

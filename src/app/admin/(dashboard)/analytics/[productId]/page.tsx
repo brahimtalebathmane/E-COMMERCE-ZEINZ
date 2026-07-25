@@ -53,13 +53,17 @@ export default async function ProductAnalyticsPage({
     data.rows.find((r) => r.productId === productId) ?? {
       productId,
       name: productMeta.name,
+      fulfillmentType: "owned",
+      currency: "MRU",
       costPrice: productMeta.costPrice ?? 0,
       unitsSold: 0,
       grossRevenue: 0,
       cogs: 0,
       deliveryCost: 0,
+      otherCosts: 0,
       adSpend: 0,
       internalReturns: 0,
+      awaitingCosts: 0,
       hasCost: productMeta.costPrice != null,
       calculationStartDate: productMeta.calculationStartDate,
     };

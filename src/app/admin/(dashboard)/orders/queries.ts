@@ -19,13 +19,22 @@ export const ADMIN_ORDER_SELECT = `
   meta_lead_sent,
   meta_purchase_sent,
   meta_cancel_sent,
+  affiliate_address,
+  affiliate_country,
+  affiliate_city,
+  affiliate_other_costs,
+  affiliate_costs_finalized,
   products (
     name_ar,
     slug,
     price,
     discount_price,
     media_type,
-    media_url
+    media_url,
+    fulfillment_type,
+    affiliate_commission_type,
+    affiliate_sku,
+    affiliate_sheet_url
   )
 ` as const;
 

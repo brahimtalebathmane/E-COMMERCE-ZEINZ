@@ -69,8 +69,17 @@
     "nameRequired": "Le nom est obligatoire",
     "phoneLength": "Le numéro doit comporter 8 chiffres",
     "phonePrefix": "Le numéro doit commencer par 2, 3 ou 4",
-    "phoneHint": "Entrez 8 chiffres commençant par 2, 3 ou 4",
+    "phoneHint": "Choisissez le pays et saisissez le numéro",
     "phoneRequired": "Le numéro est obligatoire",
+    "phoneInvalid": "Numéro de téléphone invalide",
+    "phonePlaceholder": "Numéro de téléphone",
+    "phoneNumberLabel": "Numéro de téléphone",
+    "addressLabel": "Adresse complète",
+    "addressPlaceholder": "Quartier, rue, numéro…",
+    "addressRequired": "L'adresse est obligatoire",
+    "cityLabel": "Ville",
+    "cityPlaceholder": "ex. Koweït",
+    "cityRequired": "La ville est obligatoire",
     "submitError": "Une erreur inattendue s'est produite"
   },
   "landing": {

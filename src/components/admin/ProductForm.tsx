@@ -6,7 +6,10 @@ import type {
   FAQ,
   ProductTestingStatus,
   ProductSourcingType,
+  FulfillmentType,
+  AffiliateCommissionType,
 } from "@/types";
+import { AFFILIATE_COUNTRIES } from "@/lib/countries";
 import {
   completeLandingSetupAction,
   createProductAction,
@@ -170,6 +173,30 @@ export function ProductForm({ mode, initial }: Props) {
   const [sourcingLink, setSourcingLink] = useState(initial?.sourcing_link ?? "");
   const [costPrice, setCostPrice] = useState(
     initial?.cost_price != null ? String(initial.cost_price) : "",
+  );
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>(
+    initial?.fulfillment_type ?? "owned",
+  );
+  const [affiliateCommissionType, setAffiliateCommissionType] = useState<
+    AffiliateCommissionType | ""
+  >(initial?.affiliate_commission_type ?? "");
+  const [affiliateSku, setAffiliateSku] = useState(initial?.affiliate_sku ?? "");
+  const [affiliateCountry, setAffiliateCountry] = useState(
+    initial?.affiliate_country ?? "",
+  );
+  const [affiliateCurrency, setAffiliateCurrency] = useState(
+    initial?.affiliate_currency ?? "",
+  );
+  const [affiliateSheetUrl, setAffiliateSheetUrl] = useState(
+    initial?.affiliate_sheet_url ?? "",
+  );
+  const [affiliateFixedCommission, setAffiliateFixedCommission] = useState(
+    initial?.affiliate_fixed_commission != null
+      ? String(initial.affiliate_fixed_commission)
+      : "",
+  );
+  const [affiliateSellPrice, setAffiliateSellPrice] = useState(
+    initial?.affiliate_sell_price != null ? String(initial.affiliate_sell_price) : "",
   );
   const [mediaType, setMediaType] = useState<"image" | "video">(
     initial?.media_type ?? "image",
@@ -407,6 +434,24 @@ export function ProductForm({ mode, initial }: Props) {
       sourcing_link: sourcingLink,
       cost_price: (() => {
         const t = costPrice.trim();
+        if (!t) return null;
+        const n = Number.parseFloat(t);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      fulfillment_type: fulfillmentType,
+      affiliate_commission_type: affiliateCommissionType === "" ? null : affiliateCommissionType,
+      affiliate_sku: affiliateSku,
+      affiliate_country: affiliateCountry,
+      affiliate_currency: affiliateCurrency,
+      affiliate_sheet_url: affiliateSheetUrl,
+      affiliate_fixed_commission: (() => {
+        const t = affiliateFixedCommission.trim();
+        if (!t) return null;
+        const n = Number.parseFloat(t);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      affiliate_sell_price: (() => {
+        const t = affiliateSellPrice.trim();
         if (!t) return null;
         const n = Number.parseFloat(t);
         return Number.isFinite(n) ? n : null;
@@ -967,10 +1012,144 @@ export function ProductForm({ mode, initial }: Props) {
                 className="mt-1 w-full admin-input"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
-                placeholder={a.productForm.costPricePlaceholder}
+                placeholder={
+                  fulfillmentType === "affiliate" && affiliateCommissionType === "set_price"
+                    ? a.productForm.affiliateCostPricePlaceholder
+                    : a.productForm.costPricePlaceholder
+                }
                 dir="ltr"
               />
+              {fulfillmentType === "affiliate" && affiliateCommissionType === "set_price" ? (
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {a.productForm.affiliateCostPriceHint}
+                </p>
+              ) : null}
             </div>
+          </div>
+        </div>
+        <div className="sm:col-span-2 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+          <h3 className="text-sm font-semibold">{a.productForm.sectionFulfillment}</h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.sectionFulfillmentHint}</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium">{a.productForm.fulfillmentType}</label>
+              <select
+                className="mt-1 w-full admin-input"
+                value={fulfillmentType}
+                onChange={(e) => setFulfillmentType(e.target.value as FulfillmentType)}
+              >
+                <option value="owned">{a.productForm.fulfillmentOwned}</option>
+                <option value="affiliate">{a.productForm.fulfillmentAffiliate}</option>
+              </select>
+            </div>
+
+            {fulfillmentType === "affiliate" ? (
+              <>
+                <div>
+                  <label className="text-sm font-medium">
+                    {a.productForm.affiliateCommissionType}
+                  </label>
+                  <select
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={affiliateCommissionType}
+                    onChange={(e) =>
+                      setAffiliateCommissionType(
+                        e.target.value as AffiliateCommissionType | "",
+                      )
+                    }
+                  >
+                    <option value="">{a.productForm.affiliateCommissionTypeUnset}</option>
+                    <option value="fixed">{a.productForm.affiliateCommissionFixed}</option>
+                    <option value="set_price">{a.productForm.affiliateCommissionSetPrice}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">{a.productForm.affiliateSku}</label>
+                  <input
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={affiliateSku}
+                    onChange={(e) => setAffiliateSku(e.target.value)}
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">{a.productForm.affiliateCountry}</label>
+                  <select
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={affiliateCountry}
+                    onChange={(e) => setAffiliateCountry(e.target.value)}
+                    dir="ltr"
+                  >
+                    <option value="">{a.productForm.affiliateCountryUnset}</option>
+                    {AFFILIATE_COUNTRIES.map(({ code, name }) => (
+                      <option key={code} value={code}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">{a.productForm.affiliateCurrency}</label>
+                  <input
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={affiliateCurrency}
+                    onChange={(e) => setAffiliateCurrency(e.target.value.toUpperCase())}
+                    placeholder={a.productForm.affiliateCurrencyPlaceholder}
+                    maxLength={8}
+                    dir="ltr"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium">{a.productForm.affiliateSheetUrl}</label>
+                  <input
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={affiliateSheetUrl}
+                    onChange={(e) => setAffiliateSheetUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/…"
+                    dir="ltr"
+                  />
+                </div>
+
+                {affiliateCommissionType === "fixed" ? (
+                  <div>
+                    <label className="text-sm font-medium">
+                      {a.productForm.affiliateFixedCommission}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required={!isLandingSetup}
+                      className="mt-1 w-full admin-input"
+                      value={affiliateFixedCommission}
+                      onChange={(e) => setAffiliateFixedCommission(e.target.value)}
+                      dir="ltr"
+                    />
+                  </div>
+                ) : affiliateCommissionType === "set_price" ? (
+                  <div>
+                    <label className="text-sm font-medium">
+                      {a.productForm.affiliateSellPrice}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required={!isLandingSetup}
+                      className="mt-1 w-full admin-input"
+                      value={affiliateSellPrice}
+                      onChange={(e) => setAffiliateSellPrice(e.target.value)}
+                      dir="ltr"
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </div>
         </div>
         <div>

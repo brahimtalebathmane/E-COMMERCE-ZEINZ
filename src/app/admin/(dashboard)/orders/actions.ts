@@ -7,6 +7,7 @@ import { canEditOrderDetails, PERMISSIONS, permissionForOrderStatus } from "@/li
 import { createServiceClient } from "@/lib/supabase/service";
 import { updateOrderStatusWithEffects, type MetaSideEffect } from "@/lib/orders/update-status";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
+import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -417,6 +418,132 @@ export async function createManualSaleAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to create manual sale.",
+    };
+  }
+}
+
+export type RetrySheetWriteResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Re-attempts the Google Sheet append for an affiliate order after a prior
+ * failure (surfaced in the orders admin). Re-fetches the order and its
+ * product fresh so a since-corrected affiliate_sheet_url is used.
+ */
+export async function retryAffiliateSheetWriteAction(
+  orderId: string,
+): Promise<RetrySheetWriteResult> {
+  const id = orderId?.trim();
+  if (!id) {
+    return { ok: false, error: "order id is required." };
+  }
+
+  try {
+    await assertPermission(PERMISSIONS.confirm_orders);
+    const supabase = createServiceClient();
+
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .select(
+        "id, product_id, customer_name, phone, total_price, currency, quantity, affiliate_address, affiliate_city, affiliate_country",
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (orderErr) return { ok: false, error: orderErr.message };
+    if (!order) return { ok: false, error: "Order not found" };
+
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("fulfillment_type, affiliate_sku, affiliate_sheet_url")
+      .eq("id", order.product_id)
+      .maybeSingle();
+    if (productErr) return { ok: false, error: productErr.message };
+    if (!product || product.fulfillment_type !== "affiliate") {
+      return { ok: false, error: "This order is not an affiliate order." };
+    }
+    if (!product.affiliate_sheet_url) {
+      return { ok: false, error: "Product has no affiliate_sheet_url configured." };
+    }
+
+    const { appendAffiliateOrderRow } = await import(
+      "@/lib/google-sheets/affiliate-order-sheet"
+    );
+
+    try {
+      await appendAffiliateOrderRow(product.affiliate_sheet_url, {
+        orderDate: new Date().toISOString(),
+        orderId: order.id,
+        fullName: order.customer_name ?? "",
+        phone: order.phone ?? "",
+        country: order.affiliate_country ?? "",
+        city: order.affiliate_city ?? "",
+        fullAddress: order.affiliate_address ?? "",
+        sku: product.affiliate_sku ?? "",
+        quantity: order.quantity ?? 1,
+        total: Number(order.total_price),
+        currency: order.currency,
+        note: "",
+      });
+      await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_succeeded", null);
+      revalidatePath("/admin/orders");
+      return { ok: true };
+    } catch (sheetErr) {
+      const message = sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
+      await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_failed", message);
+      return { ok: false, error: message };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to retry sheet write.",
+    };
+  }
+}
+
+export type FinalizeAffiliateCostsResult =
+  | { ok: true; otherCosts: number }
+  | { ok: false; error: string };
+
+/**
+ * Set-price affiliate orders stay excluded from profit totals until the
+ * admin enters COD Partner's reported other_costs and finalizes here, even
+ * if the order is already shipped (see buildProductProfitRows).
+ */
+export async function finalizeAffiliateCostsAction(
+  orderId: string,
+  otherCosts: number,
+): Promise<FinalizeAffiliateCostsResult> {
+  const id = orderId?.trim();
+  if (!id) {
+    return { ok: false, error: "order id is required." };
+  }
+  if (!Number.isFinite(otherCosts) || otherCosts < 0) {
+    return { ok: false, error: "Other costs must be a number greater than or equal to zero." };
+  }
+
+  try {
+    const session = await assertAdminUser();
+    if (!canEditOrderDetails(session.access)) {
+      throw new AuthError(403, "Forbidden");
+    }
+
+    const rounded = Math.round(otherCosts * 100) / 100;
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ affiliate_other_costs: rounded, affiliate_costs_finalized: true })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/analytics");
+    return { ok: true, otherCosts: rounded };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to finalize affiliate costs.",
     };
   }
 }

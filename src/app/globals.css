@@ -149,6 +149,22 @@ body {
   .store-textarea {
     @apply w-full min-h-[120px] rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-3 text-base leading-relaxed text-start text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)];
   }
+  /* Country-code phone picker (react-phone-number-input) styled to match .store-input */
+  .phone-country-field {
+    @apply flex min-h-[48px] items-stretch gap-2;
+  }
+  .phone-country-field .PhoneInputCountry {
+    @apply flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--card)] px-2.5;
+  }
+  .phone-country-field .PhoneInputCountrySelect {
+    @apply absolute inset-0 z-10 cursor-pointer opacity-0;
+  }
+  .phone-country-field .PhoneInputCountryIcon {
+    @apply h-4 w-6 overflow-hidden rounded-[2px] shadow-none;
+  }
+  .phone-country-field .PhoneInputCountrySelectArrow {
+    @apply ms-1 opacity-70;
+  }
   .store-btn-primary {
     @apply inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-semibold text-[var(--accent-foreground)] transition-[transform,filter,box-shadow] duration-200 hover:-translate-y-0.5 hover:brightness-[1.06] active:translate-y-0 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 [-webkit-tap-highlight-color:transparent];
     background-image: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);

@@ -8,11 +8,15 @@ export const CURRENCY_CODE = "MRU" as const;
 export const CURRENCY_SYMBOL = "MRU" as const;
 
 /**
- * Formats an amount for display, e.g. `1000 MRU` or `99.5 MRU`.
+ * Formats an amount in an arbitrary ISO-ish currency code, e.g. `1000 KWD`.
+ * Affiliate products carry their own currency (never MRU) — this is used for
+ * their landing pages, orders, and profit reporting so affiliate amounts are
+ * never silently mislabeled as MRU. Owned products keep using `formatPrice`.
  */
-export function formatPrice(amount: number): string {
+export function formatMoney(amount: number, currencyCode: string): string {
+  const code = currencyCode.trim().toUpperCase() || CURRENCY_SYMBOL;
   if (!Number.isFinite(amount)) {
-    return `0 ${CURRENCY_SYMBOL}`;
+    return `0 ${code}`;
   }
   const rounded = Math.round(amount * 100) / 100;
   let numStr: string;
@@ -21,7 +25,14 @@ export function formatPrice(amount: number): string {
   } else {
     numStr = rounded.toFixed(2).replace(/\.?0+$/, "");
   }
-  return `${numStr} ${CURRENCY_SYMBOL}`;
+  return `${numStr} ${code}`;
+}
+
+/**
+ * Formats an amount for display, e.g. `1000 MRU` or `99.5 MRU`.
+ */
+export function formatPrice(amount: number): string {
+  return formatMoney(amount, CURRENCY_SYMBOL);
 }
 
 const DEFAULT_META_MRU_USD_RATE = 0.026;

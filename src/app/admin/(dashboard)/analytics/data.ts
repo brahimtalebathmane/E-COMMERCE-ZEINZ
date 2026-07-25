@@ -59,7 +59,11 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
   const [productsRes, campaignsRes] = await Promise.all([
     cookieClient
       .from("products")
-      .select("id, name_ar, cost_price, profit_calculation_start_date, created_at"),
+      // Owned-only: affiliate products/orders are excluded from this whole
+      // pipeline (including the combined daily chart) so their non-MRU
+      // amounts are never summed alongside MRU. See loadAffiliateAnalyticsData.
+      .select("id, name_ar, cost_price, profit_calculation_start_date, created_at")
+      .eq("fulfillment_type", "owned"),
     cookieClient.from("product_ad_campaigns").select("id, product_id, meta_campaign_id, label"),
   ]);
 
@@ -68,6 +72,7 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
 
   const productRows = productsRes.data ?? [];
   const campaignRows = campaignsRes.data ?? [];
+  const ownedProductIds = new Set(productRows.map((p) => String(p.id)));
 
   const freshness = await ensureFreshAdSpend(
     createServiceClient(),
@@ -119,14 +124,16 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
     }
   }
 
-  const orders: ProfitOrderInput[] = (ordersRes.data ?? []).map((o) => ({
-    product_id: String(o.product_id),
-    total_price: Number(o.total_price) || 0,
-    status: o.status as OrderStatus,
-    created_at: String(o.created_at ?? ""),
-    delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
-    quantity: o.quantity == null ? 1 : Number(o.quantity),
-  }));
+  const orders: ProfitOrderInput[] = (ordersRes.data ?? [])
+    .filter((o) => ownedProductIds.has(String(o.product_id)))
+    .map((o) => ({
+      product_id: String(o.product_id),
+      total_price: Number(o.total_price) || 0,
+      status: o.status as OrderStatus,
+      created_at: String(o.created_at ?? ""),
+      delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
+      quantity: o.quantity == null ? 1 : Number(o.quantity),
+    }));
 
   const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
   const totals = sumProfitTotals(rows);
@@ -166,4 +173,113 @@ export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<L
       todayKey,
     },
   };
+}
+
+export type AffiliateCurrencyGroup = {
+  currency: string;
+  rows: ProductProfitRow[];
+  totals: ProfitTotals;
+};
+
+export type AffiliateAnalyticsData = {
+  groups: AffiliateCurrencyGroup[];
+};
+
+export type LoadAffiliateAnalyticsResult =
+  | { ok: true; data: AffiliateAnalyticsData }
+  | { ok: false; error: string };
+
+/**
+ * Separate loader for affiliate products' profit, grouped by each product's
+ * own currency (KWD, etc.) — never combined with the owned/MRU pipeline
+ * above and never summed across different currencies with each other.
+ */
+export async function loadAffiliateAnalyticsData(
+  cookieClient: SupabaseClient,
+): Promise<LoadAffiliateAnalyticsResult> {
+  const { data: productRows, error: productsErr } = await cookieClient
+    .from("products")
+    .select(
+      "id, name_ar, cost_price, profit_calculation_start_date, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price, affiliate_currency, created_at",
+    )
+    .eq("fulfillment_type", "affiliate");
+
+  if (productsErr) return { ok: false, error: productsErr.message };
+  const products = productRows ?? [];
+  if (products.length === 0) return { ok: true, data: { groups: [] } };
+
+  const productIds = products.map((p) => String(p.id));
+
+  const ordersRes = await cookieClient
+    .from("orders")
+    .select(
+      "product_id, total_price, status, created_at, quantity, affiliate_other_costs, affiliate_costs_finalized",
+    )
+    .in("product_id", productIds);
+  if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
+
+  await ensureFreshAdSpend(
+    createServiceClient(),
+    products.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
+  );
+
+  const { data: adSpendDailyRows } = await cookieClient
+    .from("product_ad_spend_daily")
+    .select("product_id, amount")
+    .in("product_id", productIds);
+
+  const adSpendByProduct = new Map<string, number>();
+  for (const r of adSpendDailyRows ?? []) {
+    const pid = String(r.product_id);
+    adSpendByProduct.set(pid, (adSpendByProduct.get(pid) ?? 0) + (Number(r.amount) || 0));
+  }
+
+  const productMetaMap = new Map(
+    products.map((p) => [
+      String(p.id),
+      {
+        name: String(p.name_ar ?? "—"),
+        costPrice: p.cost_price == null ? null : Number(p.cost_price),
+        calculationStartDate: p.profit_calculation_start_date
+          ? String(p.profit_calculation_start_date).slice(0, 10)
+          : null,
+        fulfillmentType: "affiliate" as const,
+        affiliateCommissionType: p.affiliate_commission_type,
+        affiliateFixedCommission:
+          p.affiliate_fixed_commission == null ? null : Number(p.affiliate_fixed_commission),
+        affiliateSellPrice: p.affiliate_sell_price == null ? null : Number(p.affiliate_sell_price),
+        currency: p.affiliate_currency,
+      },
+    ]),
+  );
+
+  const orders: ProfitOrderInput[] = (ordersRes.data ?? []).map((o) => ({
+    product_id: String(o.product_id),
+    total_price: Number(o.total_price) || 0,
+    status: o.status as OrderStatus,
+    created_at: String(o.created_at ?? ""),
+    quantity: o.quantity == null ? 1 : Number(o.quantity),
+    affiliate_other_costs: o.affiliate_other_costs == null ? null : Number(o.affiliate_other_costs),
+    affiliate_costs_finalized: Boolean(o.affiliate_costs_finalized),
+  }));
+
+  const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
+
+  const byCurrency = new Map<string, ProductProfitRow[]>();
+  for (const row of rows) {
+    const code = row.currency || "—";
+    const list = byCurrency.get(code) ?? [];
+    list.push(row);
+    byCurrency.set(code, list);
+  }
+
+  const groups: AffiliateCurrencyGroup[] = Array.from(byCurrency.entries())
+    .map(([currency, groupRows]) => ({
+      currency,
+      rows: groupRows,
+      totals: sumProfitTotals(groupRows),
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+
+  return { ok: true, data: { groups } };
 }
