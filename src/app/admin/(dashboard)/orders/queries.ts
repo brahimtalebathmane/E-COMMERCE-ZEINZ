@@ -34,9 +34,21 @@ export const ADMIN_ORDER_SELECT = `
     fulfillment_type,
     affiliate_commission_type,
     affiliate_sku,
-    affiliate_sheet_url
+    affiliate_sheet_url,
+    country_id
   )
 ` as const;
+
+/**
+ * Same shape as ADMIN_ORDER_SELECT but with an inner join on products so
+ * `.eq("products.country_id", id)` can filter the order list by the admin's
+ * currently-selected country (PostgREST requires !inner to filter on an
+ * embedded resource's columns).
+ */
+export const ADMIN_ORDER_SELECT_SCOPED = ADMIN_ORDER_SELECT.replace(
+  "products (",
+  "products!inner (",
+) as string;
 
 export type RealtimeOrderPayload = {
   id: string;

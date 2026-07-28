@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { signOrderActionToken } from "@/lib/auth/order-action-token";
@@ -13,7 +13,7 @@ import {
   notifyAdminsOfNewOrder,
   resolveOrderProductName,
 } from "@/lib/onesignal/post-order-notify";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import { canAcceptStoreOrder } from "@/lib/product-test-status";
 import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
 import type { ProductTestingStatus } from "@/types";
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     const { data: product, error: pErr } = await supabase
       .from("products")
       .select(
-        "id, discount_price, price, test_status, name_ar, name_fr, deleted_at, fulfillment_type, affiliate_sku, affiliate_currency, affiliate_sheet_url",
+        "id, discount_price, price, test_status, name_ar, name_fr, deleted_at, fulfillment_type, affiliate_sku, affiliate_currency, affiliate_sheet_url, country_id",
       )
       .eq("id", data.product_id)
       .maybeSingle();
@@ -121,7 +121,8 @@ export async function POST(request: Request) {
       data.meta_event_id && data.meta_event_id.length > 0
         ? data.meta_event_id
         : createMetaEventId();
-    const orderPixelId = resolveServerMetaPixelId();
+    const countryPixelIds = await resolveCountryPixelIds(supabase, product.country_id as string | null);
+    const orderPixelId = resolveServerMetaPixelId(countryPixelIds.server);
     const eventSourceUrl = data.event_source_url?.length ? data.event_source_url : null;
     const metaFbp = data.meta_fbp?.length ? data.meta_fbp : null;
     const metaFbc = data.meta_fbc?.length ? data.meta_fbc : null;
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
         status: "pending",
         meta_event_id: orderEventId,
         meta_event_source_url: eventSourceUrl,
-        /** LEGACY snapshot — unified pixel from META_PIXEL_ID; not used for routing. */
+        /** Snapshot of the pixel actually resolved (country override or env fallback) for admin display; not read back for routing. */
         meta_pixel_id: orderPixelId,
         meta_fbp: metaFbp,
         meta_fbc: metaFbc,
@@ -173,34 +174,40 @@ export async function POST(request: Request) {
       // Sheet write is best-effort: COD Partner reads from the sheet, but the
       // order is already safely in our DB either way. Failure never fails the
       // request — it's logged so the admin can retry from the orders view.
-      try {
-        if (!product.affiliate_sheet_url) {
-          throw new Error("Product has no affiliate_sheet_url configured");
+      // Deferred via after() so the customer's response isn't held up by the
+      // Google Sheets round-trip (routinely 1-3+ seconds) — Netlify's Next.js
+      // Runtime keeps the function alive for this via waitUntil, confirmed
+      // against their current docs ("next/after" — Full Support).
+      after(async () => {
+        try {
+          if (!product.affiliate_sheet_url) {
+            throw new Error("Product has no affiliate_sheet_url configured");
+          }
+          await appendAffiliateOrderRow(product.affiliate_sheet_url, {
+            orderDate: new Date().toISOString(),
+            orderId: order.id,
+            fullName: data.customer_name,
+            phone: data.phone,
+            country: data.affiliate_country ?? "",
+            city: data.affiliate_city ?? "",
+            fullAddress: data.affiliate_address ?? "",
+            sku: product.affiliate_sku ?? "",
+            quantity: 1,
+            total: Number(order.total_price),
+            currency: orderCurrency,
+            note: "",
+          });
+          await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_succeeded", null);
+        } catch (sheetErr) {
+          const message = sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
+          console.error("[POST /api/orders] Affiliate sheet write failed", {
+            order_id: order.id,
+            product_id: product.id,
+            error: message,
+          });
+          await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_failed", message);
         }
-        await appendAffiliateOrderRow(product.affiliate_sheet_url, {
-          orderDate: new Date().toISOString(),
-          orderId: order.id,
-          fullName: data.customer_name,
-          phone: data.phone,
-          country: data.affiliate_country ?? "",
-          city: data.affiliate_city ?? "",
-          fullAddress: data.affiliate_address ?? "",
-          sku: product.affiliate_sku ?? "",
-          quantity: 1,
-          total: Number(order.total_price),
-          currency: orderCurrency,
-          note: "",
-        });
-        await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_succeeded", null);
-      } catch (sheetErr) {
-        const message = sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
-        console.error("[POST /api/orders] Affiliate sheet write failed", {
-          order_id: order.id,
-          product_id: product.id,
-          error: message,
-        });
-        await logOrderCommunicationEvent(supabase, order.id, "affiliate_sheet_write_failed", message);
-      }
+      });
     }
 
     const completionToken = String(order.completion_token);

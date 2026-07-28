@@ -26,10 +26,12 @@ type Props = {
   product: ProductRow;
   open: boolean;
   onClose: () => void;
+  /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
+  metaPixelIdPublic?: string | null;
 };
 
 /** Order form for affiliate (COD Partner) landing pages: name, phone, full address, city. */
-export function AffiliateOrderFormModal({ product, open, onClose }: Props) {
+export function AffiliateOrderFormModal({ product, open, onClose, metaPixelIdPublic }: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -187,6 +189,7 @@ export function AffiliateOrderFormModal({ product, open, onClose }: Props) {
         productName: copy.name,
         phone: phoneE164,
         customerName: n,
+        pixelId: metaPixelIdPublic,
       });
 
       await trackLead({
@@ -198,6 +201,7 @@ export function AffiliateOrderFormModal({ product, open, onClose }: Props) {
         productName: copy.name,
         phone: phoneE164,
         customerName: n,
+        pixelId: metaPixelIdPublic,
       });
 
       clearMetaSessionEventId(product.id);

@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { FORBIDDEN_RESPONSE, apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
 import { resolveLeadEventId } from "@/lib/meta-lead-event-id";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolvePublicMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import type { MetaPendingLeadPayload } from "@/lib/meta-lead-client";
 import { verifyShopperOrderSuccessAccess } from "@/lib/orders/order-success-auth";
 
@@ -47,12 +47,17 @@ async function buildLeadPayload(orderId: string): Promise<NextResponse> {
   let productName = "Product";
   const { data: product } = await supabase
     .from("products")
-    .select("name_ar, name_fr, default_language")
+    .select("name_ar, name_fr, default_language, country_id")
     .eq("id", order.product_id as string)
     .maybeSingle();
   if (product) {
     productName = resolveMetaProductDisplayName(product);
   }
+
+  const countryPixelIds = await resolveCountryPixelIds(
+    supabase,
+    (product as { country_id?: string | null } | null)?.country_id,
+  );
 
   const payload: MetaPendingLeadPayload = {
     value: Number(order.total_price),
@@ -61,7 +66,8 @@ async function buildLeadPayload(orderId: string): Promise<NextResponse> {
     orderId: order.id as string,
     productId: order.product_id as string,
     productName,
-    pixelId: resolveServerMetaPixelId(),
+    // Browser Lead pixel — public, not the server/CAPI id.
+    pixelId: resolvePublicMetaPixelId(countryPixelIds.public),
     phone: (order.phone as string | null) ?? undefined,
     customerName: (order.customer_name as string | null) ?? undefined,
   };

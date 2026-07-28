@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { AnalyticsView } from "./AnalyticsView";
 import { AffiliateAnalyticsSection } from "./AffiliateAnalyticsSection";
 import { loadAnalyticsData, loadAffiliateAnalyticsData } from "./data";
@@ -8,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
+  const { selectedCountryId } = await getCountryScope();
   const [result, affiliateResult] = await Promise.all([
-    loadAnalyticsData(supabase),
-    loadAffiliateAnalyticsData(supabase),
+    loadAnalyticsData(supabase, selectedCountryId),
+    loadAffiliateAnalyticsData(supabase, selectedCountryId),
   ]);
 
   if (!result.ok) {

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { metaPurchaseMoneyFromOrderTotal } from "@/lib/meta-purchase-tracking";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import {
   buildMetaOrderValueCustomData,
   buildMetaProductCustomData,
@@ -280,11 +280,10 @@ export async function dispatchMetaEvent(
     eventType === "lead"
       ? resolveLeadEventIdForOrder(order)
       : transactionalEventId(orderId, eventType);
-  const pixelId = resolveServerMetaPixelId() || "";
 
   const { data: product } = await supabase
     .from("products")
-    .select("name_ar, name_fr, default_language, deleted_at, slug")
+    .select("name_ar, name_fr, default_language, deleted_at, slug, country_id")
     .eq("id", order.product_id as string)
     .maybeSingle();
 
@@ -305,6 +304,9 @@ export async function dispatchMetaEvent(
     });
     return result;
   }
+
+  const countryPixelIds = await resolveCountryPixelIds(supabase, product.country_id as string | null);
+  const pixelId = resolveServerMetaPixelId(countryPixelIds.server) || "";
 
   const productCustomData = buildMetaProductCustomData({
     productId: order.product_id as string,

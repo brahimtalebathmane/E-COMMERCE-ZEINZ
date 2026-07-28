@@ -62,6 +62,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         orderId={orderId}
         productName={productName}
         totalPrice={totalPrice}
+        fulfillmentType={orderContext?.fulfillmentType ?? null}
       />
     </>
   );

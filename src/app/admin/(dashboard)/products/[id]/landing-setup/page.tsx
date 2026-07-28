@@ -14,11 +14,14 @@ type PageProps = { params: Promise<{ id: string }> };
 export default async function LandingSetupPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data, error }, { data: countries }] = await Promise.all([
+    supabase.from("products").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("countries")
+      .select("id, name_ar, name_fr, iso_code")
+      .eq("is_active", true)
+      .order("name_ar"),
+  ]);
 
   if (error || !data) {
     notFound();
@@ -93,7 +96,7 @@ export default async function LandingSetupPage({ params }: PageProps) {
         </div>
       </div>
 
-      <ProductForm mode="landing-setup" initial={product} />
+      <ProductForm mode="landing-setup" initial={product} countries={countries ?? []} />
     </div>
   );
 }

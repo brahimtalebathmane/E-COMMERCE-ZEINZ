@@ -1,0 +1,39 @@
+import { cache } from "react";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import type { CountryRow } from "@/types";
+
+export const ADMIN_COUNTRY_COOKIE = "admin_country_id";
+
+export type CountryScope = {
+  countries: CountryRow[];
+  selectedCountryId: string;
+};
+
+/**
+ * Resolves which market the admin dashboard is scoped to for this request.
+ * Any admin/staff account may pick any active country (no per-account ACL —
+ * deliberate). Defaults to Mauritania when the cookie is unset or points at
+ * a country that no longer exists/is inactive.
+ */
+const resolveCountryScope = cache(async (): Promise<CountryScope> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("countries")
+    .select("*")
+    .eq("is_active", true)
+    .order("name_ar");
+  const countries = (data ?? []) as CountryRow[];
+
+  const cookieStore = await cookies();
+  const cookieId = cookieStore.get(ADMIN_COUNTRY_COOKIE)?.value?.trim();
+  const mauritania = countries.find((c) => c.iso_code === "MR");
+  const selected =
+    countries.find((c) => c.id === cookieId) ?? mauritania ?? countries[0] ?? null;
+
+  return { countries, selectedCountryId: selected?.id ?? "" };
+});
+
+export async function getCountryScope(): Promise<CountryScope> {
+  return resolveCountryScope();
+}

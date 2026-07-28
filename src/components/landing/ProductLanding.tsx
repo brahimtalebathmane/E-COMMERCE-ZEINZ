@@ -40,6 +40,8 @@ const AffiliateOrderFormModal = dynamic(
 
 type Props = {
   product: ProductRow;
+  /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
+  metaPixelIdPublic?: string | null;
 };
 
 /** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
@@ -339,7 +341,7 @@ function GuaranteeStrip({ t }: { t: (key: string) => string }) {
   );
 }
 
-export function ProductLanding({ product }: Props) {
+export function ProductLanding({ product, metaPixelIdPublic }: Props) {
   const { locale, dir, t, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
@@ -420,12 +422,16 @@ export function ProductLanding({ product }: Props) {
         product.discount_price != null
           ? Number(product.discount_price)
           : Number(product.price);
-      trackInitiateCheckout(eventId, {
-        productId: product.id,
-        productName: copy.name,
-        value: leadValue,
-        currency: product.fulfillment_type === "affiliate" ? product.affiliate_currency || "MRU" : "MRU",
-      });
+      trackInitiateCheckout(
+        eventId,
+        {
+          productId: product.id,
+          productName: copy.name,
+          value: leadValue,
+          currency: product.fulfillment_type === "affiliate" ? product.affiliate_currency || "MRU" : "MRU",
+        },
+        metaPixelIdPublic,
+      );
       const metaCookies = getMetaBrowserCookies();
       void (async () => {
         const capiResult = await dispatchInitiateCheckoutCapiWithRetry({
@@ -776,12 +782,14 @@ export function ProductLanding({ product }: Props) {
           product={product}
           open={open}
           onClose={() => setOpen(false)}
+          metaPixelIdPublic={metaPixelIdPublic}
         />
       ) : (
         <OrderFormModal
           product={product}
           open={open}
           onClose={() => setOpen(false)}
+          metaPixelIdPublic={metaPixelIdPublic}
         />
       )}
     </div>

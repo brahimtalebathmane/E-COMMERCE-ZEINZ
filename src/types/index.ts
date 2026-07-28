@@ -127,6 +127,8 @@ export type ProductRow = {
   /** Optional inclusive cutoff for profit analytics (YYYY-MM-DD). Null = life-to-date. */
   profit_calculation_start_date: string | null;
   created_at: string;
+  /** Market this product belongs to. Mauritania for every owned product; admin-selected for affiliate. */
+  country_id: string;
   /** owned (default, MRU/COD) or affiliate (COD Partner fulfills; we only market). */
   fulfillment_type: FulfillmentType;
   affiliate_commission_type: AffiliateCommissionType | null;
@@ -142,6 +144,21 @@ export type ProductRow = {
   affiliate_fixed_commission: number | null;
   /** Price charged to the customer, when affiliate_commission_type = 'set_price'. */
   affiliate_sell_price: number | null;
+};
+
+/** A market the store sells into — see supabase/migrations/051_countries.sql. */
+export type CountryRow = {
+  id: string;
+  name_ar: string;
+  name_fr: string;
+  /** Alpha-2 ISO code; compatible with react-phone-number-input's Country type. */
+  iso_code: string;
+  /** ISO 4217 code used for this market's own order/profit totals. */
+  currency: string;
+  meta_pixel_id_public: string | null;
+  meta_pixel_id_server: string | null;
+  is_active: boolean;
+  created_at: string;
 };
 
 /**

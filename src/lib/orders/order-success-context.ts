@@ -2,8 +2,9 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import { createClient } from "@/lib/supabase/server";
+import type { FulfillmentType } from "@/types";
 
 export type OrderSuccessContext = {
   metaPixelId: string | null;
@@ -11,6 +12,7 @@ export type OrderSuccessContext = {
   productName: string | null;
   totalPrice: number | null;
   currency: string;
+  fulfillmentType: FulfillmentType | null;
 };
 
 /** Loads order + product context when the HttpOnly success session matches. */
@@ -33,24 +35,30 @@ export async function loadOrderSuccessContext(
   if (error || !order) return null;
 
   let productName: string | null = null;
+  let fulfillmentType: FulfillmentType | null = null;
+  let countryId: string | null = null;
   if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("name_ar, name_fr, default_language")
+      .select("name_ar, name_fr, default_language, fulfillment_type, country_id")
       .eq("id", order.product_id as string)
       .maybeSingle();
     if (product) {
       productName = resolveMetaProductDisplayName(product);
+      fulfillmentType = (product.fulfillment_type as FulfillmentType | null) ?? null;
+      countryId = (product.country_id as string | null) ?? null;
     }
   }
 
+  const countryPixelIds = await resolveCountryPixelIds(supabase, countryId);
   const total = Number(order.total_price);
   return {
-    metaPixelId: resolveServerMetaPixelId(),
+    metaPixelId: resolveServerMetaPixelId(countryPixelIds.server),
     productId: (order.product_id as string | null) ?? null,
     productName,
     totalPrice: Number.isFinite(total) ? total : null,
     currency: (order.currency as string) ?? "MRU",
+    fulfillmentType,
   };
 }
 

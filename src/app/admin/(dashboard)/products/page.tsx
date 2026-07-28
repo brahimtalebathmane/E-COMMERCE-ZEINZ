@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { ProductsAdminView } from "./ProductsAdminView";
 import type { AdminProductPipelineRow } from "./types";
 import type { ProductSourcingType, ProductTestingStatus } from "@/types";
@@ -37,11 +38,13 @@ function mapPipelineRow(row: Record<string, unknown>): AdminProductPipelineRow {
 
 export default async function AdminProductsPage() {
   const supabase = await createClient();
+  const { selectedCountryId } = await getCountryScope();
   const { data: products } = await supabase
     .from("products")
     .select(
       "id, name_ar, slug, price, discount_price, cost_price, media_url, media_type, sourcing_type, sourcing_link, test_status, created_at",
     )
+    .eq("country_id", selectedCountryId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 

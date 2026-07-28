@@ -25,9 +25,11 @@ type Props = {
   product: ProductRow;
   open: boolean;
   onClose: () => void;
+  /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
+  metaPixelIdPublic?: string | null;
 };
 
-export function OrderFormModal({ product, open, onClose }: Props) {
+export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -160,6 +162,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         productName: copy.name,
         phone: phoneE164,
         customerName: n,
+        pixelId: metaPixelIdPublic,
       });
 
       // Fire browser Lead on the product landing so the Pixel records the shopper page URL.
@@ -173,6 +176,7 @@ export function OrderFormModal({ product, open, onClose }: Props) {
         productName: copy.name,
         phone: phoneE164,
         customerName: n,
+        pixelId: metaPixelIdPublic,
       });
 
       clearMetaSessionEventId(product.id);

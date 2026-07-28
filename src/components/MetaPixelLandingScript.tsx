@@ -7,13 +7,15 @@ import {
 type Props = {
   /** When set, fires ViewContent with content_ids (PageView comes from standard init). */
   productContent?: MetaLandingProductContent | null;
+  /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
+  pixelId?: string | null;
 };
 
 /** Server-rendered Pixel bootstrap — runs before client hydration. */
-export function MetaPixelLandingScript({ productContent }: Props) {
+export function MetaPixelLandingScript({ productContent, pixelId }: Props) {
   const js = productContent
-    ? buildMetaPixelProductLandingScript(productContent)
-    : buildMetaPixelCatalogPageViewScript();
+    ? buildMetaPixelProductLandingScript(productContent, pixelId)
+    : buildMetaPixelCatalogPageViewScript(pixelId);
 
   if (!js) return null;
 

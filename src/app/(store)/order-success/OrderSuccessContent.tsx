@@ -9,12 +9,15 @@ type Props = {
   orderId?: string | null;
   productName?: string | null;
   totalPrice?: number | null;
+  /** affiliate orders are confirmed/shipped by COD Partner by phone — no WhatsApp CTA to show. */
+  fulfillmentType?: string | null;
 };
 
 export function OrderSuccessContent({
   orderId,
   productName,
   totalPrice,
+  fulfillmentType,
 }: Props) {
   const { t, dir, locale } = useLanguage();
 
@@ -84,16 +87,18 @@ export function OrderSuccessContent({
           </dl>
         ) : null}
 
-        <div className="mt-8 flex justify-center">
-          <a
-            href={WHATSAPP_HREF}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="store-btn-whatsapp max-w-sm"
-          >
-            {t("orderSuccess.whatsappCta")}
-          </a>
-        </div>
+        {fulfillmentType !== "affiliate" ? (
+          <div className="mt-8 flex justify-center">
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="store-btn-whatsapp max-w-sm"
+            >
+              {t("orderSuccess.whatsappCta")}
+            </a>
+          </div>
+        ) : null}
       </div>
     </div>
   );

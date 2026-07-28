@@ -8,6 +8,7 @@ import type {
   ProductSourcingType,
   FulfillmentType,
   AffiliateCommissionType,
+  CountryRow,
 } from "@/types";
 import { AFFILIATE_COUNTRIES } from "@/lib/countries";
 import {
@@ -83,6 +84,8 @@ function initialTopBannerOfferText(p: ProductRow | undefined): string {
 type Props = {
   mode: "create" | "edit" | "landing-setup";
   initial?: ProductRow;
+  /** Active countries for the affiliate target-country picker. */
+  countries: Pick<CountryRow, "id" | "name_ar" | "name_fr" | "iso_code">[];
 };
 
 function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
@@ -96,7 +99,7 @@ function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
   }));
 }
 
-export function ProductForm({ mode, initial }: Props) {
+export function ProductForm({ mode, initial, countries }: Props) {
   const router = useRouter();
   const isLandingSetup = mode === "landing-setup";
   const [busy, setBusy] = useState(false);
@@ -181,6 +184,7 @@ export function ProductForm({ mode, initial }: Props) {
     AffiliateCommissionType | ""
   >(initial?.affiliate_commission_type ?? "");
   const [affiliateSku, setAffiliateSku] = useState(initial?.affiliate_sku ?? "");
+  const [countryId, setCountryId] = useState(initial?.country_id ?? "");
   const [affiliateCountry, setAffiliateCountry] = useState(
     initial?.affiliate_country ?? "",
   );
@@ -439,6 +443,7 @@ export function ProductForm({ mode, initial }: Props) {
         return Number.isFinite(n) ? n : null;
       })(),
       fulfillment_type: fulfillmentType,
+      country_id: fulfillmentType === "affiliate" ? countryId || null : null,
       affiliate_commission_type: affiliateCommissionType === "" ? null : affiliateCommissionType,
       affiliate_sku: affiliateSku,
       affiliate_country: affiliateCountry,
@@ -1073,6 +1078,25 @@ export function ProductForm({ mode, initial }: Props) {
                     onChange={(e) => setAffiliateSku(e.target.value)}
                     dir="ltr"
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">
+                    {a.productForm.affiliateMarketCountry}
+                  </label>
+                  <select
+                    className="mt-1 w-full admin-input"
+                    required={!isLandingSetup}
+                    value={countryId}
+                    onChange={(e) => setCountryId(e.target.value)}
+                    dir="ltr"
+                  >
+                    <option value="">{a.productForm.affiliateMarketCountryUnset}</option>
+                    {countries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name_ar} ({c.iso_code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">{a.productForm.affiliateCountry}</label>

@@ -47,3 +47,6 @@ public/swe-worker*
 
 # whatsapp (baileys auth state)
 /baileys_auth/
+
+# Claude Code local-only settings (machine-specific permissions)
+.claude/settings.local.json

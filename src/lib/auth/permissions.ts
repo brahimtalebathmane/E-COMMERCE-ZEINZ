@@ -30,6 +30,7 @@ export type AdminAccess = AdminProfile & {
 
 export const ROUTE_PERMISSIONS: Record<string, PermissionKey | PermissionKey[] | "owner"> = {
   "/admin/staff": "owner",
+  "/admin/countries": "owner",
   "/admin/products": PERMISSIONS.manage_products,
   "/admin/orders": PERMISSIONS.view_orders,
   "/admin/analytics": PERMISSIONS.view_analytics,

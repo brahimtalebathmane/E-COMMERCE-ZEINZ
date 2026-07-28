@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { toMetaPixelPurchaseMoney } from "@/lib/currency";
-import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import {
   buildMetaOrderValueCustomData,
   resolveMetaProductDisplayName,
@@ -147,19 +147,10 @@ export async function dispatchInitiateCheckoutMetaEvent(
     return result;
   }
 
-  const pixelId = resolveServerMetaPixelId() || "";
-  if (!pixelId) {
-    await releaseFunnelMetaDispatchClaim(supabase, eventId);
-    console.warn("[meta] InitiateCheckout CAPI skipped: META_PIXEL_ID not set", { eventId });
-    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
-    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
-    return result;
-  }
-
   const { data: product, error: productErr } = await supabase
     .from("products")
     .select(
-      "id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug, fulfillment_type, affiliate_currency",
+      "id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug, fulfillment_type, affiliate_currency, country_id",
     )
     .eq("id", productId)
     .maybeSingle();
@@ -168,6 +159,16 @@ export async function dispatchInitiateCheckoutMetaEvent(
   if (!product || product.deleted_at != null) {
     await releaseFunnelMetaDispatchClaim(supabase, eventId);
     const result = { sent: false, skipped: true, reason: "product_not_found" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
+  }
+
+  const countryPixelIds = await resolveCountryPixelIds(supabase, product.country_id as string | null);
+  const pixelId = resolveServerMetaPixelId(countryPixelIds.server) || "";
+  if (!pixelId) {
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    console.warn("[meta] InitiateCheckout CAPI skipped: META_PIXEL_ID not set", { eventId });
+    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
     recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
     return result;
   }

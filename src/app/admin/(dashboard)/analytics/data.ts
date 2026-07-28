@@ -55,15 +55,21 @@ export type LoadAnalyticsResult = { ok: true; data: AnalyticsData } | { ok: fals
  * refresh (`ensureFreshAdSpend`) runs on its own service-role client since it
  * writes to `product_ad_spend_daily`, which has no client-writable RLS policy.
  */
-export async function loadAnalyticsData(cookieClient: SupabaseClient): Promise<LoadAnalyticsResult> {
+export async function loadAnalyticsData(
+  cookieClient: SupabaseClient,
+  countryId?: string,
+): Promise<LoadAnalyticsResult> {
+  let ownedProductsQuery = cookieClient
+    .from("products")
+    // Owned-only: affiliate products/orders are excluded from this whole
+    // pipeline (including the combined daily chart) so their non-MRU
+    // amounts are never summed alongside MRU. See loadAffiliateAnalyticsData.
+    .select("id, name_ar, cost_price, profit_calculation_start_date, created_at")
+    .eq("fulfillment_type", "owned");
+  if (countryId) ownedProductsQuery = ownedProductsQuery.eq("country_id", countryId);
+
   const [productsRes, campaignsRes] = await Promise.all([
-    cookieClient
-      .from("products")
-      // Owned-only: affiliate products/orders are excluded from this whole
-      // pipeline (including the combined daily chart) so their non-MRU
-      // amounts are never summed alongside MRU. See loadAffiliateAnalyticsData.
-      .select("id, name_ar, cost_price, profit_calculation_start_date, created_at")
-      .eq("fulfillment_type", "owned"),
+    ownedProductsQuery,
     cookieClient.from("product_ad_campaigns").select("id, product_id, meta_campaign_id, label"),
   ]);
 
@@ -196,13 +202,18 @@ export type LoadAffiliateAnalyticsResult =
  */
 export async function loadAffiliateAnalyticsData(
   cookieClient: SupabaseClient,
+  countryId?: string,
 ): Promise<LoadAffiliateAnalyticsResult> {
-  const { data: productRows, error: productsErr } = await cookieClient
+  let affiliateProductsQuery = cookieClient
     .from("products")
     .select(
       "id, name_ar, cost_price, profit_calculation_start_date, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price, affiliate_currency, created_at",
     )
     .eq("fulfillment_type", "affiliate");
+  if (countryId) {
+    affiliateProductsQuery = affiliateProductsQuery.eq("country_id", countryId);
+  }
+  const { data: productRows, error: productsErr } = await affiliateProductsQuery;
 
   if (productsErr) return { ok: false, error: productsErr.message };
   const products = productRows ?? [];

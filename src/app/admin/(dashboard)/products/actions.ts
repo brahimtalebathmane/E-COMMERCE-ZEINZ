@@ -8,6 +8,7 @@ import {
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { assertPermission, isAuthError } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Testimonial,
   FAQ,
@@ -108,6 +109,8 @@ export type ProductPayload = {
   sourcing_link: string;
   cost_price: number | null;
   fulfillment_type: FulfillmentType;
+  /** Only meaningful when fulfillment_type='affiliate' — owned products are always assigned Mauritania server-side. */
+  country_id: string | null;
   affiliate_commission_type: AffiliateCommissionType | null;
   affiliate_sku: string;
   affiliate_country: string;
@@ -258,6 +261,9 @@ function validateAffiliateFields(payload: ProductPayload) {
   ) {
     throw new Error("Select a commission type for the affiliate product.");
   }
+  if (!payload.country_id) {
+    throw new Error("Select a target country for the affiliate product.");
+  }
   if (!payload.affiliate_sku.trim()) {
     throw new Error("Affiliate SKU is required.");
   }
@@ -297,20 +303,41 @@ function validateAffiliateFields(payload: ProductPayload) {
   }
 }
 
-function pipelineFieldsFromPayload(payload: ProductPayload) {
+/**
+ * Owned products always belong to Mauritania — not a user choice in the
+ * form, so it's resolved here rather than trusting a client-supplied id.
+ */
+async function resolveMauritaniaCountryId(supabase: SupabaseClient): Promise<string> {
+  const { data, error } = await supabase
+    .from("countries")
+    .select("id")
+    .eq("iso_code", "MR")
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error("Mauritania country row is missing — check the Countries admin screen.");
+  }
+  return (data as { id: string }).id;
+}
+
+async function pipelineFieldsFromPayload(supabase: SupabaseClient, payload: ProductPayload) {
   return {
     test_status: payload.test_status,
     sourcing_type: payload.sourcing_type,
     sourcing_link: payload.sourcing_link.trim(),
     cost_price: payload.cost_price,
-    ...affiliateFieldsFromPayload(payload),
+    ...(await affiliateFieldsFromPayload(supabase, payload)),
   };
 }
 
-function affiliateFieldsFromPayload(payload: ProductPayload) {
+async function affiliateFieldsFromPayload(supabase: SupabaseClient, payload: ProductPayload) {
   const isAffiliate = payload.fulfillment_type === "affiliate";
+  const country_id = isAffiliate
+    ? payload.country_id
+    : await resolveMauritaniaCountryId(supabase);
   return {
     fulfillment_type: payload.fulfillment_type,
+    country_id,
     affiliate_commission_type: isAffiliate ? payload.affiliate_commission_type : null,
     affiliate_sku: isAffiliate ? payload.affiliate_sku.trim() : null,
     affiliate_country: isAffiliate ? payload.affiliate_country.trim() : null,
@@ -339,8 +366,13 @@ function revalidateProductPaths(previousSlug: string | null, newSlug: string | n
   revalidatePath("/admin/products");
 }
 
-function researchInsertDefaults(payload: ResearchProductPayload, slug: string) {
+function researchInsertDefaults(
+  payload: ResearchProductPayload,
+  slug: string,
+  countryId: string,
+) {
   return {
+    country_id: countryId,
     default_language: "ar" as const,
     brand_color: BRAND_COLOR,
     logo_url: "",
@@ -431,10 +463,11 @@ export async function createResearchProductAction(payload: ResearchProductPayloa
   validateResearchProductPayload(payload);
   const { supabase } = await assertPermission(PERMISSIONS.manage_products);
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
+  const countryId = await resolveMauritaniaCountryId(supabase);
 
   const { error } = await supabase
     .from("products")
-    .insert(researchInsertDefaults(payload, candidate));
+    .insert(researchInsertDefaults(payload, candidate, countryId));
 
   if (error) throw new Error(error.message);
 
@@ -574,7 +607,7 @@ export async function createProductAction(payload: ProductPayload) {
     sticky_footer_cta_bg_color: normalizeOptionalHexColor(payload.sticky_footer_cta_bg_color),
     sticky_footer_cta_text_color: normalizeOptionalHexColor(payload.sticky_footer_cta_text_color),
     sticky_footer_show_timer: payload.sticky_footer_show_timer,
-    ...pipelineFieldsFromPayload(payload),
+    ...(await pipelineFieldsFromPayload(supabase, payload)),
   });
 
   if (error) throw new Error(error.message);
@@ -751,7 +784,7 @@ export async function saveLandingConfigurationAction(
         sourcing_type: payload.sourcing_type,
         sourcing_link: payload.sourcing_link.trim(),
         cost_price: payload.cost_price,
-        ...affiliateFieldsFromPayload(payload),
+        ...(await affiliateFieldsFromPayload(supabase, payload)),
       })
       .eq("id", id);
 
@@ -864,7 +897,7 @@ export async function updateProductAction(
         price: payload.price,
         media_type: payload.media_type,
         media_url: payload.media_url.trim(),
-        ...pipelineFieldsFromPayload(payload),
+        ...(await pipelineFieldsFromPayload(supabase, payload)),
       })
       .eq("id", id);
 

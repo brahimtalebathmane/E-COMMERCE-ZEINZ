@@ -3,6 +3,8 @@ import { MetaPixelLandingScript } from "@/components/MetaPixelLandingScript";
 import { HeroMediaPreload } from "@/components/landing/HeroMediaPreload";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
+import { resolveCountryPixelIds } from "@/lib/meta-pixel-id";
+import { createPublicClient } from "@/lib/supabase/public";
 import {
   getAllProductSlugs,
   getProductByOldSlug,
@@ -69,12 +71,14 @@ export default async function ProductPage({ params }: PageProps) {
     productName: resolveMetaProductDisplayName(found),
   };
 
+  const countryPixelIds = await resolveCountryPixelIds(createPublicClient(), found.country_id);
+
   return (
     <>
-      <MetaPixelLandingScript productContent={productContent} />
+      <MetaPixelLandingScript productContent={productContent} pixelId={countryPixelIds.public} />
       <HeroMediaPreload mediaType={found.media_type} mediaUrl={found.media_url} />
-      <MetaPixelRuntime productContent={productContent} />
-      <ProductLanding product={found} />
+      <MetaPixelRuntime productContent={productContent} pixelId={countryPixelIds.public} />
+      <ProductLanding product={found} metaPixelIdPublic={countryPixelIds.public} />
     </>
   );
 }

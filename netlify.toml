@@ -10,10 +10,11 @@
 #   NEXT_PUBLIC_SITE_URL        (your live URL, e.g. https://yoursite.netlify.app)
 #   META_CAPI_ACCESS_TOKEN      (Business Manager system user token for the unified pixel)
 #   META_CAPI_TEST_EVENT_CODE   (optional; e.g. TEST24694 — required for CAPI rows in Meta Test Events)
-#   NEXT_PUBLIC_META_PIXEL_ID   (browser Pixel — baked in at build time on Netlify)
-#   META_PIXEL_ID               (server CAPI — must match NEXT_PUBLIC_META_PIXEL_ID when both set)
-#   GET /api/meta/health        (validates env; errors if pixel IDs mismatch)
-#   products.meta_pixel_id      (LEGACY in DB — ignored for routing)
+#   NEXT_PUBLIC_META_PIXEL_ID   (browser Pixel fallback — used when a country has no pixel set)
+#   META_PIXEL_ID               (server CAPI fallback — used when a country has no pixel set)
+#   GET /api/meta/health        (validates env; errors if pixel IDs mismatch — stays env/global, not per-country)
+#   countries.meta_pixel_id_public/server  (per-country pixel — set in /admin/countries; takes priority over the env vars above)
+#   products.meta_pixel_id      (LEGACY in DB — ignored for routing; superseded by countries.meta_pixel_id_*)
 #
 [build]
   command = "npm run build"
@@ -23,6 +24,13 @@
 
 [functions."meta-stuck-events-scheduled"]
   schedule = "*/30 * * * *"
+
+# Stamps x-visitor-country-code on "/" only, for the homepage catalog's
+# geo-filter (see netlify/edge-functions/geo-country.ts). Deliberately not
+# applied to /[slug] landing pages — ad traffic/shared links must always load.
+[[edge_functions]]
+  function = "geo-country"
+  path = "/"
 
 [build.environment]
   NODE_VERSION = "20"

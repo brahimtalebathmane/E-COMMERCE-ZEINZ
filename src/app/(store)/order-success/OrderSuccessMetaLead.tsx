@@ -34,6 +34,7 @@ async function fireBrowserLead(payload: MetaPendingLeadPayload): Promise<void> {
     phone: payload.phone,
     customerName: payload.customerName,
     quantity: payload.quantity,
+    pixelId: payload.pixelId,
   });
 }
 

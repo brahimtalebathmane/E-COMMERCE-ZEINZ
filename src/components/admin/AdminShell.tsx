@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { adminAr as a } from "@/locales/admin-ar";
 import { useAdminAssistant } from "./AdminAssistantContext";
 import { useAdminAccess } from "./AdminPermissionsContext";
+import { useAdminCountryScope } from "./AdminCountryContext";
+import { setAdminCountryAction } from "@/lib/auth/country-scope-actions";
 import {
   PERMISSIONS,
   type PermissionKey,
@@ -17,6 +19,7 @@ import {
   AssistantIcon,
   ChatIcon,
   CloseIcon,
+  GlobeIcon,
   HomeIcon,
   LogoutIcon,
   MenuIcon,
@@ -88,10 +91,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const router = useRouter();
   const access = useAdminAccess();
+  const { countries, selectedCountryId } = useAdminCountryScope();
   const { open: assistantOpen, openAssistant } = useAdminAssistant();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [switchingCountry, setSwitchingCountry] = useState(false);
+
+  async function onCountryChange(nextId: string) {
+    if (!nextId || nextId === selectedCountryId || switchingCountry) return;
+    setSwitchingCountry(true);
+    try {
+      await setAdminCountryAction(nextId);
+    } finally {
+      router.refresh();
+      setSwitchingCountry(false);
+    }
+  }
 
   const navItems = useMemo(() => {
     return ALL_NAV_ITEMS.filter((item) => {
@@ -108,6 +124,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const bottomMoreActive = useMemo(() => {
     if (assistantOpen) return true;
     if (pathname.startsWith("/admin/staff")) return true;
+    if (pathname.startsWith("/admin/countries")) return true;
     if (pathname.startsWith("/admin/meta")) return true;
     if (pathname.startsWith("/admin/marketing")) return true;
     return navItems.some(
@@ -137,6 +154,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         href: "/admin/staff",
         label: a.nav.staff,
         icon: StaffIcon,
+      });
+      candidates.push({
+        href: "/admin/countries",
+        label: a.nav.countries,
+        icon: GlobeIcon,
       });
     }
     for (const item of candidates) {
@@ -215,6 +237,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               <StaffIcon size={20} className="shrink-0" />
               <span className="truncate">{a.nav.staff}</span>
+            </Link>
+          ) : null}
+          {access.isOwner ? (
+            <Link
+              href="/admin/countries"
+              prefetch
+              className="admin-nav-link"
+              data-active={pathname.startsWith("/admin/countries")}
+            >
+              <GlobeIcon size={20} className="shrink-0" />
+              <span className="truncate">{a.nav.countries}</span>
             </Link>
           ) : null}
           <Link
@@ -303,6 +336,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               >
                 <StaffIcon size={20} className="shrink-0" />
                 <span>{a.nav.staff}</span>
+              </Link>
+              <Link
+                href="/admin/countries"
+                prefetch
+                className="admin-nav-link"
+                data-active={pathname.startsWith("/admin/countries")}
+                onClick={() => setMoreOpen(false)}
+              >
+                <GlobeIcon size={20} className="shrink-0" />
+                <span>{a.nav.countries}</span>
               </Link>
               <button
                 type="button"
@@ -399,6 +442,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               {access.displayName || access.email || a.shell.brandTagline}
             </p>
           </div>
+
+          {countries.length > 1 ? (
+            <select
+              aria-label={a.shell.countryScope}
+              value={selectedCountryId}
+              disabled={switchingCountry}
+              onChange={(e) => void onCountryChange(e.target.value)}
+              className="hidden rounded-xl border border-[var(--admin-border-strong)] bg-transparent px-2 py-2 text-xs font-semibold text-[var(--foreground)] disabled:opacity-60 sm:block"
+            >
+              {countries.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name_ar}
+                </option>
+              ))}
+            </select>
+          ) : null}
 
           <Link
             href="/"

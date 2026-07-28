@@ -100,6 +100,7 @@ export function trackInitiateCheckout(
     value?: number;
     currency?: string;
   } | null,
+  pixelId?: string | null,
 ) {
   if (!eventId.trim()) {
     console.error("[meta] InitiateCheckout skipped: missing event_id");
@@ -138,7 +139,7 @@ export function trackInitiateCheckout(
     return;
   }
 
-  void trackMetaEvent(undefined, "InitiateCheckout", customData, { eventID: eventId });
+  void trackMetaEvent(pixelId, "InitiateCheckout", customData, { eventID: eventId });
 }
 
 export async function trackLead(params: {
@@ -151,10 +152,11 @@ export async function trackLead(params: {
   quantity?: number;
   phone?: string;
   customerName?: string;
+  pixelId?: string | null;
 }): Promise<void> {
   if (!tryMarkBrowserLeadSent(params.orderId)) return;
 
-  const pid = resolvePublicMetaPixelId();
+  const pid = resolvePublicMetaPixelId(params.pixelId);
   if (!pid) return;
 
   let advancedMatching = null as ReturnType<typeof buildMetaPixelAdvancedMatching> | null;

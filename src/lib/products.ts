@@ -147,6 +147,7 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
         ? null
         : String(row.profit_calculation_start_date).slice(0, 10),
     created_at: row.created_at as string,
+    country_id: (row.country_id as string) ?? "",
     fulfillment_type: (row.fulfillment_type as ProductRow["fulfillment_type"]) ?? "owned",
     affiliate_commission_type:
       (row.affiliate_commission_type as ProductRow["affiliate_commission_type"]) ?? null,

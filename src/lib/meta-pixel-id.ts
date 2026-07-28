@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 /**
  * Normalize a Meta Pixel ID from admin input.
  * Strips quotes/spaces; Meta IDs must be numeric only (10–20 digits).
@@ -33,7 +35,9 @@ const META_PIXEL_ROW_KEYS = [
 
 /**
  * Read a raw pixel ID string from a product row before normalization.
- * LEGACY — retained for admin display / historical data only; not used for event routing.
+ * LEGACY — retained for admin display / historical data only. Event routing
+ * now goes through the product's country (countries.meta_pixel_id_public/
+ * server via resolveCountryPixelIds), not this per-row column.
  */
 export function extractMetaPixelIdFromRow(
   row: Record<string, unknown>,
@@ -48,17 +52,54 @@ export function extractMetaPixelIdFromRow(
 }
 
 /**
- * Unified Meta Pixel ID for the browser (client components).
- * Source: NEXT_PUBLIC_META_PIXEL_ID only — no per-product or server-env fallback.
+ * Meta Pixel ID for the browser (client components).
+ * Prefers the product's country pixel (see resolveCountryPixelIds); falls
+ * back to the site-wide NEXT_PUBLIC_META_PIXEL_ID env var while a country
+ * has no pixel configured yet in the Countries admin screen.
  */
-export function resolvePublicMetaPixelId(): string | null {
-  return normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID);
+export function resolvePublicMetaPixelId(countryPixelId?: string | null): string | null {
+  return (
+    normalizeMetaPixelId(countryPixelId) ??
+    normalizeMetaPixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID)
+  );
 }
 
 /**
- * Unified Meta Pixel ID on the server (CAPI).
- * Source: META_PIXEL_ID only — no per-product or public-env fallback.
+ * Meta Pixel ID on the server (CAPI).
+ * Prefers the product's country pixel (see resolveCountryPixelIds); falls
+ * back to the site-wide META_PIXEL_ID env var while a country has no pixel
+ * configured yet in the Countries admin screen.
  */
-export function resolveServerMetaPixelId(): string | null {
-  return normalizeMetaPixelId(process.env.META_PIXEL_ID);
+export function resolveServerMetaPixelId(countryPixelId?: string | null): string | null {
+  return (
+    normalizeMetaPixelId(countryPixelId) ??
+    normalizeMetaPixelId(process.env.META_PIXEL_ID)
+  );
+}
+
+export type CountryPixelIds = { public: string | null; server: string | null };
+
+/**
+ * Looks up a country's own Meta Pixel IDs (public + server) by id. Returns
+ * both null when countryId is unset or the country has none configured yet
+ * — callers should then fall back to resolvePublicMetaPixelId()/
+ * resolveServerMetaPixelId() with no argument (env-var pixel).
+ */
+export async function resolveCountryPixelIds(
+  supabase: SupabaseClient,
+  countryId: string | null | undefined,
+): Promise<CountryPixelIds> {
+  if (!countryId) return { public: null, server: null };
+
+  const { data } = await supabase
+    .from("countries")
+    .select("meta_pixel_id_public, meta_pixel_id_server")
+    .eq("id", countryId)
+    .maybeSingle();
+
+  const row = data as { meta_pixel_id_public?: string | null; meta_pixel_id_server?: string | null } | null;
+  return {
+    public: normalizeMetaPixelId(row?.meta_pixel_id_public),
+    server: normalizeMetaPixelId(row?.meta_pixel_id_server),
+  };
 }

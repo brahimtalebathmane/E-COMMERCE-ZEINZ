@@ -21,15 +21,17 @@ type Props = {
   /** Product landing: fires ViewContent with content_ids after hydration (PageView dedupes with pre-hydration script). */
   productContent?: MetaLandingProductContent | null;
   advancedMatching?: MetaPixelAdvancedMatchingProps | null;
+  /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. Must match the pixelId passed to MetaPixelLandingScript for the same page. */
+  pixelId?: string | null;
 };
 
 /**
  * Client-side Meta Pixel owner: init-once, PageView per route, ViewContent on product landings.
  * Catalog routes fire generic PageView only (listing page — no product content_ids).
  */
-export function MetaPixelRuntime({ productContent, advancedMatching }: Props) {
+export function MetaPixelRuntime({ productContent, advancedMatching, pixelId }: Props) {
   const pathname = usePathname();
-  const id = useMemo(() => resolvePublicMetaPixelId(), []);
+  const id = useMemo(() => resolvePublicMetaPixelId(pixelId), [pixelId]);
 
   const viewContentPayload = useMemo(() => {
     if (!productContent?.productId?.trim()) return null;
