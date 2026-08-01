@@ -12,6 +12,8 @@ export type FAQ = {
   a: string;
 };
 
+export type Spec = { label: string; value: string };
+
 export type ProductTestingStatus =
   | "under_research"
   | "ready_for_test"
@@ -66,6 +68,9 @@ export type ProductRow = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  /** Technical specifications table heading (optional; landing uses a default when empty). */
+  specs_title_ar: string;
+  specs_title_fr: string;
   /** Stats band heading (optional; landing uses defaults when empty). */
   stats_section_title_ar: string;
   stats_section_title_fr: string;
@@ -114,6 +119,9 @@ export type ProductRow = {
   testimonials_fr: Testimonial[];
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
+  /** Technical specs table. Empty on either side = section hidden on the landing page. */
+  specs_ar: Spec[];
+  specs_fr: Spec[];
   stats_ar: string[];
   stats_fr: string[];
   contact_lines_ar: string[];
@@ -175,6 +183,8 @@ export type ProductLandingContentFields = {
   testimonials_fr?: Testimonial[];
   faqs_ar?: FAQ[];
   faqs_fr?: FAQ[];
+  specs_ar?: Spec[];
+  specs_fr?: Spec[];
   stats_ar?: string[];
   stats_fr?: string[];
   contact_lines_ar?: string[];
@@ -195,6 +205,7 @@ export type LocalizedProductCopy = {
   testimonialsTitle: string;
   mediaCaption: string;
   faqTitle: string;
+  specsTitle: string;
   statsSectionTitle: string;
   testimonialsBadge: string;
   footerNote: string;
@@ -203,6 +214,7 @@ export type LocalizedProductCopy = {
   features: string[];
   testimonials: Testimonial[];
   faqs: FAQ[];
+  specs: Spec[];
   stats: string[];
   contactLines: string[];
 };

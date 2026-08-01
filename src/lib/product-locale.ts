@@ -2,6 +2,7 @@ import type {
   FAQ,
   LocalizedProductCopy,
   ProductRow,
+  Spec,
   Testimonial,
 } from "@/types";
 import type { Locale } from "@/lib/i18n";
@@ -69,6 +70,19 @@ function pickTestimonials(
   });
 }
 
+function pickSpecs(locale: Locale, ar: Spec[], fr: Spec[]): Spec[] {
+  if (locale !== "fr") return ar;
+  if (!fr.length) return ar;
+  return ar.map((a, i) => {
+    const f = fr[i];
+    if (!f) return a;
+    return {
+      label: f.label.trim() || a.label,
+      value: f.value.trim() || a.value,
+    };
+  });
+}
+
 function legacyHeaderBarText(locale: Locale, p: ProductRow): string {
   const o = pickStr(locale, p.header_offer_text_ar, p.header_offer_text_fr).trim();
   const d = pickStr(locale, p.header_discount_text_ar, p.header_discount_text_fr).trim();
@@ -114,6 +128,12 @@ export function getLocalizedProductCopy(
     ),
     mediaCaption: pickStr(locale, p.media_caption_ar, p.media_caption_fr),
     faqTitle: pickStr(locale, p.faq_title_ar, p.faq_title_fr),
+    specsTitle: pickOptionalLine(
+      locale,
+      p.specs_title_ar,
+      p.specs_title_fr,
+      locale === "fr" ? "Caractéristiques techniques" : "المواصفات التقنية",
+    ),
     statsSectionTitle: pickOptionalLine(
       locale,
       p.stats_section_title_ar,
@@ -145,6 +165,7 @@ export function getLocalizedProductCopy(
       p.testimonials_fr,
     ),
     faqs: pickFaqs(locale, p.faqs_ar, p.faqs_fr),
+    specs: pickSpecs(locale, p.specs_ar, p.specs_fr),
     stats: pickFeatures(locale, p.stats_ar, p.stats_fr),
     contactLines: pickFeatures(
       locale,

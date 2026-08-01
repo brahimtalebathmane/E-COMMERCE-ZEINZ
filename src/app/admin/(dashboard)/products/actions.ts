@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Testimonial,
   FAQ,
+  Spec,
   ProductTestingStatus,
   ProductSourcingType,
   FulfillmentType,
@@ -58,6 +59,8 @@ export type ProductPayload = {
   media_caption_fr: string;
   faq_title_ar: string;
   faq_title_fr: string;
+  specs_title_ar: string;
+  specs_title_fr: string;
   stats_section_title_ar: string;
   stats_section_title_fr: string;
   testimonials_badge_ar: string;
@@ -85,6 +88,8 @@ export type ProductPayload = {
   testimonials_fr: Testimonial[];
   faqs_ar: FAQ[];
   faqs_fr: FAQ[];
+  specs_ar: Spec[];
+  specs_fr: Spec[];
   stats_ar: string[];
   stats_fr: string[];
   contact_lines_ar: string[];
@@ -406,6 +411,8 @@ function researchInsertDefaults(
     media_caption_fr: "",
     faq_title_ar: "",
     faq_title_fr: "",
+    specs_title_ar: "",
+    specs_title_fr: "",
     stats_section_title_ar: "",
     stats_section_title_fr: "",
     testimonials_badge_ar: "",
@@ -435,6 +442,8 @@ function researchInsertDefaults(
     testimonials_fr: [],
     faqs_ar: [],
     faqs_fr: [],
+    specs_ar: [] as Spec[],
+    specs_fr: [] as Spec[],
     stats_ar: [] as string[],
     stats_fr: [] as string[],
     contact_lines_ar: [] as string[],
@@ -562,6 +571,8 @@ export async function createProductAction(payload: ProductPayload) {
     media_caption_fr: payload.media_caption_fr,
     faq_title_ar: payload.faq_title_ar,
     faq_title_fr: payload.faq_title_fr,
+    specs_title_ar: payload.specs_title_ar,
+    specs_title_fr: payload.specs_title_fr,
     stats_section_title_ar: payload.stats_section_title_ar.trim(),
     stats_section_title_fr: payload.stats_section_title_fr.trim(),
     testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
@@ -591,6 +602,8 @@ export async function createProductAction(payload: ProductPayload) {
     testimonials_fr: payload.testimonials_fr,
     faqs_ar: payload.faqs_ar,
     faqs_fr: payload.faqs_fr,
+    specs_ar: payload.specs_ar,
+    specs_fr: payload.specs_fr,
     stats_ar: payload.stats_ar,
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,
@@ -684,6 +697,8 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     media_caption_fr: payload.media_caption_fr,
     faq_title_ar: payload.faq_title_ar,
     faq_title_fr: payload.faq_title_fr,
+    specs_title_ar: payload.specs_title_ar,
+    specs_title_fr: payload.specs_title_fr,
     stats_section_title_ar: payload.stats_section_title_ar.trim(),
     stats_section_title_fr: payload.stats_section_title_fr.trim(),
     testimonials_badge_ar: payload.testimonials_badge_ar.trim(),
@@ -708,6 +723,8 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     testimonials_fr: payload.testimonials_fr,
     faqs_ar: payload.faqs_ar,
     faqs_fr: payload.faqs_fr,
+    specs_ar: payload.specs_ar,
+    specs_fr: payload.specs_fr,
     stats_ar: payload.stats_ar,
     stats_fr: payload.stats_fr,
     contact_lines_ar: payload.contact_lines_ar,

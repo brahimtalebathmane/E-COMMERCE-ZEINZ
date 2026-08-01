@@ -8,6 +8,7 @@ import {
   newRowId,
   type FaqDraft,
   type FeatureRow,
+  type SpecDraft,
   type TestimonialDraft,
 } from "@/components/admin/product-form-shared";
 
@@ -876,6 +877,146 @@ export const ProductFormFaqsSection = memo(function ProductFormFaqsSection({
         ))}
       </div>
       {faqs.length === 0 ? <p className="text-xs text-[var(--muted)]">—</p> : null}
+    </section>
+  );
+});
+
+type SpecsSectionProps = {
+  specs: SpecDraft[];
+  setSpecs: Dispatch<SetStateAction<SpecDraft[]>>;
+};
+
+export const ProductFormSpecsSection = memo(function ProductFormSpecsSection({
+  specs,
+  setSpecs,
+}: SpecsSectionProps) {
+  return (
+    <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">{a.productForm.specsSection}</h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.specsHintBilingual}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setSpecs((s) => [
+              ...s,
+              { id: newRowId(), label_ar: "", label_fr: "", value_ar: "", value_fr: "" },
+            ])
+          }
+          className="shrink-0 rounded-lg bg-[var(--accent-muted)] px-3 py-1.5 text-xs font-medium"
+        >
+          {a.productForm.addSpec}
+        </button>
+      </div>
+      <div className="space-y-4">
+        {specs.map((item, i) => (
+          <div
+            key={item.id}
+            className="space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] p-3"
+          >
+            <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langArabic}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">{a.productForm.specLabel}</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                  value={item.label_ar}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSpecs((prev) => {
+                      const next = [...prev];
+                      const cur = next[i];
+                      if (cur) next[i] = { ...cur, label_ar: v };
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">{a.productForm.specValue}</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                  value={item.value_ar}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSpecs((prev) => {
+                      const next = [...prev];
+                      const cur = next[i];
+                      if (cur) next[i] = { ...cur, value_ar: v };
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+            </div>
+            <p className="text-xs font-semibold text-[var(--muted)]">{a.productForm.langFrench}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">{a.productForm.specLabel}</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                  value={item.label_fr}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSpecs((prev) => {
+                      const next = [...prev];
+                      const cur = next[i];
+                      if (cur) next[i] = { ...cur, label_fr: v };
+                      return next;
+                    });
+                  }}
+                  dir="ltr"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">{a.productForm.specValue}</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-[var(--accent-muted)] px-2 py-1.5 text-sm"
+                  value={item.value_fr}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSpecs((prev) => {
+                      const next = [...prev];
+                      const cur = next[i];
+                      if (cur) next[i] = { ...cur, value_fr: v };
+                      return next;
+                    });
+                  }}
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="text-xs text-[var(--muted)] underline disabled:opacity-40"
+                onClick={() => setSpecs((prev) => moveAt(prev, i, -1))}
+                disabled={i === 0}
+              >
+                {a.productForm.moveUp}
+              </button>
+              <button
+                type="button"
+                className="text-xs text-[var(--muted)] underline disabled:opacity-40"
+                onClick={() => setSpecs((prev) => moveAt(prev, i, 1))}
+                disabled={i === specs.length - 1}
+              >
+                {a.productForm.moveDown}
+              </button>
+              <button
+                type="button"
+                className="text-xs text-red-600 underline dark:text-red-400"
+                onClick={() => setSpecs((prev) => prev.filter((_, j) => j !== i))}
+              >
+                {a.productForm.removeItem}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {specs.length === 0 ? <p className="text-xs text-[var(--muted)]">—</p> : null}
     </section>
   );
 });

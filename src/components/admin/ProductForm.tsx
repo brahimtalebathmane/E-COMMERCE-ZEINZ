@@ -4,6 +4,7 @@ import type {
   ProductRow,
   Testimonial,
   FAQ,
+  Spec,
   ProductTestingStatus,
   ProductSourcingType,
   FulfillmentType,
@@ -24,11 +25,13 @@ import {
   ProductFormFaqsSection,
   ProductFormFeaturesSection,
   ProductFormGallerySection,
+  ProductFormSpecsSection,
   ProductFormTestimonialsSection,
 } from "@/components/admin/ProductFormListSections";
 import {
   type FaqDraft,
   type FeatureRow,
+  type SpecDraft,
   type TestimonialDraft,
 } from "@/components/admin/product-form-shared";
 import { adminAr as a } from "@/locales/admin-ar";
@@ -128,6 +131,8 @@ export function ProductForm({ mode, initial, countries }: Props) {
   const [mediaCaptionFr, setMediaCaptionFr] = useState(initial?.media_caption_fr ?? "");
   const [faqTitleAr, setFaqTitleAr] = useState(initial?.faq_title_ar ?? "");
   const [faqTitleFr, setFaqTitleFr] = useState(initial?.faq_title_fr ?? "");
+  const [specsTitleAr, setSpecsTitleAr] = useState(initial?.specs_title_ar ?? "");
+  const [specsTitleFr, setSpecsTitleFr] = useState(initial?.specs_title_fr ?? "");
   const [ctaBannerBgImageUrl, setCtaBannerBgImageUrl] = useState(initial?.cta_banner_background_image_url ?? "");
   const [ctaBannerOverlayPct, setCtaBannerOverlayPct] = useState(() =>
     Math.round(Math.min(100, Math.max(0, (initial?.cta_banner_image_overlay ?? 0.45) * 100))),
@@ -247,6 +252,17 @@ export function ProductForm({ mode, initial, countries }: Props) {
         }))
       : [],
   );
+  const [specs, setSpecs] = useState<SpecDraft[]>(() =>
+    initial?.specs_ar?.length
+      ? initial.specs_ar.map((s, i) => ({
+          id: `spec-init-${i}`,
+          label_ar: s.label,
+          label_fr: initial.specs_fr[i]?.label ?? "",
+          value_ar: s.value,
+          value_fr: initial.specs_fr[i]?.value ?? "",
+        }))
+      : [],
+  );
   const [slugInput, setSlugInput] = useState(initial?.slug ?? "");
 
   const siteBase = getPublicSiteUrlClient();
@@ -349,6 +365,16 @@ export function ProductForm({ mode, initial, countries }: Props) {
       a: f.a_fr.trim(),
     }));
 
+    const specPairs = specs.filter((s) => s.label_ar.trim() && s.value_ar.trim());
+    const cleanedSpecsAr: Spec[] = specPairs.map((s) => ({
+      label: s.label_ar.trim(),
+      value: s.value_ar.trim(),
+    }));
+    const cleanedSpecsFr: Spec[] = specPairs.map((s) => ({
+      label: s.label_fr.trim(),
+      value: s.value_fr.trim(),
+    }));
+
     return {
       default_language: defaultLanguage,
       brand_color: brandColor,
@@ -373,6 +399,8 @@ export function ProductForm({ mode, initial, countries }: Props) {
       media_caption_fr: mediaCaptionFr,
       faq_title_ar: faqTitleAr.trim(),
       faq_title_fr: faqTitleFr,
+      specs_title_ar: specsTitleAr.trim(),
+      specs_title_fr: specsTitleFr,
       stats_section_title_ar: statsSectionTitleAr.trim(),
       stats_section_title_fr: statsSectionTitleFr.trim(),
       testimonials_badge_ar: testimonialsBadgeAr.trim(),
@@ -403,6 +431,8 @@ export function ProductForm({ mode, initial, countries }: Props) {
       testimonials_fr: cleanedTestimonialsFr,
       faqs_ar: cleanedFaqsAr,
       faqs_fr: cleanedFaqsFr,
+      specs_ar: cleanedSpecsAr,
+      specs_fr: cleanedSpecsFr,
       stats_ar: statsArText
         .split("\n")
         .map((s) => s.trim())
@@ -1345,6 +1375,23 @@ export function ProductForm({ mode, initial, countries }: Props) {
             dir="ltr"
           />
         </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">عنوان المواصفات التقنية — {a.productForm.langArabic}</label>
+          <input
+            className="mt-1 w-full admin-input"
+            value={specsTitleAr}
+            onChange={(e) => setSpecsTitleAr(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium">Specs title — {a.productForm.langFrench}</label>
+          <input
+            className="mt-1 w-full admin-input"
+            value={specsTitleFr}
+            onChange={(e) => setSpecsTitleFr(e.target.value)}
+            dir="ltr"
+          />
+        </div>
 
         <ProductFormCtaStickySection
           ctaBannerBgColor={ctaBannerBgColor}
@@ -1429,6 +1476,8 @@ export function ProductForm({ mode, initial, countries }: Props) {
         />
 
         <ProductFormFaqsSection faqs={faqs} setFaqs={setFaqs} />
+
+        <ProductFormSpecsSection specs={specs} setSpecs={setSpecs} />
 
         <section className="sm:col-span-2 space-y-4 rounded-xl border border-dashed border-[var(--accent-muted)] bg-[var(--background)] p-4">
           <div>

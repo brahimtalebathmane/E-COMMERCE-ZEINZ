@@ -585,6 +585,12 @@ export const adminAr = {
     addFaq: "إضافة سؤال",
     faqQuestion: "السؤال",
     faqAnswer: "الجواب",
+    specsSection: "المواصفات التقنية",
+    specsHintBilingual:
+      "التسمية والقيمة العربيتان مطلوبتان لحفظ العنصر. أضف الفرنسية اختيارياً؛ إن لم تُدخل تُعرض العربية.",
+    addSpec: "إضافة مواصفة",
+    specLabel: "التسمية",
+    specValue: "القيمة",
     sectionStickyColors: "ألوان الشريط السفلي الثابت",
     sectionStickyColorsHint:
       "اترك أي حقل فارغاً للافتراضي في القالب. صيغة #RRGGBB.",

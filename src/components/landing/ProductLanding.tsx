@@ -3,7 +3,7 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ProductRow, Testimonial } from "@/types";
+import type { ProductRow, Spec, Testimonial } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
@@ -101,6 +101,50 @@ function statLabel(raw: string): string {
 function starText(rating?: number): string {
   const value = Math.max(1, Math.min(5, Math.round(rating ?? 5)));
   return "★".repeat(value) + "☆".repeat(5 - value);
+}
+
+/** Splits Arabic/French copy on Latin runs (units, model numbers…) and wraps each in dir="ltr" so it renders correctly inline inside RTL text. */
+function withLatinTokens(text: string, keyPrefix: string) {
+  return text
+    .split(/([A-Za-z0-9][A-Za-z0-9.,%°/+-]*)/g)
+    .filter((part) => part.length > 0)
+    .map((part, i) =>
+      /^[A-Za-z0-9]/.test(part) ? (
+        <span key={`${keyPrefix}-${i}`} dir="ltr">
+          {part}
+        </span>
+      ) : (
+        <span key={`${keyPrefix}-${i}`}>{part}</span>
+      ),
+    );
+}
+
+function SpecsTable({
+  specs,
+  softCardClass,
+}: {
+  specs: Spec[];
+  softCardClass: string;
+}) {
+  return (
+    <div className={`${softCardClass} overflow-hidden`}>
+      <dl className="divide-y divide-[var(--accent-muted)]">
+        {specs.map((spec, i) => (
+          <div
+            key={`${spec.label}-${i}`}
+            className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[minmax(0,10rem)_1fr] sm:items-baseline sm:gap-4 sm:px-5"
+          >
+            <dt className="break-words text-xs font-semibold text-[var(--muted)] sm:text-sm">
+              {withLatinTokens(spec.label, `spec-label-${i}`)}
+            </dt>
+            <dd className="break-words text-sm font-medium text-[var(--foreground)] sm:text-base">
+              {withLatinTokens(spec.value, `spec-value-${i}`)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 function AnimatedCounter({ value, active }: { value: string; active: boolean }) {
@@ -472,12 +516,16 @@ export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }:
   const ctaBannerOverlay = Math.min(1, Math.max(0, Number(product.cta_banner_image_overlay ?? 0.45)));
 
   const [setFeaturesRef, featuresVisible] = useInViewOnce();
+  const [setSpecsRef, specsVisible] = useInViewOnce();
   const [setTestimonialsSectionRef, testimonialsSectionVisible] = useInViewOnce();
   const [setStatsRef, statsVisible] = useInViewOnce();
 
   const featuresTitleMotion = featuresVisible
     ? "opacity-100"
     : "opacity-0";
+  const specsMotion = specsVisible
+    ? "translate-y-0 opacity-100"
+    : "translate-y-4 opacity-0";
   const testimonialsHeaderMotion = testimonialsSectionVisible
     ? "translate-y-0 opacity-100"
     : "translate-y-4 opacity-0";
@@ -574,6 +622,21 @@ export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }:
           ))}
         </div>
       </section>
+
+      {copy.specs.length > 0 ? (
+        <section ref={setSpecsRef} className={`bg-[var(--background)] ${sectionPadClass}`}>
+          <h3
+            className={`${sectionTitleClass} break-words transition-[transform,opacity] ${motionReviewsDurationClass} will-change-transform ${specsMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          >
+            {copy.specsTitle}
+          </h3>
+          <div
+            className={`mt-4 transition-[transform,opacity] sm:mt-5 ${motionReviewsDurationClass} will-change-transform ${specsMotion} motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none`}
+          >
+            <SpecsTable specs={copy.specs} softCardClass={softCardClass} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="w-full bg-[var(--card)] py-8 sm:py-10">
         <div className={sectionContentInsetClass}>

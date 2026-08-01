@@ -40,3 +40,11 @@ export type FaqDraft = {
   a_ar: string;
   a_fr: string;
 };
+
+export type SpecDraft = {
+  id: string;
+  label_ar: string;
+  label_fr: string;
+  value_ar: string;
+  value_fr: string;
+};
