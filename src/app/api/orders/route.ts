@@ -14,6 +14,7 @@ import {
   resolveOrderProductName,
 } from "@/lib/onesignal/post-order-notify";
 import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
+import { dispatchMetaEvent } from "@/lib/meta/dispatch";
 import { canAcceptStoreOrder } from "@/lib/product-test-status";
 import { createMetaEventId, resolveClientIpAddress } from "@/utils/meta";
 import type { ProductTestingStatus } from "@/types";
@@ -233,44 +234,69 @@ export async function POST(request: Request) {
       return apiErrorResponse(tokenErr, "[POST /api/orders] token");
     }
 
-    try {
-      const oneSignalProductName = resolveOrderProductName(product);
-      console.warn("[POST /api/orders] OneSignal dispatch begin", {
-        order_id: order.id,
-        product_name: oneSignalProductName,
-        country: orderCountry?.name_ar ?? null,
-      });
-      // Awaited inline (not fire-and-forget) so the serverless runtime cannot garbage-collect
-      // the request before OneSignal confirms a status — the result is logged before responding.
-      const oneSignalResult = await notifyAdminsOfNewOrder({
-        orderId: order.id,
-        productName: oneSignalProductName,
-        countryNameAr: orderCountry?.name_ar ?? null,
-      });
-      console.warn("[POST /api/orders] OneSignal dispatch result", {
-        order_id: order.id,
-        result: oneSignalResult,
-      });
-      if (oneSignalResult.sent) {
-        await logOrderCommunicationEvent(supabase, order.id, "onesignal_sent", null);
-      } else if ("skipped" in oneSignalResult && oneSignalResult.skipped) {
-        await logOrderCommunicationEvent(
-          supabase,
-          order.id,
-          "onesignal_skipped",
-          oneSignalResult.reason,
-        );
-      } else if ("error" in oneSignalResult) {
-        await logOrderCommunicationEvent(
-          supabase,
-          order.id,
-          "onesignal_failed",
-          oneSignalResult.error,
-        );
+    // Deferred via after() so the customer's response isn't held up by the
+    // OneSignal round-trip — same reasoning as the affiliate sheet write above.
+    after(async () => {
+      try {
+        const oneSignalProductName = resolveOrderProductName(product);
+        console.warn("[POST /api/orders] OneSignal dispatch begin", {
+          order_id: order.id,
+          product_name: oneSignalProductName,
+          country: orderCountry?.name_ar ?? null,
+        });
+        const oneSignalResult = await notifyAdminsOfNewOrder({
+          orderId: order.id,
+          productName: oneSignalProductName,
+          countryNameAr: orderCountry?.name_ar ?? null,
+        });
+        console.warn("[POST /api/orders] OneSignal dispatch result", {
+          order_id: order.id,
+          result: oneSignalResult,
+        });
+        if (oneSignalResult.sent) {
+          await logOrderCommunicationEvent(supabase, order.id, "onesignal_sent", null);
+        } else if ("skipped" in oneSignalResult && oneSignalResult.skipped) {
+          await logOrderCommunicationEvent(
+            supabase,
+            order.id,
+            "onesignal_skipped",
+            oneSignalResult.reason,
+          );
+        } else if ("error" in oneSignalResult) {
+          await logOrderCommunicationEvent(
+            supabase,
+            order.id,
+            "onesignal_failed",
+            oneSignalResult.error,
+          );
+        }
+      } catch (oneSignalErr) {
+        console.error("[POST /api/orders] OneSignal notify threw", oneSignalErr);
       }
-    } catch (oneSignalErr) {
-      console.error("[POST /api/orders] OneSignal notify threw", oneSignalErr);
-    }
+    });
+
+    // Deferred via after() so a slow Graph API round-trip never delays the
+    // customer response. Fires for every order (same as order-success's
+    // hybrid Lead dispatch); dispatchMetaEvent's own idempotency ledger
+    // (meta_lead_sent + order_meta_dispatches unique claim) guarantees
+    // order-success's later CAPI call — whichever of the two runs second —
+    // is skipped as "already_sent" instead of sending a duplicate.
+    after(async () => {
+      try {
+        const leadResult = await dispatchMetaEvent(supabase, order.id, "lead", {
+          requestHeaders: request.headers,
+        });
+        console.warn("[POST /api/orders] Lead CAPI dispatch result", {
+          order_id: order.id,
+          result: leadResult,
+        });
+      } catch (leadErr) {
+        console.error("[POST /api/orders] Lead CAPI dispatch threw", {
+          order_id: order.id,
+          error: leadErr instanceof Error ? leadErr.message : String(leadErr),
+        });
+      }
+    });
 
     const response = NextResponse.json({
       success: true,

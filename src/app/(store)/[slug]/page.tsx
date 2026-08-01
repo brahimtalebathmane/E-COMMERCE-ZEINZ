@@ -16,8 +16,16 @@ import type { ProductTestingStatus } from "@/types";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
-/** Fresh product record on every ad landing — avoids stale content_ids in inline Pixel script. */
-export const dynamic = "force-dynamic";
+/**
+ * ISR instead of force-dynamic: ad clicks now hit cached HTML (no per-request
+ * SSR + Supabase round-trips). Staleness after an edit is handled by
+ * on-demand revalidation — every product-mutating admin action calls
+ * revalidatePath("/" + slug) (see revalidateProductPaths in
+ * src/app/admin/(dashboard)/products/actions.ts), so the inline Pixel
+ * script's content_ids/price go live immediately instead of waiting up to
+ * 60s. The 60s window is just a safety net for any write that misses it.
+ */
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const slugs = await getAllProductSlugs();
