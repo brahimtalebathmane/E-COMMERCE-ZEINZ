@@ -27,16 +27,31 @@ export type MarketingData = {
 
 export type LoadMarketingResult = { ok: true; data: MarketingData } | { ok: false; error: string };
 
-/** Campaign list + product dropdown — both tables have proper RLS, cookie-scoped client is fine. */
-export async function loadMarketingData(cookieClient: SupabaseClient): Promise<LoadMarketingResult> {
+/**
+ * Campaign list + product dropdown — both tables have proper RLS,
+ * cookie-scoped client is fine. Scoped to the admin's currently-selected
+ * country: the campaign list only shows that country's campaigns, and the
+ * "by product" dropdown only offers that country's products (so picking a
+ * product can never mismatch the country a campaign is scoped to).
+ */
+export async function loadMarketingData(
+  cookieClient: SupabaseClient,
+  countryId: string,
+): Promise<LoadMarketingResult> {
   const [campaignsRes, productsRes] = await Promise.all([
     cookieClient
       .from("marketing_campaigns")
       .select(
         "id, message_text, image_url, audience_type, product_id, exclude_shipped_product_ids, status, total_recipients, sent_count, failed_count, created_at",
       )
+      .eq("country_id", countryId)
       .order("created_at", { ascending: false }),
-    cookieClient.from("products").select("id, name_ar").is("deleted_at", null).order("name_ar"),
+    cookieClient
+      .from("products")
+      .select("id, name_ar")
+      .eq("country_id", countryId)
+      .is("deleted_at", null)
+      .order("name_ar"),
   ]);
 
   if (campaignsRes.error) return { ok: false, error: campaignsRes.error.message };
@@ -93,15 +108,20 @@ function excludeByPhone(recipients: RecipientRow[], excluded: Set<string>): Reci
  * RPC (service-role client — order_status_history has RLS enabled with zero
  * policies, so it can only be read via service role). Applies the
  * already-shipped exclusion filter after the base audience is resolved.
+ * Always scoped by country — `all_confirmed` has no product to derive a
+ * country from, so it needs the explicit filter just as much as
+ * `by_product` does.
  */
 export async function resolveAudience(
   audienceType: "all_confirmed" | "by_product",
-  productId?: string | null,
+  productId: string | null | undefined,
   excludeShippedProductIds: string[] = [],
+  countryId?: string | null,
 ): Promise<RecipientRow[]> {
   const service = createServiceClient();
   const { data, error } = await service.rpc("marketing_audience_confirmed", {
     p_product_id: audienceType === "by_product" ? productId ?? null : null,
+    p_country_id: countryId ?? null,
   });
   if (error) throw new Error(error.message);
   const recipients = (data ?? []).map((row: { phone: string; customer_name: string | null }) => ({
@@ -112,22 +132,31 @@ export async function resolveAudience(
   return excludeByPhone(recipients, excluded);
 }
 
-/** Manual mode: ALL past customers (not gated to confirmed), searchable by name or phone. */
+/**
+ * Manual mode: ALL past customers (not gated to confirmed), searchable by
+ * name or phone — scoped to the admin's selected country via an inner join
+ * on the order's product, so a manually-built list can't cross countries.
+ */
 export async function searchAllCustomers(
   searchTerm: string,
   excludeShippedProductIds: string[] = [],
+  countryId?: string | null,
 ): Promise<RecipientRow[]> {
   const service = createServiceClient();
   const term = searchTerm.trim();
 
   let query = service
     .from("orders")
-    .select("phone, customer_name, created_at")
+    .select("phone, customer_name, created_at, products!inner(country_id)")
     .is("deleted_at", null)
     .not("phone", "is", null)
     .order("phone", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(500);
+
+  if (countryId) {
+    query = query.eq("products.country_id", countryId);
+  }
 
   if (term) {
     const escaped = term.replace(/[%_]/g, (m) => `\\${m}`);

@@ -42,6 +42,8 @@ type Props = {
   product: ProductRow;
   /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
   metaPixelIdPublic?: string | null;
+  /** Resolved from the product's own country (countries.currency); "MRU" for owned. */
+  currency?: string;
 };
 
 /** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
@@ -341,7 +343,7 @@ function GuaranteeStrip({ t }: { t: (key: string) => string }) {
   );
 }
 
-export function ProductLanding({ product, metaPixelIdPublic }: Props) {
+export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }: Props) {
   const { locale, dir, t, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
@@ -428,7 +430,7 @@ export function ProductLanding({ product, metaPixelIdPublic }: Props) {
           productId: product.id,
           productName: copy.name,
           value: leadValue,
-          currency: product.fulfillment_type === "affiliate" ? product.affiliate_currency || "MRU" : "MRU",
+          currency,
         },
         metaPixelIdPublic,
       );
@@ -775,6 +777,7 @@ export function ProductLanding({ product, metaPixelIdPublic }: Props) {
         ctaLabel={ctaText}
         locale={locale}
         onCheckout={openCheckout}
+        currency={currency}
       />
 
       {product.fulfillment_type === "affiliate" ? (
@@ -783,6 +786,7 @@ export function ProductLanding({ product, metaPixelIdPublic }: Props) {
           open={open}
           onClose={() => setOpen(false)}
           metaPixelIdPublic={metaPixelIdPublic}
+          currency={currency}
         />
       ) : (
         <OrderFormModal

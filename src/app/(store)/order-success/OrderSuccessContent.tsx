@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 
 const WHATSAPP_HREF = "https://wa.me/22233713957";
 
@@ -11,6 +11,8 @@ type Props = {
   totalPrice?: number | null;
   /** affiliate orders are confirmed/shipped by COD Partner by phone — no WhatsApp CTA to show. */
   fulfillmentType?: string | null;
+  /** Order's own currency (e.g. "SAR" for an affiliate order) — never assume MRU. */
+  currency?: string | null;
 };
 
 export function OrderSuccessContent({
@@ -18,6 +20,7 @@ export function OrderSuccessContent({
   productName,
   totalPrice,
   fulfillmentType,
+  currency,
 }: Props) {
   const { t, dir, locale } = useLanguage();
 
@@ -80,7 +83,7 @@ export function OrderSuccessContent({
                   {t("orderSuccess.total")}
                 </dt>
                 <dd className="text-lg font-extrabold tabular-nums text-[var(--accent)]" dir="ltr">
-                  {formatPrice(totalPrice)}
+                  {formatMoney(totalPrice, currency || "MRU")}
                 </dd>
               </div>
             ) : null}

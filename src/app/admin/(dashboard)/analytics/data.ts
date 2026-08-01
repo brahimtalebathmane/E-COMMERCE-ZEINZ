@@ -80,19 +80,26 @@ export async function loadAnalyticsData(
   const campaignRows = campaignsRes.data ?? [];
   const ownedProductIds = new Set(productRows.map((p) => String(p.id)));
 
-  const freshness = await ensureFreshAdSpend(
-    createServiceClient(),
-    productRows.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
-  );
-
-  const [ordersRes, adSpendDailyRes] = await Promise.all([
+  // ensureFreshAdSpend WRITES to product_ad_spend_daily, so the read of that
+  // same table below must wait for it to finish (otherwise the read can race
+  // ahead and return stale data) — but it doesn't touch `orders` at all, so
+  // that fetch is genuinely independent and can run alongside it.
+  const [ordersRes, freshness] = await Promise.all([
     cookieClient
       .from("orders")
       .select("product_id, total_price, status, created_at, delivery_cost, quantity"),
-    cookieClient.from("product_ad_spend_daily").select("product_id, date, amount, fetched_at"),
+    ensureFreshAdSpend(
+      createServiceClient(),
+      productRows.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
+    ),
   ]);
 
   if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
+
+  const adSpendDailyRes = await cookieClient
+    .from("product_ad_spend_daily")
+    .select("product_id, date, amount, fetched_at");
+
   if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error.message };
 
   const products: ProductMetaInput[] = productRows.map((p) => ({
@@ -221,18 +228,22 @@ export async function loadAffiliateAnalyticsData(
 
   const productIds = products.map((p) => String(p.id));
 
-  const ordersRes = await cookieClient
-    .from("orders")
-    .select(
-      "product_id, total_price, status, created_at, quantity, affiliate_other_costs, affiliate_costs_finalized",
-    )
-    .in("product_id", productIds);
+  // Same write-then-read constraint as loadAnalyticsData: ensureFreshAdSpend
+  // writes product_ad_spend_daily, so its read below must wait for it, but
+  // the orders fetch touches neither table and can run concurrently with it.
+  const [ordersRes] = await Promise.all([
+    cookieClient
+      .from("orders")
+      .select(
+        "product_id, total_price, status, created_at, quantity, affiliate_other_costs, affiliate_costs_finalized",
+      )
+      .in("product_id", productIds),
+    ensureFreshAdSpend(
+      createServiceClient(),
+      products.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
+    ),
+  ]);
   if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
-
-  await ensureFreshAdSpend(
-    createServiceClient(),
-    products.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
-  );
 
   const { data: adSpendDailyRows } = await cookieClient
     .from("product_ad_spend_daily")

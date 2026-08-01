@@ -14,12 +14,13 @@ export default async function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getAdminSession();
+  // getCountryScope() doesn't depend on the session, so resolve both
+  // concurrently instead of paying for two sequential Supabase round-trips
+  // on every single /admin/* navigation.
+  const [session, countryScope] = await Promise.all([getAdminSession(), getCountryScope()]);
   if (!session) {
     redirect("/admin/login");
   }
-
-  const countryScope = await getCountryScope();
 
   return (
     <div className="admin-shell min-h-screen font-sans" dir="rtl" lang="ar">

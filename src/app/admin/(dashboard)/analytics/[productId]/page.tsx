@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { adminAr as a } from "@/locales/admin-ar";
 import type { ProductProfitRow } from "@/lib/analytics/profit";
 import { loadAnalyticsData } from "../data";
@@ -13,8 +14,16 @@ export default async function ProductAnalyticsPage({
   params: Promise<{ productId: string }>;
 }) {
   const { productId } = await params;
-  const supabase = await createClient();
-  const result = await loadAnalyticsData(supabase);
+  // Was previously unscoped (a gap from the original multi-country rollout,
+  // since this page is only ever reached by clicking through from the
+  // already-scoped /admin/analytics list) — matching that list's scope here
+  // too so a stale cross-country link reads as "not found" rather than
+  // silently showing another country's product.
+  const [supabase, { selectedCountryId }] = await Promise.all([
+    createClient(),
+    getCountryScope(),
+  ]);
+  const result = await loadAnalyticsData(supabase, selectedCountryId);
 
   if (!result.ok) {
     return (

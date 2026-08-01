@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { adminAr as a } from "@/locales/admin-ar";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import { AdminButton, AdminInput, AdminSelect } from "@/components/admin/ui";
 import {
   createManualSaleAction,
@@ -85,6 +85,10 @@ export function ManualSaleForm({ open, onClose }: Props) {
       return sum + unitPriceFor(productMap.get(line.productId)) * qty;
     }, 0);
   }, [lines, productMap]);
+
+  // Every option comes from listActiveProductsForManualSaleAction, already
+  // scoped to one country, so any loaded product's currency is shared by all.
+  const currency = products?.[0]?.currency ?? "MRU";
 
   if (!open || !mounted) return null;
 
@@ -248,7 +252,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
               {a.manualSale.total}
             </span>
             <span className="font-mono text-sm font-semibold" dir="ltr">
-              {formatPrice(total)}
+              {formatMoney(total, currency)}
             </span>
           </div>
 

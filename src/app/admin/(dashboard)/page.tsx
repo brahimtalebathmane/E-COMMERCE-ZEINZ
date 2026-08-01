@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminSession } from "@/lib/auth/admin";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { adminAr as a } from "@/locales/admin-ar";
 import {
@@ -20,12 +21,14 @@ const DAY_KEY = new Intl.DateTimeFormat("en-CA", {
 });
 
 export default async function AdminHomePage() {
-  const session = await getAdminSession();
+  const [session, countryScope] = await Promise.all([getAdminSession(), getCountryScope()]);
   const access = session?.access;
   const canViewOrders = access ? hasPermission(access, PERMISSIONS.view_orders) : false;
   const canViewAnalytics = access ? hasPermission(access, PERMISSIONS.view_analytics) : false;
   const canManageProducts = access ? hasPermission(access, PERMISSIONS.manage_products) : false;
   const canLoadOrders = canViewOrders || canViewAnalytics;
+  const { selectedCountryId, selectedCountry } = countryScope;
+  const currency = selectedCountry?.currency ?? "MRU";
 
   const supabase = await createClient();
 
@@ -34,8 +37,9 @@ export default async function AdminHomePage() {
       ? supabase
           .from("orders")
           .select(
-            "id, product_id, phone, total_price, status, created_at, delivery_cost, quantity, products(name_ar)",
+            "id, product_id, phone, total_price, status, created_at, delivery_cost, quantity, products!inner(name_ar, country_id)",
           )
+          .eq("products.country_id", selectedCountryId)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     canViewAnalytics || canManageProducts
@@ -44,6 +48,7 @@ export default async function AdminHomePage() {
           .select(
             "id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at",
           )
+          .eq("country_id", selectedCountryId)
       : Promise.resolve({ data: [], error: null }),
     // Live ad spend cache (see /admin/analytics, which is the only page that
     // triggers a live Meta refresh) — this home KPI just reads whatever's
@@ -158,7 +163,7 @@ export default async function AdminHomePage() {
 
   return (
     <div>
-      <DashboardHome data={data} visibility={visibility} />
+      <DashboardHome data={data} visibility={visibility} currency={currency} />
     </div>
   );
 }

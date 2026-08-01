@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { createClient } from "@/lib/supabase/server";
 import { mapProductRow } from "@/lib/products";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import { codMarginPercent, sourcingTypeLabel } from "@/lib/product-pipeline";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AdminPageHeader } from "@/components/admin/ui";
@@ -38,6 +38,18 @@ export default async function LandingSetupPage({ params }: PageProps) {
     product.discount_price,
     product.cost_price,
   );
+  // This product's own market currency, not necessarily the admin's
+  // currently-selected one — this page can be reached via a direct link
+  // regardless of scope, same as the edit page. Looked up separately
+  // (rather than reusing the `countries` list above) since that list is
+  // filtered to active countries only and this product's country could be
+  // inactive.
+  const { data: productCountry } = await supabase
+    .from("countries")
+    .select("currency")
+    .eq("id", product.country_id)
+    .maybeSingle();
+  const productCurrency = productCountry?.currency ?? "MRU";
 
   return (
     <div className="space-y-6">
@@ -70,9 +82,9 @@ export default async function LandingSetupPage({ params }: PageProps) {
         <div className="min-w-0 flex-1 text-sm">
           <p className="break-words font-semibold text-[var(--foreground)]">{product.name_ar}</p>
           <p className="mt-1 break-words text-[var(--muted)]" dir="ltr">
-            {formatPrice(product.price)}
+            {formatMoney(product.price, productCurrency)}
             {product.cost_price != null
-              ? ` · ${a.landingSetup.cost}: ${formatPrice(product.cost_price)}`
+              ? ` · ${a.landingSetup.cost}: ${formatMoney(product.cost_price, productCurrency)}`
               : null}
             {margin != null ? ` · ${a.pipeline.marginLabel}: ${Math.round(margin * 10) / 10}%` : null}
           </p>

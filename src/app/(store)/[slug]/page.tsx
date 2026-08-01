@@ -71,14 +71,26 @@ export default async function ProductPage({ params }: PageProps) {
     productName: resolveMetaProductDisplayName(found),
   };
 
-  const countryPixelIds = await resolveCountryPixelIds(createPublicClient(), found.country_id);
+  const publicSupabase = createPublicClient();
+  const [countryPixelIds, countryRow] = await Promise.all([
+    resolveCountryPixelIds(publicSupabase, found.country_id),
+    publicSupabase.from("countries").select("currency").eq("id", found.country_id).maybeSingle(),
+  ]);
+  // Resolved from the product's own country, not the legacy
+  // products.affiliate_currency free-text field (which can hold non-ISO
+  // values entered by hand, e.g. an Arabic currency name instead of "SAR").
+  const productCurrency = countryRow.data?.currency ?? "MRU";
 
   return (
     <>
       <MetaPixelLandingScript productContent={productContent} pixelId={countryPixelIds.public} />
       <HeroMediaPreload mediaType={found.media_type} mediaUrl={found.media_url} />
       <MetaPixelRuntime productContent={productContent} pixelId={countryPixelIds.public} />
-      <ProductLanding product={found} metaPixelIdPublic={countryPixelIds.public} />
+      <ProductLanding
+        product={found}
+        metaPixelIdPublic={countryPixelIds.public}
+        currency={productCurrency}
+      />
     </>
   );
 }

@@ -37,8 +37,10 @@ function mapPipelineRow(row: Record<string, unknown>): AdminProductPipelineRow {
 }
 
 export default async function AdminProductsPage() {
-  const supabase = await createClient();
-  const { selectedCountryId } = await getCountryScope();
+  const [supabase, { selectedCountryId, selectedCountry }] = await Promise.all([
+    createClient(),
+    getCountryScope(),
+  ]);
   const { data: products } = await supabase
     .from("products")
     .select(
@@ -52,5 +54,5 @@ export default async function AdminProductsPage() {
     mapPipelineRow(p as Record<string, unknown>),
   );
 
-  return <ProductsAdminView products={rows} />;
+  return <ProductsAdminView products={rows} currency={selectedCountry?.currency ?? "MRU"} />;
 }

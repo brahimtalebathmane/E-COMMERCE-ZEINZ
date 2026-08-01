@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { adminAr as a } from "@/locales/admin-ar";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import type { OrderStatus } from "@/types";
 import {
   AnalyticsIcon,
@@ -73,9 +73,12 @@ export type DashboardVisibility = {
 export function DashboardHome({
   data,
   visibility,
+  currency,
 }: {
   data: DashboardData;
   visibility: DashboardVisibility;
+  /** Currency of the admin's currently-selected country — all figures here are scoped to that one country. */
+  currency: string;
 }) {
   return (
     <div className="space-y-6">
@@ -87,12 +90,12 @@ export function DashboardHome({
             <>
               <AdminKpiTile
                 label={a.dashboard.kpiRevenue}
-                value={formatPrice(data.grossRevenue)}
+                value={formatMoney(data.grossRevenue, currency)}
                 accent={KPI_ACCENT.revenue}
               />
               <AdminKpiTile
                 label={a.dashboard.kpiNetProfit}
-                value={formatPrice(data.netProfit)}
+                value={formatMoney(data.netProfit, currency)}
                 accent={KPI_ACCENT.profit}
                 emphasize
               />
@@ -165,7 +168,7 @@ export function DashboardHome({
                         className="shrink-0 text-sm font-bold tabular-nums text-[var(--foreground)]"
                         dir="ltr"
                       >
-                        {formatPrice(o.total)}
+                        {formatMoney(o.total, currency)}
                       </span>
                       <AdminBadge hue={orderStatusHue(o.status)} size="sm" className="shrink-0">
                         {a.orderStatus[o.status]}

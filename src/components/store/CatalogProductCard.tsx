@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import type { Locale } from "@/lib/i18n";
 import {
   parseTestimonialList,
@@ -22,6 +22,8 @@ export type CatalogProduct = {
   media_url: string;
   testimonials_ar: unknown;
   testimonials_fr: unknown;
+  /** Resolved from the product's own country (countries.currency) — the catalog has no fulfillment_type filter, so an affiliate product with its own currency can appear here too. */
+  currency: string;
 };
 
 function displayName(p: CatalogProduct, locale: Locale): string {
@@ -172,11 +174,11 @@ export function CatalogProductCard({ product, index }: Props) {
           <div className="mt-auto flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-baseline gap-2" dir="ltr">
               <p className="text-xl font-extrabold tabular-nums tracking-tight text-[var(--foreground)]">
-                {formatPrice(priceValue)}
+                {formatMoney(priceValue, product.currency)}
               </p>
               {hasDiscount ? (
                 <p className="text-sm font-semibold tabular-nums text-[var(--muted)] line-through decoration-[1.5px]">
-                  {formatPrice(Number(product.price))}
+                  {formatMoney(Number(product.price), product.currency)}
                 </p>
               ) : null}
             </div>

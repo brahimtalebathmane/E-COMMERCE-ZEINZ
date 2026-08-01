@@ -28,14 +28,22 @@ type Props = {
   onClose: () => void;
   /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
   metaPixelIdPublic?: string | null;
+  /** Resolved from the product's own country (countries.currency) — not products.affiliate_currency, which is a legacy free-text field that can hold non-ISO values. */
+  currency?: string;
 };
 
 /** Order form for affiliate (COD Partner) landing pages: name, phone, full address, city. */
-export function AffiliateOrderFormModal({ product, open, onClose, metaPixelIdPublic }: Props) {
+export function AffiliateOrderFormModal({
+  product,
+  open,
+  onClose,
+  metaPixelIdPublic,
+  currency,
+}: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
-  const currencyCode = product.affiliate_currency || "USD";
+  const currencyCode = currency || "USD";
   const defaultCountry = (product.affiliate_country as Country | null) || "US";
 
   const [name, setName] = useState("");

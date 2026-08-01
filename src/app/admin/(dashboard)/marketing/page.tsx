@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { adminAr as a } from "@/locales/admin-ar";
 import { MarketingView } from "./MarketingView";
 import { loadMarketingData } from "./data";
@@ -6,8 +7,11 @@ import { loadMarketingData } from "./data";
 export const dynamic = "force-dynamic";
 
 export default async function AdminMarketingPage() {
-  const supabase = await createClient();
-  const result = await loadMarketingData(supabase);
+  const [supabase, { selectedCountryId }] = await Promise.all([
+    createClient(),
+    getCountryScope(),
+  ]);
+  const result = await loadMarketingData(supabase, selectedCountryId);
 
   if (!result.ok) {
     return (

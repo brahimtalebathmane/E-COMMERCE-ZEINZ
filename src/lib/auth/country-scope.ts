@@ -8,6 +8,8 @@ export const ADMIN_COUNTRY_COOKIE = "admin_country_id";
 export type CountryScope = {
   countries: CountryRow[];
   selectedCountryId: string;
+  /** Convenience lookup — same row as `countries.find(c => c.id === selectedCountryId)`. */
+  selectedCountry: CountryRow | null;
 };
 
 /**
@@ -31,7 +33,7 @@ const resolveCountryScope = cache(async (): Promise<CountryScope> => {
   const selected =
     countries.find((c) => c.id === cookieId) ?? mauritania ?? countries[0] ?? null;
 
-  return { countries, selectedCountryId: selected?.id ?? "" };
+  return { countries, selectedCountryId: selected?.id ?? "", selectedCountry: selected };
 });
 
 export async function getCountryScope(): Promise<CountryScope> {

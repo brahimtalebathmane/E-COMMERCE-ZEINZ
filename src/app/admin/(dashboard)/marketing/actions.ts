@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   resolveAudience,
@@ -14,7 +15,11 @@ import {
 
 export type PreviewAudienceResult = { ok: true; recipients: RecipientRow[] } | { ok: false; error: string };
 
-/** Recipient-count preview for the two automatic audience modes, shown before the admin commits to Send. */
+/**
+ * Recipient-count preview for the two automatic audience modes, shown
+ * before the admin commits to Send. Scoped to whichever country is
+ * currently selected — consistent with the rest of the admin panel.
+ */
 export async function previewAudienceAction(
   audienceType: "all_confirmed" | "by_product",
   productId?: string | null,
@@ -22,21 +27,28 @@ export async function previewAudienceAction(
 ): Promise<PreviewAudienceResult> {
   try {
     await assertPermission(PERMISSIONS.marketing_messages);
-    const recipients = await resolveAudience(audienceType, productId, excludeShippedProductIds);
+    const { selectedCountryId } = await getCountryScope();
+    const recipients = await resolveAudience(
+      audienceType,
+      productId,
+      excludeShippedProductIds,
+      selectedCountryId,
+    );
     return { ok: true, recipients };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Failed to load audience." };
   }
 }
 
-/** Manual-mode customer search (name or phone substring); already-shipped customers for the excluded products never appear in results. */
+/** Manual-mode customer search (name or phone substring); already-shipped customers for the excluded products never appear in results. Scoped to the currently selected country. */
 export async function searchCustomersAction(
   term: string,
   excludeShippedProductIds: string[] = [],
 ): Promise<PreviewAudienceResult> {
   try {
     await assertPermission(PERMISSIONS.marketing_messages);
-    const recipients = await searchAllCustomers(term, excludeShippedProductIds);
+    const { selectedCountryId } = await getCountryScope();
+    const recipients = await searchAllCustomers(term, excludeShippedProductIds, selectedCountryId);
     return { ok: true, recipients };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Failed to search customers." };
@@ -85,6 +97,7 @@ export async function createCampaignAction(input: {
       }
     }
 
+    const { selectedCountryId } = await getCountryScope();
     const supabase = createServiceClient();
 
     const { data: campaign, error: cErr } = await supabase
@@ -97,6 +110,7 @@ export async function createCampaignAction(input: {
         exclude_shipped_product_ids: excludeShippedProductIds,
         status: "draft",
         total_recipients: input.audienceType === "manual" ? manualRecipients.length : 0,
+        country_id: selectedCountryId,
       })
       .select("id")
       .single();
@@ -155,10 +169,15 @@ export async function sendCampaignAction(campaignId: string): Promise<SendCampai
       recipientCount = count ?? 0;
       if (recipientCount === 0) return { ok: false, error: "لا يوجد مستلمون لهذه الحملة." };
     } else {
+      // Resolved against whichever country is currently selected, not the
+      // country the draft was created under — same "fresh at send time"
+      // philosophy already applied to audience membership above.
+      const { selectedCountryId } = await getCountryScope();
       const recipients = await resolveAudience(
         campaign.audience_type as "all_confirmed" | "by_product",
         campaign.product_id,
         (campaign.exclude_shipped_product_ids ?? []) as string[],
+        selectedCountryId,
       );
       if (recipients.length === 0) return { ok: false, error: "لا يوجد عملاء مطابقون لهذا الاختيار." };
 

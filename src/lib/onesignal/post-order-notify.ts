@@ -249,12 +249,17 @@ export async function notifyAdminsOfMetaFailure(params: {
 export async function notifyAdminsOfNewOrder(params: {
   orderId: string;
   productName: string;
+  /** Arabic country name (countries.name_ar) — every order gets one, MR included, so no push is ambiguous about its market. */
+  countryNameAr?: string | null;
 }): Promise<OneSignalNotifyResult> {
   const productName = params.productName.trim() || "منتج غير معروف";
   const siteUrl = getPublicSiteUrl();
+  const countryTag = params.countryNameAr?.trim() || null;
+  const arPrefix = countryTag ? `${countryTag} — ` : "";
+  const enPrefix = countryTag ? `[${countryTag}] ` : "";
 
   return notifyAdminsPush({
-    headings: { en: "New order received", ar: "إشعار بطلب جديد" },
+    headings: { en: `${enPrefix}New order received`, ar: `${arPrefix}إشعار بطلب جديد` },
     contents: {
       en: `New order received for: ${productName}`,
       ar: `تم استلام طلب جديد لمنتج: ${productName}`,

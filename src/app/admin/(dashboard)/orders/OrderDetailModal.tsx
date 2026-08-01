@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AdminOrderRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import type { OrderStatus } from "@/types";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
@@ -484,12 +484,12 @@ function OrderDetailSections({
             <dl className="mt-2 space-y-1.5 text-sm">
               <div className="flex flex-wrap justify-between gap-2">
                 <dt className="text-[var(--muted)]">{a.orders.productPrice}</dt>
-                <dd dir="ltr">{formatPrice(toFiniteNumber(product?.price))}</dd>
+                <dd dir="ltr">{formatMoney(toFiniteNumber(product?.price), order?.currency ?? "MRU")}</dd>
               </div>
               {product?.discount_price != null ? (
                 <div className="flex flex-wrap justify-between gap-2">
                   <dt className="text-[var(--muted)]">{a.orders.productDiscount}</dt>
-                  <dd dir="ltr">{formatPrice(toFiniteNumber(product.discount_price))}</dd>
+                  <dd dir="ltr">{formatMoney(toFiniteNumber(product.discount_price), order?.currency ?? "MRU")}</dd>
                 </div>
               ) : null}
               {product?.media_url ? (
@@ -518,8 +518,7 @@ function OrderDetailSections({
           <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
             <dt className="text-[var(--muted)]">{a.orders.total}</dt>
             <dd dir="ltr">
-              {formatPrice(toFiniteNumber(order?.total_price))}{" "}
-              <span className="text-[var(--muted)]">({order?.currency ?? "—"})</span>
+              {formatMoney(toFiniteNumber(order?.total_price), order?.currency ?? "MRU")}
             </dd>
           </div>
         </dl>

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { assertAdminUser, assertPermission, AuthError } from "@/lib/auth/admin";
 import { canEditOrderDetails, PERMISSIONS, permissionForOrderStatus } from "@/lib/auth/permissions";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
 import { updateOrderStatusWithEffects, type MetaSideEffect } from "@/lib/orders/update-status";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
@@ -249,15 +250,25 @@ export type ManualSaleProductOption = {
   name: string;
   price: number;
   discountPrice: number | null;
+  /** All products here belong to the same (currently selected) country, so this is one shared currency. */
+  currency: string;
 };
 
-/** Active (non-archived) products for the manual-sale product picker. */
+/**
+ * Active (non-archived) products for the manual-sale product picker,
+ * scoped to the currently-selected country — this also guarantees every
+ * option shares one currency, so the form's combined total is never a
+ * meaningless sum across currencies.
+ */
 export async function listActiveProductsForManualSaleAction(): Promise<ManualSaleProductOption[]> {
   await assertPermission(PERMISSIONS.confirm_orders);
+  const { selectedCountryId, selectedCountry } = await getCountryScope();
+  const currency = selectedCountry?.currency ?? "MRU";
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("products")
     .select("id, name_ar, price, discount_price")
+    .eq("country_id", selectedCountryId)
     .is("deleted_at", null)
     .order("name_ar", { ascending: true });
 
@@ -268,6 +279,7 @@ export async function listActiveProductsForManualSaleAction(): Promise<ManualSal
     name: p.name_ar,
     price: Number(p.price),
     discountPrice: p.discount_price == null ? null : Number(p.discount_price),
+    currency,
   }));
 }
 
@@ -338,12 +350,19 @@ export async function createManualSaleAction(
       }
     }
 
+    // Scoped to the currently-selected country — not just for consistency
+    // with the picker, but so a tampered request can't slip in a product
+    // from a different country (which would also carry the wrong currency).
+    const { selectedCountryId, selectedCountry } = await getCountryScope();
+    const currency = selectedCountry?.currency ?? "MRU";
+
     const supabase = createServiceClient();
     const productIds = [...new Set(lines.map((line) => line.productId))];
     const { data: products, error: productsErr } = await supabase
       .from("products")
       .select("id, price, discount_price")
       .in("id", productIds)
+      .eq("country_id", selectedCountryId)
       .is("deleted_at", null);
 
     if (productsErr) {
@@ -364,6 +383,7 @@ export async function createManualSaleAction(
       const totalPrice = Math.round(unitPrice * line.quantity * 100) / 100;
       return {
         product_id: line.productId,
+        currency,
         customer_name: customerName,
         phone,
         total_price: totalPrice,

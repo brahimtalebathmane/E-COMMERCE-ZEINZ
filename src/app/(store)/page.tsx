@@ -34,6 +34,7 @@ function normalizeCatalogRow(row: Record<string, unknown>): CatalogProduct {
     media_url: String(row.media_url ?? ""),
     testimonials_ar: row.testimonials_ar,
     testimonials_fr: row.testimonials_fr,
+    currency: (row.countries as { currency?: string } | null)?.currency ?? "MRU",
   };
 }
 
@@ -71,7 +72,7 @@ export default async function HomePage() {
   let productsQuery = supabase
     .from("products")
     .select(
-      "name_ar, name_fr, hero_subtitle_ar, hero_subtitle_fr, slug, discount_price, price, media_type, media_url, testimonials_ar, testimonials_fr",
+      "name_ar, name_fr, hero_subtitle_ar, hero_subtitle_fr, slug, discount_price, price, media_type, media_url, testimonials_ar, testimonials_fr, countries(currency)",
     )
     .eq("test_status", "winner")
     .is("deleted_at", null);

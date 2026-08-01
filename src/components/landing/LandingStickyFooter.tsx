@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ProductRow } from "@/types";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 
 type Props = {
   product: ProductRow;
   ctaLabel: string;
   locale: "ar" | "fr";
   onCheckout: () => void;
+  /** Resolved from the product's own country (countries.currency); "MRU" for owned. */
+  currency?: string;
 };
 
 const DEFAULT_BAR = "#14532d";
@@ -35,7 +37,7 @@ function timerUnitCaptions(locale: "ar" | "fr") {
   return { h: "س", m: "د", s: "ث" };
 }
 
-export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: Props) {
+export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout, currency = "MRU" }: Props) {
   const endsMs = useMemo(() => parseEndMs(product.sticky_footer_offer_ends_at), [product.sticky_footer_offer_ends_at]);
   const showTimer = product.sticky_footer_show_timer && endsMs != null;
 
@@ -65,9 +67,9 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
       ? product.sticky_footer_savings_badge_fr.trim()
       : product.sticky_footer_savings_badge_ar.trim();
   const derivedSavingsFr =
-    savingsAmount > 0 ? `Économisez ${formatPrice(savingsAmount)}` : "";
+    savingsAmount > 0 ? `Économisez ${formatMoney(savingsAmount, currency)}` : "";
   const derivedSavingsAr =
-    savingsAmount > 0 ? `${formatPrice(savingsAmount).replace(/\s/g, "")} وفّر` : "";
+    savingsAmount > 0 ? `${formatMoney(savingsAmount, currency).replace(/\s/g, "")} وفّر` : "";
 
   const badgeText =
     savingsLine ||
@@ -169,7 +171,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
                 className="text-[1.7rem] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)] sm:text-[2.1rem] md:text-[2.25rem]"
                 dir="ltr"
               >
-                {formatPrice(currentPrice)}
+                {formatMoney(currentPrice, currency)}
               </span>
               {hasDiscount ? (
                 <span className="flex flex-col items-start leading-tight">
@@ -180,7 +182,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout }: P
                     className="text-[13px] font-semibold tabular-nums text-white/70 line-through decoration-white/55 decoration-[1.5px] sm:text-sm"
                     dir="ltr"
                   >
-                    {formatPrice(price)}
+                    {formatMoney(price, currency)}
                   </span>
                 </span>
               ) : null}

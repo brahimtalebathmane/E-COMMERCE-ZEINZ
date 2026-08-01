@@ -7,7 +7,7 @@ import { deleteProductAction, updateProductTestStatusAction } from "./actions";
 import type { AdminProductPipelineRow } from "./types";
 import { adminAr as a } from "@/locales/admin-ar";
 import { PlusIcon } from "@/components/admin/AdminIcons";
-import { formatPrice } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 import {
   AdminBadge,
   AdminButton,
@@ -26,6 +26,8 @@ import type { ProductTestingStatus } from "@/types";
 
 type Props = {
   products: AdminProductPipelineRow[];
+  /** This list is already scoped to one country (see products/page.tsx), so a single shared currency is correct here. */
+  currency: string;
 };
 
 /**
@@ -190,7 +192,7 @@ function PipelineActions({
   );
 }
 
-export function ProductsAdminView({ products }: Props) {
+export function ProductsAdminView({ products, currency }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<PipelineTabId>("research");
   const [pending, startTransition] = useTransition();
@@ -270,7 +272,7 @@ export function ProductsAdminView({ products }: Props) {
   }
 
   const price = (p: AdminProductPipelineRow) =>
-    formatPrice(p.discount_price != null ? Number(p.discount_price) : Number(p.price));
+    formatMoney(p.discount_price != null ? Number(p.discount_price) : Number(p.price), currency);
 
   return (
     <div>

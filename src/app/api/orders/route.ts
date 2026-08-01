@@ -100,17 +100,31 @@ export async function POST(request: Request) {
       if (!data.affiliate_address || !data.affiliate_city || !data.affiliate_country) {
         return apiValidationError("Address, city and country are required.");
       }
-      if (!product.affiliate_currency) {
-        console.error("[POST /api/orders] Affiliate product missing affiliate_currency", {
-          product_id: product.id,
-        });
-        return apiErrorResponse(
-          new Error("Affiliate product is misconfigured (missing currency)"),
-          "[POST /api/orders]",
-        );
-      }
     }
-    const orderCurrency = isAffiliate ? String(product.affiliate_currency) : "MRU";
+
+    // Single lookup, reused for the order's currency AND (below) the
+    // OneSignal country tag — sourced from countries.currency (canonical),
+    // not the legacy products.affiliate_currency free-text field, which can
+    // hold non-ISO values (e.g. an Arabic currency name entered by hand).
+    const { data: orderCountry } = product.country_id
+      ? await supabase
+          .from("countries")
+          .select("name_ar, currency")
+          .eq("id", product.country_id as string)
+          .maybeSingle()
+      : { data: null };
+
+    if (isAffiliate && !orderCountry?.currency) {
+      console.error("[POST /api/orders] Affiliate product missing a resolvable country currency", {
+        product_id: product.id,
+        country_id: product.country_id,
+      });
+      return apiErrorResponse(
+        new Error("Affiliate product is misconfigured (missing currency)"),
+        "[POST /api/orders]",
+      );
+    }
+    const orderCurrency = isAffiliate ? String(orderCountry?.currency) : "MRU";
 
     const total =
       product.discount_price != null
@@ -224,12 +238,14 @@ export async function POST(request: Request) {
       console.warn("[POST /api/orders] OneSignal dispatch begin", {
         order_id: order.id,
         product_name: oneSignalProductName,
+        country: orderCountry?.name_ar ?? null,
       });
       // Awaited inline (not fire-and-forget) so the serverless runtime cannot garbage-collect
       // the request before OneSignal confirms a status — the result is logged before responding.
       const oneSignalResult = await notifyAdminsOfNewOrder({
         orderId: order.id,
         productName: oneSignalProductName,
+        countryNameAr: orderCountry?.name_ar ?? null,
       });
       console.warn("[POST /api/orders] OneSignal dispatch result", {
         order_id: order.id,
