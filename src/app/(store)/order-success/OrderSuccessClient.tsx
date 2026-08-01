@@ -6,10 +6,6 @@ type Props = {
   orderId: string | null;
   completionToken: string | null;
   actionToken: string | null;
-  productId: string | null;
-  productName: string | null;
-  totalPrice: number | null;
-  currency: string;
   onSettled?: () => void;
 };
 

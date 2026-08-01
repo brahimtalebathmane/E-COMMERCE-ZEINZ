@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import {
   ORDER_SUCCESS_AT_COOKIE,
@@ -21,7 +22,9 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   const orderId = sp?.order_id?.trim() || null;
   const totalPriceRaw = sp?.total_price?.trim() || "";
   const queryTotalPrice = totalPriceRaw ? Number(totalPriceRaw) : null;
+  const queryProductId = sp?.product_id?.trim() || null;
 
+  // Cheap, synchronous (no network) — safe to read before the shell paints.
   const cookieStore = await cookies();
   const cookieOrderId = cookieStore.get(ORDER_SUCCESS_OID_COOKIE)?.value?.trim() || null;
 
@@ -33,9 +36,58 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
     actionToken = cookieStore.get(ORDER_SUCCESS_AT_COOKIE)?.value?.trim() || null;
   }
 
+  return (
+    <>
+      {/* Needs only orderId + the two session tokens — never blocks on the DB lookup below. */}
+      <OrderSuccessEffects
+        orderId={orderId}
+        completionToken={completionToken}
+        actionToken={actionToken}
+      />
+      {/*
+        The order/product DB lookup (for productName + fulfillmentType + the
+        authoritative currency) is streamed in behind Suspense instead of
+        blocking the initial response, so the "thank you" shell paints
+        immediately from the query params already on the URL. The fallback
+        forces fulfillmentType to "affiliate" (hidden) rather than leaving it
+        null (shown) — null would flash the WhatsApp CTA / reassurance rows
+        on for a real affiliate order and then yank them away once the true
+        value streams in.
+      */}
+      <Suspense
+        fallback={
+          <OrderSuccessContent
+            orderId={orderId}
+            productName={null}
+            totalPrice={queryTotalPrice}
+            fulfillmentType="affiliate"
+            currency={null}
+          />
+        }
+      >
+        <OrderSuccessSummary
+          orderId={orderId}
+          cookieOrderId={cookieOrderId}
+          queryProductId={queryProductId}
+          queryTotalPrice={queryTotalPrice}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+async function OrderSuccessSummary({
+  orderId,
+  cookieOrderId,
+  queryProductId,
+  queryTotalPrice,
+}: {
+  orderId: string | null;
+  cookieOrderId: string | null;
+  queryProductId: string | null;
+  queryTotalPrice: number | null;
+}) {
   const orderContext = await loadOrderSuccessContext(orderId, cookieOrderId);
-  const queryProductId = sp?.product_id?.trim() ?? null;
-  const productId = orderContext?.productId ?? queryProductId;
   let productName = orderContext?.productName ?? null;
   if (!productName && queryProductId) {
     productName = await resolveProductNameFromId(queryProductId);
@@ -48,23 +100,12 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   const currency = orderContext?.currency ?? "MRU";
 
   return (
-    <>
-      <OrderSuccessEffects
-        orderId={orderId}
-        completionToken={completionToken}
-        actionToken={actionToken}
-        productId={productId}
-        productName={productName}
-        totalPrice={totalPrice}
-        currency={currency}
-      />
-      <OrderSuccessContent
-        orderId={orderId}
-        productName={productName}
-        totalPrice={totalPrice}
-        fulfillmentType={orderContext?.fulfillmentType ?? null}
-        currency={currency}
-      />
-    </>
+    <OrderSuccessContent
+      orderId={orderId}
+      productName={productName}
+      totalPrice={totalPrice}
+      fulfillmentType={orderContext?.fulfillmentType ?? null}
+      currency={currency}
+    />
   );
 }

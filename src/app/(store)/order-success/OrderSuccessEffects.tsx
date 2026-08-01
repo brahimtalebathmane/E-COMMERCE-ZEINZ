@@ -8,10 +8,6 @@ type Props = {
   orderId: string | null;
   completionToken: string | null;
   actionToken: string | null;
-  productId: string | null;
-  productName: string | null;
-  totalPrice: number | null;
-  currency: string;
 };
 
 async function clearOrderSuccessSession(): Promise<void> {
@@ -28,16 +24,11 @@ async function clearOrderSuccessSession(): Promise<void> {
 /**
  * Runs hybrid Lead (Pixel + CAPI) + WhatsApp post-checkout effects, then clears the
  * short-lived session cookies only after both have finished (Lead CAPI needs those cookies).
+ *
+ * Only needs orderId + the two session tokens (all synchronous from cookies/query params) —
+ * never waits on the product/order DB lookup that resolves the rest of the page's content.
  */
-export function OrderSuccessEffects({
-  orderId,
-  completionToken,
-  actionToken,
-  productId,
-  productName,
-  totalPrice,
-  currency,
-}: Props) {
+export function OrderSuccessEffects({ orderId, completionToken, actionToken }: Props) {
   const leadDoneRef = useRef(!orderId);
   const waDoneRef = useRef(!orderId || !completionToken || !actionToken);
   const sessionClearedRef = useRef(false);
@@ -73,10 +64,6 @@ export function OrderSuccessEffects({
         orderId={orderId}
         completionToken={completionToken}
         actionToken={actionToken}
-        productId={productId}
-        productName={productName}
-        totalPrice={totalPrice}
-        currency={currency}
         onSettled={onWhatsAppSettled}
       />
     </>

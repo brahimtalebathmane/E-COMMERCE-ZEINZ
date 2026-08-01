@@ -99,7 +99,9 @@
     "whatsappCta": "تواصل معنا عبر واتساب",
     "orderId": "رقم الطلب",
     "product": "المنتج",
-    "total": "المبلغ الإجمالي"
+    "total": "المبلغ الإجمالي",
+    "whatsappConfirmationNotice": "ستصلك رسالة تأكيد عبر واتساب في هذه اللحظات",
+    "fastDeliveryNotice": "سيتم توصيل طلبك خلال ساعات"
   },
   "productContact": {
     "email": "البريد الإلكتروني",

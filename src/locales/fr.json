@@ -99,7 +99,9 @@
     "whatsappCta": "Contactez-nous sur WhatsApp",
     "orderId": "N° de commande",
     "product": "Produit",
-    "total": "Montant total"
+    "total": "Montant total",
+    "whatsappConfirmationNotice": "Vous recevrez un message de confirmation WhatsApp dans quelques instants",
+    "fastDeliveryNotice": "Votre commande sera livrée en quelques heures"
   },
   "productContact": {
     "email": "E-mail",

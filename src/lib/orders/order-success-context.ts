@@ -2,12 +2,10 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
-import { resolveServerMetaPixelId, resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import { createClient } from "@/lib/supabase/server";
 import type { FulfillmentType } from "@/types";
 
 export type OrderSuccessContext = {
-  metaPixelId: string | null;
   productId: string | null;
   productName: string | null;
   totalPrice: number | null;
@@ -27,7 +25,7 @@ export async function loadOrderSuccessContext(
   const supabase = createServiceClient();
   const { data: order, error } = await supabase
     .from("orders")
-    .select("product_id, total_price, currency, meta_pixel_id")
+    .select("product_id, total_price, currency")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -36,24 +34,20 @@ export async function loadOrderSuccessContext(
 
   let productName: string | null = null;
   let fulfillmentType: FulfillmentType | null = null;
-  let countryId: string | null = null;
   if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("name_ar, name_fr, default_language, fulfillment_type, country_id")
+      .select("name_ar, name_fr, default_language, fulfillment_type")
       .eq("id", order.product_id as string)
       .maybeSingle();
     if (product) {
       productName = resolveMetaProductDisplayName(product);
       fulfillmentType = (product.fulfillment_type as FulfillmentType | null) ?? null;
-      countryId = (product.country_id as string | null) ?? null;
     }
   }
 
-  const countryPixelIds = await resolveCountryPixelIds(supabase, countryId);
   const total = Number(order.total_price);
   return {
-    metaPixelId: resolveServerMetaPixelId(countryPixelIds.server),
     productId: (order.product_id as string | null) ?? null,
     productName,
     totalPrice: Number.isFinite(total) ? total : null,

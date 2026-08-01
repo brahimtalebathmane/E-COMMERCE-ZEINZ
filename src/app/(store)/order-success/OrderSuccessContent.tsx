@@ -5,6 +5,35 @@ import { formatMoney } from "@/lib/currency";
 
 const WHATSAPP_HREF = "https://wa.me/22233713957";
 
+function ReassuranceRow({
+  icon,
+  text,
+}: {
+  icon: "whatsapp" | "delivery";
+  text: string;
+}) {
+  return (
+    <div className="store-card flex items-center gap-3 p-3 text-start sm:p-3.5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+        {icon === "whatsapp" ? (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3a8 8 0 0 0-6.93 12.02L4 21l6.13-1.03A8 8 0 1 0 12 3z" />
+            <path d="M8.5 9.5c.3 2.5 2.5 4.7 5 5" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 7h10v8H3z" />
+            <path d="M13 10h4l3 3v2h-7z" />
+            <circle cx="7" cy="18" r="1.6" />
+            <circle cx="17" cy="18" r="1.6" />
+          </svg>
+        )}
+      </span>
+      <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{text}</p>
+    </div>
+  );
+}
+
 type Props = {
   orderId?: string | null;
   productName?: string | null;
@@ -91,16 +120,22 @@ export function OrderSuccessContent({
         ) : null}
 
         {fulfillmentType !== "affiliate" ? (
-          <div className="mt-8 flex justify-center">
-            <a
-              href={WHATSAPP_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="store-btn-whatsapp max-w-sm"
-            >
-              {t("orderSuccess.whatsappCta")}
-            </a>
-          </div>
+          <>
+            <div className="mx-auto mt-6 max-w-md space-y-2.5">
+              <ReassuranceRow icon="whatsapp" text={t("orderSuccess.whatsappConfirmationNotice")} />
+              <ReassuranceRow icon="delivery" text={t("orderSuccess.fastDeliveryNotice")} />
+            </div>
+            <div className="mt-6 flex justify-center">
+              <a
+                href={WHATSAPP_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="store-btn-whatsapp max-w-sm"
+              >
+                {t("orderSuccess.whatsappCta")}
+              </a>
+            </div>
+          </>
         ) : null}
       </div>
     </div>

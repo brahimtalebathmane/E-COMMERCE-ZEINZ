@@ -60,6 +60,13 @@ export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Pr
     };
   }, [open, product.id]);
 
+  // Warms the route as soon as the shopper opens the form, so the post-submit
+  // navigation (well before the user could finish typing) is instant.
+  useEffect(() => {
+    if (!open) return;
+    router.prefetch("/order-success");
+  }, [open, router]);
+
   const phoneError = useMemo(() => {
     if (!touched.phone && !busy) return null;
     if (!phone.trim()) return t("orderForm.phoneRequired");
@@ -167,7 +174,16 @@ export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Pr
 
       // Fire browser Lead on the product landing so the Pixel records the shopper page URL.
       // Order-success still runs CAPI with the same lead_{orderId} (browser is deduped).
-      await trackLead({
+      //
+      // Not awaited directly: trackLead sets its own cross-page dedup guard
+      // (tryMarkBrowserLeadSent) synchronously before its first await, so the
+      // guard is already in place the instant this call starts — order-success's
+      // own trackLead call will see it and skip, no matter how long the network
+      // call below takes. The call keeps running in the background (client-side
+      // routing doesn't abort in-flight work), so a slow/offline Pixel request
+      // can never hold the customer here — it's just raced against a short
+      // timeout so navigation is never blocked by it.
+      const trackLeadSettled = trackLead({
         value: leadValue,
         currency: "MRU",
         eventId: leadEventId,
@@ -177,7 +193,13 @@ export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Pr
         phone: phoneE164,
         customerName: n,
         pixelId: metaPixelIdPublic,
+      }).catch((trackLeadErr) => {
+        console.warn("[orderForm] trackLead failed (order already placed)", trackLeadErr);
       });
+      await Promise.race([
+        trackLeadSettled,
+        new Promise<void>((resolve) => setTimeout(resolve, 800)),
+      ]);
 
       clearMetaSessionEventId(product.id);
 
