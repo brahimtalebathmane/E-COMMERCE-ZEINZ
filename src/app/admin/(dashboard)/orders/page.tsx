@@ -40,7 +40,7 @@ export default async function AdminOrdersPage() {
   return (
     <>
       <AffiliateAdminPanels awaitingCosts={awaitingCosts} sheetFailures={sheetFailures} />
-      <OrdersAdminView orders={rows} />
+      <OrdersAdminView orders={rows} selectedCountryId={selectedCountryId} />
     </>
   );
 }

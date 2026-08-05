@@ -3,6 +3,7 @@ import { z } from "zod";
 import { assertOwnerUser, AuthError } from "@/lib/auth/admin";
 import { apiErrorResponse, apiValidationError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { runAdminAssistant } from "@/lib/admin-assistant/run";
 
 export const maxDuration = 120;
@@ -29,12 +30,14 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServiceClient();
+    const { selectedCountryId } = await getCountryScope();
 
     const result = await runAdminAssistant({
       ctx: {
         supabase,
         requestHeaders: request.headers,
         changedBy: session.access.userId,
+        countryId: selectedCountryId,
       },
       userText: parsed.data.message,
       threadId: parsed.data.threadId ?? null,

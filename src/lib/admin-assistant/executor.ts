@@ -27,6 +27,7 @@ export type AdminToolContext = {
   supabase: SupabaseClient;
   requestHeaders?: Headers;
   changedBy?: string | null;
+  countryId: string;
 };
 
 type ToolResult = Record<string, unknown>;
@@ -72,13 +73,14 @@ const PRODUCT_DETAIL_COLUMNS =
   "id, name_ar, name_fr, slug, price, discount_price, cost_price, currency, description_ar, description_fr, hero_subtitle_ar, header_bar_text_ar, cta_text_ar, meta_pixel_id, whatsapp_message_template, test_status, sourcing_type, sourcing_link, media_type, media_url, created_at";
 
 const ORDER_SUMMARY_COLUMNS =
-  "id, customer_name, phone, total_price, currency, status, created_at, product_id";
+  "id, customer_name, phone, total_price, currency, status, created_at, product_id, products!inner(country_id)";
 
 async function listProducts(ctx: AdminToolContext, args: ToolResult): Promise<ToolResult> {
   const limit = clampLimit(args.limit, 20, 50);
   let query = ctx.supabase
     .from("products")
     .select(PRODUCT_SUMMARY_COLUMNS)
+    .eq("country_id", ctx.countryId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -103,7 +105,10 @@ async function getProduct(ctx: AdminToolContext, args: ToolResult): Promise<Tool
   const slug = asTrimmed(args.slug);
   if (!productId && !slug) return fail("Provide product_id or slug.");
 
-  let query = ctx.supabase.from("products").select(PRODUCT_DETAIL_COLUMNS);
+  let query = ctx.supabase
+    .from("products")
+    .select(PRODUCT_DETAIL_COLUMNS)
+    .eq("country_id", ctx.countryId);
   query = productId ? query.eq("id", productId) : query.eq("slug", slug as string);
 
   const { data, error } = await query.maybeSingle();
@@ -138,6 +143,7 @@ async function createProduct(ctx: AdminToolContext, args: ToolResult): Promise<T
   }
 
   const insert = {
+    country_id: ctx.countryId,
     default_language: "ar" as const,
     brand_color: BRAND_COLOR,
     logo_url: "",
@@ -243,6 +249,7 @@ async function updateProduct(ctx: AdminToolContext, args: ToolResult): Promise<T
     .from("products")
     .select("id, slug, old_slugs")
     .eq("id", productId)
+    .eq("country_id", ctx.countryId)
     .maybeSingle();
 
   if (fetchErr) return fail(fetchErr.message);
@@ -396,6 +403,7 @@ async function updateProductTestStatus(
     .from("products")
     .select("id, slug, test_status")
     .eq("id", productId)
+    .eq("country_id", ctx.countryId)
     .maybeSingle();
 
   if (fetchErr) return fail(fetchErr.message);
@@ -444,6 +452,7 @@ async function listOrders(ctx: AdminToolContext, args: ToolResult): Promise<Tool
   let query = ctx.supabase
     .from("orders")
     .select(ORDER_SUMMARY_COLUMNS)
+    .eq("products.country_id", ctx.countryId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -472,9 +481,10 @@ async function getOrder(ctx: AdminToolContext, args: ToolResult): Promise<ToolRe
   const { data, error } = await ctx.supabase
     .from("orders")
     .select(
-      "id, customer_name, phone, payment_method, payment_number, transaction_reference, total_price, currency, status, form_data, created_at, product_id",
+      "id, customer_name, phone, payment_method, payment_number, transaction_reference, total_price, currency, status, form_data, created_at, product_id, products!inner(country_id)",
     )
     .eq("id", orderId)
+    .eq("products.country_id", ctx.countryId)
     .maybeSingle();
 
   if (error) return fail(error.message);
@@ -491,6 +501,15 @@ async function updateOrderStatus(ctx: AdminToolContext, args: ToolResult): Promi
   if (!status || !(ORDER_STATUSES as string[]).includes(status)) {
     return fail("status is invalid.");
   }
+
+  const { data: owned, error: ownedErr } = await ctx.supabase
+    .from("orders")
+    .select("id, products!inner(country_id)")
+    .eq("id", orderId)
+    .eq("products.country_id", ctx.countryId)
+    .maybeSingle();
+  if (ownedErr) return fail(ownedErr.message);
+  if (!owned) return fail("Order not found.");
 
   const result = await updateOrderStatusWithEffects(
     ctx.supabase,

@@ -381,9 +381,10 @@ type ConfirmState = {
 
 type Props = {
   orders: AdminOrderRow[];
+  selectedCountryId: string;
 };
 
-export function OrdersAdminView({ orders }: Props) {
+export function OrdersAdminView({ orders, selectedCountryId }: Props) {
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const canCreateManualSale = useHasPermission(PERMISSIONS.confirm_orders);
@@ -404,7 +405,11 @@ export function OrdersAdminView({ orders }: Props) {
     Math.min(INITIAL_RENDER, orders.length),
   );
 
-  const { highlightedIds, trackRows } = useOrdersRealtime({ setRows, setActive });
+  const { highlightedIds, trackRows } = useOrdersRealtime({
+    setRows,
+    setActive,
+    countryId: selectedCountryId,
+  });
 
   useEffect(() => {
     trackRows(rows);

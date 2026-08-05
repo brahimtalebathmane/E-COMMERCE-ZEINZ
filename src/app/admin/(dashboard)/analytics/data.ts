@@ -98,7 +98,8 @@ export async function loadAnalyticsData(
 
   const adSpendDailyRes = await cookieClient
     .from("product_ad_spend_daily")
-    .select("product_id, date, amount, fetched_at");
+    .select("product_id, date, amount, fetched_at")
+    .in("product_id", Array.from(ownedProductIds));
 
   if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error.message };
 

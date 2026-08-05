@@ -32,7 +32,7 @@ export default async function AdminHomePage() {
 
   const supabase = await createClient();
 
-  const [ordersRes, productsRes, adSpendRes] = await Promise.all([
+  const [ordersRes, productsRes] = await Promise.all([
     canLoadOrders
       ? supabase
           .from("orders")
@@ -50,13 +50,18 @@ export default async function AdminHomePage() {
           )
           .eq("country_id", selectedCountryId)
       : Promise.resolve({ data: [], error: null }),
-    // Live ad spend cache (see /admin/analytics, which is the only page that
-    // triggers a live Meta refresh) — this home KPI just reads whatever's
-    // already cached, no sync call, to keep the home page fast.
-    canViewAnalytics
-      ? supabase.from("product_ad_spend_daily").select("product_id, amount")
-      : Promise.resolve({ data: [], error: null }),
   ]);
+
+  // Live ad spend cache (see /admin/analytics, which is the only page that
+  // triggers a live Meta refresh) — this home KPI just reads whatever's
+  // already cached, no sync call, to keep the home page fast. Constrained to
+  // this country's product ids so other countries' ad spend never leaks in.
+  const adSpendRes = canViewAnalytics
+    ? await supabase
+        .from("product_ad_spend_daily")
+        .select("product_id, amount")
+        .in("product_id", (productsRes.data ?? []).map((p) => String(p.id)))
+    : { data: [], error: null };
 
   const error = ordersRes.error ?? productsRes.error ?? adSpendRes.error;
   if (error) {

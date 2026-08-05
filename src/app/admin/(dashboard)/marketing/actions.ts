@@ -153,11 +153,19 @@ export async function sendCampaignAction(campaignId: string): Promise<SendCampai
 
     const { data: campaign, error: gErr } = await supabase
       .from("marketing_campaigns")
-      .select("id, audience_type, product_id, exclude_shipped_product_ids, status")
+      .select("id, audience_type, product_id, exclude_shipped_product_ids, status, country_id")
       .eq("id", campaignId)
       .maybeSingle();
     if (gErr || !campaign) return { ok: false, error: gErr?.message || "الحملة غير موجودة." };
     if (campaign.status !== "draft") return { ok: false, error: "هذه الحملة ليست في وضع المسودة." };
+
+    const { selectedCountryId } = await getCountryScope();
+    if (campaign.country_id !== selectedCountryId) {
+      return {
+        ok: false,
+        error: "هذه الحملة تابعة لدولة أخرى. يرجى التبديل إلى دولة الحملة قبل الإرسال.",
+      };
+    }
 
     let recipientCount = 0;
 
@@ -169,15 +177,11 @@ export async function sendCampaignAction(campaignId: string): Promise<SendCampai
       recipientCount = count ?? 0;
       if (recipientCount === 0) return { ok: false, error: "لا يوجد مستلمون لهذه الحملة." };
     } else {
-      // Resolved against whichever country is currently selected, not the
-      // country the draft was created under — same "fresh at send time"
-      // philosophy already applied to audience membership above.
-      const { selectedCountryId } = await getCountryScope();
       const recipients = await resolveAudience(
         campaign.audience_type as "all_confirmed" | "by_product",
         campaign.product_id,
         (campaign.exclude_shipped_product_ids ?? []) as string[],
-        selectedCountryId,
+        campaign.country_id,
       );
       if (recipients.length === 0) return { ok: false, error: "لا يوجد عملاء مطابقون لهذا الاختيار." };
 

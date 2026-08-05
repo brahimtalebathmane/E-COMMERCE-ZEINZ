@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import {
-  ADMIN_ORDER_SELECT,
+  ADMIN_ORDER_SELECT_SCOPED,
   mergeOrderPayload,
   sortOrdersNewestFirst,
   type RealtimeOrderPayload,
@@ -18,14 +18,16 @@ const RECONCILE_LIMIT_MAX = 200;
 type Options = {
   setRows: React.Dispatch<React.SetStateAction<AdminOrderRow[]>>;
   setActive: React.Dispatch<React.SetStateAction<AdminOrderRow | null>>;
+  countryId: string;
 };
 
-async function fetchOrderById(id: string): Promise<AdminOrderRow | null> {
+async function fetchOrderById(id: string, countryId: string): Promise<AdminOrderRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("orders")
-    .select(ADMIN_ORDER_SELECT)
+    .select(ADMIN_ORDER_SELECT_SCOPED)
     .eq("id", id)
+    .eq("products.country_id", countryId)
     .maybeSingle();
   if (error || !data) return null;
   return data as unknown as AdminOrderRow;
@@ -35,7 +37,7 @@ async function fetchOrderById(id: string): Promise<AdminOrderRow | null> {
  * Keeps the admin orders list in sync via Supabase Realtime (INSERT/UPDATE/DELETE)
  * and reconciles missed events when the PWA/tab regains focus after backgrounding.
  */
-export function useOrdersRealtime({ setRows, setActive }: Options) {
+export function useOrdersRealtime({ setRows, setActive, countryId }: Options) {
   const [highlightedIds, setHighlightedIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -45,11 +47,13 @@ export function useOrdersRealtime({ setRows, setActive }: Options) {
   );
   const setRowsRef = useRef(setRows);
   const setActiveRef = useRef(setActive);
+  const countryIdRef = useRef(countryId);
   const reconcilingRef = useRef(false);
   const initialSyncDoneRef = useRef(false);
 
   setRowsRef.current = setRows;
   setActiveRef.current = setActive;
+  countryIdRef.current = countryId;
 
   const trackRows = useCallback((rows: AdminOrderRow[]) => {
     rowsRef.current = rows;
@@ -114,7 +118,8 @@ export function useOrdersRealtime({ setRows, setActive }: Options) {
 
       const { data, error } = await supabase
         .from("orders")
-        .select(ADMIN_ORDER_SELECT)
+        .select(ADMIN_ORDER_SELECT_SCOPED)
+        .eq("products.country_id", countryIdRef.current)
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -171,7 +176,7 @@ export function useOrdersRealtime({ setRows, setActive }: Options) {
           { event: "INSERT", schema: "public", table: "orders" },
           (payload) => {
             const row = payload.new as RealtimeOrderPayload;
-            void fetchOrderById(row.id).then((order) => {
+            void fetchOrderById(row.id, countryIdRef.current).then((order) => {
               if (order) prependOrder(order);
             });
           },
@@ -188,7 +193,7 @@ export function useOrdersRealtime({ setRows, setActive }: Options) {
             setRowsRef.current((prev) => {
               const existing = prev.find((row) => row.id === incoming.id);
               if (!existing) {
-                void fetchOrderById(incoming.id).then((order) => {
+                void fetchOrderById(incoming.id, countryIdRef.current).then((order) => {
                   if (order) prependOrder(order);
                 });
                 return prev;
