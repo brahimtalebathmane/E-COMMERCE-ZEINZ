@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { createClient } from "@/lib/supabase/server";
 import { mapProductRow } from "@/lib/products";
-import { formatMoney } from "@/lib/currency";
+import { formatMoney, resolveDisplayCurrency } from "@/lib/currency";
 import { codMarginPercent, sourcingTypeLabel } from "@/lib/product-pipeline";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AdminPageHeader } from "@/components/admin/ui";
@@ -50,6 +50,7 @@ export default async function LandingSetupPage({ params }: PageProps) {
     .eq("id", product.country_id)
     .maybeSingle();
   const productCurrency = productCountry?.currency ?? "MRU";
+  const displayCurrency = resolveDisplayCurrency(product.display_currency, productCurrency);
 
   return (
     <div className="space-y-6">
@@ -87,6 +88,7 @@ export default async function LandingSetupPage({ params }: PageProps) {
               ? ` · ${a.landingSetup.cost}: ${formatMoney(product.cost_price, productCurrency)}`
               : null}
             {margin != null ? ` · ${a.pipeline.marginLabel}: ${Math.round(margin * 10) / 10}%` : null}
+            {` · ${a.landingSetup.displayCurrency}: ${displayCurrency}`}
           </p>
           <p className="mt-1 break-words text-xs text-[var(--muted)]">
             {sourcingTypeLabel(product.sourcing_type)}

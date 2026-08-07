@@ -195,6 +195,7 @@ export const adminAr = {
       "جميع الحقول اختيارية — يمكنك حفظ التقدم في أي وقت وإكمال الصفحة لاحقاً. الحفظ لا يغيّر مرحلة المنتج في خط الإنتاج؛ استخدم «إنهاء البحث» عند الجاهزية للاختبار.",
     backToPipeline: "العودة إلى المنتجات",
     cost: "التكلفة",
+    displayCurrency: "العملة المعروضة",
     submit: "حفظ إعدادات صفحة الهبوط",
     completeResearch: "إنهاء البحث والنقل إلى جاهز للاختبار",
     saving: "جاري الحفظ…",
@@ -554,6 +555,10 @@ export const adminAr = {
     affiliateSellPrice: "سعر البيع للعميل",
     discount: "سعر التخفيض (MRU، اختياري)",
     discountPlaceholder: "اتركه فارغاً لاستخدام السعر العادي",
+    displayCurrency: "اسم العملة كما يظهر للزبون",
+    displayCurrencyPlaceholder: "مثال: أوقية أو UM",
+    displayCurrencyHint:
+      "يظهر بجانب السعر في صفحة الهبوط وصفحة تأكيد الطلب فقط، ولا يغيّر عملة الطلب الفعلية. اتركه فارغاً لاستخدام عملة الدولة تلقائياً.",
     mediaType: "نوع الوسائط",
     mediaImage: "صورة",
     mediaVideo: "فيديو (رابط Mux / Cloudflare Stream)",

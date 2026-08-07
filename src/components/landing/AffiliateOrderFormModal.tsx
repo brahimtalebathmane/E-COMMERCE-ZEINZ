@@ -16,7 +16,7 @@ import { trackLead } from "@/components/MetaPixel";
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
-import { formatMoney } from "@/lib/currency";
+import { formatMoneyLabel } from "@/lib/currency";
 import { PhoneCountryInput } from "@/components/landing/PhoneCountryInput";
 import { countryNameFromCode } from "@/lib/countries";
 import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
@@ -28,8 +28,10 @@ type Props = {
   onClose: () => void;
   /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
   metaPixelIdPublic?: string | null;
-  /** Resolved from the product's own country (countries.currency) — not products.affiliate_currency, which is a legacy free-text field that can hold non-ISO values. */
+  /** Resolved from the product's own country (countries.currency) — not products.affiliate_currency, which is a legacy free-text field that can hold non-ISO values. Used for Meta events; never for display. */
   currency?: string;
+  /** Display-only currency label (products.display_currency, falling back to `currency`). Never sent to Meta/orders. */
+  displayCurrency?: string;
 };
 
 /** Order form for affiliate (COD Partner) landing pages: name, phone, full address, city. */
@@ -39,11 +41,13 @@ export function AffiliateOrderFormModal({
   onClose,
   metaPixelIdPublic,
   currency,
+  displayCurrency,
 }: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const currencyCode = currency || "USD";
+  const priceDisplayCurrency = displayCurrency || currencyCode;
   const defaultCountry = (product.affiliate_country as Country | null) || "US";
 
   const [name, setName] = useState("");
@@ -287,11 +291,11 @@ export function AffiliateOrderFormModal({
                     className="text-xl font-black tabular-nums tracking-tight text-[var(--muted)] line-through decoration-[var(--muted)]/70"
                     dir="ltr"
                   >
-                    {formatMoney(originalPrice, currencyCode)}
+                    {formatMoneyLabel(originalPrice, priceDisplayCurrency)}
                   </span>
                 ) : null}
                 <span className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]" dir="ltr">
-                  {formatMoney(priceValue, currencyCode)}
+                  {formatMoneyLabel(priceValue, priceDisplayCurrency)}
                 </span>
               </div>
             </div>

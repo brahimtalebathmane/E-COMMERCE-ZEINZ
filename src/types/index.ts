@@ -106,6 +106,8 @@ export type ProductRow = {
   old_slugs: string[];
   price: number;
   discount_price: number | null;
+  /** Display-only label shown next to the price on the landing/order-success pages (e.g. "أوقية", "UM"). Null/empty = fall back to the product's country ISO currency. Never affects orders.currency, Meta events, or profit/analytics. */
+  display_currency: string | null;
   media_type: "image" | "video";
   media_url: string;
   secondary_media_type: "image" | "video";

@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ProductRow } from "@/types";
-import { formatMoney } from "@/lib/currency";
+import { formatMoneyLabel } from "@/lib/currency";
+import { withLatinTokens } from "@/lib/bidi-latin";
 
 type Props = {
   product: ProductRow;
   ctaLabel: string;
   locale: "ar" | "fr";
   onCheckout: () => void;
-  /** Resolved from the product's own country (countries.currency); "MRU" for owned. */
-  currency?: string;
+  /** Display-only currency label (products.display_currency, falling back to the ISO code). Never used for Meta/orders. */
+  displayCurrency?: string;
 };
 
 const DEFAULT_BAR = "#14532d";
@@ -37,7 +38,13 @@ function timerUnitCaptions(locale: "ar" | "fr") {
   return { h: "س", m: "د", s: "ث" };
 }
 
-export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout, currency = "MRU" }: Props) {
+export function LandingStickyFooter({
+  product,
+  ctaLabel,
+  locale,
+  onCheckout,
+  displayCurrency = "MRU",
+}: Props) {
   const endsMs = useMemo(() => parseEndMs(product.sticky_footer_offer_ends_at), [product.sticky_footer_offer_ends_at]);
   const showTimer = product.sticky_footer_show_timer && endsMs != null;
 
@@ -67,11 +74,32 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout, cur
       ? product.sticky_footer_savings_badge_fr.trim()
       : product.sticky_footer_savings_badge_ar.trim();
   const derivedSavingsFr =
-    savingsAmount > 0 ? `Économisez ${formatMoney(savingsAmount, currency)}` : "";
-  const derivedSavingsAr =
-    savingsAmount > 0 ? `${formatMoney(savingsAmount, currency).replace(/\s/g, "")} وفّر` : "";
+    savingsAmount > 0 ? `Économisez ${formatMoneyLabel(savingsAmount, displayCurrency)}` : "";
+  // Glue the amount to the label (compact "500MRU" style) but collapse only
+  // the ONE boundary space between them — a free-text label can be
+  // multi-word (e.g. "دولار امريكي"), and stripping every space would run
+  // its own words together, not just glue it to the number.
+  const derivedSavingsAr: ReactNode = (() => {
+    if (savingsAmount <= 0) return "";
+    const glued = formatMoneyLabel(savingsAmount, displayCurrency).replace(/^(\S+)\s/, "$1");
+    // Only a genuinely multi-word Latin label risks the isolate reordering
+    // bug the shared helper guards against (see withLatinTokens) — a single
+    // token (the "MRU" default, or a short label like "UM"/"dh") has no
+    // internal run boundary to reorder, so it renders as plain text exactly
+    // like before this feature existed.
+    const isMultiWordLatin = /[A-Za-z]/.test(displayCurrency) && /\s/.test(displayCurrency);
+    if (!isMultiWordLatin) {
+      return `${glued} وفّر`;
+    }
+    return (
+      <>
+        {withLatinTokens(glued, "savings")}
+        {" وفّر"}
+      </>
+    );
+  })();
 
-  const badgeText =
+  const badgeText: ReactNode =
     savingsLine ||
     (locale === "fr" ? derivedSavingsFr : derivedSavingsAr) ||
     "";
@@ -171,7 +199,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout, cur
                 className="text-[1.7rem] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)] sm:text-[2.1rem] md:text-[2.25rem]"
                 dir="ltr"
               >
-                {formatMoney(currentPrice, currency)}
+                {formatMoneyLabel(currentPrice, displayCurrency)}
               </span>
               {hasDiscount ? (
                 <span className="flex flex-col items-start leading-tight">
@@ -182,7 +210,7 @@ export function LandingStickyFooter({ product, ctaLabel, locale, onCheckout, cur
                     className="text-[13px] font-semibold tabular-nums text-white/70 line-through decoration-white/55 decoration-[1.5px] sm:text-sm"
                     dir="ltr"
                   >
-                    {formatMoney(price, currency)}
+                    {formatMoneyLabel(price, displayCurrency)}
                   </span>
                 </span>
               ) : null}

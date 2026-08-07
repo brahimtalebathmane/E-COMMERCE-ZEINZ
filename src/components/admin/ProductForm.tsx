@@ -172,6 +172,7 @@ export function ProductForm({ mode, initial, countries }: Props) {
   const [discount, setDiscount] = useState(
     initial?.discount_price != null ? String(initial.discount_price) : "",
   );
+  const [displayCurrency, setDisplayCurrency] = useState(initial?.display_currency ?? "");
   const [testStatus, setTestStatus] = useState<ProductTestingStatus>(
     initial?.test_status ?? "under_research",
   );
@@ -418,6 +419,7 @@ export function ProductForm({ mode, initial, countries }: Props) {
         discountPrice != null && !Number.isNaN(discountPrice)
           ? discountPrice
           : null,
+      display_currency: displayCurrency.trim() || null,
       media_type: mediaType,
       media_url: mediaUrl,
       secondary_media_type: secondaryMediaType,
@@ -1232,6 +1234,17 @@ export function ProductForm({ mode, initial, countries }: Props) {
             placeholder={a.productForm.discountPlaceholder}
             dir="ltr"
           />
+        </div>
+        <div>
+          <label className="text-sm font-medium">{a.productForm.displayCurrency}</label>
+          <input
+            className="mt-1 w-full admin-input"
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value)}
+            placeholder={a.productForm.displayCurrencyPlaceholder}
+            maxLength={16}
+          />
+          <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.displayCurrencyHint}</p>
         </div>
         <div>
           <label className="text-sm font-medium">{a.productForm.mediaType}</label>

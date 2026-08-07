@@ -16,7 +16,7 @@ import { trackLead } from "@/components/MetaPixel";
 import { unregisterLegacyRootSerwist } from "@/lib/legacy-serwist-cleanup";
 import { storeOrderSuccessClientSession } from "@/lib/orders/order-success-session-client";
 import { getMetaBrowserCookies } from "@/utils/cookies-client";
-import { formatPrice } from "@/lib/currency";
+import { formatMoneyLabel } from "@/lib/currency";
 import { PhoneCountryInput } from "@/components/landing/PhoneCountryInput";
 import { OWNED_DEFAULT_COUNTRY } from "@/lib/countries";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -27,9 +27,17 @@ type Props = {
   onClose: () => void;
   /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
   metaPixelIdPublic?: string | null;
+  /** Display-only currency label (products.display_currency, falling back to the ISO code). Never sent to the API — orders always post currency: "MRU" for owned products. */
+  displayCurrency?: string;
 };
 
-export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Props) {
+export function OrderFormModal({
+  product,
+  open,
+  onClose,
+  metaPixelIdPublic,
+  displayCurrency = "MRU",
+}: Props) {
   const { locale, dir, t } = useLanguage();
   const router = useRouter();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
@@ -290,14 +298,14 @@ export function OrderFormModal({ product, open, onClose, metaPixelIdPublic }: Pr
                     className="text-xl font-black tabular-nums tracking-tight text-[var(--muted)] line-through decoration-[var(--muted)]/70"
                     dir="ltr"
                   >
-                    {formatPrice(originalPrice)}
+                    {formatMoneyLabel(originalPrice, displayCurrency)}
                   </span>
                 ) : null}
                 <span
                   className="text-xl font-black tabular-nums tracking-tight text-[var(--accent)]"
                   dir="ltr"
                 >
-                  {formatPrice(priceValue)}
+                  {formatMoneyLabel(priceValue, displayCurrency)}
                 </span>
               </div>
               <p className="mt-1 text-xs font-semibold text-[var(--muted)]">

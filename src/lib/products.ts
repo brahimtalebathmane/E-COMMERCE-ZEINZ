@@ -119,6 +119,7 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
       row.discount_price === null || row.discount_price === undefined
         ? null
         : Number(row.discount_price),
+    display_currency: (row.display_currency as string | null | undefined) ?? null,
     media_type: row.media_type as "image" | "video",
     media_url: row.media_url as string,
     secondary_media_type: (row.secondary_media_type as "image" | "video") ?? "image",

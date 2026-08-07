@@ -4,6 +4,7 @@ import { HeroMediaPreload } from "@/components/landing/HeroMediaPreload";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
 import { resolveCountryPixelIds } from "@/lib/meta-pixel-id";
+import { resolveDisplayCurrency } from "@/lib/currency";
 import { createPublicClient } from "@/lib/supabase/public";
 import {
   getAllProductSlugs,
@@ -88,6 +89,7 @@ export default async function ProductPage({ params }: PageProps) {
   // products.affiliate_currency free-text field (which can hold non-ISO
   // values entered by hand, e.g. an Arabic currency name instead of "SAR").
   const productCurrency = countryRow.data?.currency ?? "MRU";
+  const displayCurrency = resolveDisplayCurrency(found.display_currency, productCurrency);
 
   return (
     <>
@@ -98,6 +100,7 @@ export default async function ProductPage({ params }: PageProps) {
         product={found}
         metaPixelIdPublic={countryPixelIds.public}
         currency={productCurrency}
+        displayCurrency={displayCurrency}
       />
     </>
   );

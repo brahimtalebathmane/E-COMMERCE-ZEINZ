@@ -35,6 +35,40 @@ export function formatPrice(amount: number): string {
   return formatMoney(amount, CURRENCY_SYMBOL);
 }
 
+/**
+ * Resolves the customer-facing currency label for a product: the admin's
+ * free-text `products.display_currency` when set, otherwise the product's
+ * real ISO currency. Display-only — never use this for `orders.currency`,
+ * Meta events, or profit/analytics, which must keep the real ISO code.
+ */
+export function resolveDisplayCurrency(
+  displayCurrency: string | null | undefined,
+  isoFallback: string,
+): string {
+  const trimmed = displayCurrency?.trim();
+  return trimmed ? trimmed : isoFallback;
+}
+
+/**
+ * Formats an amount with a free-text display label, e.g. `1000 أوقية` or
+ * `99.5 dh`. Same number formatting as `formatMoney` (round to 2dp, strip
+ * trailing zeros) but the label is emitted verbatim — no case change, since
+ * unlike an ISO code a free-text label's casing is meaningful (e.g. "Dhs").
+ */
+export function formatMoneyLabel(amount: number, label: string): string {
+  if (!Number.isFinite(amount)) {
+    return `0 ${label}`;
+  }
+  const rounded = Math.round(amount * 100) / 100;
+  let numStr: string;
+  if (Number.isInteger(rounded)) {
+    numStr = String(rounded);
+  } else {
+    numStr = rounded.toFixed(2).replace(/\.?0+$/, "");
+  }
+  return `${numStr} ${label}`;
+}
+
 const DEFAULT_META_MRU_USD_RATE = 0.026;
 
 /**

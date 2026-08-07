@@ -10,6 +10,8 @@ export type OrderSuccessContext = {
   productName: string | null;
   totalPrice: number | null;
   currency: string;
+  /** Display-only currency label (products.display_currency); null falls back to `currency`. Never use for Meta events. */
+  displayCurrency: string | null;
   fulfillmentType: FulfillmentType | null;
 };
 
@@ -34,15 +36,17 @@ export async function loadOrderSuccessContext(
 
   let productName: string | null = null;
   let fulfillmentType: FulfillmentType | null = null;
+  let displayCurrency: string | null = null;
   if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("name_ar, name_fr, default_language, fulfillment_type")
+      .select("name_ar, name_fr, default_language, fulfillment_type, display_currency")
       .eq("id", order.product_id as string)
       .maybeSingle();
     if (product) {
       productName = resolveMetaProductDisplayName(product);
       fulfillmentType = (product.fulfillment_type as FulfillmentType | null) ?? null;
+      displayCurrency = (product.display_currency as string | null) ?? null;
     }
   }
 
@@ -52,6 +56,7 @@ export async function loadOrderSuccessContext(
     productName,
     totalPrice: Number.isFinite(total) ? total : null,
     currency: (order.currency as string) ?? "MRU",
+    displayCurrency,
     fulfillmentType,
   };
 }

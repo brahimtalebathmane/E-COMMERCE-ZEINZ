@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatMoney } from "@/lib/currency";
+import { formatMoneyLabel, resolveDisplayCurrency } from "@/lib/currency";
 
 const WHATSAPP_HREF = "https://wa.me/22233713957";
 
@@ -42,6 +42,8 @@ type Props = {
   fulfillmentType?: string | null;
   /** Order's own currency (e.g. "SAR" for an affiliate order) — never assume MRU. */
   currency?: string | null;
+  /** Display-only currency label (products.display_currency); null falls back to `currency`. Never use for Meta events. */
+  displayCurrency?: string | null;
 };
 
 export function OrderSuccessContent({
@@ -50,6 +52,7 @@ export function OrderSuccessContent({
   totalPrice,
   fulfillmentType,
   currency,
+  displayCurrency,
 }: Props) {
   const { t, dir, locale } = useLanguage();
 
@@ -112,7 +115,7 @@ export function OrderSuccessContent({
                   {t("orderSuccess.total")}
                 </dt>
                 <dd className="text-lg font-extrabold tabular-nums text-[var(--accent)]" dir="ltr">
-                  {formatMoney(totalPrice, currency || "MRU")}
+                  {formatMoneyLabel(totalPrice, resolveDisplayCurrency(displayCurrency, currency || "MRU"))}
                 </dd>
               </div>
             ) : null}

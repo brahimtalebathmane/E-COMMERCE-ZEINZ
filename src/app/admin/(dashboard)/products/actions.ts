@@ -75,6 +75,8 @@ export type ProductPayload = {
   whatsapp_message_template: string | null;
   price: number;
   discount_price: number | null;
+  /** Display-only label shown next to the price on the landing/order-success pages. Null/empty falls back to the country ISO currency; never touches orders.currency, Meta events, or profit/analytics. */
+  display_currency: string | null;
   media_type: "image" | "video";
   media_url: string;
   secondary_media_type: "image" | "video";
@@ -139,6 +141,14 @@ function trimText(v: string): string {
 
 function trimList(items: string[]): string[] {
   return items.map((item) => item.trim()).filter(Boolean);
+}
+
+/** Free text by design — only trims and caps length so it can't break the sticky-footer layout; empty becomes null (fall back to the country ISO currency). */
+const DISPLAY_CURRENCY_MAX_LEN = 16;
+
+function normalizeDisplayCurrency(raw: string | null | undefined): string | null {
+  const trimmed = (raw ?? "").trim();
+  return trimmed ? trimmed.slice(0, DISPLAY_CURRENCY_MAX_LEN) : null;
 }
 
 function validateResearchProductPayload(payload: ResearchProductPayload) {
@@ -589,6 +599,7 @@ export async function createProductAction(payload: ProductPayload) {
     old_slugs,
     price: payload.price,
     discount_price: payload.discount_price,
+    display_currency: normalizeDisplayCurrency(payload.display_currency),
     media_type: payload.media_type,
     media_url: payload.media_url.trim(),
     secondary_media_type: payload.secondary_media_type,
@@ -712,6 +723,7 @@ function landingFieldsFromPayload(payload: ProductPayload) {
     contact_title_fr: payload.contact_title_fr,
     whatsapp_message_template: payload.whatsapp_message_template?.trim() || null,
     discount_price: payload.discount_price,
+    display_currency: normalizeDisplayCurrency(payload.display_currency),
     secondary_media_type: payload.secondary_media_type,
     secondary_media_url: payload.secondary_media_url.trim(),
     tertiary_media_type: payload.tertiary_media_type,

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ProductRow, Spec, Testimonial } from "@/types";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
+import { withLatinTokens } from "@/lib/bidi-latin";
 import { LandingMedia } from "./LandingMedia";
 import { LandingHeader } from "./LandingHeader";
 import { LandingTopBanner } from "./LandingTopBanner";
@@ -42,8 +43,10 @@ type Props = {
   product: ProductRow;
   /** Country-specific pixel (from countries.meta_pixel_id_public); falls back to env when unset. */
   metaPixelIdPublic?: string | null;
-  /** Resolved from the product's own country (countries.currency); "MRU" for owned. */
+  /** Resolved from the product's own country (countries.currency); "MRU" for owned. ISO code — used for Meta events, never for display. */
   currency?: string;
+  /** Display-only label for price text (products.display_currency, falling back to `currency`). Never sent to Meta/orders. */
+  displayCurrency?: string;
 };
 
 /** Shared content column: comfortable on phones, widens on tablet/desktop without stretching too wide */
@@ -101,44 +104,6 @@ function statLabel(raw: string): string {
 function starText(rating?: number): string {
   const value = Math.max(1, Math.min(5, Math.round(rating ?? 5)));
   return "★".repeat(value) + "☆".repeat(5 - value);
-}
-
-/**
- * Character class for a Latin/numeric run: letters, digits, and the
- * connector symbols that show up inside units/model numbers/measurements
- * (/ × ² ³ % . , - + ( )). A space is only absorbed into the run when
- * followed by another run character, so a multi-word phrase like
- * "Power Bank" or "PSI / BAR / KPA" is captured as ONE contiguous run
- * instead of several — merging isolates one word at a time still lets the
- * surrounding RTL paragraph reorder the isolates relative to each other
- * (each isolate is neutral to the outer algorithm), which is what flipped
- * "Power Bank" to "Bank Power" and broke "kg/cm²" apart from its "²".
- */
-const LATIN_RUN_SOURCE =
-  "[A-Za-z0-9](?:[A-Za-z0-9/×²³%.,+()-]|\\s(?=[A-Za-z0-9/×²³%.,+()-]))*";
-
-/** Splits Arabic/French copy into Latin/numeric runs and everything else, isolating each run so its internal LTR order survives inside the RTL line. */
-function withLatinTokens(text: string, keyPrefix: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const re = new RegExp(LATIN_RUN_SOURCE, "g");
-  let lastIndex = 0;
-  let seq = 0;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      nodes.push(<span key={`${keyPrefix}-${seq++}`}>{text.slice(lastIndex, match.index)}</span>);
-    }
-    nodes.push(
-      <span key={`${keyPrefix}-${seq++}`} dir="ltr" style={{ unicodeBidi: "isolate" }}>
-        {match[0]}
-      </span>,
-    );
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    nodes.push(<span key={`${keyPrefix}-${seq++}`}>{text.slice(lastIndex)}</span>);
-  }
-  return nodes;
 }
 
 function SpecsTable({
@@ -409,7 +374,13 @@ function GuaranteeStrip({ t }: { t: (key: string) => string }) {
   );
 }
 
-export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }: Props) {
+export function ProductLanding({
+  product,
+  metaPixelIdPublic,
+  currency = "MRU",
+  displayCurrency,
+}: Props) {
+  const resolvedDisplayCurrency = displayCurrency || currency;
   const { locale, dir, t, setLocale } = useLanguage();
   const copy = useMemo(() => getLocalizedProductCopy(locale, product), [locale, product]);
   const [open, setOpen] = useState(false);
@@ -862,7 +833,7 @@ export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }:
         ctaLabel={ctaText}
         locale={locale}
         onCheckout={openCheckout}
-        currency={currency}
+        displayCurrency={resolvedDisplayCurrency}
       />
 
       {product.fulfillment_type === "affiliate" ? (
@@ -872,6 +843,7 @@ export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }:
           onClose={() => setOpen(false)}
           metaPixelIdPublic={metaPixelIdPublic}
           currency={currency}
+          displayCurrency={resolvedDisplayCurrency}
         />
       ) : (
         <OrderFormModal
@@ -879,6 +851,7 @@ export function ProductLanding({ product, metaPixelIdPublic, currency = "MRU" }:
           open={open}
           onClose={() => setOpen(false)}
           metaPixelIdPublic={metaPixelIdPublic}
+          displayCurrency={resolvedDisplayCurrency}
         />
       )}
     </div>

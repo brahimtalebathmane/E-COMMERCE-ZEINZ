@@ -62,6 +62,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
             totalPrice={queryTotalPrice}
             fulfillmentType="affiliate"
             currency={null}
+            displayCurrency={null}
           />
         }
       >
@@ -98,6 +99,7 @@ async function OrderSuccessSummary({
       ? queryTotalPrice
       : null);
   const currency = orderContext?.currency ?? "MRU";
+  const displayCurrency = orderContext?.displayCurrency ?? null;
 
   return (
     <OrderSuccessContent
@@ -106,6 +108,7 @@ async function OrderSuccessSummary({
       totalPrice={totalPrice}
       fulfillmentType={orderContext?.fulfillmentType ?? null}
       currency={currency}
+      displayCurrency={displayCurrency}
     />
   );
 }
