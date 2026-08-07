@@ -5,6 +5,7 @@ import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
 import { resolveCountryPixelIds } from "@/lib/meta-pixel-id";
 import { resolveDisplayCurrency } from "@/lib/currency";
+import { StoreSiteFooter } from "@/components/store/StoreSiteFooter";
 import { createPublicClient } from "@/lib/supabase/public";
 import {
   getAllProductSlugs,
@@ -102,6 +103,10 @@ export default async function ProductPage({ params }: PageProps) {
         currency={productCurrency}
         displayCurrency={displayCurrency}
       />
+      {/* COD Partner (affiliate) products are fulfilled and supported by the
+          partner in their own market — StoreSiteFooter hardcodes Mauritanian
+          contact details, so it must never render on an affiliate landing. */}
+      {found.fulfillment_type !== "affiliate" ? <StoreSiteFooter /> : null}
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   ORDER_SUCCESS_OID_COOKIE,
 } from "@/lib/orders/order-success-session";
 import { loadOrderSuccessContext, resolveProductNameFromId } from "@/lib/orders/order-success-context";
+import { StoreSiteFooter } from "@/components/store/StoreSiteFooter";
 import { OrderSuccessContent } from "./OrderSuccessContent";
 import { OrderSuccessEffects } from "./OrderSuccessEffects";
 
@@ -52,7 +53,12 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         forces fulfillmentType to "affiliate" (hidden) rather than leaving it
         null (shown) — null would flash the WhatsApp CTA / reassurance rows
         on for a real affiliate order and then yank them away once the true
-        value streams in.
+        value streams in. StoreSiteFooter (hardcodes Mauritanian contact
+        info) follows the identical rule: the fallback below renders no
+        footer at all, and OrderSuccessSummary only adds one once the real
+        fulfillmentType has streamed in and is confirmed not "affiliate" —
+        never the reverse, so a Mauritanian footer can't flash on for a
+        Saudi COD Partner customer.
       */}
       <Suspense
         fallback={
@@ -100,15 +106,19 @@ async function OrderSuccessSummary({
       : null);
   const currency = orderContext?.currency ?? "MRU";
   const displayCurrency = orderContext?.displayCurrency ?? null;
+  const fulfillmentType = orderContext?.fulfillmentType ?? null;
 
   return (
-    <OrderSuccessContent
-      orderId={orderId}
-      productName={productName}
-      totalPrice={totalPrice}
-      fulfillmentType={orderContext?.fulfillmentType ?? null}
-      currency={currency}
-      displayCurrency={displayCurrency}
-    />
+    <>
+      <OrderSuccessContent
+        orderId={orderId}
+        productName={productName}
+        totalPrice={totalPrice}
+        fulfillmentType={fulfillmentType}
+        currency={currency}
+        displayCurrency={displayCurrency}
+      />
+      {fulfillmentType !== "affiliate" ? <StoreSiteFooter /> : null}
+    </>
   );
 }

@@ -6,6 +6,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/public";
 import { CatalogPageClient } from "@/components/store/CatalogPageClient";
+import { StoreSiteFooter } from "@/components/store/StoreSiteFooter";
 import type { CatalogProduct } from "@/components/store/CatalogProductCard";
 
 /**
@@ -46,6 +47,7 @@ export default async function HomePage() {
         <MetaPixelLandingScript />
         <MetaPixelRuntime />
         <CatalogPageClient products={[]} configured={false} />
+        <StoreSiteFooter />
       </>
     );
   }
@@ -96,6 +98,7 @@ export default async function HomePage() {
       <MetaPixelLandingScript pixelId={visitorCountryPixelId} />
       <MetaPixelRuntime pixelId={visitorCountryPixelId} />
       <CatalogPageClient products={products} configured />
+      <StoreSiteFooter />
     </>
   );
 }
