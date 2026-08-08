@@ -15,11 +15,15 @@ import {
 type GallerySectionProps = {
   galleryUrls: string[];
   setGalleryUrls: Dispatch<SetStateAction<string[]>>;
+  uploadingGalleryIndex: number | null;
+  uploadGalleryImage: (index: number, file: File) => Promise<void>;
 };
 
 export const ProductFormGallerySection = memo(function ProductFormGallerySection({
   galleryUrls,
   setGalleryUrls,
+  uploadingGalleryIndex,
+  uploadGalleryImage,
 }: GallerySectionProps) {
   return (
     <section className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--accent-muted)] bg-[var(--card)] p-4">
@@ -42,20 +46,35 @@ export const ProductFormGallerySection = memo(function ProductFormGallerySection
             key={`gal-${gi}`}
             className="flex flex-wrap items-start gap-2 rounded-lg border border-[var(--accent-muted)] bg-[var(--background)] p-2"
           >
-            <input
-              className="min-w-0 flex-1 rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
-              value={url}
-              onChange={(e) => {
-                const v = e.target.value;
-                setGalleryUrls((prev) => {
-                  const next = [...prev];
-                  next[gi] = v;
-                  return next;
-                });
-              }}
-              placeholder={a.productForm.galleryUrlPlaceholder}
-              dir="ltr"
-            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <input
+                type="file"
+                accept="image/*"
+                className="store-file-input"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadGalleryImage(gi, file);
+                  e.currentTarget.value = "";
+                }}
+              />
+              {uploadingGalleryIndex === gi ? (
+                <p className="text-xs text-[var(--muted)]">{a.productForm.mediaUploadInProgress}</p>
+              ) : null}
+              <input
+                className="min-w-0 w-full rounded-lg border border-[var(--accent-muted)] px-3 py-2 text-sm"
+                value={url}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setGalleryUrls((prev) => {
+                    const next = [...prev];
+                    next[gi] = v;
+                    return next;
+                  });
+                }}
+                placeholder={a.productForm.galleryUrlPlaceholder}
+                dir="ltr"
+              />
+            </div>
             <button
               type="button"
               className="rounded-lg border border-[var(--accent-muted)] px-2 py-2 text-xs text-red-700"

@@ -202,9 +202,9 @@ export function MarketingView({ data }: { data: MarketingData }) {
       fd.append("file", file);
       fd.append("folder", "marketing");
       const res = await fetch("/api/admin/upload-image", { method: "POST", body: fd });
-      const json = (await res.json()) as { signedUrl?: string; error?: string };
-      if (!res.ok || !json.signedUrl) throw new Error(json.error || a.marketing.imageUploadError);
-      setImageUrl(json.signedUrl);
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error || a.marketing.imageUploadError);
+      setImageUrl(json.url);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : a.marketing.imageUploadError);
     } finally {

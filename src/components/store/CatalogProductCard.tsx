@@ -127,6 +127,7 @@ export function CatalogProductCard({ product, index }: Props) {
             mediaUrl={product.media_url}
             alt={primary}
             priority={index < 3}
+            slug={product.slug}
           />
           <div
             aria-hidden

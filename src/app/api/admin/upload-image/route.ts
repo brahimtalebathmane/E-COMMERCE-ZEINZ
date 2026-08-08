@@ -4,7 +4,6 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { requireAnyPermissionApi } from "@/lib/auth/api-access";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-const FIVE_YEARS_SECONDS = 60 * 60 * 24 * 365 * 5;
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -54,8 +53,12 @@ export async function POST(request: Request) {
   const path = `${folder}/${Date.now()}-${randomUUID()}.${ext}`;
 
   const service = createServiceClient();
+  // public-assets (not user-assets) — landing/marketing images only, never
+  // customer-private data. Public bucket → a stable public URL that never
+  // expires and never breaks on a Supabase signing-key rotation, unlike the
+  // old 5-year signed URL. See migration 056_public_assets_bucket.sql.
   const { error: uploadError } = await service.storage
-    .from("user-assets")
+    .from("public-assets")
     .upload(path, bytes, {
       contentType: image.type,
       cacheControl: "31536000",
@@ -66,15 +69,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const { data: signed, error: signedError } = await service.storage
-    .from("user-assets")
-    .createSignedUrl(path, FIVE_YEARS_SECONDS);
-  if (signedError || !signed?.signedUrl) {
-    return NextResponse.json({ error: signedError?.message ?? "Failed to create image URL." }, { status: 500 });
-  }
+  const { data: pub } = service.storage.from("public-assets").getPublicUrl(path);
 
   return NextResponse.json({
     path,
-    signedUrl: signed.signedUrl,
+    url: pub.publicUrl,
   });
 }

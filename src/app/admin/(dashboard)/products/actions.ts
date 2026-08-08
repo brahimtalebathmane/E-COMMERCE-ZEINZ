@@ -20,6 +20,10 @@ import type {
 } from "@/types";
 import { revalidatePath } from "next/cache";
 import type { ResearchProductPayload } from "./research-types";
+import {
+  validateProductMediaUrls,
+  type MediaUrlFieldEntry,
+} from "@/lib/media-url-validation";
 
 export type ProductActionResult = { ok: true } | { ok: false; error: string };
 
@@ -318,6 +322,35 @@ function validateAffiliateFields(payload: ProductPayload) {
   }
 }
 
+/** Every media URL field a save touches — main/secondary/tertiary + gallery. */
+function mediaUrlEntriesFromPayload(payload: ProductPayload): MediaUrlFieldEntry[] {
+  const entries: MediaUrlFieldEntry[] = [
+    { field: "رابط الوسائط الرئيسي", url: payload.media_url },
+    { field: "رابط الوسيط الثاني", url: payload.secondary_media_url },
+    { field: "رابط الوسيط الثالث", url: payload.tertiary_media_url },
+  ];
+  payload.gallery.forEach((url, i) => {
+    entries.push({ field: `صورة المعرض رقم ${i + 1}`, url });
+  });
+  return entries;
+}
+
+/**
+ * Layer 2 of the media-reliability chain (see media-url-validation.ts):
+ * blocks a save on a hard failure (http:, a known share/search-page link,
+ * or a confirmed non-image response), and logs — but never blocks on — a
+ * probe that couldn't complete at all (flaky network in a build env).
+ */
+async function assertProductMediaUrlsValid(payload: ProductPayload): Promise<void> {
+  const result = await validateProductMediaUrls(mediaUrlEntriesFromPayload(payload));
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  if (result.warnings.length > 0) {
+    console.warn("[media-url-validation] non-blocking warnings on save", result.warnings);
+  }
+}
+
 /**
  * Owned products always belong to Mauritania — not a user choice in the
  * form, so it's resolved here rather than trusting a client-supplied id.
@@ -539,6 +572,7 @@ export async function updateResearchProductAction(
 
 export async function createProductAction(payload: ProductPayload) {
   validateLandingProductPayload(payload);
+  await assertProductMediaUrlsValid(payload);
   const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
   const { slug: candidate, old_slugs } = await resolveProductSlugFields(
@@ -767,6 +801,7 @@ export async function saveLandingConfigurationAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingSetupPayload(payload);
+    await assertProductMediaUrlsValid(payload);
     const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
@@ -837,6 +872,7 @@ export async function completeLandingSetupAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingSetupPayload(payload);
+    await assertProductMediaUrlsValid(payload);
     const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase
@@ -894,6 +930,7 @@ export async function updateProductAction(
 ): Promise<ProductActionResult> {
   try {
     validateLandingProductPayload(payload);
+    await assertProductMediaUrlsValid(payload);
     const { supabase } = await assertPermission(PERMISSIONS.manage_products);
 
     const { data: existing, error: fetchErr } = await supabase

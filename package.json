@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "node server.js",
     "lint": "next lint",
-    "audit:meta-isolation": "node scripts/audit-meta-product-isolation.mjs"
+    "audit:meta-isolation": "node scripts/audit-meta-product-isolation.mjs",
+    "audit:media-urls": "node scripts/audit-media-urls.mjs",
+    "migrate:public-assets": "node scripts/migrate-user-assets-to-public.mjs"
   },
   "dependencies": {
     "@mux/mux-player-react": "^3.11.7",

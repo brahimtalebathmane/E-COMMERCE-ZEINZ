@@ -1,3 +1,28 @@
+/**
+ * Shared upload call for every admin media field (main/secondary/tertiary
+ * media, gallery, testimonials, CTA banner, logo) — one place that knows
+ * the `POST /api/admin/upload-image` request/response shape, so each field
+ * doesn't reimplement its own near-identical fetch + FormData + error copy.
+ */
+export async function uploadProductAsset(
+  file: File,
+  folder: string,
+  errorFallback: string,
+): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("folder", folder);
+  const response = await fetch("/api/admin/upload-image", {
+    method: "POST",
+    body: fd,
+  });
+  const payload = (await response.json()) as { url?: string; error?: string };
+  if (!response.ok || !payload.url) {
+    throw new Error(payload.error || errorFallback);
+  }
+  return payload.url;
+}
+
 export function moveAt<T>(arr: T[], i: number, dir: -1 | 1): T[] {
   const j = i + dir;
   if (j < 0 || j >= arr.length) return arr;

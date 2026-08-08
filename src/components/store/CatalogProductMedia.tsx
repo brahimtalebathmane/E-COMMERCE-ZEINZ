@@ -1,16 +1,20 @@
 "use client";
 
 import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   catalogVideoPosterUrl,
   isDirectVideoFileUrl,
 } from "@/lib/catalog-media";
+import { reportMediaFailure } from "@/lib/media-failure-report";
 
 type Props = {
   mediaType: "image" | "video";
   mediaUrl: string;
   alt: string;
   priority?: boolean;
+  /** Product slug, for a broken-image failure report. */
+  slug: string;
 };
 
 function PlayIcon({ className }: { className?: string }) {
@@ -26,25 +30,45 @@ function PlayIcon({ className }: { className?: string }) {
   );
 }
 
+function CatalogMediaPlaceholder() {
+  return (
+    <div
+      className="flex h-full min-h-[10rem] w-full items-center justify-center bg-[var(--accent-muted)]/40 text-[var(--muted)]"
+      aria-hidden
+    >
+      <PlayIcon className="h-12 w-12 opacity-40" />
+    </div>
+  );
+}
+
 export function CatalogProductMedia({
   mediaType,
   mediaUrl,
   alt,
   priority = false,
+  slug,
 }: Props) {
   const url = mediaUrl.trim();
   const poster = mediaType === "video" ? catalogVideoPosterUrl(url) : null;
   const showVideoFile = mediaType === "video" && !poster && isDirectVideoFileUrl(url);
+  const [imageFailed, setImageFailed] = useState(false);
+  const reportedFailureUrlRef = useRef<string | null>(null);
 
-  if (!url) {
-    return (
-      <div
-        className="flex h-full min-h-[10rem] w-full items-center justify-center bg-[var(--accent-muted)]/40 text-[var(--muted)]"
-        aria-hidden
-      >
-        <PlayIcon className="h-12 w-12 opacity-40" />
-      </div>
-    );
+  useEffect(() => {
+    setImageFailed(false);
+  }, [url]);
+
+  const handleImageError = useCallback(() => {
+    setImageFailed(true);
+    if (reportedFailureUrlRef.current === url) return;
+    reportedFailureUrlRef.current = url;
+    if (slug.trim()) {
+      reportMediaFailure({ slug: slug.trim(), slot: "catalog", url });
+    }
+  }, [url, slug]);
+
+  if (!url || imageFailed) {
+    return <CatalogMediaPlaceholder />;
   }
 
   if (mediaType === "image") {
@@ -56,6 +80,7 @@ export function CatalogProductMedia({
         priority={priority}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className="object-cover transition duration-200 group-hover:scale-[1.02]"
+        onError={handleImageError}
       />
     );
   }
@@ -70,6 +95,7 @@ export function CatalogProductMedia({
           priority={priority}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition duration-200 group-hover:scale-[1.02]"
+          onError={handleImageError}
         />
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25 transition duration-200 group-hover:bg-black/35"

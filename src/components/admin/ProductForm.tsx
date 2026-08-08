@@ -33,6 +33,7 @@ import {
   type FeatureRow,
   type SpecDraft,
   type TestimonialDraft,
+  uploadProductAsset,
 } from "@/components/admin/product-form-shared";
 import { adminAr as a } from "@/locales/admin-ar";
 import { BRAND_COLOR } from "@/lib/site-branding";
@@ -220,6 +221,10 @@ export function ProductForm({ mode, initial, countries }: Props) {
     initial?.tertiary_media_type ?? "image",
   );
   const [tertiaryMediaUrl, setTertiaryMediaUrl] = useState(initial?.tertiary_media_url ?? "");
+  const [uploadingMainMedia, setUploadingMainMedia] = useState(false);
+  const [uploadingSecondaryMedia, setUploadingSecondaryMedia] = useState(false);
+  const [uploadingTertiaryMedia, setUploadingTertiaryMedia] = useState(false);
+  const [uploadingGalleryIndex, setUploadingGalleryIndex] = useState<number | null>(null);
   const [featureRows, setFeatureRows] = useState<FeatureRow[]>(() =>
     buildInitialFeatures(initial),
   );
@@ -499,24 +504,12 @@ export function ProductForm({ mode, initial, countries }: Props) {
   const uploadTestimonialImage = useCallback(async (testimonialId: string, file: File) => {
     setUploadingTestimonialId(testimonialId);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", "testimonials");
-      const response = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: fd,
-      });
-      const payload = (await response.json()) as { signedUrl?: string; error?: string };
-      if (!response.ok || !payload.signedUrl) {
-        throw new Error(payload.error || "فشل رفع الصورة.");
-      }
+      const url = await uploadProductAsset(file, "testimonials", a.productForm.uploadFailedGeneric);
       setTestimonials((prev) =>
-        prev.map((item) =>
-          item.id === testimonialId ? { ...item, image: payload.signedUrl as string } : item,
-        ),
+        prev.map((item) => (item.id === testimonialId ? { ...item, image: url } : item)),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل رفع الصورة.");
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedGeneric);
     } finally {
       setUploadingTestimonialId(null);
     }
@@ -525,20 +518,10 @@ export function ProductForm({ mode, initial, countries }: Props) {
   const uploadCtaBannerImage = useCallback(async (file: File) => {
     setUploadingCtaBanner(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", "cta-banner");
-      const response = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: fd,
-      });
-      const payload = (await response.json()) as { signedUrl?: string; error?: string };
-      if (!response.ok || !payload.signedUrl) {
-        throw new Error(payload.error || "فشل رفع صورة البانر.");
-      }
-      setCtaBannerBgImageUrl(payload.signedUrl);
+      const url = await uploadProductAsset(file, "cta-banner", a.productForm.uploadFailedBanner);
+      setCtaBannerBgImageUrl(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل رفع صورة البانر.");
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedBanner);
     } finally {
       setUploadingCtaBanner(false);
     }
@@ -547,24 +530,69 @@ export function ProductForm({ mode, initial, countries }: Props) {
   async function uploadLogoImage(file: File) {
     setUploadingLogo(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", "landing-logos");
-      const response = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: fd,
-      });
-      const payload = (await response.json()) as { signedUrl?: string; error?: string };
-      if (!response.ok || !payload.signedUrl) {
-        throw new Error(payload.error || "فشل رفع الشعار.");
-      }
-      setLogoUrl(payload.signedUrl as string);
+      const url = await uploadProductAsset(file, "landing-logos", a.productForm.uploadFailedLogo);
+      setLogoUrl(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل رفع الشعار.");
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedLogo);
     } finally {
       setUploadingLogo(false);
     }
   }
+
+  const uploadMainMedia = useCallback(async (file: File) => {
+    setUploadingMainMedia(true);
+    try {
+      const url = await uploadProductAsset(file, "products", a.productForm.uploadFailedGeneric);
+      setMediaUrl(url);
+      setMediaType("image");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedGeneric);
+    } finally {
+      setUploadingMainMedia(false);
+    }
+  }, []);
+
+  const uploadSecondaryMedia = useCallback(async (file: File) => {
+    setUploadingSecondaryMedia(true);
+    try {
+      const url = await uploadProductAsset(file, "products", a.productForm.uploadFailedGeneric);
+      setSecondaryMediaUrl(url);
+      setSecondaryMediaType("image");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedGeneric);
+    } finally {
+      setUploadingSecondaryMedia(false);
+    }
+  }, []);
+
+  const uploadTertiaryMedia = useCallback(async (file: File) => {
+    setUploadingTertiaryMedia(true);
+    try {
+      const url = await uploadProductAsset(file, "products", a.productForm.uploadFailedGeneric);
+      setTertiaryMediaUrl(url);
+      setTertiaryMediaType("image");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedGeneric);
+    } finally {
+      setUploadingTertiaryMedia(false);
+    }
+  }, []);
+
+  const uploadGalleryImage = useCallback(async (index: number, file: File) => {
+    setUploadingGalleryIndex(index);
+    try {
+      const url = await uploadProductAsset(file, "products", a.productForm.uploadFailedGeneric);
+      setGalleryUrls((prev) => {
+        const next = [...prev];
+        next[index] = url;
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : a.productForm.uploadFailedGeneric);
+    } finally {
+      setUploadingGalleryIndex(null);
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1257,8 +1285,22 @@ export function ProductForm({ mode, initial, countries }: Props) {
             <option value="video">{a.productForm.mediaVideo}</option>
           </select>
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.mediaUrl}</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="mt-1 block w-full text-sm file:mr-2 file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--card)] file:px-3 file:py-2"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadMainMedia(f);
+              e.target.value = "";
+            }}
+          />
+          {uploadingMainMedia ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.mediaUploadInProgress}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-[var(--muted)]">{a.productForm.mediaUploadOrLink}</p>
           <input
             required={!isLandingSetup}
             className="mt-1 w-full admin-input"
@@ -1267,9 +1309,17 @@ export function ProductForm({ mode, initial, countries }: Props) {
             placeholder="https://"
             dir="ltr"
           />
+          {mediaUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
+            <img
+              src={mediaUrl.trim()}
+              alt=""
+              className="mt-2 h-16 w-16 rounded-md border border-[var(--accent-muted)] object-cover"
+            />
+          ) : null}
         </div>
         <div>
-          <label className="text-sm font-medium">الوسيط الثاني: النوع</label>
+          <label className="text-sm font-medium">{a.productForm.secondaryMediaType}</label>
           <select
             className="mt-1 w-full admin-input"
             value={secondaryMediaType}
@@ -1280,7 +1330,21 @@ export function ProductForm({ mode, initial, countries }: Props) {
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium">الوسيط الثاني: الرابط</label>
+          <label className="text-sm font-medium">{a.productForm.secondaryMediaUrl}</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="mt-1 block w-full text-sm file:mr-2 file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--card)] file:px-3 file:py-2"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadSecondaryMedia(f);
+              e.target.value = "";
+            }}
+          />
+          {uploadingSecondaryMedia ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.mediaUploadInProgress}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-[var(--muted)]">{a.productForm.mediaUploadOrLink}</p>
           <input
             className="mt-1 w-full admin-input"
             value={secondaryMediaUrl}
@@ -1288,9 +1352,17 @@ export function ProductForm({ mode, initial, countries }: Props) {
             placeholder="https://"
             dir="ltr"
           />
+          {secondaryMediaUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
+            <img
+              src={secondaryMediaUrl.trim()}
+              alt=""
+              className="mt-2 h-16 w-16 rounded-md border border-[var(--accent-muted)] object-cover"
+            />
+          ) : null}
         </div>
         <div>
-          <label className="text-sm font-medium">الوسيط الثالث: النوع</label>
+          <label className="text-sm font-medium">{a.productForm.tertiaryMediaType}</label>
           <select
             className="mt-1 w-full admin-input"
             value={tertiaryMediaType}
@@ -1301,7 +1373,21 @@ export function ProductForm({ mode, initial, countries }: Props) {
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium">الوسيط الثالث: الرابط</label>
+          <label className="text-sm font-medium">{a.productForm.tertiaryMediaUrl}</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="mt-1 block w-full text-sm file:mr-2 file:rounded-lg file:border file:border-[var(--accent-muted)] file:bg-[var(--card)] file:px-3 file:py-2"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadTertiaryMedia(f);
+              e.target.value = "";
+            }}
+          />
+          {uploadingTertiaryMedia ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.productForm.mediaUploadInProgress}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-[var(--muted)]">{a.productForm.mediaUploadOrLink}</p>
           <input
             className="mt-1 w-full admin-input"
             value={tertiaryMediaUrl}
@@ -1309,9 +1395,22 @@ export function ProductForm({ mode, initial, countries }: Props) {
             placeholder="https://"
             dir="ltr"
           />
+          {tertiaryMediaUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview for external/Supabase URLs
+            <img
+              src={tertiaryMediaUrl.trim()}
+              alt=""
+              className="mt-2 h-16 w-16 rounded-md border border-[var(--accent-muted)] object-cover"
+            />
+          ) : null}
         </div>
 
-        <ProductFormGallerySection galleryUrls={galleryUrls} setGalleryUrls={setGalleryUrls} />
+        <ProductFormGallerySection
+          galleryUrls={galleryUrls}
+          setGalleryUrls={setGalleryUrls}
+          uploadingGalleryIndex={uploadingGalleryIndex}
+          uploadGalleryImage={uploadGalleryImage}
+        />
 
         <div className="sm:col-span-2">
           <label className="text-sm font-medium">{a.productForm.testimonialsBadgeLabel} — عربي</label>

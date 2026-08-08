@@ -560,7 +560,7 @@ export function ProductLanding({
 
         {/* Full-width media outside section padding so RTL/LTR both stay viewport-centered */}
         <div className="mt-4 w-full sm:mt-5">
-          <LandingMedia product={product} priority edgeToEdge primaryHero />
+          <LandingMedia product={product} priority edgeToEdge primaryHero slot="hero" />
         </div>
 
         <div className="px-4 sm:px-6 md:px-8">
@@ -642,6 +642,8 @@ export function ProductLanding({
             mediaName={copy.name}
             edgeToEdge
             immersive
+            productSlug={product.slug}
+            slot="secondary"
           />
         </div>
         {descLines.length > 3 ? (
@@ -741,6 +743,8 @@ export function ProductLanding({
               mediaName={copy.name}
               edgeToEdge
               immersive
+              productSlug={product.slug}
+              slot="tertiary"
             />
           </div>
         </section>

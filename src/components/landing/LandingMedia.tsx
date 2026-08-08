@@ -16,6 +16,14 @@ import type { ProductRow } from "@/types";
 import { LANDING_HERO_IMAGE } from "@/lib/landing-hero-image";
 import { getLocalizedProductCopy } from "@/lib/product-locale";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  isCloudflareStreamEmbedUrl,
+  isCloudflareStreamHlsUrl,
+  isHlsUrl,
+  isMuxHostedUrl,
+  muxPlaybackIdFromUrl,
+} from "@/lib/video-media-url";
+import { reportMediaFailure } from "@/lib/media-failure-report";
 
 /** Theme + player load together only when a landing renders video (image-only pages skip this chunk). */
 const MuxPlayer = dynamic(
@@ -38,53 +46,9 @@ const MuxPlayer = dynamic(
   },
 );
 
-function isHls(url: string) {
-  return /\.m3u8($|\?)/i.test(url) || /stream\.mux\.com/i.test(url);
-}
-
-function muxPlaybackIdFromUrl(url: string): string | null {
-  const u = url.trim();
-  if (!u) return null;
-  const patterns = [
-    /stream\.mux\.com\/([a-zA-Z0-9]+)/i,
-    /player\.mux\.com\/(?:embed\/)?([a-zA-Z0-9]+)/i,
-    /watch\.mux\.com\/([a-zA-Z0-9]+)/i,
-  ];
-  for (const re of patterns) {
-    const m = u.match(re);
-    if (m?.[1]) return m[1];
-  }
-  return null;
-}
-
-function isMuxHostedUrl(url: string): boolean {
-  return /(?:stream|player|watch)\.mux\.com/i.test(url);
-}
-
 function muxPosterUrl(playbackId: string): string {
   /* Smaller default poster for faster LCP on mobile networks */
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&width=720&fit_mode=preserve`;
-}
-
-/** Cloudflare Stream embed (adaptive playback inside iframe). */
-function isCloudflareStreamEmbedUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.hostname === "iframe.videodelivery.net") return true;
-    if (
-      /\.cloudflarestream\.com$/i.test(u.hostname) &&
-      /\/iframe\/?$/i.test(u.pathname)
-    ) {
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-function isCloudflareStreamHlsUrl(url: string): boolean {
-  return /cloudflarestream\.com/i.test(url) && /\.m3u8($|\?)/i.test(url);
 }
 
 /** Merge Stream iframe query params for muted autoplay (browser autoplay policies). */
@@ -122,6 +86,10 @@ type Props = {
    * matching secondary/tertiary landing media.
    */
   primaryHero?: boolean;
+  /** Product slug, for a broken-image failure report. Falls back to `product?.slug` when `product` is passed directly (hero). */
+  productSlug?: string;
+  /** Which landing slot this instance renders — used only for failure reporting. */
+  slot?: "hero" | "secondary" | "tertiary";
 };
 
 function muxPlayerOpts(priority: boolean | undefined) {
@@ -140,6 +108,15 @@ function muxPlayerOpts(priority: boolean | undefined) {
 const muxPlayerLayoutClass =
   "absolute inset-0 block h-full w-full max-h-full max-w-full";
 
+/** Neutral placeholder — shown for an empty URL and reused for a failed image load, so a broken image never renders as a raw broken-icon. */
+function MediaPlaceholder() {
+  return (
+    <div className="flex aspect-video w-full min-h-[12rem] items-center justify-center bg-[var(--accent-muted)] text-sm text-[var(--muted)]">
+      —
+    </div>
+  );
+}
+
 export function LandingMedia({
   product,
   mediaType,
@@ -149,6 +126,8 @@ export function LandingMedia({
   edgeToEdge,
   immersive,
   primaryHero,
+  productSlug,
+  slot,
 }: Props) {
   const { locale } = useLanguage();
   const displayName = useMemo(
@@ -162,6 +141,8 @@ export function LandingMedia({
   const url = (mediaUrl ?? product?.media_url ?? "").trim();
   const [muxAspect, setMuxAspect] = useState("16 / 9");
   const [nativeAspect, setNativeAspect] = useState("16 / 9");
+  const [imageFailed, setImageFailed] = useState(false);
+  const reportedFailureUrlRef = useRef<string | null>(null);
   const muxRef = useRef<MuxPlayerElement | null>(null);
   const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
   const [needsTapForSound, setNeedsTapForSound] = useState(false);
@@ -179,7 +160,18 @@ export function LandingMedia({
   useEffect(() => {
     setMuxAspect("16 / 9");
     setNativeAspect("16 / 9");
+    setImageFailed(false);
   }, [url]);
+
+  const handleImageError = useCallback(() => {
+    setImageFailed(true);
+    if (reportedFailureUrlRef.current === url) return;
+    reportedFailureUrlRef.current = url;
+    const slugForReport = (productSlug ?? product?.slug ?? "").trim();
+    if (slugForReport) {
+      reportMediaFailure({ slug: slugForReport, slot: slot ?? "hero", url });
+    }
+  }, [url, productSlug, product, slot]);
 
   useEffect(() => {
     const el = muxRef.current;
@@ -262,20 +254,17 @@ export function LandingMedia({
   );
 
   if (!url) {
-    return (
-      <div className="flex aspect-video w-full min-h-[12rem] items-center justify-center bg-[var(--accent-muted)] text-sm text-[var(--muted)]">
-        —
-      </div>
-    );
+    return <MediaPlaceholder />;
   }
 
   const muxPlaybackId = muxPlaybackIdFromUrl(url);
   const treatAsImage =
     (mediaType ?? product?.media_type ?? "image") === "image" &&
-    !isHls(url) &&
+    !isHlsUrl(url) &&
     !muxPlaybackId;
 
   if (treatAsImage && primaryHero) {
+    if (imageFailed) return <MediaPlaceholder />;
     return (
       <div className="relative mx-auto aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
         <Image
@@ -288,12 +277,14 @@ export function LandingMedia({
           style={{ objectPosition: "center center" }}
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
+          onError={handleImageError}
         />
       </div>
     );
   }
 
   if (treatAsImage) {
+    if (imageFailed) return <MediaPlaceholder />;
     const imgSizes = edgeToEdge || immersive ? "100vw" : "(max-width: 640px) 100vw, min(90vw, 1280px)";
     return (
       <div className="relative mx-auto aspect-video w-full min-w-0 overflow-hidden bg-[var(--accent-muted)]">
@@ -307,6 +298,7 @@ export function LandingMedia({
           priority={priority}
           fetchPriority={priority ? "high" : "auto"}
           quality={immersive ? 88 : 85}
+          onError={handleImageError}
         />
       </div>
     );
@@ -352,7 +344,7 @@ export function LandingMedia({
   /** Mux (HLS ABR) or generic HLS / Cloudflare Stream manifest — mux-player uses adaptive streaming. */
   if (
     muxPlaybackId ||
-    isHls(url) ||
+    isHlsUrl(url) ||
     isMuxHostedUrl(url) ||
     isCloudflareStreamHlsUrl(url)
   ) {

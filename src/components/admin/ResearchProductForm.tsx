@@ -58,11 +58,11 @@ export function ResearchProductForm({ mode, initial }: Props) {
         method: "POST",
         body: fd,
       });
-      const payload = (await response.json()) as { signedUrl?: string; error?: string };
-      if (!response.ok || !payload.signedUrl) {
+      const payload = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !payload.url) {
         throw new Error(payload.error || "فشل رفع الصورة.");
       }
-      setMediaUrl(payload.signedUrl);
+      setMediaUrl(payload.url);
       setMediaType("image");
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل رفع الصورة.");

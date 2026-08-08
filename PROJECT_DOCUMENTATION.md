@@ -154,8 +154,9 @@ Notable choices and constraints:
     │       ├── send-otp/route.ts                 # Proxy to Railway /api/send-otp
     │       ├── verify-otp/route.ts               # Proxy to Railway /api/verify-otp
     │       ├── admin/
-    │       │   ├── upload-image/route.ts         # Multipart upload to Supabase Storage
-    │       │   └── signed-url/route.ts           # 1-hour signed URL for an existing object
+    │       │   └── upload-image/route.ts         # Multipart upload to Supabase Storage (public-assets bucket)
+    │       ├── media/
+    │       │   └── report-failure/route.ts       # Broken-image report from the storefront (rate-limited)
     │       └── meta/
     │           ├── lead/route.ts                 # CAPI Lead (server-side dedup)
     │           ├── purchase/route.ts             # CAPI Purchase (fixed value, see §12)
@@ -394,12 +395,11 @@ You must create this table yourself (and lock it down so only the service role c
 
 ### 5.2 Storage
 
-Bucket: `user-assets`, **private** (`public = false`), created by migration 001.
+Two buckets:
+- `user-assets`, **private** (`public = false`), created by migration 001. Holds real customer data — payment-receipt uploads from a retired feature (`receipts/`, `form-files/`; `orders.receipt_image_url` is legacy and unwritten today, but the files remain) — so it can never be made public. No longer written to by any current upload path.
+- `public-assets`, **public** (`public = true`), created by migration 056. Holds admin-uploaded landing/marketing images only (products, testimonials, cta-banner, landing-logos, marketing folders). `/api/admin/upload-image` writes here via the service role and returns a stable `getPublicUrl()` — no signing key, so it never breaks on a Supabase JWT signing-key rotation like the old 5-year signed URLs did.
 
-Policies:
-- `user_assets_admin_read` — admins (via JWT) can `SELECT` objects.
-- All writes go through the service role inside `/api/admin/upload-image`.
-- Customer-facing pages use short-lived signed URLs (max age 5 years for testimonial/CTA images, 1 hour for ad-hoc fetches via `/api/admin/signed-url`).
+`scripts/migrate-user-assets-to-public.mjs` is the one-off that copied pre-existing `user-assets` objects to `public-assets` and rewrote the stored URLs; `npm run audit:media-urls` probes every stored media URL and is meant to be run before a deploy.
 
 ### 5.3 Functions and triggers
 
@@ -718,8 +718,8 @@ All routes live under `src/app/api/**/route.ts`. Unless stated, they are reachab
 | POST | `/api/whatsapp/send` | none (service role inside) | Server-to-server bridge that proxies to the WhatsApp service. Idempotent: terminal outcomes mark the order in `order_communication_logs`. |
 | POST | `/api/send-otp` | none | Pure proxy to `<WHATSAPP_SERVICE_URL>/api/send-otp`. |
 | POST | `/api/verify-otp` | none | Pure proxy to `<WHATSAPP_SERVICE_URL>/api/verify-otp`. |
-| POST | `/api/admin/upload-image` | admin | Multipart upload of an image to Supabase Storage. Allowed: `image/jpeg`, `image/png`, `image/webp`, `image/gif`; max 5 MB; path is `${folder}/${Date.now()}-${uuid}.${ext}`; returns the path and a 5-year signed URL. |
-| GET | `/api/admin/signed-url?path=...` | admin | Returns a 1-hour signed URL for an existing object in `user-assets`. |
+| POST | `/api/admin/upload-image` | admin | Multipart upload of an image to the `public-assets` bucket. Allowed: `image/jpeg`, `image/png`, `image/webp`, `image/gif`; max 5 MB; path is `${folder}/${Date.now()}-${uuid}.${ext}`; returns the path and a stable public URL. |
+| POST | `/api/media/report-failure` | none (rate-limited) | Logs a broken landing/catalog image (product slug + slot + URL) reported by the browser when a `next/image` load fails. |
 | POST | `/api/meta/lead` | none | Resends Lead CAPI for a given `order_id`. Idempotent via `meta_lead_sent`. |
 | POST | `/api/meta/purchase` | none | Resends Purchase CAPI; only when the order is `confirmed` and not yet sent. |
 | POST | `/api/meta/cancel` | none | Resends CancelledLead CAPI; only when the order is `cancelled` and not yet sent. |
@@ -853,17 +853,15 @@ The landing page composes its accent palette dynamically via CSS variables (`--a
 
 ## 15. File and image uploads (Supabase Storage)
 
-- Bucket: `user-assets`, private.
+- Bucket: `public-assets`, public (migration 056) — landing/marketing images only, never customer-private data. The older `user-assets` bucket (private) still holds real customer receipt uploads from a retired feature and is no longer written to by any current upload path.
 - Upload route: `POST /api/admin/upload-image` (multipart `file`, optional `folder`).
   - MIME whitelist: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
   - Size limit: 5 MB.
   - Path: `${folder}/${Date.now()}-${uuid}.${ext}` where `folder` is sanitized to `[a-zA-Z0-9/_-]` (default `testimonials`).
   - Cache-Control: `31536000` (one year) — the file content is keyed by uuid so changing it just uploads a new path.
-  - Returns `{ path, signedUrl }` with a 5-year signed URL (`60*60*24*365*5`). The admin form stores that URL on the product row.
-- Sign-existing route: `GET /api/admin/signed-url?path=...` — 1-hour signed URL, used by the admin form to refresh a stale link or preview an asset.
-- Storage RLS:
-  - `user_assets_admin_read` lets logged-in admins read objects directly with the SDK if needed.
-  - There is no public bucket and no anonymous policy — public access is always via signed URLs persisted on the row.
+  - Returns `{ path, url }` — a stable public URL (`getPublicUrl`), not a signed URL. The admin form stores that URL on the product row.
+- Storage RLS: `public-assets` needs no read policy (the `public` flag handles anonymous reads); writes only ever happen through the service-role client, which bypasses RLS.
+- Media-reliability chain (broken landing images): `src/lib/media-url-validation.ts` blocks a save on an insecure/known-bad-link/non-image URL and validates on every product save; `LandingMedia.tsx` / `CatalogProductMedia.tsx` fall back to a neutral placeholder and report the failure via `POST /api/media/report-failure` (rate-limited) if an image still fails to load; `npm run audit:media-urls` probes every stored URL for a pre-deploy check.
 
 The implication: the landing pages can be **fully public** (no auth required) and still display private assets, because each asset URL is signed at admin save time. If you ever shorten the signing TTL, you will need to re-sign assets on read.
 
