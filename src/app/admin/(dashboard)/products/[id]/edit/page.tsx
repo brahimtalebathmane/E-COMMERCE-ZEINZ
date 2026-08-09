@@ -12,10 +12,12 @@ export default async function EditProductPage({ params }: PageProps) {
   const supabase = await createClient();
   const [{ data, error }, { data: countries }] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle(),
+    // Non-owner staff have no SELECT policy on the base `countries` table
+    // (only `countries_select_admin`, owner-only) — this view is readable
+    // by any authenticated panel user and already filters is_active=true.
     supabase
-      .from("countries")
+      .from("countries_public")
       .select("id, name_ar, name_fr, iso_code")
-      .eq("is_active", true)
       .order("name_ar"),
   ]);
 

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { mapProductRow } from "@/lib/products";
 import { formatMoney, resolveDisplayCurrency } from "@/lib/currency";
 import { codMarginPercent, sourcingTypeLabel } from "@/lib/product-pipeline";
@@ -16,10 +17,12 @@ export default async function LandingSetupPage({ params }: PageProps) {
   const supabase = await createClient();
   const [{ data, error }, { data: countries }] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle(),
+    // Non-owner staff have no SELECT policy on the base `countries` table
+    // (only `countries_select_admin`, owner-only) — this view is readable
+    // by any authenticated panel user and already filters is_active=true.
     supabase
-      .from("countries")
+      .from("countries_public")
       .select("id, name_ar, name_fr, iso_code")
-      .eq("is_active", true)
       .order("name_ar"),
   ]);
 
@@ -41,10 +44,13 @@ export default async function LandingSetupPage({ params }: PageProps) {
   // This product's own market currency, not necessarily the admin's
   // currently-selected one — this page can be reached via a direct link
   // regardless of scope, same as the edit page. Looked up separately
-  // (rather than reusing the `countries` list above) since that list is
-  // filtered to active countries only and this product's country could be
-  // inactive.
-  const { data: productCountry } = await supabase
+  // (rather than reusing the `countries_public` list above) since that
+  // list is filtered to active countries only and this product's country
+  // could be inactive — so this one query needs the base table, via the
+  // service role (a non-owner staff session has no base-table SELECT
+  // policy at all; `currency` isn't sensitive and the page is already
+  // admin-gated).
+  const { data: productCountry } = await createServiceClient()
     .from("countries")
     .select("currency")
     .eq("id", product.country_id)

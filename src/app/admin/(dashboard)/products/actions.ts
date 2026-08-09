@@ -356,8 +356,10 @@ async function assertProductMediaUrlsValid(payload: ProductPayload): Promise<voi
  * form, so it's resolved here rather than trusting a client-supplied id.
  */
 async function resolveMauritaniaCountryId(supabase: SupabaseClient): Promise<string> {
+  // Non-owner staff have no SELECT policy on the base `countries` table —
+  // this view is readable by any authenticated panel user.
   const { data, error } = await supabase
-    .from("countries")
+    .from("countries_public")
     .select("id")
     .eq("iso_code", "MR")
     .maybeSingle();
