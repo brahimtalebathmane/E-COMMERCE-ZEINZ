@@ -128,24 +128,41 @@ export type ProductRow = {
   stats_fr: string[];
   contact_lines_ar: string[];
   contact_lines_fr: string[];
-  /** LEGACY — not used for Meta event routing (unified env pixel only). */
-  meta_pixel_id: string | null;
   test_status: ProductTestingStatus;
-  sourcing_type: ProductSourcingType | null;
-  sourcing_link: string;
-  cost_price: number | null;
-  /** Optional inclusive cutoff for profit analytics (YYYY-MM-DD). Null = life-to-date. */
-  profit_calculation_start_date: string | null;
   created_at: string;
   /** Market this product belongs to. Mauritania for every owned product; admin-selected for affiliate. */
   country_id: string;
   /** owned (default, MRU/COD) or affiliate (COD Partner fulfills; we only market). */
   fulfillment_type: FulfillmentType;
+  /**
+   * Target country (e.g. "Kuwait"). Kept public (unlike the other affiliate_*
+   * fields below) because the storefront checkout form
+   * (AffiliateOrderFormModal) reads it directly to default the phone-number
+   * country and to submit the order's country — it is market info, not a
+   * financial secret.
+   */
+  affiliate_country: string | null;
+};
+
+/**
+ * Admin/internal-only product fields — cost basis, sourcing, and affiliate
+ * commission terms. Never sent to the storefront: `public.products_public`
+ * (see supabase/migrations/057_products_public_view.sql) omits every column
+ * below, and `src/lib/products.ts`'s public readers only ever return
+ * `ProductRow`. Only admin routes reading the base `products` table via an
+ * authenticated/service-role client should use this type.
+ */
+export type ProductAdminRow = ProductRow & {
+  /** LEGACY — not used for Meta event routing (unified env pixel only). */
+  meta_pixel_id: string | null;
+  sourcing_type: ProductSourcingType | null;
+  sourcing_link: string;
+  cost_price: number | null;
+  /** Optional inclusive cutoff for profit analytics (YYYY-MM-DD). Null = life-to-date. */
+  profit_calculation_start_date: string | null;
   affiliate_commission_type: AffiliateCommissionType | null;
   /** COD Partner SKU. Required for affiliate products; written to their Google Sheet. */
   affiliate_sku: string | null;
-  /** Target country (e.g. "Kuwait"). Sheet Country value + default phone country code. */
-  affiliate_country: string | null;
   /** e.g. "KWD". Written to the sheet and used for this product's own profit totals. */
   affiliate_currency: string | null;
   /** Google Sheet URL affiliate orders for this product are appended to. */
@@ -156,7 +173,12 @@ export type ProductRow = {
   affiliate_sell_price: number | null;
 };
 
-/** A market the store sells into — see supabase/migrations/051_countries.sql. */
+/**
+ * A market the store sells into — see supabase/migrations/051_countries.sql.
+ * Public/storefront + general staff shape, backed by `public.countries_public`
+ * (supabase/migrations/059_countries_public_view.sql). Never carries the
+ * server-side CAPI pixel — see `CountryAdminRow` for that.
+ */
 export type CountryRow = {
   id: string;
   name_ar: string;
@@ -166,9 +188,13 @@ export type CountryRow = {
   /** ISO 4217 code used for this market's own order/profit totals. */
   currency: string;
   meta_pixel_id_public: string | null;
-  meta_pixel_id_server: string | null;
   is_active: boolean;
   created_at: string;
+};
+
+/** Owner-only shape (base `countries` table) — adds the server-side Meta CAPI pixel. */
+export type CountryAdminRow = CountryRow & {
+  meta_pixel_id_server: string | null;
 };
 
 /**

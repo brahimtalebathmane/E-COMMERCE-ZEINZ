@@ -1,4 +1,4 @@
-import type { ProductRow, ProductSourcingType, ProductTestingStatus } from "@/types";
+import type { ProductAdminRow, ProductRow, ProductSourcingType, ProductTestingStatus } from "@/types";
 
 const TEST_STATUSES: ProductTestingStatus[] = [
   "under_research",
@@ -24,8 +24,18 @@ import {
   createPublicClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/public";
+import { createServiceClient } from "@/lib/supabase/service";
 
-export function mapProductRow(row: Record<string, unknown>): ProductRow {
+/**
+ * Maps a full `products` base-table row (every column, including
+ * cost/sourcing/affiliate-commission fields) into `ProductAdminRow`. Only
+ * call this with a row read via an authenticated-admin or service-role
+ * client — never with a row from the anon-readable `products_public` view.
+ * Public storefront readers below call this too (it degrades safely: the
+ * admin-only fields simply come back null/empty when the source row doesn't
+ * have those columns) and then strip them via `toPublicProductRow`.
+ */
+export function mapProductRow(row: Record<string, unknown>): ProductAdminRow {
   const dlRaw = row.default_language;
   const default_language: ProductRow["default_language"] =
     dlRaw === "fr" ? "fr" : "ar";
@@ -155,7 +165,7 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
     country_id: (row.country_id as string) ?? "",
     fulfillment_type: (row.fulfillment_type as ProductRow["fulfillment_type"]) ?? "owned",
     affiliate_commission_type:
-      (row.affiliate_commission_type as ProductRow["affiliate_commission_type"]) ?? null,
+      (row.affiliate_commission_type as ProductAdminRow["affiliate_commission_type"]) ?? null,
     affiliate_sku: (row.affiliate_sku as string) ?? null,
     affiliate_country: (row.affiliate_country as string) ?? null,
     affiliate_currency: (row.affiliate_currency as string) ?? null,
@@ -167,20 +177,49 @@ export function mapProductRow(row: Record<string, unknown>): ProductRow {
   };
 }
 
+/**
+ * Strips the admin-only fields (cost/sourcing/affiliate-commission) before a
+ * row can reach the storefront. `products_public` (see
+ * supabase/migrations/057_products_public_view.sql) never returns these
+ * columns in the first place — this is a second, TypeScript-level guard so
+ * the compiler, not just the DB grant, stops a public reader from handing
+ * them to a client component.
+ */
+const ADMIN_ONLY_PRODUCT_FIELDS = [
+  "meta_pixel_id",
+  "sourcing_type",
+  "sourcing_link",
+  "cost_price",
+  "profit_calculation_start_date",
+  "affiliate_commission_type",
+  "affiliate_sku",
+  "affiliate_currency",
+  "affiliate_sheet_url",
+  "affiliate_fixed_commission",
+  "affiliate_sell_price",
+] as const satisfies readonly (keyof ProductAdminRow)[];
+
+function toPublicProductRow(row: ProductAdminRow): ProductRow {
+  const publicRow: Partial<ProductAdminRow> = { ...row };
+  for (const field of ADMIN_ONLY_PRODUCT_FIELDS) {
+    delete publicRow[field];
+  }
+  return publicRow as ProductRow;
+}
+
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductRow | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createPublicClient();
   const { data, error } = await supabase
-    .from("products")
+    .from("products_public")
     .select("*")
     .eq("slug", slug)
-    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
-  return mapProductRow(data as Record<string, unknown>);
+  return toPublicProductRow(mapProductRow(data as Record<string, unknown>));
 }
 
 export async function getProductByOldSlug(
@@ -189,20 +228,37 @@ export async function getProductByOldSlug(
   if (!isSupabaseConfigured()) return null;
   const supabase = createPublicClient();
   const { data, error } = await supabase
-    .from("products")
+    .from("products_public")
     .select("*")
     .contains("old_slugs", [slug])
-    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !data) return null;
-  return mapProductRow(data as Record<string, unknown>);
+  return toPublicProductRow(mapProductRow(data as Record<string, unknown>));
 }
 
 export async function getProductById(id: string): Promise<ProductRow | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createPublicClient();
-  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("products_public")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toPublicProductRow(mapProductRow(data as Record<string, unknown>));
+}
+
+/** Admin-only counterpart of getProductById — reads every column via the service role. Never expose the result to the storefront. */
+export async function getProductByIdAdmin(id: string): Promise<ProductAdminRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
   if (error || !data) return null;
   return mapProductRow(data as Record<string, unknown>);
 }
@@ -211,9 +267,8 @@ export async function getAllProductSlugs(): Promise<{ slug: string }[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createPublicClient();
   const { data, error } = await supabase
-    .from("products")
-    .select("slug")
-    .is("deleted_at", null);
+    .from("products_public")
+    .select("slug");
 
   if (error || !data) return [];
   return data.map((r) => ({ slug: (r as { slug: string }).slug }));

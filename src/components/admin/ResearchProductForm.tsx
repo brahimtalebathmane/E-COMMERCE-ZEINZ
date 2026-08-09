@@ -9,13 +9,13 @@ import {
 } from "@/app/admin/(dashboard)/products/actions";
 import type { ResearchProductPayload } from "@/app/admin/(dashboard)/products/research-types";
 import { adminAr as a } from "@/locales/admin-ar";
-import type { ProductRow, ProductSourcingType } from "@/types";
+import type { ProductAdminRow, ProductSourcingType } from "@/types";
 import { codMarginPercent } from "@/lib/product-pipeline";
 import { formatPrice } from "@/lib/currency";
 
 type Props = {
   mode: "create" | "edit";
-  initial?: ProductRow;
+  initial?: ProductAdminRow;
 };
 
 export function ResearchProductForm({ mode, initial }: Props) {

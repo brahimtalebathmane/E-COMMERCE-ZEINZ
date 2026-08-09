@@ -20,10 +20,13 @@ export type CountryScope = {
  */
 const resolveCountryScope = cache(async (): Promise<CountryScope> => {
   const supabase = await createClient();
+  // Any staff role (not just owner) reaches this, so it reads the
+  // server-pixel-free `countries_public` view — see
+  // supabase/migrations/059_countries_public_view.sql. Owner-only screens
+  // that need meta_pixel_id_server go through countries/actions.ts instead.
   const { data } = await supabase
-    .from("countries")
+    .from("countries_public")
     .select("*")
-    .eq("is_active", true)
     .order("name_ar");
   const countries = (data ?? []) as CountryRow[];
 

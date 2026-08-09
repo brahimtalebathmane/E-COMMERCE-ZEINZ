@@ -17,10 +17,9 @@ export async function setAdminCountryAction(countryId: string): Promise<SetAdmin
 
   const supabase = await createClient();
   const { data } = await supabase
-    .from("countries")
+    .from("countries_public")
     .select("id")
     .eq("id", countryId)
-    .eq("is_active", true)
     .maybeSingle();
 
   if (!data) {

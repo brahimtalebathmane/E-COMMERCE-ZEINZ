@@ -18,7 +18,10 @@ import type { CatalogProduct } from "@/components/store/CatalogProductCard";
  */
 export const dynamic = "force-dynamic";
 
-function normalizeCatalogRow(row: Record<string, unknown>): CatalogProduct {
+function normalizeCatalogRow(
+  row: Record<string, unknown>,
+  countryCurrencyById: Map<string, string>,
+): CatalogProduct {
   const mediaType = row.media_type === "video" ? "video" : "image";
   return {
     name_ar: String(row.name_ar ?? ""),
@@ -35,7 +38,7 @@ function normalizeCatalogRow(row: Record<string, unknown>): CatalogProduct {
     media_url: String(row.media_url ?? ""),
     testimonials_ar: row.testimonials_ar,
     testimonials_fr: row.testimonials_fr,
-    currency: (row.countries as { currency?: string } | null)?.currency ?? "MRU",
+    currency: countryCurrencyById.get(String(row.country_id ?? "")) ?? "MRU",
   };
 }
 
@@ -54,30 +57,39 @@ export default async function HomePage() {
 
   const supabase = createPublicClient();
 
+  // Anon reads only ever go through the *_public views (no server pixel /
+  // cost columns) — see supabase/migrations/057_products_public_view.sql
+  // and 059_countries_public_view.sql. PostgREST's `table(column)` FK
+  // embedding (used here previously for `countries(currency)`) doesn't
+  // resolve through a plain view, so currency is joined in JS below instead.
+  const { data: countryRows } = await supabase
+    .from("countries_public")
+    .select("id, iso_code, currency, meta_pixel_id_public");
+  const countries = (countryRows ?? []) as {
+    id: string;
+    iso_code: string;
+    currency: string;
+    meta_pixel_id_public: string | null;
+  }[];
+  const countryCurrencyById = new Map(countries.map((c) => [c.id, c.currency]));
+
   // Set by netlify/edge-functions/geo-country.ts on "/" only. Absent locally
   // and whenever Netlify can't resolve the visitor's country (VPNs, bots).
   const visitorCountryCode = (await headers()).get("x-visitor-country-code");
   let visitorCountryId: string | null = null;
   let visitorCountryPixelId: string | null = null;
   if (visitorCountryCode) {
-    const { data: countryRow } = await supabase
-      .from("countries")
-      .select("id, meta_pixel_id_public")
-      .eq("iso_code", visitorCountryCode.toUpperCase())
-      .eq("is_active", true)
-      .maybeSingle();
-    const row = countryRow as { id: string; meta_pixel_id_public: string | null } | null;
+    const row = countries.find((c) => c.iso_code === visitorCountryCode.toUpperCase()) ?? null;
     visitorCountryId = row?.id ?? null;
     visitorCountryPixelId = row?.meta_pixel_id_public ?? null;
   }
 
   let productsQuery = supabase
-    .from("products")
+    .from("products_public")
     .select(
-      "name_ar, name_fr, hero_subtitle_ar, hero_subtitle_fr, slug, discount_price, price, media_type, media_url, testimonials_ar, testimonials_fr, countries(currency)",
+      "name_ar, name_fr, hero_subtitle_ar, hero_subtitle_fr, slug, discount_price, price, media_type, media_url, testimonials_ar, testimonials_fr, country_id",
     )
-    .eq("test_status", "winner")
-    .is("deleted_at", null);
+    .eq("test_status", "winner");
 
   // Only filter when a country was both detected AND matches a configured
   // row — an inconclusive detection or an unconfigured country (most of the
@@ -90,7 +102,7 @@ export default async function HomePage() {
   const { data } = await productsQuery.order("created_at", { ascending: false });
 
   const products = (data ?? []).map((row) =>
-    normalizeCatalogRow(row as Record<string, unknown>),
+    normalizeCatalogRow(row as Record<string, unknown>, countryCurrencyById),
   );
 
   return (

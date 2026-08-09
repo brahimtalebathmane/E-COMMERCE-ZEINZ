@@ -10,9 +10,9 @@ import {
   deleteCountryAction,
   type CountryInput,
 } from "./actions";
-import type { CountryRow } from "@/types";
+import type { CountryAdminRow } from "@/types";
 
-type Props = { initialCountries: CountryRow[] };
+type Props = { initialCountries: CountryAdminRow[] };
 
 const EMPTY_FORM: CountryInput = {
   name_ar: "",
@@ -24,7 +24,7 @@ const EMPTY_FORM: CountryInput = {
   is_active: true,
 };
 
-function toFormInput(c: CountryRow): CountryInput {
+function toFormInput(c: CountryAdminRow): CountryInput {
   return {
     name_ar: c.name_ar,
     name_fr: c.name_fr,
@@ -49,7 +49,7 @@ export function CountriesAdminView({ initialCountries }: Props) {
     setEditingId("new");
   }
 
-  function openEdit(country: CountryRow) {
+  function openEdit(country: CountryAdminRow) {
     setForm(toFormInput(country));
     setError(null);
     setEditingId(country.id);
@@ -100,7 +100,7 @@ export function CountriesAdminView({ initialCountries }: Props) {
     });
   }
 
-  function remove(country: CountryRow) {
+  function remove(country: CountryAdminRow) {
     if (!window.confirm(a.countries.deleteConfirm)) return;
     startTransition(async () => {
       const result = await deleteCountryAction(country.id);

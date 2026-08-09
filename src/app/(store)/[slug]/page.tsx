@@ -3,7 +3,7 @@ import { MetaPixelLandingScript } from "@/components/MetaPixelLandingScript";
 import { HeroMediaPreload } from "@/components/landing/HeroMediaPreload";
 import { ProductLanding } from "@/components/landing/ProductLanding";
 import { resolveMetaProductDisplayName } from "@/lib/meta-product-custom-data";
-import { resolveCountryPixelIds } from "@/lib/meta-pixel-id";
+import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
 import { resolveDisplayCurrency } from "@/lib/currency";
 import { StoreSiteFooter } from "@/components/store/StoreSiteFooter";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -81,25 +81,31 @@ export default async function ProductPage({ params }: PageProps) {
     productName: resolveMetaProductDisplayName(found),
   };
 
+  // Anonymous storefront readers can only see `countries_public` (no
+  // meta_pixel_id_server — see supabase/migrations/059_countries_public_view.sql)
+  // so this reads that view directly instead of resolveCountryPixelIds(),
+  // which selects the server pixel too and is reserved for service-role callers.
   const publicSupabase = createPublicClient();
-  const [countryPixelIds, countryRow] = await Promise.all([
-    resolveCountryPixelIds(publicSupabase, found.country_id),
-    publicSupabase.from("countries").select("currency").eq("id", found.country_id).maybeSingle(),
-  ]);
+  const { data: countryRow } = await publicSupabase
+    .from("countries_public")
+    .select("currency, meta_pixel_id_public")
+    .eq("id", found.country_id)
+    .maybeSingle();
+  const countryPixelIdPublic = resolvePublicMetaPixelId(countryRow?.meta_pixel_id_public);
   // Resolved from the product's own country, not the legacy
   // products.affiliate_currency free-text field (which can hold non-ISO
   // values entered by hand, e.g. an Arabic currency name instead of "SAR").
-  const productCurrency = countryRow.data?.currency ?? "MRU";
+  const productCurrency = countryRow?.currency ?? "MRU";
   const displayCurrency = resolveDisplayCurrency(found.display_currency, productCurrency);
 
   return (
     <>
-      <MetaPixelLandingScript productContent={productContent} pixelId={countryPixelIds.public} />
+      <MetaPixelLandingScript productContent={productContent} pixelId={countryPixelIdPublic} />
       <HeroMediaPreload mediaType={found.media_type} mediaUrl={found.media_url} />
-      <MetaPixelRuntime productContent={productContent} pixelId={countryPixelIds.public} />
+      <MetaPixelRuntime productContent={productContent} pixelId={countryPixelIdPublic} />
       <ProductLanding
         product={found}
-        metaPixelIdPublic={countryPixelIds.public}
+        metaPixelIdPublic={countryPixelIdPublic}
         currency={productCurrency}
         displayCurrency={displayCurrency}
       />

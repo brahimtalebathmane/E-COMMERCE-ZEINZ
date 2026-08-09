@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertOwnerUser } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { CountryRow } from "@/types";
+import type { CountryAdminRow } from "@/types";
 
 export type CountryActionResult = { ok: true } | { ok: false; error: string };
 
@@ -46,7 +46,7 @@ const UNIQUE_VIOLATION_CODE = "23505";
 /** Postgres foreign-key-violation code — a product still references this country. */
 const FK_VIOLATION_CODE = "23503";
 
-export async function listCountriesAction(): Promise<CountryRow[]> {
+export async function listCountriesAction(): Promise<CountryAdminRow[]> {
   await assertOwnerUser();
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -55,7 +55,7 @@ export async function listCountriesAction(): Promise<CountryRow[]> {
     .order("name_ar");
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as CountryRow[];
+  return (data ?? []) as CountryAdminRow[];
 }
 
 export async function createCountryAction(input: CountryInput): Promise<CountryActionResult> {

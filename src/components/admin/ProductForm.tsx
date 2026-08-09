@@ -1,7 +1,7 @@
 "use client";
 
 import type {
-  ProductRow,
+  ProductAdminRow,
   Testimonial,
   FAQ,
   Spec,
@@ -58,7 +58,7 @@ function parseStickyEndsAtLocal(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-function initialTopBannerOfferText(p: ProductRow | undefined): string {
+function initialTopBannerOfferText(p: ProductAdminRow | undefined): string {
   if (!p) return "";
   const unifiedAr = p.header_bar_text_ar?.trim();
   if (unifiedAr) return unifiedAr;
@@ -87,12 +87,12 @@ function initialTopBannerOfferText(p: ProductRow | undefined): string {
 
 type Props = {
   mode: "create" | "edit" | "landing-setup";
-  initial?: ProductRow;
+  initial?: ProductAdminRow;
   /** Active countries for the affiliate target-country picker. */
   countries: Pick<CountryRow, "id" | "name_ar" | "name_fr" | "iso_code">[];
 };
 
-function buildInitialFeatures(initial?: ProductRow): FeatureRow[] {
+function buildInitialFeatures(initial?: ProductAdminRow): FeatureRow[] {
   const ar = initial?.features_ar ?? [];
   const fr = initial?.features_fr ?? [];
   const n = Math.max(ar.length, fr.length, 0);
