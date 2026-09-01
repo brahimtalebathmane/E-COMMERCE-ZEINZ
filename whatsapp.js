@@ -8,6 +8,7 @@ const {
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } = require("@whiskeysockets/baileys");
+const { recordCtwaClicksFromUpsert } = require("./ctwa-capture");
 
 const MAX_LOG_LINES = 200;
 
@@ -132,6 +133,14 @@ async function connectWhatsApp() {
           const msg = e instanceof Error ? e.message : String(e);
           logEvent(`Failed to persist session credentials: ${msg}`);
         }
+      });
+
+      // Inbound messages are read for one reason only: capturing the
+      // Click-to-WhatsApp ad click id so Meta can attribute the sale that
+      // follows. Nothing here replies, stores chat content, or blocks the
+      // socket — recordCtwaClicksFromUpsert swallows its own errors.
+      sock.ev.on("messages.upsert", (upsert) => {
+        void recordCtwaClicksFromUpsert(upsert, logEvent);
       });
 
       sock.ev.on("connection.update", async (update) => {

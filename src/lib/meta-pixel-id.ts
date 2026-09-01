@@ -77,7 +77,7 @@ export function resolveServerMetaPixelId(countryPixelId?: string | null): string
   );
 }
 
-export type CountryPixelIds = { public: string | null; server: string | null };
+export type CountryPixelIds = { public: string | null; server: string | null; isoCode: string | null };
 
 /**
  * Looks up a country's own Meta Pixel IDs (public + server) by id. Returns
@@ -89,17 +89,23 @@ export async function resolveCountryPixelIds(
   supabase: SupabaseClient,
   countryId: string | null | undefined,
 ): Promise<CountryPixelIds> {
-  if (!countryId) return { public: null, server: null };
+  if (!countryId) return { public: null, server: null, isoCode: null };
 
   const { data } = await supabase
     .from("countries")
-    .select("meta_pixel_id_public, meta_pixel_id_server")
+    .select("meta_pixel_id_public, meta_pixel_id_server, iso_code")
     .eq("id", countryId)
     .maybeSingle();
 
-  const row = data as { meta_pixel_id_public?: string | null; meta_pixel_id_server?: string | null } | null;
+  const row = data as {
+    meta_pixel_id_public?: string | null;
+    meta_pixel_id_server?: string | null;
+    iso_code?: string | null;
+  } | null;
+  const rawIsoCode = row?.iso_code?.trim().toLowerCase() ?? null;
   return {
     public: normalizeMetaPixelId(row?.meta_pixel_id_public),
     server: normalizeMetaPixelId(row?.meta_pixel_id_server),
+    isoCode: rawIsoCode && rawIsoCode.length === 2 ? rawIsoCode : null,
   };
 }

@@ -59,3 +59,18 @@ export function sanitizePhoneForMetaE164(raw: string): string | null {
 
   return normalized;
 }
+
+/**
+ * Stable per-shopper key for Meta `external_id`.
+ *
+ * Meta uses `external_id` to build a persistent identity across events, so the
+ * SAME person must always produce the SAME value — an order id (a fresh UUID
+ * per order) carries no matching value at all. Derived from the normalized
+ * E.164 phone so the browser Pixel and the server CAPI hash identical input.
+ * Returns null when the phone can't be normalized; callers then fall back to
+ * the order id so the field is never dropped entirely.
+ */
+export function buildMetaCustomerKey(phone?: string | null): string | null {
+  const e164 = phone ? sanitizePhoneForMetaE164(phone) : null;
+  return e164 ? `cust_${e164}` : null;
+}

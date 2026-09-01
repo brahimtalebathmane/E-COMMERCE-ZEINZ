@@ -13,6 +13,7 @@ import {
 } from "@/lib/meta/event-log";
 import { buildPublicProductUrl } from "@/lib/site-url";
 import { sendMetaEvent, type MetaActionSource } from "@/utils/meta";
+import { buildMetaCustomerKey } from "@/lib/meta-user-data";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -149,14 +150,28 @@ type MetaClientContext = {
   eventTimeSec?: number;
 };
 
+/** WhatsApp Business Account id — Meta requires it alongside `ctwa_clid`. */
+function resolveWhatsAppBusinessAccountId(): string | null {
+  const raw = process.env.META_WHATSAPP_BUSINESS_ACCOUNT_ID?.trim().replace(/^['"]|['"]$/g, "");
+  return raw || null;
+}
+
 /**
- * Meta CAPI `action_source`: "website" for real storefront checkouts, or the
+ * Meta CAPI `action_source`: "business_messaging" for a Purchase that can be
+ * tied back to a Click-to-WhatsApp ad conversation (ctwa_clid + WABA id both
+ * present); otherwise "website" for real storefront checkouts, or the
  * admin-chosen channel ("phone_call" / "other") for a manual offline sale.
  * Falls back to "phone_call" if a manual order somehow has no channel stored.
  */
-function resolveOrderActionSource(order: Record<string, unknown>): MetaActionSource {
+function resolveOrderActionSource(
+  order: Record<string, unknown>,
+  eventType: MetaDispatchEventType,
+  ctwaClid: string | null,
+  wabaId: string | null,
+): MetaActionSource {
+  if (eventType === "purchase" && ctwaClid && wabaId) return "business_messaging";
   if (order.source !== "manual") return "website";
-  const channel = order.manual_sale_channel as MetaActionSource | null;
+  const channel = order.manual_sale_channel as string | null;
   return channel === "other" ? "other" : "phone_call";
 }
 
@@ -199,7 +214,7 @@ export async function dispatchMetaEvent(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, quantity, source, manual_sale_channel, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
+      "id, product_id, status, customer_name, phone, total_price, currency, quantity, source, manual_sale_channel, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_ctwa_clid, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -414,6 +429,17 @@ export async function dispatchMetaEvent(
     });
   }
 
+  const ctwaClid = (order.meta_ctwa_clid as string | null)?.trim() || null;
+  const wabaId = resolveWhatsAppBusinessAccountId();
+  if (ctwaClid && !wabaId) {
+    console.warn(
+      "[meta] CTWA click id present but META_WHATSAPP_BUSINESS_ACCOUNT_ID is not set — falling back to offline action_source",
+      { orderId, eventType },
+    );
+  }
+  const actionSource = resolveOrderActionSource(order, eventType, ctwaClid, wabaId);
+  const isBusinessMessaging = actionSource === "business_messaging";
+
   try {
     const capi = await sendMetaEvent({
       pixelId,
@@ -422,7 +448,8 @@ export async function dispatchMetaEvent(
       eventSourceUrl: storedSourceUrl,
       requestHeaders: headers,
       eventTimeSec: eventType === "lead" ? context.eventTimeSec : undefined,
-      actionSource: resolveOrderActionSource(order),
+      actionSource,
+      messagingChannel: isBusinessMessaging ? "whatsapp" : undefined,
       userData: {
         name: order.customer_name as string | null,
         phone: order.phone as string | null,
@@ -430,7 +457,11 @@ export async function dispatchMetaEvent(
         fbc: session.fbc,
         clientIpAddress: session.clientIpAddress,
         clientUserAgent: session.clientUserAgent,
-        externalId: order.id as string,
+        externalId:
+          buildMetaCustomerKey(order.phone as string | null) ?? (order.id as string),
+        country: countryPixelIds.isoCode,
+        ctwaClid: isBusinessMessaging ? ctwaClid : null,
+        whatsappBusinessAccountId: isBusinessMessaging ? wabaId : null,
       },
       customData,
     });

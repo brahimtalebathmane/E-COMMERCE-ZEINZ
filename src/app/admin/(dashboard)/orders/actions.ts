@@ -9,6 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { updateOrderStatusWithEffects, type MetaSideEffect } from "@/lib/orders/update-status";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
+import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -296,6 +297,87 @@ export type ManualSaleInput = {
   lines: ManualSaleLineInput[];
 };
 
+type ManualSaleMetaSignals = {
+  meta_ctwa_clid: string | null;
+  meta_fbp: string | null;
+  meta_fbc: string | null;
+};
+
+const MANUAL_SALE_ATTRIBUTION_LOOKBACK_DAYS = 90;
+
+/**
+ * Best-effort attribution lookup for a manual sale, run before inserting the
+ * order rows:
+ *  1. the newest `whatsapp_ad_clicks` row for this phone within the lookback
+ *     window — becomes `meta_ctwa_clid`, letting the eventual Purchase CAPI
+ *     event route through Meta's business_messaging schema instead of an
+ *     unattributed offline event.
+ *  2. the newest `source = "storefront"` order for this phone within the
+ *     lookback window — only its `meta_fbp`/`meta_fbc` are carried over, so a
+ *     shopper who browsed the site before messaging still gets browser-side
+ *     matching signals on their offline sale.
+ *
+ * Deliberately excludes meta_client_ip_address / meta_client_user_agent:
+ * those describe one specific browsing session and would be wrong data to
+ * attach to a later, unrelated offline sale (see orderCustomerSessionContext
+ * in src/lib/meta/dispatch.ts).
+ *
+ * Never blocks recording the sale — any failure resolves to all-null signals.
+ */
+async function resolveManualSaleMetaSignals(
+  supabase: ReturnType<typeof createServiceClient>,
+  phone: string,
+): Promise<ManualSaleMetaSignals> {
+  const nullSignals: ManualSaleMetaSignals = {
+    meta_ctwa_clid: null,
+    meta_fbp: null,
+    meta_fbc: null,
+  };
+
+  try {
+    const sinceIso = new Date(
+      Date.now() - MANUAL_SALE_ATTRIBUTION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    // whatsapp_ad_clicks.phone is E.164 digits with no "+" (sanitizePhoneForMetaE164
+    // output); orders.phone is whatever the country picker produced (usually
+    // "+222XXXXXXXX" here). Normalize before querying the former.
+    const normalized = sanitizePhoneForMetaE164(phone);
+
+    let ctwaClid: string | null = null;
+    if (normalized) {
+      const { data: adClick } = await supabase
+        .from("whatsapp_ad_clicks")
+        .select("ctwa_clid")
+        .eq("phone", normalized)
+        .gte("clicked_at", sinceIso)
+        .order("clicked_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      ctwaClid = (adClick?.ctwa_clid as string | null) ?? null;
+    }
+
+    const phoneCandidates = normalized ? [phone, `+${normalized}`, normalized] : [phone];
+    const { data: priorOrder } = await supabase
+      .from("orders")
+      .select("meta_fbp, meta_fbc")
+      .in("phone", phoneCandidates)
+      .eq("source", "storefront")
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      meta_ctwa_clid: ctwaClid,
+      meta_fbp: (priorOrder?.meta_fbp as string | null) ?? null,
+      meta_fbc: (priorOrder?.meta_fbc as string | null) ?? null,
+    };
+  } catch {
+    return nullSignals;
+  }
+}
+
 export type ManualSaleLineResult = {
   id: string;
   productId: string;
@@ -377,6 +459,7 @@ export async function createManualSaleAction(
     }
 
     const manualSaleGroupId = lines.length > 1 ? crypto.randomUUID() : null;
+    const metaSignals = await resolveManualSaleMetaSignals(supabase, phone);
     const rowsToInsert = lines.map((line) => {
       const product = productMap.get(line.productId)!;
       const unitPrice = Number(product.discount_price ?? product.price);
@@ -392,6 +475,7 @@ export async function createManualSaleAction(
         source: "manual" as const,
         manual_sale_group_id: manualSaleGroupId,
         manual_sale_channel: channel,
+        ...metaSignals,
       };
     });
 

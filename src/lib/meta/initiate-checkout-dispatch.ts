@@ -225,6 +225,8 @@ export async function dispatchInitiateCheckoutMetaEvent(
         fbc: input.metaFbc?.trim() || null,
         clientIpAddress: clientIp,
         clientUserAgent: clientUa,
+        // Pre-order event: no phone yet, but the product's market is known.
+        country: countryPixelIds.isoCode,
       },
       customData,
     });

@@ -21,6 +21,7 @@ import { getMetaBrowserCookies } from "@/utils/cookies-client";
 import { hashMetaExternalId } from "@/lib/meta-external-id-hash";
 import { tryMarkBrowserLeadSent } from "@/lib/meta-lead-client";
 import { resolvePublicMetaPixelId } from "@/lib/meta-pixel-id";
+import { buildMetaCustomerKey } from "@/lib/meta-user-data";
 
 export type MetaPixelAdvancedMatchingProps = {
   phone?: string | null;
@@ -161,8 +162,12 @@ export async function trackLead(params: {
 
   let advancedMatching = null as ReturnType<typeof buildMetaPixelAdvancedMatching> | null;
   if (params.phone?.trim() && params.customerName?.trim()) {
-    const externalIdHash = params.orderId.trim()
-      ? await hashMetaExternalId(params.orderId)
+    // Must be the SAME seed the server hashes in src/lib/meta/dispatch.ts, or
+    // the browser Lead and the CAPI Lead resolve to two different people.
+    const externalIdSeed =
+      buildMetaCustomerKey(params.phone) ?? (params.orderId.trim() || null);
+    const externalIdHash = externalIdSeed
+      ? await hashMetaExternalId(externalIdSeed)
       : undefined;
     const metaCookies = getMetaBrowserCookies();
     advancedMatching =

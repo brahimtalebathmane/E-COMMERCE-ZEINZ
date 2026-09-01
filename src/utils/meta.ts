@@ -21,6 +21,13 @@ type MetaUserDataInput = {
   clientUserAgent?: string | null;
   /** Order id or other stable id — hashed for CAPI external_id. */
   externalId?: string | null;
+  /** ISO 3166-1 alpha-2 for THIS order's market. Falls back to the storefront's
+   *  home country. A wrong country hurts matching more than a missing one. */
+  country?: string | null;
+  /** Click-to-WhatsApp click id — sent unhashed (an identifier, not PII). */
+  ctwaClid?: string | null;
+  /** WABA id — required by Meta alongside ctwa_clid for business_messaging. */
+  whatsappBusinessAccountId?: string | null;
 };
 
 type MetaCustomData = {
@@ -33,7 +40,10 @@ type MetaCustomData = {
   contents?: Array<{ id: string; quantity: number }>;
 };
 
-export type MetaActionSource = "website" | "phone_call" | "other";
+export type MetaActionSource = "website" | "phone_call" | "other" | "business_messaging";
+
+/** Meta `messaging_channel` — only meaningful when action_source is "business_messaging". */
+export type MetaMessagingChannel = "whatsapp" | "messenger" | "instagram";
 
 type SendMetaEventParams = {
   pixelId: string | null | undefined;
@@ -53,6 +63,8 @@ type SendMetaEventParams = {
    * per Meta's CAPI parameter guidance.
    */
   actionSource?: MetaActionSource;
+  /** Meta `messaging_channel` — set only when actionSource is "business_messaging". */
+  messagingChannel?: MetaMessagingChannel;
 };
 
 function normalizeEnv(value: string | undefined): string {
@@ -72,7 +84,15 @@ function buildUserData(input?: MetaUserDataInput) {
   if (input.clientIpAddress) data.client_ip_address = input.clientIpAddress;
   if (input.clientUserAgent) data.client_user_agent = input.clientUserAgent;
 
-  data.country = [hashMetaMatchingCountry(META_STORE_COUNTRY_CODE)];
+  // Unhashed identifiers — Meta requires these verbatim, never SHA-256.
+  const ctwaClid = input.ctwaClid?.trim();
+  if (ctwaClid) data.ctwa_clid = ctwaClid;
+  const wabaId = input.whatsappBusinessAccountId?.trim();
+  if (wabaId) data.whatsapp_business_account_id = wabaId;
+
+  // normalizeMetaMatchingCountry() already falls back to the store country and
+  // rejects anything that isn't alpha-2, so an unexpected value can't leak out.
+  data.country = [hashMetaMatchingCountry(input.country ?? META_STORE_COUNTRY_CODE)];
 
   if (input.name?.trim()) {
     const { fn, ln } = parseCustomerFullName(input.name);
@@ -364,6 +384,10 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
   // event_source_url only makes sense for a browser-originated ("website") event.
   if (actionSource === "website" && resolvedSourceUrl) {
     dataRowBase.event_source_url = resolvedSourceUrl;
+  }
+  // messaging_channel is mandatory for business_messaging and invalid elsewhere.
+  if (actionSource === "business_messaging") {
+    dataRowBase.messaging_channel = params.messagingChannel ?? "whatsapp";
   }
 
   const clientEventTimeSec =
