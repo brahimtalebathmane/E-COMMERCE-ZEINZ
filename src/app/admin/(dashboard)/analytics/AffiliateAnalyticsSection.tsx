@@ -1,5 +1,17 @@
+"use client";
+
+import { useMemo } from "react";
 import { formatMoney } from "@/lib/currency";
-import { netProfit } from "@/lib/analytics/profit";
+import {
+  buildProductProfitRows,
+  netProfit,
+  sumProfitTotals,
+  type ProductProfitRow,
+  type ProfitTotals,
+} from "@/lib/analytics/profit";
+import { computeProfitabilityMetrics } from "@/lib/analytics/metrics";
+import { filterDailyByPeriod, filterOrdersByPeriod, sumAdSpendByProduct, type Period } from "@/lib/analytics/period";
+import { AdminBadge } from "@/components/admin/ui";
 import type { AffiliateAnalyticsData } from "./data";
 
 function profitToneClass(value: number): string {
@@ -8,13 +20,73 @@ function profitToneClass(value: number): string {
   return "text-[var(--foreground)]";
 }
 
+function formatPercent(pct: number): string {
+  return `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(1)}%`;
+}
+
+type CurrencyGroup = { currency: string; rows: ProductProfitRow[]; totals: ProfitTotals };
+
 /**
  * Affiliate (COD Partner) profit, grouped by each product's own currency.
  * Deliberately separate from AnalyticsView's owned/MRU dashboard — amounts
  * here are never summed across currencies or with owned MRU totals.
+ *
+ * Recomputes `groups` client-side (period-filtered orders + ad spend through
+ * the same `buildProductProfitRows` the server used to call) instead of
+ * receiving pre-computed totals, so the period filter works here too without
+ * a second server round-trip. For period "all" this is the exact same
+ * function called with the exact same inputs the server used to use.
  */
-export function AffiliateAnalyticsSection({ data }: { data: AffiliateAnalyticsData }) {
-  if (data.groups.length === 0) return null;
+export function AffiliateAnalyticsSection({
+  data,
+  period,
+}: {
+  data: AffiliateAnalyticsData;
+  period: Period;
+}) {
+  const productsMap = useMemo(
+    () =>
+      new Map(
+        data.products.map((p) => [
+          p.productId,
+          {
+            name: p.name,
+            costPrice: p.costPrice,
+            calculationStartDate: p.calculationStartDate,
+            fulfillmentType: "affiliate" as const,
+            affiliateCommissionType: p.affiliateCommissionType,
+            affiliateFixedCommission: p.affiliateFixedCommission,
+            affiliateSellPrice: p.affiliateSellPrice,
+            currency: p.currency,
+          },
+        ]),
+      ),
+    [data.products],
+  );
+
+  const groups = useMemo<CurrencyGroup[]>(() => {
+    const periodOrders = filterOrdersByPeriod(data.orders, period);
+    const periodAdSpendByProduct = sumAdSpendByProduct(filterDailyByPeriod(data.adSpendDaily, period));
+    const rows = buildProductProfitRows({
+      orders: periodOrders,
+      products: productsMap,
+      adSpendByProduct: periodAdSpendByProduct,
+    });
+
+    const byCurrency = new Map<string, ProductProfitRow[]>();
+    for (const row of rows) {
+      const code = row.currency || "—";
+      const list = byCurrency.get(code) ?? [];
+      list.push(row);
+      byCurrency.set(code, list);
+    }
+
+    return Array.from(byCurrency.entries())
+      .map(([currency, groupRows]) => ({ currency, rows: groupRows, totals: sumProfitTotals(groupRows) }))
+      .sort((a, b) => a.currency.localeCompare(b.currency));
+  }, [data.orders, data.adSpendDaily, period, productsMap]);
+
+  if (groups.length === 0) return null;
 
   return (
     <section className="admin-card overflow-hidden">
@@ -28,7 +100,7 @@ export function AffiliateAnalyticsSection({ data }: { data: AffiliateAnalyticsDa
       </div>
 
       <div className="divide-y divide-[var(--admin-border)]">
-        {data.groups.map((group) => (
+        {groups.map((group) => (
           <div key={group.currency} className="p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-sm font-bold text-[var(--foreground)]" dir="ltr">
@@ -45,6 +117,12 @@ export function AffiliateAnalyticsSection({ data }: { data: AffiliateAnalyticsDa
             <div className="mt-3 space-y-3">
               {group.rows.map((row) => {
                 const profit = netProfit(row);
+                const rowMetrics = computeProfitabilityMetrics({
+                  netProfit: profit,
+                  grossRevenue: row.grossRevenue,
+                  adSpend: row.adSpend,
+                  ordersCount: row.ordersCount,
+                });
                 return (
                   <div
                     key={row.productId}
@@ -77,6 +155,18 @@ export function AffiliateAnalyticsSection({ data }: { data: AffiliateAnalyticsDa
                         />
                       ) : null}
                     </dl>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <MetricChip
+                        label="الهامش"
+                        value={rowMetrics.netMargin === null ? "—" : formatPercent(rowMetrics.netMargin)}
+                        tone={rowMetrics.netMargin}
+                      />
+                      <MetricChip
+                        label="ROAS"
+                        value={rowMetrics.roas === null ? "—" : rowMetrics.roas.toFixed(2)}
+                        tone={rowMetrics.roas}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -101,5 +191,16 @@ function Stat({ label, value, muted }: { label: string; value: string; muted?: b
         {value}
       </dd>
     </div>
+  );
+}
+
+function MetricChip({ label, value, tone }: { label: string; value: string; tone: number | null }) {
+  const hue = tone === null ? "neutral" : tone > 0 ? "emerald" : tone < 0 ? "red" : "neutral";
+  return (
+    <AdminBadge hue={hue} size="sm" dot={false}>
+      <span dir="ltr">
+        {label}: {value}
+      </span>
+    </AdminBadge>
   );
 }

@@ -25,12 +25,28 @@ import {
   bucketWeekly,
   computeLossStreak,
   computeTrend,
+  shiftDateKey,
+  type AdSpendDailyInput,
   type CombinedDailyProfit,
   type DailyProductProfit,
   type Granularity,
 } from "@/lib/analytics/daily-profit";
-import { AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
+import { computeProfitabilityMetrics, percentChange, type ProfitabilityMetrics } from "@/lib/analytics/metrics";
+import {
+  averagePerDay,
+  countWinningLosingDays,
+  daysInMonth,
+  filterDailyByPeriod,
+  filterOrdersByPeriod,
+  monthRange,
+  pickBestWorstProduct,
+  previousMonth,
+  sumAdSpendByProduct,
+  type Period,
+} from "@/lib/analytics/period";
+import { AdminBadge, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 import type { AnalyticsData, LinkedCampaign } from "./data";
+import { monthLabel } from "./PeriodFilterBar";
 import {
   linkAdCampaignAction,
   unlinkAdCampaignAction,
@@ -48,12 +64,31 @@ function profitToneClass(value: number): string {
   return "text-[var(--foreground)]";
 }
 
+/** For a COST metric, an increase is bad — invert the usual up=green/down=red convention. */
+function costDeltaToneClass(pct: number): string {
+  if (pct > 0) return "text-red-400";
+  if (pct < 0) return "text-emerald-400";
+  return "text-[var(--foreground)]";
+}
+
 function tickDateLabel(dateKey: string): string {
   const parts = dateKey.split("-");
   return parts.length === 3 ? `${parts[1]}/${parts[2]}` : dateKey;
 }
 
-export function AnalyticsView({ data }: { data: AnalyticsData }) {
+function formatPercent(pct: number): string {
+  return `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(1)}%`;
+}
+
+export function AnalyticsView({
+  data,
+  period,
+  adSpendDaily,
+}: {
+  data: AnalyticsData;
+  period: Period;
+  adSpendDaily: AdSpendDailyInput[];
+}) {
   const router = useRouter();
   const [startDates, setStartDates] = useState<Record<string, string>>(() =>
     Object.fromEntries(data.products.map((p) => [p.productId, p.calculationStartDate ?? ""])),
@@ -61,22 +96,44 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
   const [savingDateId, setSavingDateId] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [expandedCampaigns, setExpandedCampaigns] = useState<string | null>(null);
+  const [showPrevMonth, setShowPrevMonth] = useState(false);
 
-  // Instant client-side recompute on start-date change, same engine as the
-  // server render — ad spend itself is live/server-computed now, so it's held
-  // constant here (not re-derived) while only the date cutoff changes.
-  const rows = useMemo(() => {
-    const productsMap = new Map(
-      data.products.map((p) => [
-        p.productId,
-        { name: p.name, costPrice: p.costPrice, calculationStartDate: startDates[p.productId] || null },
-      ]),
-    );
-    const adSpendByProduct = new Map(data.rows.map((r) => [r.productId, r.adSpend]));
-    return buildProductProfitRows({ orders: data.orders, products: productsMap, adSpendByProduct });
-  }, [data.orders, data.products, data.rows, startDates]);
+  const productsMap = useMemo(
+    () =>
+      new Map(
+        data.products.map((p) => [
+          p.productId,
+          { name: p.name, costPrice: p.costPrice, calculationStartDate: startDates[p.productId] || null },
+        ]),
+      ),
+    [data.products, startDates],
+  );
 
+  // Instant client-side recompute on period AND start-date change — same
+  // engine as the server render, just fed period-filtered orders/ad-spend
+  // instead of the life-to-date ones. For period "all" this reduces to
+  // exactly today's inputs, so كل الفترة numbers cannot change.
+  const periodOrders = useMemo(() => filterOrdersByPeriod(data.orders, period), [data.orders, period]);
+  const periodAdSpendByProduct = useMemo(
+    () => sumAdSpendByProduct(filterDailyByPeriod(adSpendDaily, period)),
+    [adSpendDaily, period],
+  );
+  const rows = useMemo(
+    () => buildProductProfitRows({ orders: periodOrders, products: productsMap, adSpendByProduct: periodAdSpendByProduct }),
+    [periodOrders, productsMap, periodAdSpendByProduct],
+  );
   const totals = useMemo(() => sumProfitTotals(rows), [rows]);
+
+  const previousPeriodMonth = period.kind === "month" ? previousMonth(period.month) : null;
+  const previousTotals = useMemo(() => {
+    if (!previousPeriodMonth) return null;
+    const prevOrders = filterOrdersByPeriod(data.orders, { kind: "month", month: previousPeriodMonth });
+    const prevAdSpend = sumAdSpendByProduct(
+      filterDailyByPeriod(adSpendDaily, { kind: "month", month: previousPeriodMonth }),
+    );
+    const prevRows = buildProductProfitRows({ orders: prevOrders, products: productsMap, adSpendByProduct: prevAdSpend });
+    return sumProfitTotals(prevRows);
+  }, [previousPeriodMonth, data.orders, adSpendDaily, productsMap]);
 
   const dailyByProduct = useMemo(() => {
     const map = new Map<string, DailyProductProfit[]>();
@@ -88,9 +145,55 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
     return map;
   }, [data.daily]);
 
+  const combinedFiltered = useMemo(
+    () => filterDailyByPeriod(data.combined, period),
+    [data.combined, period],
+  );
   const combinedBucketed = useMemo(
-    () => bucketWeekly(data.combined, granularity) as CombinedDailyProfit[],
-    [data.combined, granularity],
+    () => bucketWeekly(period.kind === "all" ? data.combined : combinedFiltered, granularity) as CombinedDailyProfit[],
+    [data.combined, combinedFiltered, period, granularity],
+  );
+
+  const monthSummary = useMemo(() => {
+    if (period.kind !== "month") return null;
+    const { winningDays, losingDays } = countWinningLosingDays(combinedFiltered, period.month);
+    const days = daysInMonth(period.month);
+    const { best, worst } = pickBestWorstProduct(rows);
+    return {
+      netProfit: totals.netProfit,
+      avgDailyNetProfit: averagePerDay(totals.netProfit, days),
+      winningDays,
+      losingDays,
+      best,
+      worst,
+    };
+  }, [period, combinedFiltered, rows, totals.netProfit]);
+
+  const prevChartData = useMemo(() => {
+    if (period.kind !== "month" || !showPrevMonth || !previousPeriodMonth) return null;
+    const { startKey } = monthRange(period.month);
+    const { startKey: prevStartKey } = monthRange(previousPeriodMonth);
+    const prevFiltered = filterDailyByPeriod(data.combined, { kind: "month", month: previousPeriodMonth });
+    const curMap = new Map(combinedFiltered.map((c) => [c.date, c.netProfit]));
+    const prevMap = new Map(prevFiltered.map((c) => [c.date, c.netProfit]));
+    const days = daysInMonth(period.month);
+    const out: { date: string; netProfit: number; prevNetProfit: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const curDate = shiftDateKey(startKey, i);
+      const prevDate = shiftDateKey(prevStartKey, i);
+      out.push({
+        date: curDate,
+        netProfit: curMap.get(curDate) ?? 0,
+        prevNetProfit: prevMap.get(prevDate) ?? 0,
+      });
+    }
+    return out;
+  }, [period, showPrevMonth, previousPeriodMonth, data.combined, combinedFiltered]);
+
+  const metrics = useMemo(() => computeProfitabilityMetrics(totals), [totals]);
+  const previousMetrics = useMemo(
+    () => (previousTotals ? computeProfitabilityMetrics(previousTotals) : null),
+    [previousTotals],
   );
 
   async function onChangeStartDate(productId: string, nextDate: string) {
@@ -125,22 +228,43 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
           {a.analytics.sectionOverviewTitle}
         </h2>
         <div className="mt-4">
-          <SummaryBar data={data} />
+          {period.kind === "all" ? (
+            <SummaryBar summary={data.summary} />
+          ) : (
+            <MonthSummaryBar summary={monthSummary!} />
+          )}
         </div>
       </section>
 
       <CombinedTrendChart
-        rows={combinedBucketed}
-        granularity={granularity}
+        rows={period.kind === "month" ? combinedFiltered : combinedBucketed}
+        granularity={period.kind === "month" ? "daily" : granularity}
         onGranularityChange={setGranularity}
+        showGranularityToggle={period.kind === "all"}
+        prevChartData={prevChartData}
+        showPrevMonthToggle={period.kind === "month" && previousPeriodMonth !== null}
+        showPrevMonth={showPrevMonth}
+        onTogglePrevMonth={setShowPrevMonth}
       />
 
       <div>
-        <FinancialSummaryCard totals={totals} />
+        <FinancialSummaryCard
+          totals={totals}
+          previousTotals={previousTotals}
+          previousMonth={previousPeriodMonth}
+        />
         {!data.adSpendFreshness.refreshed && data.adSpendFreshness.lastError ? (
           <p className="mt-2 text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
         ) : null}
       </div>
+
+      <MetricsCard
+        metrics={metrics}
+        ordersCount={totals.ordersCount}
+        previousMetrics={previousMetrics}
+        previousOrdersCount={previousTotals?.ordersCount ?? null}
+        previousMonth={previousPeriodMonth}
+      />
 
       {/* Per-product breakdown */}
       <section className="admin-card overflow-hidden">
@@ -163,6 +287,12 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
               const trend = computeTrend({ productDaily, todayKey: data.todayKey });
               const lossStreak = computeLossStreak({ productDaily, todayKey: data.todayKey });
               const campaigns = data.campaignsByProduct.get(row.productId) ?? [];
+              const rowMetrics = computeProfitabilityMetrics({
+                netProfit: profit,
+                grossRevenue: row.grossRevenue,
+                adSpend: row.adSpend,
+                ordersCount: row.ordersCount,
+              });
 
               return (
                 <div key={row.productId} className="p-4 sm:p-5">
@@ -175,8 +305,12 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
                         >
                           {row.name}
                         </Link>
-                        <TrendArrow direction={trend.direction} hasEnoughData={trend.hasEnoughData} />
-                        {lossStreak.flagged ? <LossStreakBadge streak={lossStreak.streak} /> : null}
+                        {period.kind === "all" ? (
+                          <TrendArrow direction={trend.direction} hasEnoughData={trend.hasEnoughData} />
+                        ) : null}
+                        {period.kind === "all" && lossStreak.flagged ? (
+                          <LossStreakBadge streak={lossStreak.streak} />
+                        ) : null}
                         {row.internalReturns > 0 ? (
                           <span
                             className="inline-flex items-center rounded-full border border-slate-400/30 bg-slate-400/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300"
@@ -186,7 +320,7 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
                           </span>
                         ) : null}
                       </div>
-                      <Sparkline daily={productDaily} />
+                      {period.kind === "all" ? <Sparkline daily={productDaily} /> : null}
                     </div>
                     <span className={`shrink-0 text-lg font-bold ${profitToneClass(profit)}`} dir="ltr">
                       {formatPrice(profit)}
@@ -216,6 +350,11 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
                       </dd>
                     </div>
                   </dl>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <MetricChip label={a.analytics.chipMargin} value={rowMetrics.netMargin} isPercent />
+                    <MetricChip label={a.analytics.chipRoas} value={rowMetrics.roas} isPercent={false} />
+                  </div>
 
                   {campaigns.length > 0 ? (
                     <p className="mt-2 text-[10px] text-[var(--muted)]" dir="ltr">
@@ -257,8 +396,7 @@ export function AnalyticsView({ data }: { data: AnalyticsData }) {
   );
 }
 
-function SummaryBar({ data }: { data: AnalyticsData }) {
-  const { summary } = data;
+function SummaryBar({ summary }: { summary: AnalyticsData["summary"] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <SummaryTile label={a.analytics.summaryToday} value={formatPrice(summary.todayProfit)} tone={profitToneClass(summary.todayProfit)} />
@@ -275,6 +413,49 @@ function SummaryBar({ data }: { data: AnalyticsData }) {
         value={summary.worstProduct ? summary.worstProduct.name : a.analytics.summaryNoProduct}
         sub={summary.worstProduct ? formatPrice(summary.worstProduct.avgDailyNetProfit) : undefined}
         tone={summary.worstProduct ? profitToneClass(summary.worstProduct.avgDailyNetProfit) : undefined}
+      />
+    </div>
+  );
+}
+
+type MonthSummary = {
+  netProfit: number;
+  avgDailyNetProfit: number;
+  winningDays: number;
+  losingDays: number;
+  best: { productId: string; name: string; netProfit: number } | null;
+  worst: { productId: string; name: string; netProfit: number } | null;
+};
+
+function MonthSummaryBar({ summary }: { summary: MonthSummary }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <SummaryTile
+        label={a.analytics.monthSummaryProfit}
+        value={formatPrice(summary.netProfit)}
+        tone={profitToneClass(summary.netProfit)}
+      />
+      <SummaryTile
+        label={a.analytics.monthSummaryAvgDaily}
+        value={formatPrice(summary.avgDailyNetProfit)}
+        tone={profitToneClass(summary.avgDailyNetProfit)}
+      />
+      <SummaryTile
+        label={a.analytics.monthSummaryWinningDays}
+        value={`${summary.winningDays} / ${summary.losingDays}`}
+        sub={a.analytics.monthSummaryLosingDays}
+      />
+      <SummaryTile
+        label={a.analytics.summaryBestProduct}
+        value={summary.best ? summary.best.name : a.analytics.summaryNoProduct}
+        sub={summary.best ? formatPrice(summary.best.netProfit) : undefined}
+        tone={summary.best ? profitToneClass(summary.best.netProfit) : undefined}
+      />
+      <SummaryTile
+        label={a.analytics.summaryWorstProduct}
+        value={summary.worst ? summary.worst.name : a.analytics.summaryNoProduct}
+        sub={summary.worst ? formatPrice(summary.worst.netProfit) : undefined}
+        tone={summary.worst ? profitToneClass(summary.worst.netProfit) : undefined}
       />
     </div>
   );
@@ -304,24 +485,54 @@ function SummaryTile({
   );
 }
 
+/** Percent delta badge. `invertTone` = true for cost metrics (spend up ≠ good). */
+function DeltaBadge({ pct, invertTone }: { pct: number | null; invertTone?: boolean }) {
+  if (pct === null) {
+    return <span className="text-[11px] text-[var(--muted)]">{a.analytics.noPreviousMonthData}</span>;
+  }
+  const tone = invertTone ? costDeltaToneClass(pct) : profitToneClass(pct);
+  return (
+    <span className={`text-[11px] font-semibold tabular-nums ${tone}`} dir="ltr">
+      {formatPercent(pct)}
+    </span>
+  );
+}
+
 /**
  * Mini P&L: gross revenue at top, costs subtracted as subordinate rows, then
  * net profit set off by a divider — so the relationship between the numbers
  * (what's subtracted from what) is visible at a glance instead of five
  * equal-weight tiles that all read the same regardless of role.
  */
-function FinancialSummaryCard({ totals }: { totals: ProfitTotals }) {
+function FinancialSummaryCard({
+  totals,
+  previousTotals,
+  previousMonth: prevMonth,
+}: {
+  totals: ProfitTotals;
+  previousTotals: ProfitTotals | null;
+  previousMonth: string | null;
+}) {
+  const showDelta = previousTotals !== null;
   return (
     <section className="admin-card p-4 sm:p-5">
-      <h2 className="text-base font-semibold text-[var(--foreground)]">
-        {a.analytics.sectionFinancialTitle}
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">
+          {a.analytics.sectionFinancialTitle}
+        </h2>
+        {showDelta && prevMonth ? (
+          <span className="text-[11px] text-[var(--muted)]">
+            {a.analytics.comparedToPreviousMonth.replace("{month}", monthLabel(prevMonth))}
+          </span>
+        ) : null}
+      </div>
       <div className="mt-4 space-y-1">
         <PnlRow
           label={a.analytics.kpiGrossRevenue}
           hint={a.analytics.kpiGrossRevenueHint}
           value={totals.grossRevenue}
           accent={KPI_ACCENT.revenue}
+          delta={showDelta ? percentChange(totals.grossRevenue, previousTotals!.grossRevenue) : undefined}
         />
         <PnlRow
           label={a.analytics.kpiCogs}
@@ -340,6 +551,8 @@ function FinancialSummaryCard({ totals }: { totals: ProfitTotals }) {
           hint={a.analytics.kpiAdSpendHint}
           value={totals.adSpend}
           sign="−"
+          delta={showDelta ? percentChange(totals.adSpend, previousTotals!.adSpend) : undefined}
+          invertDeltaTone
         />
         <div className="my-2 border-t border-[var(--admin-border)]" />
         <PnlRow
@@ -348,6 +561,7 @@ function FinancialSummaryCard({ totals }: { totals: ProfitTotals }) {
           value={totals.netProfit}
           sign="="
           emphasize
+          delta={showDelta ? percentChange(totals.netProfit, previousTotals!.netProfit) : undefined}
         />
       </div>
     </section>
@@ -361,6 +575,8 @@ function PnlRow({
   sign = "",
   accent,
   emphasize,
+  delta,
+  invertDeltaTone,
 }: {
   label: string;
   hint?: string;
@@ -368,6 +584,9 @@ function PnlRow({
   sign?: "" | "−" | "=";
   accent?: string;
   emphasize?: boolean;
+  /** `undefined` = no delta shown at all; `null` = shown as "—" (no previous data). */
+  delta?: number | null;
+  invertDeltaTone?: boolean;
 }) {
   return (
     <div className={`flex items-start justify-between gap-3 ${emphasize ? "pt-1" : "py-1.5"}`}>
@@ -390,13 +609,98 @@ function PnlRow({
         </p>
         {hint ? <p className="mt-0.5 text-[11px] text-[var(--muted)]">{hint}</p> : null}
       </div>
-      <span
-        className={`shrink-0 tabular-nums ${emphasize ? "text-lg font-bold" : "text-sm font-semibold"} ${emphasize ? profitToneClass(value) : "text-[var(--foreground)]"}`}
-        dir="ltr"
-      >
-        {formatPrice(value)}
-      </span>
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <span
+          className={`tabular-nums ${emphasize ? "text-lg font-bold" : "text-sm font-semibold"} ${emphasize ? profitToneClass(value) : "text-[var(--foreground)]"}`}
+          dir="ltr"
+        >
+          {formatPrice(value)}
+        </span>
+        {delta !== undefined ? <DeltaBadge pct={delta} invertTone={invertDeltaTone} /> : null}
+      </div>
     </div>
+  );
+}
+
+function MetricsCard({
+  metrics,
+  ordersCount,
+  previousMetrics,
+  previousOrdersCount,
+  previousMonth: prevMonth,
+}: {
+  metrics: ProfitabilityMetrics;
+  ordersCount: number;
+  previousMetrics: ProfitabilityMetrics | null;
+  previousOrdersCount: number | null;
+  previousMonth: string | null;
+}) {
+  const showDelta = previousMetrics !== null;
+  const marginDelta =
+    showDelta && metrics.netMargin !== null && previousMetrics!.netMargin !== null
+      ? percentChange(metrics.netMargin, previousMetrics!.netMargin)
+      : null;
+  const ordersDelta =
+    showDelta && previousOrdersCount !== null ? percentChange(ordersCount, previousOrdersCount) : null;
+
+  return (
+    <section className="admin-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">{a.analytics.metricsTitle}</h2>
+        {showDelta && prevMonth ? (
+          <span className="text-[11px] text-[var(--muted)]">
+            {a.analytics.comparedToPreviousMonth.replace("{month}", monthLabel(prevMonth))}
+          </span>
+        ) : null}
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <MetricStat
+          label={a.analytics.metricOrdersCount}
+          value={String(ordersCount)}
+          delta={showDelta ? ordersDelta : undefined}
+        />
+        <MetricStat
+          label={a.analytics.metricNetMargin}
+          value={metrics.netMargin === null ? "—" : formatPercent(metrics.netMargin)}
+          delta={showDelta ? marginDelta : undefined}
+        />
+        <MetricStat label={a.analytics.metricRoas} value={metrics.roas === null ? "—" : metrics.roas.toFixed(2)} />
+        <MetricStat
+          label={a.analytics.metricProfitPerAdSpend}
+          value={metrics.profitPerAdSpend === null ? "—" : formatPrice(metrics.profitPerAdSpend)}
+        />
+        <MetricStat label={a.analytics.metricCpo} value={metrics.cpo === null ? "—" : formatPrice(metrics.cpo)} />
+        <MetricStat label={a.analytics.metricAov} value={metrics.aov === null ? "—" : formatPrice(metrics.aov)} />
+        <MetricStat
+          label={a.analytics.metricAvgOrderProfit}
+          value={metrics.avgOrderProfit === null ? "—" : formatPrice(metrics.avgOrderProfit)}
+        />
+      </dl>
+    </section>
+  );
+}
+
+function MetricStat({ label, value, delta }: { label: string; value: string; delta?: number | null }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</dt>
+      <dd className="tabular-nums text-sm font-bold text-[var(--foreground)]" dir="ltr">
+        {value}
+      </dd>
+      {delta !== undefined ? <DeltaBadge pct={delta} /> : null}
+    </div>
+  );
+}
+
+function MetricChip({ label, value, isPercent }: { label: string; value: number | null; isPercent: boolean }) {
+  const text = value === null ? "—" : isPercent ? formatPercent(value) : value.toFixed(2);
+  const hue = value === null ? "neutral" : value > 0 ? "emerald" : value < 0 ? "red" : "neutral";
+  return (
+    <AdminBadge hue={hue} size="sm" dot={false}>
+      <span dir="ltr">
+        {label}: {text}
+      </span>
+    </AdminBadge>
   );
 }
 
@@ -404,42 +708,70 @@ function CombinedTrendChart({
   rows,
   granularity,
   onGranularityChange,
+  showGranularityToggle,
+  prevChartData,
+  showPrevMonthToggle,
+  showPrevMonth,
+  onTogglePrevMonth,
 }: {
   rows: CombinedDailyProfit[];
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
+  showGranularityToggle: boolean;
+  prevChartData: { date: string; netProfit: number; prevNetProfit: number }[] | null;
+  showPrevMonthToggle: boolean;
+  showPrevMonth: boolean;
+  onTogglePrevMonth: (v: boolean) => void;
 }) {
+  // Normalized to one minimal shape regardless of source, so <LineChart> sees
+  // a single consistent row type whether or not the previous-month overlay is active.
+  const chartRows: { date: string; netProfit: number; prevNetProfit?: number }[] =
+    prevChartData ?? rows.map((r) => ({ date: r.date, netProfit: r.netProfit }));
   return (
     <section className="admin-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--foreground)]">
           {a.analytics.combinedChartTitle}
         </h2>
-        <div className="inline-flex overflow-hidden rounded-lg border border-[var(--accent-muted)]">
-          {(["daily", "weekly"] as Granularity[]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => onGranularityChange(g)}
-              className={`px-3 py-1.5 text-xs font-semibold transition ${
-                granularity === g
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {g === "daily" ? a.analytics.granularityDaily : a.analytics.granularityWeekly}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {showPrevMonthToggle ? (
+            <label className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
+              <input
+                type="checkbox"
+                checked={showPrevMonth}
+                onChange={(e) => onTogglePrevMonth(e.target.checked)}
+              />
+              {a.analytics.showPreviousMonthOnChart}
+            </label>
+          ) : null}
+          {showGranularityToggle ? (
+            <div className="inline-flex overflow-hidden rounded-lg border border-[var(--accent-muted)]">
+              {(["daily", "weekly"] as Granularity[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => onGranularityChange(g)}
+                  className={`px-3 py-1.5 text-xs font-semibold transition ${
+                    granularity === g
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {g === "daily" ? a.analytics.granularityDaily : a.analytics.granularityWeekly}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="mt-4 h-64 w-full">
-        {rows.length === 0 ? (
+        {chartRows.length === 0 ? (
           <p className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
             {a.analytics.noData}
           </p>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={rows}>
+            <LineChart data={chartRows}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" />
               <XAxis
                 dataKey="date"
@@ -459,6 +791,16 @@ function CombinedTrendChart({
                 }}
               />
               <Line type="monotone" dataKey="netProfit" stroke="var(--accent)" strokeWidth={2} dot={false} />
+              {prevChartData ? (
+                <Line
+                  type="monotone"
+                  dataKey="prevNetProfit"
+                  stroke="var(--muted)"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                />
+              ) : null}
             </LineChart>
           </ResponsiveContainer>
         )}

@@ -460,6 +460,38 @@ export const adminAr = {
     productAvgDailyProfit: "متوسط الربح اليومي لهذا المنتج",
     overallAvgDailyProfit: "متوسط الربح اليومي لكل المنتجات",
     productNotFound: "المنتج غير موجود",
+
+    // Period filter
+    periodAll: "كل الفترة",
+    periodThisMonth: "هذا الشهر",
+    periodLastMonth: "الشهر الماضي",
+    periodPickMonth: "اختر شهراً محدداً",
+    periodSyncing: "جارٍ جلب الإنفاق الإعلاني من Meta لهذا الشهر…",
+    periodAdSpendIncomplete:
+      "قد يكون الإنفاق الإعلاني لهذا الشهر غير مكتمل (قد يسبق ربط الحملة، أو لا تتوفر بيانات من Meta لهذه الفترة).",
+
+    // Month-mode overview tiles
+    monthSummaryProfit: "ربح الشهر",
+    monthSummaryAvgDaily: "متوسط الربح اليومي",
+    monthSummaryWinningDays: "أيام رابحة",
+    monthSummaryLosingDays: "أيام خاسرة",
+
+    // Profitability metrics block (Part 2)
+    metricsTitle: "مؤشرات الربحية",
+    metricNetMargin: "هامش الربح الصافي",
+    metricRoas: "ROAS (العائد على الإنفاق الإعلاني)",
+    metricProfitPerAdSpend: "الربح لكل أوقية إنفاق",
+    metricCpo: "تكلفة اكتساب الطلب (CPO)",
+    metricAov: "متوسط قيمة الطلب (AOV)",
+    metricAvgOrderProfit: "متوسط ربح الطلب",
+    metricOrdersCount: "عدد الطلبات",
+    chipMargin: "الهامش",
+    chipRoas: "ROAS",
+
+    // Previous-month comparison (Part 3)
+    comparedToPreviousMonth: "مقارنة بـ {month}",
+    noPreviousMonthData: "لا توجد بيانات كافية للشهر السابق للمقارنة",
+    showPreviousMonthOnChart: "إظهار الشهر السابق على الرسم البياني",
   },
   aiAgent: {
     title: "مدير وكيل الذكاء الاصطناعي",
