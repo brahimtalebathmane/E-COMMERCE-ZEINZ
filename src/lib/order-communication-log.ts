@@ -13,7 +13,8 @@ export type OrderCommunicationEvent =
   | "onesignal_skipped"
   | "onesignal_failed"
   | "affiliate_sheet_write_succeeded"
-  | "affiliate_sheet_write_failed";
+  | "affiliate_sheet_write_failed"
+  | "order_date_changed";
 
 export async function logOrderCommunicationEvent(
   supabase: SupabaseClient,

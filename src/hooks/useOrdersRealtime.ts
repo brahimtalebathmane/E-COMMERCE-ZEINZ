@@ -120,7 +120,7 @@ export function useOrdersRealtime({ setRows, setActive, countryId }: Options) {
         .from("orders")
         .select(ADMIN_ORDER_SELECT_SCOPED)
         .eq("products.country_id", countryIdRef.current)
-        .order("created_at", { ascending: false })
+        .order("ordered_at", { ascending: false })
         .limit(limit);
 
       if (error || !data?.length) return;

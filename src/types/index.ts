@@ -265,7 +265,10 @@ export type OrderRow = {
   currency: string;
   status: OrderStatus;
   completion_token: string;
+  /** Immutable row-insert timestamp — audit/Meta CAPI/dispatch logs only. Never edited; use ordered_at for business reporting. */
   created_at: string;
+  /** Business date of the sale, editable by admins. Every report, filter, grouping and sort uses this, not created_at. */
+  ordered_at: string;
   /** Units of product_id in this order line; total_price already reflects unit_price * quantity. */
   quantity: number;
   /** storefront = customer checkout (default); manual = admin-entered offline sale. */
@@ -282,6 +285,16 @@ export type OrderRow = {
   affiliate_other_costs?: number | null;
   /** set_price affiliate profit only counts once this is true, even if status is already shipped. */
   affiliate_costs_finalized?: boolean;
+  /** Selling price per single unit at order creation (total_price / quantity). Snapshot only, for display/audit. */
+  unit_price?: number | null;
+  /** products.cost_price snapshot at order creation. Preferred by profit analytics over the product's current cost_price. */
+  unit_cost_price?: number | null;
+  /** products.affiliate_commission_type snapshot at order creation. */
+  affiliate_commission_type_at_order?: AffiliateCommissionType | null;
+  /** products.affiliate_fixed_commission snapshot at order creation. */
+  affiliate_fixed_commission_at_order?: number | null;
+  /** products.affiliate_sell_price snapshot at order creation. */
+  affiliate_sell_price_at_order?: number | null;
 };
 
 export type OrderStatusHistoryRow = {

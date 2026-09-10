@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     const { data: product, error: pErr } = await supabase
       .from("products")
       .select(
-        "id, discount_price, price, test_status, name_ar, name_fr, deleted_at, fulfillment_type, affiliate_sku, affiliate_currency, affiliate_sheet_url, country_id",
+        "id, discount_price, price, test_status, name_ar, name_fr, deleted_at, fulfillment_type, affiliate_sku, affiliate_currency, affiliate_sheet_url, country_id, cost_price, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price",
       )
       .eq("id", data.product_id)
       .maybeSingle();
@@ -167,6 +167,11 @@ export async function POST(request: Request) {
         affiliate_address: isAffiliate ? data.affiliate_address : null,
         affiliate_city: isAffiliate ? data.affiliate_city : null,
         affiliate_country: isAffiliate ? data.affiliate_country : null,
+        unit_price: total,
+        unit_cost_price: product.cost_price,
+        affiliate_commission_type_at_order: product.affiliate_commission_type,
+        affiliate_fixed_commission_at_order: product.affiliate_fixed_commission,
+        affiliate_sell_price_at_order: product.affiliate_sell_price,
       })
       .select("id, total_price, meta_event_id, completion_token")
       .single();

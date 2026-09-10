@@ -11,6 +11,7 @@ export const ADMIN_ORDER_SELECT = `
   status,
   completion_token,
   created_at,
+  ordered_at,
   delivery_cost,
   note,
   quantity,
@@ -24,6 +25,11 @@ export const ADMIN_ORDER_SELECT = `
   affiliate_city,
   affiliate_other_costs,
   affiliate_costs_finalized,
+  unit_price,
+  unit_cost_price,
+  affiliate_commission_type_at_order,
+  affiliate_fixed_commission_at_order,
+  affiliate_sell_price_at_order,
   products (
     name_ar,
     slug,
@@ -60,6 +66,7 @@ export type RealtimeOrderPayload = {
   status: AdminOrderRow["status"];
   completion_token: string;
   created_at: string;
+  ordered_at: string;
   delivery_cost?: number | null;
   note?: string | null;
   quantity?: number;
@@ -81,15 +88,16 @@ export function mergeOrderPayload(
     status: payload.status,
     completion_token: payload.completion_token,
     created_at: payload.created_at,
+    ordered_at: payload.ordered_at ?? existing.ordered_at,
     delivery_cost: payload.delivery_cost ?? existing.delivery_cost,
     note: payload.note ?? existing.note,
     quantity: payload.quantity ?? existing.quantity,
   };
 }
 
-/** Sort rows newest-first by operational created_at. */
+/** Sort rows newest-first by business date (ordered_at). */
 export function sortOrdersNewestFirst(rows: AdminOrderRow[]): AdminOrderRow[] {
   return [...rows].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) => new Date(b.ordered_at).getTime() - new Date(a.ordered_at).getTime(),
   );
 }

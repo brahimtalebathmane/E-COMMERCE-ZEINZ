@@ -15,7 +15,7 @@ export default async function AdminOrdersPage() {
     .from("orders")
     .select(ADMIN_ORDER_SELECT_SCOPED)
     .eq("products.country_id", selectedCountryId)
-    .order("created_at", { ascending: false });
+    .order("ordered_at", { ascending: false });
 
   if (error) {
     return (

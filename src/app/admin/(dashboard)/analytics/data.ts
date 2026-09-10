@@ -87,7 +87,9 @@ export async function loadAnalyticsData(
   const [ordersRes, freshness] = await Promise.all([
     cookieClient
       .from("orders")
-      .select("product_id, total_price, status, created_at, delivery_cost, quantity"),
+      .select(
+        "product_id, total_price, status, ordered_at, delivery_cost, quantity, unit_cost_price",
+      ),
     ensureFreshAdSpend(
       createServiceClient(),
       productRows.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
@@ -144,9 +146,10 @@ export async function loadAnalyticsData(
       product_id: String(o.product_id),
       total_price: Number(o.total_price) || 0,
       status: o.status as OrderStatus,
-      created_at: String(o.created_at ?? ""),
+      ordered_at: String(o.ordered_at ?? ""),
       delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
       quantity: o.quantity == null ? 1 : Number(o.quantity),
+      unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
     }));
 
   const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
@@ -236,7 +239,7 @@ export async function loadAffiliateAnalyticsData(
     cookieClient
       .from("orders")
       .select(
-        "product_id, total_price, status, created_at, quantity, affiliate_other_costs, affiliate_costs_finalized",
+        "product_id, total_price, status, ordered_at, quantity, affiliate_other_costs, affiliate_costs_finalized, unit_cost_price, affiliate_commission_type_at_order, affiliate_fixed_commission_at_order, affiliate_sell_price_at_order",
       )
       .in("product_id", productIds),
     ensureFreshAdSpend(
@@ -280,10 +283,16 @@ export async function loadAffiliateAnalyticsData(
     product_id: String(o.product_id),
     total_price: Number(o.total_price) || 0,
     status: o.status as OrderStatus,
-    created_at: String(o.created_at ?? ""),
+    ordered_at: String(o.ordered_at ?? ""),
     quantity: o.quantity == null ? 1 : Number(o.quantity),
     affiliate_other_costs: o.affiliate_other_costs == null ? null : Number(o.affiliate_other_costs),
     affiliate_costs_finalized: Boolean(o.affiliate_costs_finalized),
+    unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
+    affiliate_commission_type_at_order: o.affiliate_commission_type_at_order,
+    affiliate_fixed_commission_at_order:
+      o.affiliate_fixed_commission_at_order == null ? null : Number(o.affiliate_fixed_commission_at_order),
+    affiliate_sell_price_at_order:
+      o.affiliate_sell_price_at_order == null ? null : Number(o.affiliate_sell_price_at_order),
   }));
 
   const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });

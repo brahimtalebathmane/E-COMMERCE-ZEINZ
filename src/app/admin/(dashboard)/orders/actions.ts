@@ -10,6 +10,8 @@ import { updateOrderStatusWithEffects, type MetaSideEffect } from "@/lib/orders/
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
 import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
+import { dayKey } from "@/lib/analytics/daily-profit";
+import { isValidOrderDateKey, resolveOrderedAtIso } from "@/lib/orders/ordered-at";
 import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -85,6 +87,76 @@ export async function updateOrderDeliveryCostAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to save delivery cost.",
+    };
+  }
+}
+
+export type OrderDateActionResult =
+  | { ok: true; orderedAt: string }
+  | { ok: false; error: string };
+
+/**
+ * Business date of the sale, editable from the order detail view. Distinct
+ * from created_at (the immutable row-insert timestamp used by Meta CAPI/
+ * dispatch/audit logs, never touched here) — this only ever updates
+ * orders.ordered_at, so it never re-fires or suppresses a Meta/WhatsApp/
+ * affiliate-sheet side effect (same reasoning as updateOrderDeliveryCostAction).
+ */
+export async function updateOrderDateAction(
+  orderId: string,
+  dateKey: string,
+): Promise<OrderDateActionResult> {
+  const id = orderId?.trim();
+  if (!id) {
+    return { ok: false, error: "order id is required." };
+  }
+
+  const todayKey = dayKey(new Date());
+  if (!isValidOrderDateKey(dateKey, todayKey)) {
+    return { ok: false, error: "التاريخ غير صالح." };
+  }
+  const orderedAt = resolveOrderedAtIso(dateKey, todayKey);
+
+  try {
+    const session = await assertAdminUser();
+    if (!canEditOrderDetails(session.access)) {
+      throw new AuthError(403, "Forbidden");
+    }
+
+    const supabase = createServiceClient();
+    const { data: existing, error: fetchErr } = await supabase
+      .from("orders")
+      .select("ordered_at")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return { ok: false, error: fetchErr.message };
+    }
+    if (!existing) {
+      return { ok: false, error: "Order not found" };
+    }
+
+    const { error } = await supabase.from("orders").update({ ordered_at: orderedAt }).eq("id", id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    await logOrderCommunicationEvent(
+      supabase,
+      id,
+      "order_date_changed",
+      `${existing.ordered_at} -> ${orderedAt}`,
+    );
+
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/analytics");
+    return { ok: true, orderedAt };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to save order date.",
     };
   }
 }
@@ -295,6 +367,8 @@ export type ManualSaleInput = {
   /** How the sale happened — drives Meta CAPI `action_source` for the Purchase event. */
   channel: ManualSaleChannel;
   lines: ManualSaleLineInput[];
+  /** Business date of the sale (YYYY-MM-DD, Africa/Nouakchott). Defaults to today in the form; editable for backdated sales. */
+  orderDate: string;
 };
 
 type ManualSaleMetaSignals = {
@@ -432,6 +506,12 @@ export async function createManualSaleAction(
       }
     }
 
+    const todayKey = dayKey(new Date());
+    if (!isValidOrderDateKey(input.orderDate, todayKey)) {
+      return { ok: false, error: "تاريخ الطلب غير صالح." };
+    }
+    const orderedAt = resolveOrderedAtIso(input.orderDate, todayKey);
+
     // Scoped to the currently-selected country — not just for consistency
     // with the picker, but so a tampered request can't slip in a product
     // from a different country (which would also carry the wrong currency).
@@ -442,7 +522,9 @@ export async function createManualSaleAction(
     const productIds = [...new Set(lines.map((line) => line.productId))];
     const { data: products, error: productsErr } = await supabase
       .from("products")
-      .select("id, price, discount_price")
+      .select(
+        "id, price, discount_price, cost_price, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price",
+      )
       .in("id", productIds)
       .eq("country_id", selectedCountryId)
       .is("deleted_at", null);
@@ -475,6 +557,12 @@ export async function createManualSaleAction(
         source: "manual" as const,
         manual_sale_group_id: manualSaleGroupId,
         manual_sale_channel: channel,
+        ordered_at: orderedAt,
+        unit_price: unitPrice,
+        unit_cost_price: product.cost_price,
+        affiliate_commission_type_at_order: product.affiliate_commission_type,
+        affiliate_fixed_commission_at_order: product.affiliate_fixed_commission,
+        affiliate_sell_price_at_order: product.affiliate_sell_price,
         ...metaSignals,
       };
     });

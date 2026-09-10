@@ -90,18 +90,22 @@ export function buildDailyProfitSeries(params: {
   for (const order of orders) {
     if (!order.product_id || !isRevenueStatus(order.status)) continue;
     const meta = products.get(order.product_id);
-    if (!isOrderOnOrAfterStartDate(order.created_at, meta?.calculationStartDate)) continue;
-    const date = dayKey(order.created_at);
+    if (!isOrderOnOrAfterStartDate(order.ordered_at, meta?.calculationStartDate)) continue;
+    const date = dayKey(order.ordered_at);
     if (!date) continue;
 
     const costPrice = meta?.costPrice != null && Number.isFinite(meta.costPrice) ? meta.costPrice : 0;
+    const unitCost =
+      order.unit_cost_price != null && Number.isFinite(Number(order.unit_cost_price))
+        ? Number(order.unit_cost_price)
+        : costPrice;
     const price = Number(order.total_price);
     const delivery = Number(order.delivery_cost);
     const quantity = Number(order.quantity) > 0 ? Number(order.quantity) : 1;
 
     const row = ensure(order.product_id, date);
     row.revenue += Number.isFinite(price) ? price : 0;
-    row.cogs += costPrice * quantity;
+    row.cogs += unitCost * quantity;
     row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
   }
 

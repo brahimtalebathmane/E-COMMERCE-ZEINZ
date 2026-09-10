@@ -24,7 +24,10 @@ export type AdminOrderRow = {
   currency: string;
   status: OrderStatus;
   completion_token: string;
+  /** Immutable row-insert timestamp — audit/Meta/dispatch only. Use ordered_at for display and business logic. */
   created_at: string;
+  /** Business date of the sale, editable by admins. */
+  ordered_at: string;
   delivery_cost: number | null;
   note: string | null;
   quantity: number;
@@ -38,5 +41,10 @@ export type AdminOrderRow = {
   affiliate_city: string | null;
   affiliate_other_costs: number | null;
   affiliate_costs_finalized: boolean;
+  unit_price: number | null;
+  unit_cost_price: number | null;
+  affiliate_commission_type_at_order: AffiliateCommissionType | null;
+  affiliate_fixed_commission_at_order: number | null;
+  affiliate_sell_price_at_order: number | null;
   products: AdminOrderProduct;
 };

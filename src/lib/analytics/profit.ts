@@ -21,8 +21,8 @@ export type ProfitOrderInput = {
   product_id: string;
   total_price: number;
   status: OrderStatus;
-  /** ISO timestamp the order was created; used for the per-product cutoff. */
-  created_at: string;
+  /** ISO timestamp of the order's business date; used for the per-product cutoff. Editable by admins — NOT the row-insert timestamp (see orders.ordered_at vs created_at). */
+  ordered_at: string;
   /** Per-order delivery/shipping cost. Null/undefined treated as 0. Owned orders only. */
   delivery_cost?: number | null;
   /** Units of product_id in this order line. Null/undefined treated as 1. */
@@ -35,6 +35,19 @@ export type ProfitOrderInput = {
    * and fixed-commission affiliate orders (always counted once shipped).
    */
   affiliate_costs_finalized?: boolean;
+  /**
+   * products.cost_price at the moment this order was created. Preferred over
+   * the live product cost so editing a product's cost price never changes
+   * the COGS of past orders. Null for orders created before this snapshot
+   * existed — those fall back to the product's current cost_price.
+   */
+  unit_cost_price?: number | null;
+  /** products.affiliate_commission_type snapshot at order creation. Null falls back to the product's current value. */
+  affiliate_commission_type_at_order?: AffiliateCommissionType | null;
+  /** products.affiliate_fixed_commission snapshot at order creation. Null falls back to the product's current value. */
+  affiliate_fixed_commission_at_order?: number | null;
+  /** products.affiliate_sell_price snapshot at order creation. Null falls back to the product's current value. */
+  affiliate_sell_price_at_order?: number | null;
 };
 
 /**
@@ -63,13 +76,24 @@ export type ProductProfitRow = {
   fulfillmentType: FulfillmentType;
   /** Currency this row's amounts are denominated in — MRU for owned, the product's own currency for affiliate. Rows in different currencies must never be summed together. */
   currency: string;
-  /** Acquisition cost per unit (0 when not configured). Owned COGS, or affiliate set_price cost_price. */
+  /**
+   * The product's CURRENT acquisition cost per unit (0 when not configured).
+   * Display-only ("this product costs X today") — NOT what `cogs` below is
+   * computed from. Editing a product's cost_price changes this field
+   * immediately but must never change `cogs` for past orders.
+   */
   costPrice: number;
   /** Count of revenue-generating orders (shipped only, and — for affiliate set_price — cost-finalized only). */
   unitsSold: number;
   /** Owned: sum of selling prices. Affiliate fixed: sum of commission earned. Affiliate set_price: sum of sell price. */
   grossRevenue: number;
-  /** unitsSold * costPrice. Zero for affiliate fixed-commission (no COGS). */
+  /**
+   * Sum of each order's OWN cost snapshot (`unit_cost_price`) × quantity —
+   * never derived from `costPrice` above. This is what keeps a product's
+   * cost-price edit from retroactively changing past profit; only orders
+   * with a null snapshot (pre-dating the snapshot column) fall back to the
+   * current `costPrice`. Zero for affiliate fixed-commission (no COGS).
+   */
   cogs: number;
   /** Sum of delivery_cost across revenue-generating orders. Owned only; always 0 for affiliate. */
   deliveryCost: number;
@@ -160,11 +184,18 @@ export type ProductMeta = {
  * live recalculation.
  *
  * Formula by product type (all gated on isRevenueStatus, i.e. status='shipped'):
- * - owned: revenue − cost_price×qty − delivery_cost − adSpend (unchanged).
- * - affiliate fixed: +affiliate_fixed_commission per order − adSpend. No COGS/delivery.
- * - affiliate set_price: sell_price − cost_price − affiliate_other_costs − adSpend,
+ * - owned: revenue − cost×qty − delivery_cost − adSpend (unchanged).
+ * - affiliate fixed: +commission per order − adSpend. No COGS/delivery.
+ * - affiliate set_price: sell_price − cost×qty − affiliate_other_costs − adSpend,
  *   but ONLY once affiliate_costs_finalized=true — otherwise the order is tallied
  *   into `awaitingCosts` and excluded from every total until finalized.
+ *
+ * Every cost/commission/sell-price figure above is read from the ORDER's own
+ * snapshot first (`unit_cost_price`, `affiliate_fixed_commission_at_order`,
+ * `affiliate_sell_price_at_order`, `affiliate_commission_type_at_order`),
+ * falling back to the product's current value only when the order predates
+ * that snapshot (null). This is what makes editing a product's price/cost/
+ * commission terms affect only future orders, never past profit.
  */
 export function buildProductProfitRows(params: {
   orders: ProfitOrderInput[];
@@ -207,7 +238,7 @@ export function buildProductProfitRows(params: {
     if (!order.product_id) continue;
     const meta = products.get(order.product_id);
     const startDate = meta?.calculationStartDate;
-    if (!isOrderOnOrAfterStartDate(order.created_at, startDate)) continue;
+    if (!isOrderOnOrAfterStartDate(order.ordered_at, startDate)) continue;
     const row = ensureRow(order.product_id);
     if (order.status === "internal_return") {
       row.internalReturns += 1;
@@ -216,34 +247,39 @@ export function buildProductProfitRows(params: {
     if (!isRevenueStatus(order.status)) continue;
 
     const quantity = Number(order.quantity) > 0 ? Number(order.quantity) : 1;
+    const unitCost =
+      order.unit_cost_price != null && Number.isFinite(Number(order.unit_cost_price))
+        ? Number(order.unit_cost_price)
+        : row.costPrice;
 
     if (row.fulfillmentType === "owned") {
       const price = Number(order.total_price);
       const delivery = Number(order.delivery_cost);
       row.unitsSold += quantity;
       row.grossRevenue += Number.isFinite(price) ? price : 0;
-      row.cogs += row.costPrice * quantity;
+      row.cogs += unitCost * quantity;
       row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
       continue;
     }
 
     // Affiliate
-    if (meta?.affiliateCommissionType === "fixed") {
-      const commission = Number(meta.affiliateFixedCommission) || 0;
+    const commissionType = order.affiliate_commission_type_at_order ?? meta?.affiliateCommissionType;
+    if (commissionType === "fixed") {
+      const commission = Number(order.affiliate_fixed_commission_at_order ?? meta?.affiliateFixedCommission) || 0;
       row.unitsSold += quantity;
       row.grossRevenue += commission;
       continue;
     }
-    if (meta?.affiliateCommissionType === "set_price") {
+    if (commissionType === "set_price") {
       if (!order.affiliate_costs_finalized) {
         row.awaitingCosts += 1;
         continue;
       }
-      const sellPrice = Number(meta.affiliateSellPrice) || 0;
+      const sellPrice = Number(order.affiliate_sell_price_at_order ?? meta?.affiliateSellPrice) || 0;
       const other = Number(order.affiliate_other_costs) || 0;
       row.unitsSold += quantity;
       row.grossRevenue += sellPrice;
-      row.cogs += row.costPrice * quantity;
+      row.cogs += unitCost * quantity;
       row.otherCosts += other;
     }
   }

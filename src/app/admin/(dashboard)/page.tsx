@@ -37,10 +37,10 @@ export default async function AdminHomePage() {
       ? supabase
           .from("orders")
           .select(
-            "id, product_id, phone, total_price, status, created_at, delivery_cost, quantity, products!inner(name_ar, country_id)",
+            "id, product_id, phone, total_price, status, created_at, ordered_at, delivery_cost, quantity, unit_cost_price, products!inner(name_ar, country_id)",
           )
           .eq("products.country_id", selectedCountryId)
-          .order("created_at", { ascending: false })
+          .order("ordered_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     canViewAnalytics || canManageProducts
       ? supabase
@@ -103,9 +103,10 @@ export default async function AdminHomePage() {
       product_id: String(o.product_id),
       total_price: Number(o.total_price) || 0,
       status: o.status as OrderStatus,
-      created_at: String(o.created_at ?? ""),
+      ordered_at: String(o.ordered_at ?? ""),
       delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
       quantity: o.quantity == null ? 1 : Number(o.quantity),
+      unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
     }));
     const totals = sumProfitTotals(
       buildProductProfitRows({ orders: profitOrders, products, adSpendByProduct }),
@@ -118,7 +119,7 @@ export default async function AdminHomePage() {
   let ordersToday = 0;
   let pendingOrders = 0;
   for (const o of orderRows) {
-    if (DAY_KEY.format(new Date(o.created_at as string)) === todayKey) ordersToday += 1;
+    if (DAY_KEY.format(new Date(o.ordered_at as string)) === todayKey) ordersToday += 1;
     if (o.status === "pending") pendingOrders += 1;
   }
 
@@ -144,7 +145,7 @@ export default async function AdminHomePage() {
           phone: (o.phone as string | null) ?? null,
           status: o.status as OrderStatus,
           total: Number(o.total_price) || 0,
-          createdAt: String(o.created_at),
+          orderedAt: String(o.ordered_at),
         };
       })
     : [];
