@@ -85,6 +85,13 @@ export type ProductProfitRow = {
   costPrice: number;
   /** Count of revenue-generating orders (shipped only, and — for affiliate set_price — cost-finalized only). */
   unitsSold: number;
+  /**
+   * Count of revenue-generating ORDER ROWS (not units — a qty=3 order counts
+   * once here, three times in unitsSold). Same qualifying set as unitsSold,
+   * incremented in lockstep so CPO/AOV/avg-order-profit (metrics.ts) never
+   * drift from a separately-counted order total.
+   */
+  ordersCount: number;
   /** Owned: sum of selling prices. Affiliate fixed: sum of commission earned. Affiliate set_price: sum of sell price. */
   grossRevenue: number;
   /**
@@ -133,6 +140,7 @@ export type ProfitTotals = {
   netProfit: number;
   unitsSold: number;
   internalReturns: number;
+  ordersCount: number;
 };
 
 /**
@@ -150,6 +158,7 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
     netProfit: 0,
     unitsSold: 0,
     internalReturns: 0,
+    ordersCount: 0,
   };
   for (const row of rows) {
     totals.grossRevenue += row.grossRevenue;
@@ -159,6 +168,7 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
     totals.adSpend += row.adSpend;
     totals.unitsSold += row.unitsSold;
     totals.internalReturns += row.internalReturns;
+    totals.ordersCount += row.ordersCount;
   }
   totals.netProfit = netProfit(totals);
   return totals;
@@ -219,6 +229,7 @@ export function buildProductProfitRows(params: {
         currency: isAffiliate ? meta?.currency ?? "" : "MRU",
         costPrice: cost != null && Number.isFinite(cost) ? cost : 0,
         unitsSold: 0,
+        ordersCount: 0,
         grossRevenue: 0,
         cogs: 0,
         deliveryCost: 0,
@@ -256,6 +267,7 @@ export function buildProductProfitRows(params: {
       const price = Number(order.total_price);
       const delivery = Number(order.delivery_cost);
       row.unitsSold += quantity;
+      row.ordersCount += 1;
       row.grossRevenue += Number.isFinite(price) ? price : 0;
       row.cogs += unitCost * quantity;
       row.deliveryCost += Number.isFinite(delivery) ? delivery : 0;
@@ -267,6 +279,7 @@ export function buildProductProfitRows(params: {
     if (commissionType === "fixed") {
       const commission = Number(order.affiliate_fixed_commission_at_order ?? meta?.affiliateFixedCommission) || 0;
       row.unitsSold += quantity;
+      row.ordersCount += 1;
       row.grossRevenue += commission;
       continue;
     }
@@ -278,6 +291,7 @@ export function buildProductProfitRows(params: {
       const sellPrice = Number(order.affiliate_sell_price_at_order ?? meta?.affiliateSellPrice) || 0;
       const other = Number(order.affiliate_other_costs) || 0;
       row.unitsSold += quantity;
+      row.ordersCount += 1;
       row.grossRevenue += sellPrice;
       row.cogs += unitCost * quantity;
       row.otherCosts += other;
