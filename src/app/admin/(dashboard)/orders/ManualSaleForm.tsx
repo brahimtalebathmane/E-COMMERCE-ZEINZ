@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { adminAr as a } from "@/locales/admin-ar";
 import { formatMoney } from "@/lib/currency";
 import { AdminButton, AdminInput, AdminSelect } from "@/components/admin/ui";
+import { dayKey } from "@/lib/analytics/daily-profit";
 import {
   createManualSaleAction,
   listActiveProductsForManualSaleAction,
@@ -41,6 +42,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [lines, setLines] = useState<DraftLine[]>(() => [newLine()]);
+  const [orderDate, setOrderDate] = useState(() => dayKey(new Date()));
   const [initialStatus, setInitialStatus] = useState<"pending" | "confirmed">("confirmed");
   const [channel, setChannel] = useState<ManualSaleChannel>("phone_call");
   const [submitting, setSubmitting] = useState(false);
@@ -54,6 +56,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
     setCustomerName("");
     setPhone("");
     setLines([newLine()]);
+    setOrderDate(dayKey(new Date()));
     setInitialStatus("confirmed");
     setChannel("phone_call");
     setLoadError(false);
@@ -128,6 +131,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
         initialStatus,
         channel,
         lines: preparedLines,
+        orderDate,
       });
       if (!res.ok) {
         toast.error(res.error);
@@ -196,6 +200,14 @@ export function ManualSaleForm({ open, onClose }: Props) {
               value={phone}
               disabled={submitting}
               onChange={(e) => setPhone(e.target.value)}
+            />
+            <AdminInput
+              type="date"
+              label={a.manualSale.orderDate}
+              dir="ltr"
+              value={orderDate}
+              disabled={submitting}
+              onChange={(e) => setOrderDate(e.target.value)}
             />
           </div>
 

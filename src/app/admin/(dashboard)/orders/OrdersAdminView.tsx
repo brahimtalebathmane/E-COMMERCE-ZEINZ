@@ -527,7 +527,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
     const yesterdayKey = dayKey(new Date(Date.now() - 86_400_000));
     const map = new Map<string, AdminOrderRow[]>();
     for (const row of visibleRows) {
-      const key = rowDayKey(row.created_at);
+      const key = rowDayKey(row.ordered_at);
       const bucket = map.get(key);
       if (bucket) bucket.push(row);
       else map.set(key, [row]);
@@ -536,7 +536,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
       if (key === UNKNOWN_DAY_KEY) {
         return { key, label: a.common.invalidDate, rows: groupRows };
       }
-      const groupDate = safeDate(groupRows[0].created_at);
+      const groupDate = safeDate(groupRows[0].ordered_at);
       const dateLabel = groupDate ? DAY_LABEL_FORMATTER.format(groupDate) : a.common.invalidDate;
       let label = dateLabel;
       if (key === todayKey) label = `${a.orders.today} — ${dateLabel}`;
@@ -558,6 +558,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
         | "note"
         | "quantity"
         | "total_price"
+        | "ordered_at"
       >
     >,
   ) {
@@ -941,7 +942,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
                         <div className="flex shrink-0 items-center gap-2">
                           {isNew ? <NewOrderBadge /> : null}
                           <span className="font-mono text-[11px] text-[var(--muted)]" dir="ltr">
-                            {formatRowTime(o.created_at)}
+                            {formatRowTime(o.ordered_at)}
                           </span>
                         </div>
                       </div>
@@ -1042,7 +1043,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
                       </td>
                       <td className="px-4 py-4 align-middle">
                         <span className="font-mono text-xs text-[var(--muted)]" dir="ltr">
-                          {formatRowTime(o.created_at)}
+                          {formatRowTime(o.ordered_at)}
                         </span>
                       </td>
                       <td className="px-4 py-4 align-middle">

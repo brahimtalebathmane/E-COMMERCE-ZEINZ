@@ -38,7 +38,7 @@ export type DashboardData = {
     phone: string | null;
     status: OrderStatus;
     total: number;
-    createdAt: string;
+    orderedAt: string;
   }[];
 };
 
@@ -160,7 +160,7 @@ export function DashboardHome({
                         {o.productName}
                       </p>
                       <p className="mt-0.5 truncate font-mono text-xs text-[var(--muted)]" dir="ltr">
-                        {o.phone ?? "—"} · {TIME_FORMATTER.format(new Date(o.createdAt))}
+                        {o.phone ?? "—"} · {TIME_FORMATTER.format(new Date(o.orderedAt))}
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">

@@ -1089,6 +1089,9 @@ export function ProductForm({ mode, initial, countries }: Props) {
                   {a.productForm.affiliateCostPriceHint}
                 </p>
               ) : null}
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {a.productForm.economicsSnapshotHint}
+              </p>
             </div>
           </div>
         </div>
@@ -1214,6 +1217,9 @@ export function ProductForm({ mode, initial, countries }: Props) {
                       onChange={(e) => setAffiliateFixedCommission(e.target.value)}
                       dir="ltr"
                     />
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {a.productForm.economicsSnapshotHint}
+                    </p>
                   </div>
                 ) : affiliateCommissionType === "set_price" ? (
                   <div>
@@ -1230,6 +1236,9 @@ export function ProductForm({ mode, initial, countries }: Props) {
                       onChange={(e) => setAffiliateSellPrice(e.target.value)}
                       dir="ltr"
                     />
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {a.productForm.economicsSnapshotHint}
+                    </p>
                   </div>
                 ) : null}
               </>
@@ -1249,6 +1258,9 @@ export function ProductForm({ mode, initial, countries }: Props) {
             placeholder={a.productForm.pricePlaceholder}
             dir="ltr"
           />
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {a.productForm.economicsSnapshotHint}
+          </p>
         </div>
         <div>
           <label className="text-sm font-medium">{a.productForm.discount}</label>

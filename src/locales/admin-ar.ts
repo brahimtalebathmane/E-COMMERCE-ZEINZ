@@ -253,6 +253,10 @@ export const adminAr = {
     deliveryCostSaved: "تم حفظ تكلفة التوصيل",
     deliveryCostSaveFailed: "تعذر حفظ تكلفة التوصيل",
     deliveryCostInvalid: "تكلفة التوصيل يجب أن تكون رقماً صحيحاً وأكبر من أو يساوي صفر",
+    orderDateEdit: "تاريخ الطلب (قابل للتعديل)",
+    orderDateSaved: "تم تحديث تاريخ الطلب",
+    orderDateSaveFailed: "تعذر تحديث تاريخ الطلب",
+    orderDateInvalid: "التاريخ غير صالح",
     metaPurchaseCapiOk: "تم إرسال حدث الشراء (Purchase) إلى Meta بنجاح.",
     metaPurchaseCapiFailed:
       "تعذر إرسال حدث الشراء إلى Meta. تحقق من META_CAPI_ACCESS_TOKEN في Netlify وسجلات الدالة.",
@@ -346,6 +350,7 @@ export const adminAr = {
     customerNamePlaceholder: "اسم العميل",
     phone: "رقم الهاتف / واتساب",
     phonePlaceholder: "2xxxxxxx",
+    orderDate: "تاريخ الطلب",
     product: "المنتج",
     selectProduct: "اختر منتجاً",
     quantity: "الكمية",
@@ -533,6 +538,8 @@ export const adminAr = {
     affiliateCostPricePlaceholder: "التكلفة التي أبلغنا بها شريك COD Partner",
     affiliateCostPriceHint:
       "سعر التكلفة الذي أبلغنا به COD Partner لهذا المنتج (نفس حقل «سعر التكلفة» أعلاه).",
+    economicsSnapshotHint:
+      "يُطبَّق هذا التغيير على الطلبات الجديدة فقط، ولا يؤثر على الأرباح المحسوبة للطلبات السابقة.",
     sectionFulfillment: "طريقة التنفيذ",
     sectionFulfillmentHint:
       "منتج مملوك: نؤكد ونشحن ونسلّم بأنفسنا (الدفع عند الاستلام، MRU). منتج تابع (Affiliate): COD Partner يملك المنتج ويؤكد ويشحن ويسلّم؛ نحن فقط نسوّق له وترسل كل الطلبات إلى Google Sheet خاص به.",

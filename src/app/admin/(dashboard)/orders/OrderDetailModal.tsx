@@ -15,7 +15,11 @@ import {
   canEditOrderDetails,
   PERMISSIONS,
 } from "@/lib/auth/permissions";
-import { updateOrderDeliveryCostAction, updateOrderQuantityAction } from "./actions";
+import {
+  updateOrderDateAction,
+  updateOrderDeliveryCostAction,
+  updateOrderQuantityAction,
+} from "./actions";
 import { AdminBadge } from "@/components/admin/ui";
 
 type Props = {
@@ -35,6 +39,7 @@ type Props = {
         | "delivery_cost"
         | "quantity"
         | "total_price"
+        | "ordered_at"
       >
     >,
   ) => void;
@@ -385,6 +390,7 @@ type SectionsProps = {
         | "delivery_cost"
         | "quantity"
         | "total_price"
+        | "ordered_at"
       >
     >,
   ) => void;
@@ -410,7 +416,7 @@ function OrderDetailSections({
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const canEditStatus = canEditOrderDetails(access);
   const product = normalizeProduct(order?.products);
-  const dateStr = formatDetailDate(order?.created_at);
+  const dateStr = formatDetailDate(order?.ordered_at);
   const [metaRetrying, setMetaRetrying] = useState<MetaRetryKind | null>(null);
 
   async function onMetaRetry(kind: MetaRetryKind) {
@@ -626,6 +632,14 @@ function OrderDetailSections({
         </div>
         <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
           <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {a.orders.orderDateEdit}
+          </label>
+          <div className="mt-2">
+            <OrderDateEditor order={order} onOrderUpdated={onOrderUpdated} />
+          </div>
+        </div>
+        <div className="mt-3 border-t border-[var(--accent-muted)] pt-3">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
             {a.orders.quantity}
           </label>
           <div className="mt-2">
@@ -714,6 +728,62 @@ function QuantityEditor({
             void onSave();
           }
         }}
+        className="min-h-[40px] w-full max-w-[10rem] rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void onSave()}
+        className="min-h-[40px] shrink-0 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {saving ? a.analytics.saving : a.analytics.save}
+      </button>
+    </div>
+  );
+}
+
+function OrderDateEditor({
+  order,
+  onOrderUpdated,
+}: {
+  order: AdminOrderRow;
+  onOrderUpdated: SectionsProps["onOrderUpdated"];
+}) {
+  const [draft, setDraft] = useState(() => (order.ordered_at ?? "").slice(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft((order.ordered_at ?? "").slice(0, 10));
+  }, [order.id, order.ordered_at]);
+
+  async function onSave() {
+    if (saving) return;
+    if (draft === (order.ordered_at ?? "").slice(0, 10)) return;
+
+    setSaving(true);
+    try {
+      const res = await updateOrderDateAction(order.id, draft);
+      if (!res.ok) {
+        throw new Error(res.error);
+      }
+      setDraft(res.orderedAt.slice(0, 10));
+      onOrderUpdated(order.id, { ordered_at: res.orderedAt });
+      toast.success(a.orders.orderDateSaved);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : a.orders.orderDateSaveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="date"
+        dir="ltr"
+        disabled={saving}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
         className="min-h-[40px] w-full max-w-[10rem] rounded-xl border border-[var(--accent-muted)] bg-[var(--background)] px-3 py-2 text-sm tabular-nums disabled:opacity-60"
       />
       <button
