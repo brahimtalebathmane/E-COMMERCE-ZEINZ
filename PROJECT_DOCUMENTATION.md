@@ -374,6 +374,55 @@ Indexes: `orders_product_id_idx`, `orders_created_at_idx`, `orders_ordered_at_id
 
 RLS: only admins can `SELECT`, `UPDATE`, and `DELETE`. There is **no INSERT policy** — all inserts come from `createServiceClient()` (service role) inside `POST /api/orders`. Migration 008 added an `orders_delete_admin` policy so admins can prune from the dashboard.
 
+**`/admin/analytics` period filter & profitability metrics.** The dashboard defaults
+to life-to-date (`كل الفترة`) but can be scoped to any single calendar month
+(`هذا الشهر` / `الشهر الماضي` / a picker of months that actually have data). No new
+tables or columns: `src/lib/analytics/period.ts` filters the same `orders` and
+per-day ad-spend rows already shipped to the client by calendar month
+(`Period = { kind: "all" } | { kind: "month"; month: "YYYY-MM" }`, all date math
+built on the existing `dayKey()` Nouakchott key), then feeds the filtered inputs
+into the *same* `buildProductProfitRows`/`sumProfitTotals` engine — so switching
+periods is instant (no refetch) and a month period can never disagree with the
+life-to-date total (their sum over every month with data equals it exactly, by
+construction of the filter). `AffiliateAnalyticsSection` was moved from a server
+component to a client component for the same reason — it now recomputes its
+per-currency groups from raw orders/products/ad-spend instead of receiving a
+server-computed result, which for `كل الفترة` is the identical calculation, just
+relocated.
+
+`ProductProfitRow`/`ProfitTotals` gained one additive field, `ordersCount`
+(count of revenue-generating order ROWS, alongside the existing `unitsSold`
+which counts quantity) — added so `src/lib/analytics/metrics.ts`'s CPO/AOV/avg-
+order-profit formulas can derive their order count from the profit engine
+itself rather than a second, potentially-drifting count:
+
+- هامش الربح الصافي = netProfit ÷ grossRevenue
+- ROAS = grossRevenue ÷ adSpend, والربح لكل أوقية إنفاق = netProfit ÷ adSpend
+- تكلفة اكتساب الطلب (CPO) = adSpend ÷ ordersCount
+- متوسط قيمة الطلب (AOV) = grossRevenue ÷ ordersCount
+- متوسط ربح الطلب = netProfit ÷ ordersCount
+
+Every formula is a guarded division (`computeProfitabilityMetrics`) — a zero/
+absent denominator returns `null`, rendered as `—`, never `NaN`/`Infinity`. A
+month period also shows a delta against the previous calendar month for net
+profit, revenue, ad spend, order count and margin (`percentChange`, also
+`null`-safe against a zero/absent baseline); ad spend's delta is colour-inverted
+since a spend increase isn't automatically good.
+
+**Historical ad-spend caveat.** `product_ad_spend_daily` is normally kept fresh
+only for a trailing 4-day window (`ensureFreshAdSpend`) plus a 90-day backfill
+at campaign-link time (`BACKFILL_CAP_DAYS`) — an older month can have no cached
+spend at all. Selecting such a month calls a new server action,
+`ensureMonthAdSpendAction` (`analytics/actions.ts`), which checks per-product
+day coverage for that month and only calls the Meta Marketing API (via the
+existing `syncProductAdSpend`) for products actually missing days — a month
+already fully cached never re-hits Meta. A product with a linked campaign whose
+entire month summed to zero spend is flagged to the admin as *possibly*
+incomplete (`periodAdSpendIncomplete`) — this is a deliberate, conservative
+heuristic (the table can't distinguish "genuinely spent nothing" from "Meta has
+no data for that period"), so it errs toward over-warning rather than ever
+showing a falsely-confident number.
+
 #### `public.payment_methods` (001 + 002_payment_logo_url)
 
 Holds a configurable list of `{ label, account_number, payment_logo_url?, sort_order, active }`. Today this table is **not actively used** by the order flow (post-payment fields were removed in migration 008) but it still exists with its RLS policies (`payment_methods_select_public` for active rows, plus admin CRUD).
