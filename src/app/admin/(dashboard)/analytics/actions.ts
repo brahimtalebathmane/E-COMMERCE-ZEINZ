@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { getCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
 import { computeBackfillWindow, syncProductAdSpend } from "@/lib/analytics/ad-spend-sync";
+import { dayKey, daysBetween } from "@/lib/analytics/daily-profit";
+import { monthRange } from "@/lib/analytics/period";
 
 export type LinkCampaignActionResult =
   | {
@@ -183,6 +186,135 @@ export async function updateCalculationStartDateAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to save start date.",
+    };
+  }
+}
+
+export type EnsureMonthAdSpendResult =
+  | {
+      ok: true;
+      /** false when every relevant product's window was already fully cached — no Meta call was made. */
+      synced: boolean;
+      adSpendDaily: { product_id: string; date: string; amount: number }[];
+      /** Products with a linked campaign whose entire window summed to zero spend — see doc comment below. */
+      incompleteProductIds: string[];
+    }
+  | { ok: false; error: string };
+
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+/**
+ * On-demand historical ad-spend sync for one calendar month, called only when
+ * the admin actually selects that month in the period filter (never on normal
+ * page load — `ensureFreshAdSpend` already covers the trailing 4 days there).
+ *
+ * Never re-calls Meta for a month whose window is already fully cached: every
+ * product with a linked campaign is checked against `product_ad_spend_daily`
+ * first, and only products missing at least one day in the window are synced
+ * (one batched Marketing API call for all of them, via the existing
+ * `syncProductAdSpend`, same as every other sync path).
+ */
+export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMonthAdSpendResult> {
+  if (!MONTH_RE.test(month) || Number.isNaN(new Date(`${month}-01T00:00:00Z`).getTime())) {
+    return { ok: false, error: "Invalid month." };
+  }
+
+  try {
+    await assertPermission(PERMISSIONS.view_analytics);
+    const { selectedCountryId } = await getCountryScope();
+    const supabase = createServiceClient();
+
+    let productsQuery = supabase.from("products").select("id");
+    if (selectedCountryId) productsQuery = productsQuery.eq("country_id", selectedCountryId);
+    const { data: productRows, error: productsErr } = await productsQuery;
+    if (productsErr) return { ok: false, error: productsErr.message };
+
+    const productIds = (productRows ?? []).map((p) => String(p.id));
+    if (productIds.length === 0) {
+      return { ok: true, synced: false, adSpendDaily: [], incompleteProductIds: [] };
+    }
+
+    const { data: campaignRows, error: campaignErr } = await supabase
+      .from("product_ad_campaigns")
+      .select("product_id")
+      .in("product_id", productIds);
+    if (campaignErr) return { ok: false, error: campaignErr.message };
+
+    const productsWithCampaigns = [...new Set((campaignRows ?? []).map((r) => String(r.product_id)))];
+    if (productsWithCampaigns.length === 0) {
+      return { ok: true, synced: false, adSpendDaily: [], incompleteProductIds: [] };
+    }
+
+    const { startKey, endKey: monthEndKey } = monthRange(month);
+    const todayKey = dayKey(new Date());
+    const untilKey = monthEndKey < todayKey ? monthEndKey : todayKey;
+    const daysInWindow = daysBetween(startKey, untilKey) + 1;
+
+    const { data: existingRows, error: existingErr } = await supabase
+      .from("product_ad_spend_daily")
+      .select("product_id, date, amount")
+      .in("product_id", productsWithCampaigns)
+      .gte("date", startKey)
+      .lte("date", untilKey);
+    if (existingErr) return { ok: false, error: existingErr.message };
+
+    const datesByProduct = new Map<string, Set<string>>();
+    for (const row of existingRows ?? []) {
+      const pid = String(row.product_id);
+      const set = datesByProduct.get(pid) ?? new Set<string>();
+      set.add(String(row.date));
+      datesByProduct.set(pid, set);
+    }
+
+    const staleProductIds = productsWithCampaigns.filter(
+      (pid) => (datesByProduct.get(pid)?.size ?? 0) < daysInWindow,
+    );
+
+    let synced = false;
+    if (staleProductIds.length > 0) {
+      const syncResult = await syncProductAdSpend(supabase, {
+        productIds: staleProductIds,
+        sinceISODate: startKey,
+        untilISODate: untilKey,
+      });
+      if (!syncResult.ok) {
+        return { ok: false, error: syncResult.error ?? "Ad spend sync failed." };
+      }
+      synced = true;
+    }
+
+    const { data: finalRows, error: finalErr } = synced
+      ? await supabase
+          .from("product_ad_spend_daily")
+          .select("product_id, date, amount")
+          .in("product_id", productsWithCampaigns)
+          .gte("date", startKey)
+          .lte("date", untilKey)
+      : { data: existingRows, error: null };
+    if (finalErr) return { ok: false, error: finalErr.message };
+
+    const adSpendDaily = (finalRows ?? []).map((r) => ({
+      product_id: String(r.product_id),
+      date: String(r.date),
+      amount: Number(r.amount) || 0,
+    }));
+
+    // Heuristic, deliberately conservative: a linked campaign whose entire
+    // window summed to exactly zero spend might genuinely have spent nothing,
+    // or might predate linking / be outside what Meta has data for — we can't
+    // tell the two apart from this table alone, so we flag it rather than
+    // silently showing a confident zero.
+    const sumByProduct = new Map<string, number>();
+    for (const row of adSpendDaily) {
+      sumByProduct.set(row.product_id, (sumByProduct.get(row.product_id) ?? 0) + row.amount);
+    }
+    const incompleteProductIds = productsWithCampaigns.filter((pid) => (sumByProduct.get(pid) ?? 0) === 0);
+
+    return { ok: true, synced, adSpendDaily, incompleteProductIds };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to sync ad spend for that month.",
     };
   }
 }

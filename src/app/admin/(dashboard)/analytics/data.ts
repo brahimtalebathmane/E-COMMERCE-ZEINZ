@@ -14,6 +14,7 @@ import {
   combineAcrossProducts,
   computeSummary,
   dayKey,
+  type AdSpendDailyInput,
   type CombinedDailyProfit,
   type DailyProductProfit,
   type DashboardSummary,
@@ -38,6 +39,10 @@ export type AnalyticsData = {
   orders: ProfitOrderInput[];
   daily: DailyProductProfit[];
   combined: CombinedDailyProfit[];
+  /** Raw per-day, per-product ad spend (the same rows `daily` was built from),
+   * exposed so the client can rebuild a period-scoped ad-spend map instead of
+   * the life-to-date one baked into `rows`/`daily`. */
+  adSpendDaily: AdSpendDailyInput[];
   summary: DashboardSummary;
   products: ProductMetaInput[];
   campaignsByProduct: Map<string, LinkedCampaign[]>;
@@ -182,6 +187,7 @@ export async function loadAnalyticsData(
       orders,
       daily,
       combined,
+      adSpendDaily,
       summary,
       products,
       campaignsByProduct,
@@ -192,14 +198,23 @@ export async function loadAnalyticsData(
   };
 }
 
-export type AffiliateCurrencyGroup = {
-  currency: string;
-  rows: ProductProfitRow[];
-  totals: ProfitTotals;
+/** Array form of the affiliate product metadata `buildProductProfitRows` needs — ships to the client the same way `ProductMetaInput[]` does for owned products. */
+export type AffiliateProductMetaInput = {
+  productId: string;
+  name: string;
+  costPrice: number | null;
+  calculationStartDate: string | null;
+  affiliateCommissionType: "fixed" | "set_price" | null;
+  affiliateFixedCommission: number | null;
+  affiliateSellPrice: number | null;
+  currency: string | null;
+  createdAt: string;
 };
 
 export type AffiliateAnalyticsData = {
-  groups: AffiliateCurrencyGroup[];
+  orders: ProfitOrderInput[];
+  products: AffiliateProductMetaInput[];
+  adSpendDaily: AdSpendDailyInput[];
 };
 
 export type LoadAffiliateAnalyticsResult =
@@ -207,9 +222,13 @@ export type LoadAffiliateAnalyticsResult =
   | { ok: false; error: string };
 
 /**
- * Separate loader for affiliate products' profit, grouped by each product's
- * own currency (KWD, etc.) — never combined with the owned/MRU pipeline
- * above and never summed across different currencies with each other.
+ * Separate loader for affiliate products. Ships raw orders/product-meta/
+ * ad-spend — never MRU totals — so the client can run the exact same
+ * `buildProductProfitRows` pipeline `AnalyticsView` uses for owned products
+ * (currency grouping happens client-side in `AffiliateAnalyticsSection`),
+ * which is what lets the period filter recompute instantly there too. Still
+ * never combined with the owned/MRU pipeline above and never summed across
+ * different affiliate currencies with each other.
  */
 export async function loadAffiliateAnalyticsData(
   cookieClient: SupabaseClient,
@@ -227,10 +246,12 @@ export async function loadAffiliateAnalyticsData(
   const { data: productRows, error: productsErr } = await affiliateProductsQuery;
 
   if (productsErr) return { ok: false, error: productsErr.message };
-  const products = productRows ?? [];
-  if (products.length === 0) return { ok: true, data: { groups: [] } };
+  const productRowsData = productRows ?? [];
+  if (productRowsData.length === 0) {
+    return { ok: true, data: { orders: [], products: [], adSpendDaily: [] } };
+  }
 
-  const productIds = products.map((p) => String(p.id));
+  const productIds = productRowsData.map((p) => String(p.id));
 
   // Same write-then-read constraint as loadAnalyticsData: ensureFreshAdSpend
   // writes product_ad_spend_daily, so its read below must wait for it, but
@@ -244,40 +265,37 @@ export async function loadAffiliateAnalyticsData(
       .in("product_id", productIds),
     ensureFreshAdSpend(
       createServiceClient(),
-      products.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
+      productRowsData.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
     ),
   ]);
   if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
 
-  const { data: adSpendDailyRows } = await cookieClient
+  const { data: adSpendDailyRows, error: adSpendErr } = await cookieClient
     .from("product_ad_spend_daily")
-    .select("product_id, amount")
+    .select("product_id, date, amount")
     .in("product_id", productIds);
+  if (adSpendErr) return { ok: false, error: adSpendErr.message };
 
-  const adSpendByProduct = new Map<string, number>();
-  for (const r of adSpendDailyRows ?? []) {
-    const pid = String(r.product_id);
-    adSpendByProduct.set(pid, (adSpendByProduct.get(pid) ?? 0) + (Number(r.amount) || 0));
-  }
+  const adSpendDaily: AdSpendDailyInput[] = (adSpendDailyRows ?? []).map((r) => ({
+    product_id: String(r.product_id),
+    date: String(r.date),
+    amount: Number(r.amount) || 0,
+  }));
 
-  const productMetaMap = new Map(
-    products.map((p) => [
-      String(p.id),
-      {
-        name: String(p.name_ar ?? "—"),
-        costPrice: p.cost_price == null ? null : Number(p.cost_price),
-        calculationStartDate: p.profit_calculation_start_date
-          ? String(p.profit_calculation_start_date).slice(0, 10)
-          : null,
-        fulfillmentType: "affiliate" as const,
-        affiliateCommissionType: p.affiliate_commission_type,
-        affiliateFixedCommission:
-          p.affiliate_fixed_commission == null ? null : Number(p.affiliate_fixed_commission),
-        affiliateSellPrice: p.affiliate_sell_price == null ? null : Number(p.affiliate_sell_price),
-        currency: p.affiliate_currency,
-      },
-    ]),
-  );
+  const products: AffiliateProductMetaInput[] = productRowsData.map((p) => ({
+    productId: String(p.id),
+    name: String(p.name_ar ?? "—"),
+    costPrice: p.cost_price == null ? null : Number(p.cost_price),
+    calculationStartDate: p.profit_calculation_start_date
+      ? String(p.profit_calculation_start_date).slice(0, 10)
+      : null,
+    affiliateCommissionType: p.affiliate_commission_type,
+    affiliateFixedCommission:
+      p.affiliate_fixed_commission == null ? null : Number(p.affiliate_fixed_commission),
+    affiliateSellPrice: p.affiliate_sell_price == null ? null : Number(p.affiliate_sell_price),
+    currency: p.affiliate_currency,
+    createdAt: String(p.created_at ?? ""),
+  }));
 
   const orders: ProfitOrderInput[] = (ordersRes.data ?? []).map((o) => ({
     product_id: String(o.product_id),
@@ -295,23 +313,5 @@ export async function loadAffiliateAnalyticsData(
       o.affiliate_sell_price_at_order == null ? null : Number(o.affiliate_sell_price_at_order),
   }));
 
-  const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
-
-  const byCurrency = new Map<string, ProductProfitRow[]>();
-  for (const row of rows) {
-    const code = row.currency || "—";
-    const list = byCurrency.get(code) ?? [];
-    list.push(row);
-    byCurrency.set(code, list);
-  }
-
-  const groups: AffiliateCurrencyGroup[] = Array.from(byCurrency.entries())
-    .map(([currency, groupRows]) => ({
-      currency,
-      rows: groupRows,
-      totals: sumProfitTotals(groupRows),
-    }))
-    .sort((a, b) => a.currency.localeCompare(b.currency));
-
-  return { ok: true, data: { groups } };
+  return { ok: true, data: { orders, products, adSpendDaily } };
 }

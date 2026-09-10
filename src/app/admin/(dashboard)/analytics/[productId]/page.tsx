@@ -66,6 +66,7 @@ export default async function ProductAnalyticsPage({
       currency: "MRU",
       costPrice: productMeta.costPrice ?? 0,
       unitsSold: 0,
+      ordersCount: 0,
       grossRevenue: 0,
       cogs: 0,
       deliveryCost: 0,
