@@ -373,6 +373,7 @@ export type ManualSaleInput = {
 
 type ManualSaleMetaSignals = {
   meta_ctwa_clid: string | null;
+  meta_ad_source_id: string | null;
   meta_fbp: string | null;
   meta_fbc: string | null;
 };
@@ -383,9 +384,10 @@ const MANUAL_SALE_ATTRIBUTION_LOOKBACK_DAYS = 90;
  * Best-effort attribution lookup for a manual sale, run before inserting the
  * order rows:
  *  1. the newest `whatsapp_ad_clicks` row for this phone within the lookback
- *     window — becomes `meta_ctwa_clid`, letting the eventual Purchase CAPI
+ *     window — becomes `meta_ctwa_clid` (letting the eventual Purchase CAPI
  *     event route through Meta's business_messaging schema instead of an
- *     unattributed offline event.
+ *     unattributed offline event) and `meta_ad_source_id` (denormalized onto
+ *     the order purely for the ad-performance report — never sent to Meta).
  *  2. the newest `source = "storefront"` order for this phone within the
  *     lookback window — only its `meta_fbp`/`meta_fbc` are carried over, so a
  *     shopper who browsed the site before messaging still gets browser-side
@@ -404,6 +406,7 @@ async function resolveManualSaleMetaSignals(
 ): Promise<ManualSaleMetaSignals> {
   const nullSignals: ManualSaleMetaSignals = {
     meta_ctwa_clid: null,
+    meta_ad_source_id: null,
     meta_fbp: null,
     meta_fbc: null,
   };
@@ -419,16 +422,18 @@ async function resolveManualSaleMetaSignals(
     const normalized = sanitizePhoneForMetaE164(phone);
 
     let ctwaClid: string | null = null;
+    let adSourceId: string | null = null;
     if (normalized) {
       const { data: adClick } = await supabase
         .from("whatsapp_ad_clicks")
-        .select("ctwa_clid")
+        .select("ctwa_clid, ad_source_id")
         .eq("phone", normalized)
         .gte("clicked_at", sinceIso)
         .order("clicked_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       ctwaClid = (adClick?.ctwa_clid as string | null) ?? null;
+      adSourceId = (adClick?.ad_source_id as string | null) ?? null;
     }
 
     const phoneCandidates = normalized ? [phone, `+${normalized}`, normalized] : [phone];
@@ -444,6 +449,7 @@ async function resolveManualSaleMetaSignals(
 
     return {
       meta_ctwa_clid: ctwaClid,
+      meta_ad_source_id: adSourceId,
       meta_fbp: (priorOrder?.meta_fbp as string | null) ?? null,
       meta_fbc: (priorOrder?.meta_fbc as string | null) ?? null,
     };

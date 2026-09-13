@@ -26,3 +26,30 @@ export type MetaMonitoringFilters = {
   from: string;
   to: string;
 };
+
+/** One Click-to-WhatsApp ad, from click through to booked revenue. */
+export type CtwaAdPerformanceRow = {
+  /** Meta ad id, from externalAdReply.sourceId on the inbound message. */
+  adSourceId: string;
+  /** Chats opened from this ad (rows in whatsapp_ad_clicks). */
+  conversations: number;
+  orders: number;
+  /** Orders that were not cancelled — confirmed, shipped, and beyond. */
+  confirmed: number;
+  cancelled: number;
+  /** Sum of total_price over `confirmed`. */
+  revenue: number;
+  currency: string;
+};
+
+export type CtwaAdPerformance = {
+  rangeDays: number;
+  rows: CtwaAdPerformanceRow[];
+  totalConversations: number;
+  totalOrders: number;
+  totalConfirmed: number;
+  totalRevenue: number;
+  currency: string;
+  /** True when either source hit the row cap — the numbers are a partial view. */
+  truncated: boolean;
+};

@@ -3,40 +3,42 @@
 const assert = require("node:assert");
 const {
   extractExternalAdReply,
-  extractCtwaClid,
   phoneJidFromKey,
   toMetaE164Digits,
 } = require("./ctwa-capture");
 
-// --- extractExternalAdReply / extractCtwaClid --------------------------
+// --- extractExternalAdReply ------------------------------------------------
+
+const extendedTextAd = extractExternalAdReply({
+  extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "clid-1" } } },
+});
+assert.ok(extendedTextAd, "extracts externalAdReply from extendedTextMessage");
+assert.strictEqual(extendedTextAd.ctwaClid, "clid-1");
+
+const imageAd = extractExternalAdReply({
+  imageMessage: { contextInfo: { externalAdReply: { ctwaClid: "clid-2" } } },
+});
+assert.ok(imageAd, "extracts externalAdReply from imageMessage");
+assert.strictEqual(imageAd.ctwaClid, "clid-2");
 
 assert.strictEqual(
-  extractCtwaClid({
-    extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "clid-1" } } },
-  }),
-  "clid-1",
-  "extracts ctwaClid from extendedTextMessage",
+  extractExternalAdReply({ conversation: "salam" }),
+  null,
+  "plain-string message value doesn't crash",
 );
-
-assert.strictEqual(
-  extractCtwaClid({
-    imageMessage: { contextInfo: { externalAdReply: { ctwaClid: "clid-2" } } },
-  }),
-  "clid-2",
-  "extracts ctwaClid from imageMessage",
-);
-
-assert.strictEqual(extractExternalAdReply({ conversation: "salam" }), null, "plain-string message value doesn't crash");
 assert.strictEqual(extractExternalAdReply(null), null, "null message doesn't crash");
-assert.strictEqual(extractCtwaClid(null), null, "null message -> null ctwaClid");
 
 assert.strictEqual(
-  extractCtwaClid({ extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "" } } } }),
+  extractExternalAdReply({
+    extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "" } } },
+  }),
   null,
   "empty ctwaClid returns null",
 );
 assert.strictEqual(
-  extractCtwaClid({ extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "   " } } } }),
+  extractExternalAdReply({
+    extendedTextMessage: { contextInfo: { externalAdReply: { ctwaClid: "   " } } },
+  }),
   null,
   "whitespace-only ctwaClid returns null",
 );

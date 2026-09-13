@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countStuckEventsFast } from "@/lib/meta/stuck-events";
-import type { MetaEventLogRow, MetaOverviewStats } from "./types";
+import type { CtwaAdPerformance, CtwaAdPerformanceRow, MetaEventLogRow, MetaOverviewStats } from "./types";
 
 export const META_EVENT_LOG_SELECT =
   "id, event_type, order_id, product_id, event_id, state, reason, detail, attempt_count, created_at";
@@ -61,6 +61,111 @@ export async function fetchMetaOverview(
     successes24h: successRes.count ?? 0,
     stuckCount,
     lastSuccessByType,
+  };
+}
+
+/** Safety cap — this store's volume is in the hundreds; a wider range degrades to a partial view rather than a slow page. */
+const CTWA_REPORT_ROW_CAP = 5000;
+
+/**
+ * "Which Click-to-WhatsApp ad produced which sale."
+ *
+ * Two independent funnels joined on the Meta ad id:
+ *  - conversations: rows in `whatsapp_ad_clicks` (someone clicked the ad and wrote)
+ *  - orders: rows in `orders` carrying `meta_ad_source_id` (that chat became a sale)
+ *
+ * Deliberately NOT a SQL join: the two sides answer different questions and a
+ * click with no order is exactly the row the report exists to surface.
+ *
+ * Aggregation happens in JS because supabase-js has no GROUP BY; at this store's
+ * volume that is cheaper than adding an RPC, and the row cap keeps it bounded.
+ */
+export async function fetchCtwaAdPerformance(
+  supabase: SupabaseClient,
+  rangeDays = 30,
+): Promise<CtwaAdPerformance> {
+  const days = Number.isFinite(rangeDays) && rangeDays > 0 ? Math.floor(rangeDays) : 30;
+  const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [clicksRes, ordersRes] = await Promise.all([
+    supabase
+      .from("whatsapp_ad_clicks")
+      .select("ad_source_id")
+      .not("ad_source_id", "is", null)
+      .gte("clicked_at", sinceIso)
+      .limit(CTWA_REPORT_ROW_CAP),
+    supabase
+      .from("orders")
+      .select("meta_ad_source_id, status, total_price, currency")
+      .not("meta_ad_source_id", "is", null)
+      .is("deleted_at", null)
+      .gte("created_at", sinceIso)
+      .limit(CTWA_REPORT_ROW_CAP),
+  ]);
+
+  if (clicksRes.error) throw new Error(clicksRes.error.message);
+  if (ordersRes.error) throw new Error(ordersRes.error.message);
+
+  const byAd = new Map<string, CtwaAdPerformanceRow>();
+  const ensure = (adSourceId: string): CtwaAdPerformanceRow => {
+    let row = byAd.get(adSourceId);
+    if (!row) {
+      row = {
+        adSourceId,
+        conversations: 0,
+        orders: 0,
+        confirmed: 0,
+        cancelled: 0,
+        revenue: 0,
+        currency: "",
+      };
+      byAd.set(adSourceId, row);
+    }
+    return row;
+  };
+
+  for (const click of clicksRes.data ?? []) {
+    const id = (click.ad_source_id as string | null)?.trim();
+    if (id) ensure(id).conversations += 1;
+  }
+
+  for (const order of ordersRes.data ?? []) {
+    const id = (order.meta_ad_source_id as string | null)?.trim();
+    if (!id) continue;
+    const row = ensure(id);
+    row.orders += 1;
+    const status = order.status as string;
+    if (status === "cancelled") {
+      row.cancelled += 1;
+      continue;
+    }
+    // Revenue counts every order that was not cancelled — confirmed, shipped and
+    // the rest — so the number matches what the business actually booked.
+    if (status !== "pending") {
+      row.confirmed += 1;
+      const value = Number(order.total_price);
+      if (Number.isFinite(value)) row.revenue += value;
+      // One ad belongs to one market, so its orders share a currency; the first
+      // non-empty one is the row's currency.
+      if (!row.currency) row.currency = (order.currency as string | null)?.trim() || "";
+    }
+  }
+
+  const rows = [...byAd.values()].sort(
+    (x, y) => y.revenue - x.revenue || y.conversations - x.conversations,
+  );
+
+  return {
+    rangeDays: days,
+    rows,
+    totalConversations: rows.reduce((sum, r) => sum + r.conversations, 0),
+    totalOrders: rows.reduce((sum, r) => sum + r.orders, 0),
+    totalConfirmed: rows.reduce((sum, r) => sum + r.confirmed, 0),
+    totalRevenue: rows.reduce((sum, r) => sum + r.revenue, 0),
+    currency: rows.find((r) => r.currency)?.currency ?? "",
+    truncated:
+      (clicksRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP ||
+      (ordersRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP,
   };
 }
 

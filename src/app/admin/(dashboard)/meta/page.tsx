@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AdminPageHeader } from "@/components/admin/ui";
+import { CtwaAdPerformancePanel } from "./CtwaAdPerformancePanel";
 import { MetaMonitoringView } from "./MetaMonitoringView";
 import { MetaOverviewPanel } from "./MetaOverviewPanel";
 import { MetaOverviewSkeleton } from "./MetaOverviewSection";
@@ -31,6 +32,9 @@ export default async function AdminMetaPage({ searchParams }: Props) {
         <AdminPageHeader title={a.meta.title} subtitle={a.meta.subtitle} />
         <Suspense fallback={<MetaOverviewSkeleton />}>
           <MetaOverviewPanel />
+        </Suspense>
+        <Suspense fallback={<MetaOverviewSkeleton />}>
+          <CtwaAdPerformancePanel />
         </Suspense>
         <MetaMonitoringView
           initialRows={logPage.rows}
