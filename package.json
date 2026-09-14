@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "node server.js",
     "lint": "next lint",
+    "check:server-actions": "node scripts/check-server-actions.mjs",
     "audit:meta-isolation": "node scripts/audit-meta-product-isolation.mjs",
     "audit:media-urls": "node scripts/audit-media-urls.mjs",
     "migrate:public-assets": "node scripts/migrate-user-assets-to-public.mjs"

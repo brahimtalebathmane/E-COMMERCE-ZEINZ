@@ -365,8 +365,12 @@ const META_COOKIE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
  * Meta's Click-to-WhatsApp attribution window. A click id older than this can
  * still be sent, but Meta will not credit the campaign for it — so the admin is
  * warned rather than the sale being silently mis-attributed.
+ *
+ * NOT exported: this is a "use server" module, where Next.js allows only async
+ * functions as runtime exports. A plain `export const` here throws at module
+ * evaluation and takes down every action in the file.
  */
-export const CTWA_ATTRIBUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const CTWA_ATTRIBUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type WhatsAppConversation = {
   /** E.164 digits, no "+" — the primary key of whatsapp_contacts. */
