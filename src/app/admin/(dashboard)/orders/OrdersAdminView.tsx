@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
 import { OrderDetailModal } from "./OrderDetailModal";
-import { ManualSaleForm } from "./ManualSaleForm";
+import { WhatsAppSaleForm } from "./WhatsAppSaleForm";
 import { adminAr as a } from "@/locales/admin-ar";
 import {
   deleteOrderAction,
@@ -1089,7 +1089,7 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
         onOrderUpdated={patchOrder}
       />
 
-      <ManualSaleForm open={manualSaleOpen} onClose={() => setManualSaleOpen(false)} />
+      <WhatsAppSaleForm open={manualSaleOpen} onClose={() => setManualSaleOpen(false)} />
 
       <ConfirmDialog
         open={confirmState !== null}

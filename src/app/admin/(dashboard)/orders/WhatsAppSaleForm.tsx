@@ -8,11 +8,25 @@ import { formatMoney } from "@/lib/currency";
 import { AdminButton, AdminInput, AdminSelect } from "@/components/admin/ui";
 import { dayKey } from "@/lib/analytics/daily-profit";
 import {
-  createManualSaleAction,
+  createWhatsAppSaleAction,
   listActiveProductsForManualSaleAction,
-  type ManualSaleChannel,
+  listWhatsAppConversationsAction,
   type ManualSaleProductOption,
+  type WhatsAppConversation,
 } from "./actions";
+
+const RELATIVE_TIME = new Intl.RelativeTimeFormat("ar", { numeric: "auto" });
+
+/** "قبل ساعتين" — coarse on purpose; the admin only needs recency, not precision. */
+function relativeFromNow(iso: string): string {
+  const ms = Date.parse(iso) - Date.now();
+  if (!Number.isFinite(ms)) return "";
+  const minutes = Math.round(ms / 60000);
+  if (Math.abs(minutes) < 60) return RELATIVE_TIME.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return RELATIVE_TIME.format(hours, "hour");
+  return RELATIVE_TIME.format(Math.round(hours / 24), "day");
+}
 
 type Props = {
   open: boolean;
@@ -34,17 +48,18 @@ function unitPriceFor(product: ManualSaleProductOption | undefined): number {
   return product.discountPrice ?? product.price;
 }
 
-export function ManualSaleForm({ open, onClose }: Props) {
+export function WhatsAppSaleForm({ open, onClose }: Props) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [products, setProducts] = useState<ManualSaleProductOption[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [conversations, setConversations] = useState<WhatsAppConversation[] | null>(null);
+  const [conversationsError, setConversationsError] = useState(false);
+  const [selectedPhone, setSelectedPhone] = useState("");
   const [lines, setLines] = useState<DraftLine[]>(() => [newLine()]);
   const [orderDate, setOrderDate] = useState(() => dayKey(new Date()));
   const [initialStatus, setInitialStatus] = useState<"pending" | "confirmed">("confirmed");
-  const [channel, setChannel] = useState<ManualSaleChannel>("phone_call");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -54,16 +69,20 @@ export function ManualSaleForm({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
     setCustomerName("");
-    setPhone("");
+    setSelectedPhone("");
     setLines([newLine()]);
     setOrderDate(dayKey(new Date()));
     setInitialStatus("confirmed");
-    setChannel("phone_call");
     setLoadError(false);
     setProducts(null);
+    setConversations(null);
+    setConversationsError(false);
     listActiveProductsForManualSaleAction()
       .then(setProducts)
       .catch(() => setLoadError(true));
+    listWhatsAppConversationsAction()
+      .then(setConversations)
+      .catch(() => setConversationsError(true));
   }, [open]);
 
   useEffect(() => {
@@ -88,6 +107,11 @@ export function ManualSaleForm({ open, onClose }: Props) {
       return sum + unitPriceFor(productMap.get(line.productId)) * qty;
     }, 0);
   }, [lines, productMap]);
+
+  const selectedConversation = useMemo(
+    () => (conversations ?? []).find((c) => c.phone === selectedPhone) ?? null,
+    [conversations, selectedPhone],
+  );
 
   // Every option comes from listActiveProductsForManualSaleAction, already
   // scoped to one country, so any loaded product's currency is shared by all.
@@ -122,14 +146,17 @@ export function ManualSaleForm({ open, onClose }: Props) {
       toast.error(a.orders.quantityInvalid);
       return;
     }
+    if (!selectedPhone) {
+      toast.error(a.manualSale.conversationRequired);
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const res = await createManualSaleAction({
+      const res = await createWhatsAppSaleAction({
         customerName,
-        phone,
+        conversationPhone: selectedPhone,
         initialStatus,
-        channel,
         lines: preparedLines,
         orderDate,
       });
@@ -185,30 +212,86 @@ export function ManualSaleForm({ open, onClose }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <AdminInput
-              label={a.manualSale.customerName}
-              placeholder={a.manualSale.customerNamePlaceholder}
-              value={customerName}
-              disabled={submitting}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
-            <AdminInput
-              label={a.manualSale.phone}
-              placeholder={a.manualSale.phonePlaceholder}
-              dir="ltr"
-              value={phone}
-              disabled={submitting}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            <AdminInput
-              type="date"
-              label={a.manualSale.orderDate}
-              dir="ltr"
-              value={orderDate}
-              disabled={submitting}
-              onChange={(e) => setOrderDate(e.target.value)}
-            />
+          <div className="space-y-3">
+            <div>
+              <span className="text-xs font-semibold text-[var(--foreground)]">
+                {a.manualSale.conversation}
+              </span>
+              {conversationsError ? (
+                <p className="mt-1.5 text-sm text-red-400">{a.manualSale.conversationsFailed}</p>
+              ) : (
+                <AdminSelect
+                  className="mt-1.5"
+                  value={selectedPhone}
+                  disabled={submitting || !conversations}
+                  onChange={(e) => {
+                    const phone = e.target.value;
+                    setSelectedPhone(phone);
+                    // Prefill the WhatsApp profile name, but leave it editable —
+                    // profile names are often nicknames, and the shipping name
+                    // is what the delivery agent needs.
+                    const picked = (conversations ?? []).find((c) => c.phone === phone);
+                    if (picked?.displayName && !customerName.trim()) {
+                      setCustomerName(picked.displayName);
+                    }
+                  }}
+                >
+                  <option value="">
+                    {conversations ? a.manualSale.selectConversation : a.manualSale.loadingConversations}
+                  </option>
+                  {(conversations ?? []).map((c) => (
+                    <option key={c.phone} value={c.phone}>
+                      {`${c.displayName ?? c.phone} · ${relativeFromNow(c.lastInboundAt)}${c.adSourceId ? " · ★" : ""}`}
+                    </option>
+                  ))}
+                </AdminSelect>
+              )}
+              {conversations && conversations.length === 0 ? (
+                <p className="mt-1.5 text-xs text-[var(--muted)]">{a.manualSale.noConversations}</p>
+              ) : null}
+            </div>
+
+            {selectedConversation ? (
+              <div className="rounded-xl border border-[var(--accent-muted)] bg-[var(--card)]/40 px-4 py-3 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[var(--muted)]">{a.manualSale.phone}</span>
+                  <span className="font-mono" dir="ltr">
+                    +{selectedConversation.phone}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-[var(--muted)]">{a.manualSale.adSource}</span>
+                  {selectedConversation.adSourceId ? (
+                    <span className="font-mono" dir="ltr">
+                      {selectedConversation.adSourceId}
+                    </span>
+                  ) : (
+                    <span className="text-[var(--muted)]">{a.manualSale.adSourceNone}</span>
+                  )}
+                </div>
+                {selectedConversation.adSourceId && !selectedConversation.adAttributable ? (
+                  <p className="mt-2 text-amber-500">{a.manualSale.adWindowExpired}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <AdminInput
+                label={a.manualSale.customerName}
+                placeholder={a.manualSale.customerNamePlaceholder}
+                value={customerName}
+                disabled={submitting}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+              <AdminInput
+                type="date"
+                label={a.manualSale.orderDate}
+                dir="ltr"
+                value={orderDate}
+                disabled={submitting}
+                onChange={(e) => setOrderDate(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -268,21 +351,7 @@ export function ManualSaleForm({ open, onClose }: Props) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <span className="text-xs font-semibold text-[var(--foreground)]">
-                {a.manualSale.channel}
-              </span>
-              <select
-                disabled={submitting}
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as ManualSaleChannel)}
-                className="admin-input mt-1.5"
-              >
-                <option value="phone_call">{a.manualSale.channelPhoneCall}</option>
-                <option value="other">{a.manualSale.channelOther}</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <span className="text-xs font-semibold text-[var(--foreground)]">
                 {a.manualSale.initialStatus}

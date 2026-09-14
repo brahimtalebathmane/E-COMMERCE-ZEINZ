@@ -159,9 +159,10 @@ function resolveWhatsAppBusinessAccountId(): string | null {
 /**
  * Meta CAPI `action_source`: "business_messaging" for a Purchase that can be
  * tied back to a Click-to-WhatsApp ad conversation (ctwa_clid + WABA id both
- * present); otherwise "website" for real storefront checkouts, or the
- * admin-chosen channel ("phone_call" / "other") for a manual offline sale.
- * Falls back to "phone_call" if a manual order somehow has no channel stored.
+ * present); otherwise "website" for real storefront checkouts, "chat" for a
+ * sale recorded against a WhatsApp conversation, or the historical
+ * "phone_call" / "other" channels retained on old manual-sale rows. Falls
+ * back to "phone_call" if a manual order somehow has no channel stored.
  */
 function resolveOrderActionSource(
   order: Record<string, unknown>,
@@ -172,6 +173,10 @@ function resolveOrderActionSource(
   if (eventType === "purchase" && ctwaClid && wabaId) return "business_messaging";
   if (order.source !== "manual") return "website";
   const channel = order.manual_sale_channel as string | null;
+  // A sale recorded against a WhatsApp conversation is a chat conversion, not a
+  // phone call — Meta documents "chat" as "made via a messaging app". Only the
+  // pre-existing historical channels fall through to the old values.
+  if (channel === "whatsapp") return "chat";
   return channel === "other" ? "other" : "phone_call";
 }
 

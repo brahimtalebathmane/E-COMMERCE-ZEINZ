@@ -1,13 +1,17 @@
 const { createClient } = require("@supabase/supabase-js");
 
 /**
- * Click-to-WhatsApp (CTWA) click-id capture.
+ * WhatsApp inbound-message capture. Two jobs:
  *
- * When someone clicks a "click to WhatsApp" ad, Meta attaches a `ctwaClid` to
- * the first message they send us. That id is the only deterministic link
- * between the ad click and the sale the admin later records by hand, so we
- * persist it against the sender's phone number and replay it on the Meta
- * Purchase event (see src/lib/meta/dispatch.ts).
+ *  1. Contacts — every inbound 1:1 conversation is recorded in
+ *     `whatsapp_contacts`, which is what the admin picks from when recording a
+ *     WhatsApp sale. An organic chat with no ad behind it still has to appear.
+ *  2. Click-to-WhatsApp (CTWA) click ids — when someone clicks a "click to
+ *     WhatsApp" ad, Meta attaches a `ctwaClid` to the first message they send
+ *     us. That id is the only deterministic link between the ad click and the
+ *     sale the admin later records, so it is also persisted into
+ *     `whatsapp_ad_clicks` and replayed on the Meta Purchase event (see
+ *     src/lib/meta/dispatch.ts).
  *
  * Same shape as marketing-worker.js: plain CommonJS, its own service-role
  * Supabase client, and a hard no-op when the env vars aren't configured so a
@@ -85,74 +89,123 @@ function extractExternalAdReply(message) {
   return null;
 }
 
+/** WhatsApp profile name of the sender, when the message carries one. */
+function senderDisplayName(msg) {
+  const name = msg && msg.pushName;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}
+
 /**
- * Records the CTWA click ids carried by a `messages.upsert` batch.
+ * Records one `messages.upsert` batch.
+ *
+ * Two outputs, deliberately separate:
+ *  - EVERY inbound 1:1 message updates `whatsapp_contacts`, which is what the
+ *    admin picks from when recording a WhatsApp sale. An organic chat with no
+ *    ad behind it still has to appear in that list.
+ *  - Messages that carry a Click-to-WhatsApp referral ALSO insert into
+ *    `whatsapp_ad_clicks`, the per-click ledger the ad-performance report reads.
+ *
  * Never throws — a capture failure must not disturb the WhatsApp connection.
  *
  * @param {{ messages: any[], type: string }} upsert
  * @param {(message: string) => void} [log]
  */
-async function recordCtwaClicksFromUpsert(upsert, log) {
+async function recordInboundWhatsAppMessages(upsert, log) {
   // "append" is history sync on (re)connect — replaying it would re-insert old
-  // clicks with a wrong clicked_at. Only live messages count.
+  // clicks with a wrong clicked_at and inflate inbound_count. Only live messages.
   if (!upsert || upsert.type !== "notify" || !Array.isArray(upsert.messages)) return;
 
   const supabase = getSupabase();
   if (!supabase) return;
 
-  const rows = [];
+  /** @type {Map<string, {phone:string, displayName:string|null, at:Date, ad:any}>} */
+  const contacts = new Map();
+  const clickRows = [];
+
   for (const msg of upsert.messages) {
-    // Our own outbound messages (order confirmations, marketing) never carry
-    // an ad-click context and must never be attributed as if a customer sent them.
     if (!msg || !msg.key || msg.key.fromMe) continue;
     const jid = phoneJidFromKey(msg.key);
     if (!jid) continue;
-
-    const ad = extractExternalAdReply(msg.message);
-    if (!ad) continue;
 
     const phone = toMetaE164Digits(jid.split("@")[0]);
     if (!phone) continue;
 
     const timestampSec = Number(msg.messageTimestamp);
-    const clickedAt =
-      Number.isFinite(timestampSec) && timestampSec > 0
-        ? new Date(timestampSec * 1000)
-        : new Date();
+    const at = Number.isFinite(timestampSec) && timestampSec > 0
+      ? new Date(timestampSec * 1000)
+      : new Date();
 
-    rows.push({
-      phone,
-      ctwa_clid: ad.ctwaClid.trim(),
-      ad_source_id: (ad.sourceId && String(ad.sourceId).trim()) || null,
-      source_url: (ad.sourceUrl && String(ad.sourceUrl).trim()) || null,
-      source_type: (ad.sourceType && String(ad.sourceType).trim()) || null,
-      clicked_at: clickedAt.toISOString(),
-    });
+    const ad = extractExternalAdReply(msg.message);
+
+    // Collapse a burst from one sender into a single contact write; keep the
+    // newest timestamp and the first ad referral seen.
+    const existing = contacts.get(phone);
+    if (!existing || at > existing.at) {
+      contacts.set(phone, {
+        phone,
+        displayName: senderDisplayName(msg) || (existing && existing.displayName) || null,
+        at,
+        ad: (existing && existing.ad) || ad || null,
+      });
+    } else if (ad && !existing.ad) {
+      existing.ad = ad;
+    }
+
+    if (ad) {
+      clickRows.push({
+        phone,
+        ctwa_clid: ad.ctwaClid.trim(),
+        ad_source_id: (ad.sourceId && String(ad.sourceId).trim()) || null,
+        source_url: (ad.sourceUrl && String(ad.sourceUrl).trim()) || null,
+        source_type: (ad.sourceType && String(ad.sourceType).trim()) || null,
+        clicked_at: at.toISOString(),
+      });
+    }
   }
 
-  if (rows.length === 0) return;
+  if (contacts.size === 0) return;
 
   try {
-    // ignoreDuplicates: the same ctwa_clid rides along on every later message in
-    // the ad conversation; the first insert is the one with the real click time.
-    const { error } = await supabase
-      .from("whatsapp_ad_clicks")
-      .upsert(rows, { onConflict: "ctwa_clid", ignoreDuplicates: true });
-    if (error) throw new Error(error.message);
+    // Contacts first: the sale picker must list the conversation even if the
+    // click ledger write below fails.
+    for (const c of contacts.values()) {
+      const { error } = await supabase.rpc("record_whatsapp_inbound", {
+        p_phone: c.phone,
+        p_display_name: c.displayName,
+        p_inbound_at: c.at.toISOString(),
+        p_ctwa_clid: c.ad ? c.ad.ctwaClid.trim() : null,
+        p_ad_source_id: c.ad && c.ad.sourceId ? String(c.ad.sourceId).trim() : null,
+      });
+      if (error) throw new Error(`contacts: ${error.message}`);
+    }
+
+    if (clickRows.length > 0) {
+      // ignoreDuplicates: the same ctwa_clid rides along on every later message
+      // in the ad conversation; the first insert holds the real click time.
+      const { error } = await supabase
+        .from("whatsapp_ad_clicks")
+        .upsert(clickRows, { onConflict: "ctwa_clid", ignoreDuplicates: true });
+      if (error) throw new Error(`clicks: ${error.message}`);
+    }
+
     if (typeof log === "function") {
-      log(`CTWA: recorded ${rows.length} ad click id(s)`);
+      log(
+        `WhatsApp inbound: ${contacts.size} contact(s)` +
+          (clickRows.length ? `, ${clickRows.length} ad click id(s)` : ""),
+      );
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (typeof log === "function") log(`CTWA capture failed: ${msg}`);
+    if (typeof log === "function") log(`WhatsApp inbound capture failed: ${msg}`);
     // eslint-disable-next-line no-console
-    console.error("[CTWA] capture failed", msg);
+    console.error("[WhatsApp] inbound capture failed", msg);
   }
 }
 
 module.exports = {
-  recordCtwaClicksFromUpsert,
+  recordInboundWhatsAppMessages,
   extractExternalAdReply,
   phoneJidFromKey,
+  senderDisplayName,
   toMetaE164Digits,
 };

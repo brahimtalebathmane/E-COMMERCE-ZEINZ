@@ -40,7 +40,12 @@ type MetaCustomData = {
   contents?: Array<{ id: string; quantity: number }>;
 };
 
-export type MetaActionSource = "website" | "phone_call" | "other" | "business_messaging";
+export type MetaActionSource =
+  | "website"
+  | "chat"
+  | "phone_call"
+  | "other"
+  | "business_messaging";
 
 /** Meta `messaging_channel` — only meaningful when action_source is "business_messaging". */
 export type MetaMessagingChannel = "whatsapp" | "messenger" | "instagram";

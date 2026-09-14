@@ -8,7 +8,7 @@ const {
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } = require("@whiskeysockets/baileys");
-const { recordCtwaClicksFromUpsert } = require("./ctwa-capture");
+const { recordInboundWhatsAppMessages } = require("./ctwa-capture");
 
 const MAX_LOG_LINES = 200;
 
@@ -135,12 +135,13 @@ async function connectWhatsApp() {
         }
       });
 
-      // Inbound messages are read for one reason only: capturing the
-      // Click-to-WhatsApp ad click id so Meta can attribute the sale that
-      // follows. Nothing here replies, stores chat content, or blocks the
-      // socket — recordCtwaClicksFromUpsert swallows its own errors.
+      // Inbound messages are read for two reasons: listing the conversation so
+      // an admin can record a sale against it, and capturing the
+      // Click-to-WhatsApp ad click id so Meta can attribute that sale. Nothing
+      // here replies or stores message content, and it never blocks the socket
+      // — recordInboundWhatsAppMessages swallows its own errors.
       sock.ev.on("messages.upsert", (upsert) => {
-        void recordCtwaClicksFromUpsert(upsert, logEvent);
+        void recordInboundWhatsAppMessages(upsert, logEvent);
       });
 
       sock.ev.on("connection.update", async (update) => {

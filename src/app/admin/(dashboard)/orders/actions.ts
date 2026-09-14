@@ -358,53 +358,91 @@ export async function listActiveProductsForManualSaleAction(): Promise<ManualSal
 
 export type ManualSaleLineInput = { productId: string; quantity: number };
 
-export type ManualSaleChannel = "phone_call" | "other";
+/** Browser cookies (fbp/fbc) stay useful for Meta's full 90-day window. */
+const META_COOKIE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
-export type ManualSaleInput = {
-  customerName: string;
+/**
+ * Meta's Click-to-WhatsApp attribution window. A click id older than this can
+ * still be sent, but Meta will not credit the campaign for it — so the admin is
+ * warned rather than the sale being silently mis-attributed.
+ */
+export const CTWA_ATTRIBUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type WhatsAppConversation = {
+  /** E.164 digits, no "+" — the primary key of whatsapp_contacts. */
   phone: string;
-  initialStatus: Extract<OrderStatus, "pending" | "confirmed">;
-  /** How the sale happened — drives Meta CAPI `action_source` for the Purchase event. */
-  channel: ManualSaleChannel;
-  lines: ManualSaleLineInput[];
-  /** Business date of the sale (YYYY-MM-DD, Africa/Nouakchott). Defaults to today in the form; editable for backdated sales. */
-  orderDate: string;
+  displayName: string | null;
+  lastInboundAt: string;
+  inboundCount: number;
+  adSourceId: string | null;
+  adClickedAt: string | null;
+  /** False when an ad click exists but has aged past Meta's 7-day window. */
+  adAttributable: boolean;
 };
 
-type ManualSaleMetaSignals = {
+/**
+ * Conversations the admin can record a sale against, newest first.
+ *
+ * Sourced from `whatsapp_contacts`, which the WhatsApp worker writes on every
+ * inbound message — so an organic chat with no ad behind it is listed too.
+ */
+export async function listWhatsAppConversationsAction(
+  limit = 60,
+): Promise<WhatsAppConversation[]> {
+  await assertPermission(PERMISSIONS.confirm_orders);
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("whatsapp_contacts")
+    .select("phone, display_name, last_inbound_at, inbound_count, last_ad_source_id, last_ad_clicked_at")
+    .order("last_inbound_at", { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 200));
+
+  if (error) throw new Error(error.message);
+
+  const now = Date.now();
+  return (data ?? []).map((row) => {
+    const adClickedAt = (row.last_ad_clicked_at as string | null) ?? null;
+    const clickedMs = adClickedAt ? Date.parse(adClickedAt) : NaN;
+    return {
+      phone: row.phone as string,
+      displayName: ((row.display_name as string | null) ?? "").trim() || null,
+      lastInboundAt: row.last_inbound_at as string,
+      inboundCount: Number(row.inbound_count) || 0,
+      adSourceId: ((row.last_ad_source_id as string | null) ?? "").trim() || null,
+      adClickedAt,
+      adAttributable:
+        Number.isFinite(clickedMs) && now - clickedMs <= CTWA_ATTRIBUTION_WINDOW_MS,
+    };
+  });
+}
+
+/**
+ * Meta signals for a sale recorded against a chosen WhatsApp conversation.
+ *
+ * The click id is read straight off the picked conversation — no phone lookup,
+ * no window guessing. That removes the failure mode of the previous design,
+ * which searched `whatsapp_ad_clicks` by phone over 90 days and could attach a
+ * click far outside Meta's 7-day attribution window, or one belonging to a
+ * different campaign entirely.
+ *
+ * `fbp`/`fbc` are still inherited from the same customer's most recent
+ * storefront order: those cookies belong to the same person and stay useful for
+ * 90 days, so reusing them is identity resolution, not fabrication. IP and
+ * user-agent are deliberately NOT reused — they describe one specific browsing
+ * session and would be wrong data on a later conversation sale.
+ */
+async function resolveWhatsAppSaleMetaSignals(
+  supabase: ReturnType<typeof createServiceClient>,
+  normalizedPhone: string,
+  storedPhone: string,
+): Promise<{
   meta_ctwa_clid: string | null;
   meta_ad_source_id: string | null;
   meta_fbp: string | null;
   meta_fbc: string | null;
-};
-
-const MANUAL_SALE_ATTRIBUTION_LOOKBACK_DAYS = 90;
-
-/**
- * Best-effort attribution lookup for a manual sale, run before inserting the
- * order rows:
- *  1. the newest `whatsapp_ad_clicks` row for this phone within the lookback
- *     window — becomes `meta_ctwa_clid` (letting the eventual Purchase CAPI
- *     event route through Meta's business_messaging schema instead of an
- *     unattributed offline event) and `meta_ad_source_id` (denormalized onto
- *     the order purely for the ad-performance report — never sent to Meta).
- *  2. the newest `source = "storefront"` order for this phone within the
- *     lookback window — only its `meta_fbp`/`meta_fbc` are carried over, so a
- *     shopper who browsed the site before messaging still gets browser-side
- *     matching signals on their offline sale.
- *
- * Deliberately excludes meta_client_ip_address / meta_client_user_agent:
- * those describe one specific browsing session and would be wrong data to
- * attach to a later, unrelated offline sale (see orderCustomerSessionContext
- * in src/lib/meta/dispatch.ts).
- *
- * Never blocks recording the sale — any failure resolves to all-null signals.
- */
-async function resolveManualSaleMetaSignals(
-  supabase: ReturnType<typeof createServiceClient>,
-  phone: string,
-): Promise<ManualSaleMetaSignals> {
-  const nullSignals: ManualSaleMetaSignals = {
+}> {
+  const empty = {
     meta_ctwa_clid: null,
     meta_ad_source_id: null,
     meta_fbp: null,
@@ -412,51 +450,59 @@ async function resolveManualSaleMetaSignals(
   };
 
   try {
-    const sinceIso = new Date(
-      Date.now() - MANUAL_SALE_ATTRIBUTION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const cookieSinceIso = new Date(Date.now() - META_COOKIE_WINDOW_MS).toISOString();
 
-    // whatsapp_ad_clicks.phone is E.164 digits with no "+" (sanitizePhoneForMetaE164
-    // output); orders.phone is whatever the country picker produced (usually
-    // "+222XXXXXXXX" here). Normalize before querying the former.
-    const normalized = sanitizePhoneForMetaE164(phone);
-
-    let ctwaClid: string | null = null;
-    let adSourceId: string | null = null;
-    if (normalized) {
-      const { data: adClick } = await supabase
-        .from("whatsapp_ad_clicks")
-        .select("ctwa_clid, ad_source_id")
-        .eq("phone", normalized)
-        .gte("clicked_at", sinceIso)
-        .order("clicked_at", { ascending: false })
+    const [contactResult, priorOrderResult] = await Promise.all([
+      supabase
+        .from("whatsapp_contacts")
+        .select("last_ctwa_clid, last_ad_source_id")
+        .eq("phone", normalizedPhone)
+        .maybeSingle(),
+      supabase
+        .from("orders")
+        .select("meta_fbp, meta_fbc")
+        // orders.phone is stored as the country picker produced it (usually
+        // "+222XXXXXXXX"), so match the plausible spellings rather than assuming
+        // one. A miss just means no inherited cookies.
+        .in("phone", [...new Set([storedPhone, `+${normalizedPhone}`, normalizedPhone])])
+        .eq("source", "storefront")
+        .gte("created_at", cookieSinceIso)
+        .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
-      ctwaClid = (adClick?.ctwa_clid as string | null) ?? null;
-      adSourceId = (adClick?.ad_source_id as string | null) ?? null;
-    }
-
-    const phoneCandidates = normalized ? [phone, `+${normalized}`, normalized] : [phone];
-    const { data: priorOrder } = await supabase
-      .from("orders")
-      .select("meta_fbp, meta_fbc")
-      .in("phone", phoneCandidates)
-      .eq("source", "storefront")
-      .gte("created_at", sinceIso)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+        .maybeSingle(),
+    ]);
 
     return {
-      meta_ctwa_clid: ctwaClid,
-      meta_ad_source_id: adSourceId,
-      meta_fbp: (priorOrder?.meta_fbp as string | null) ?? null,
-      meta_fbc: (priorOrder?.meta_fbc as string | null) ?? null,
+      meta_ctwa_clid: (contactResult.data?.last_ctwa_clid as string | null)?.trim() || null,
+      meta_ad_source_id:
+        (contactResult.data?.last_ad_source_id as string | null)?.trim() || null,
+      meta_fbp: (priorOrderResult.data?.meta_fbp as string | null)?.trim() || null,
+      meta_fbc: (priorOrderResult.data?.meta_fbc as string | null)?.trim() || null,
     };
-  } catch {
-    return nullSignals;
+  } catch (error) {
+    // Never block a sale on an attribution lookup.
+    console.warn("[whatsapp-sale] Meta signal lookup failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return empty;
   }
 }
+
+/**
+ * Every admin-entered sale now comes from a WhatsApp conversation. "phone_call"
+ * and "other" remain in the DB check constraint for historical rows only.
+ */
+export type ManualSaleChannel = "whatsapp";
+
+export type WhatsAppSaleInput = {
+  customerName: string;
+  /** E.164 digits of the picked conversation (whatsapp_contacts.phone). */
+  conversationPhone: string;
+  initialStatus: Extract<OrderStatus, "pending" | "confirmed">;
+  lines: ManualSaleLineInput[];
+  /** Business date of the sale (YYYY-MM-DD, Africa/Nouakchott). Defaults to today in the form; editable for backdated sales. */
+  orderDate: string;
+};
 
 export type ManualSaleLineResult = {
   id: string;
@@ -472,16 +518,21 @@ export type ManualSaleResult =
   | { ok: false; error: string };
 
 /**
- * Records an in-person/phone sale from the admin panel. Creates one `orders`
- * row per product line (source="manual"), sharing a `manual_sale_group_id`
- * when there's more than one line so the admin UI can present them as a
- * single sale. Each row is otherwise a normal order — if `initialStatus` is
- * "confirmed", it's pushed through the exact same `updateOrderStatusWithEffects`
- * path a status-dropdown change uses, so the Meta Purchase CAPI dispatch and
- * `order_status_history` logging stay identical to an online order.
+ * Records a sale against a real WhatsApp conversation. Creates one `orders` row
+ * per product line (source="manual", manual_sale_channel="whatsapp"), sharing a
+ * `manual_sale_group_id` when there's more than one line so the admin UI can
+ * present them as a single sale. Each row is otherwise a normal order — if
+ * `initialStatus` is "confirmed", it goes through the exact same
+ * `updateOrderStatusWithEffects` path a status-dropdown change uses, so the Meta
+ * Purchase CAPI dispatch and `order_status_history` logging stay identical to an
+ * online order.
+ *
+ * The phone is not typed by the admin: it comes from the picked conversation, so
+ * the Click-to-WhatsApp click id binds deterministically instead of being
+ * guessed from a phone-number search.
  */
-export async function createManualSaleAction(
-  input: ManualSaleInput,
+export async function createWhatsAppSaleAction(
+  input: WhatsAppSaleInput,
 ): Promise<ManualSaleResult> {
   try {
     const session = await assertPermission(PERMISSIONS.confirm_orders);
@@ -491,16 +542,18 @@ export async function createManualSaleAction(
       return { ok: false, error: "اسم العميل مطلوب." };
     }
 
-    const phoneParsed = createOrderPhoneSchema.safeParse(input.phone);
-    if (!phoneParsed.success) {
-      return {
-        ok: false,
-        error: phoneParsed.error.issues[0]?.message ?? "رقم الهاتف غير صالح.",
-      };
+    // The picker supplies E.164 digits straight from WhatsApp. Prefer the
+    // Mauritania canonicalizer so the stored spelling matches existing orders;
+    // fall back to "+digits" for a number it doesn't recognise rather than
+    // rejecting a real conversation.
+    const normalizedPhone = sanitizePhoneForMetaE164(input.conversationPhone ?? "");
+    if (!normalizedPhone) {
+      return { ok: false, error: "اختر محادثة واتساب صالحة." };
     }
-    const phone = phoneParsed.data;
+    const canonical = createOrderPhoneSchema.safeParse(normalizedPhone);
+    const phone = canonical.success ? canonical.data : `+${normalizedPhone}`;
 
-    const channel: ManualSaleChannel = input.channel === "other" ? "other" : "phone_call";
+    const channel: ManualSaleChannel = "whatsapp";
 
     const lines = (input.lines ?? []).filter((line) => line.productId);
     if (lines.length === 0) {
@@ -547,7 +600,7 @@ export async function createManualSaleAction(
     }
 
     const manualSaleGroupId = lines.length > 1 ? crypto.randomUUID() : null;
-    const metaSignals = await resolveManualSaleMetaSignals(supabase, phone);
+    const metaSignals = await resolveWhatsAppSaleMetaSignals(supabase, normalizedPhone, phone);
     const rowsToInsert = lines.map((line) => {
       const product = productMap.get(line.productId)!;
       const unitPrice = Number(product.discount_price ?? product.price);

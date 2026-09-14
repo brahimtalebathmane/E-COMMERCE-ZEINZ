@@ -4,6 +4,7 @@ const assert = require("node:assert");
 const {
   extractExternalAdReply,
   phoneJidFromKey,
+  senderDisplayName,
   toMetaE164Digits,
 } = require("./ctwa-capture");
 
@@ -62,6 +63,22 @@ assert.strictEqual(
   null,
   "status broadcast JID returns null",
 );
+
+// --- senderDisplayName -----------------------------------------------------
+
+assert.strictEqual(
+  senderDisplayName({ pushName: "  Ahmed  " }),
+  "Ahmed",
+  "trims the pushName",
+);
+assert.strictEqual(senderDisplayName({ pushName: "" }), null, "empty pushName returns null");
+assert.strictEqual(
+  senderDisplayName({ pushName: "   " }),
+  null,
+  "whitespace-only pushName returns null",
+);
+assert.strictEqual(senderDisplayName({}), null, "missing pushName returns null");
+assert.strictEqual(senderDisplayName(null), null, "null message doesn't crash");
 
 // --- toMetaE164Digits parity with sanitizePhoneForMetaE164 ---------------
 //
