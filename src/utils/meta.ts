@@ -348,7 +348,23 @@ export type SendMetaEventResult =
         | "network_error"
         | "rejected";
       detail?: string;
+      /**
+       * Meta's `error.error_subcode`, when the response carried one. Callers use
+       * it to tell a payload-shape rejection (which a different shape can fix)
+       * from a genuine failure. 2804117 = business_messaging event whose
+       * `whatsapp_business_account_id` does not own the `ctwa_clid`.
+       */
+      errorSubcode?: number;
     };
+
+/** Meta's `error.error_subcode` from a parsed Graph API error body, if present. */
+function metaErrorSubcode(parsed: Record<string, unknown> | null): number | undefined {
+  const error = parsed?.error;
+  if (!error || typeof error !== "object") return undefined;
+  const raw = (error as Record<string, unknown>).error_subcode;
+  const code = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(code) ? code : undefined;
+}
 
 /**
  * Timeout-safe CAPI POST with up to 2 retries on transient failures.
@@ -473,7 +489,12 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
           status: res.status,
           body: body.slice(0, 500),
         });
-        return { ok: false, reason: "rejected", detail: body.slice(0, 500) };
+        return {
+          ok: false,
+          reason: "rejected",
+          detail: body.slice(0, 500),
+          errorSubcode: metaErrorSubcode(parsed),
+        };
       }
 
       const retryable = isRetryableMetaHttpStatus(res.status);
@@ -488,6 +509,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
           ok: false,
           reason: "http_error",
           detail: `status=${res.status} body=${body.slice(0, 400)}`,
+          errorSubcode: metaErrorSubcode(parsed),
         };
       }
     } catch (error) {
