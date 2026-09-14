@@ -143,6 +143,9 @@ async function connectWhatsApp() {
       sock.ev.on("messages.upsert", (upsert) => {
         void recordInboundWhatsAppMessages(upsert, logEvent);
       });
+      // Proves from /api/logs that THIS build is the one running — a stale
+      // deploy is otherwise indistinguishable from "no messages arrived".
+      logEvent("Inbound capture listener registered (whatsapp_contacts + CTWA)");
 
       sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;

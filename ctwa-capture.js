@@ -1,21 +1,22 @@
 const { createClient } = require("@supabase/supabase-js");
 
 /**
- * WhatsApp inbound-message capture. Two jobs:
+ * Inbound WhatsApp capture.
  *
- *  1. Contacts — every inbound 1:1 conversation is recorded in
- *     `whatsapp_contacts`, which is what the admin picks from when recording a
- *     WhatsApp sale. An organic chat with no ad behind it still has to appear.
- *  2. Click-to-WhatsApp (CTWA) click ids — when someone clicks a "click to
- *     WhatsApp" ad, Meta attaches a `ctwaClid` to the first message they send
- *     us. That id is the only deterministic link between the ad click and the
- *     sale the admin later records, so it is also persisted into
- *     `whatsapp_ad_clicks` and replayed on the Meta Purchase event (see
- *     src/lib/meta/dispatch.ts).
+ * Two jobs, from the same message stream:
  *
- * Same shape as marketing-worker.js: plain CommonJS, its own service-role
- * Supabase client, and a hard no-op when the env vars aren't configured so a
- * deployment that only sends order confirmations is unaffected.
+ *  1. Every inbound 1:1 message updates `whatsapp_contacts` — the list the admin
+ *     picks a conversation from when recording a WhatsApp sale.
+ *  2. When someone clicks a "click to WhatsApp" ad, Meta attaches a `ctwaClid`
+ *     to the first message they send. That id is the only deterministic link
+ *     between the ad click and the sale, so it is also written to
+ *     `whatsapp_ad_clicks` and later replayed on the Meta Purchase event
+ *     (see src/lib/meta/dispatch.ts).
+ *
+ * Same shape as marketing-worker.js: plain CommonJS and its own service-role
+ * Supabase client. When the env vars aren't configured it disables itself rather
+ * than crashing — but it says so in the log exactly once, because a silent
+ * no-op here is indistinguishable from "no messages arrived".
  */
 
 function makeSupabase() {
@@ -26,8 +27,24 @@ function makeSupabase() {
 }
 
 let cachedSupabase;
-function getSupabase() {
+let warnedNoSupabase = false;
+
+/**
+ * Returns null when the env vars aren't configured. Warns ONCE rather than
+ * failing silently: a missing SUPABASE_SERVICE_ROLE_KEY on the WhatsApp host
+ * looks exactly like "no messages arrived", which is impossible to diagnose
+ * from the outside.
+ */
+function getSupabase(log) {
   if (cachedSupabase === undefined) cachedSupabase = makeSupabase();
+  if (!cachedSupabase && !warnedNoSupabase) {
+    warnedNoSupabase = true;
+    const msg =
+      "WhatsApp capture DISABLED — NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are not set on this host";
+    if (typeof log === "function") log(msg);
+    // eslint-disable-next-line no-console
+    console.error(`[WhatsApp] ${msg}`);
+  }
   return cachedSupabase;
 }
 
@@ -113,9 +130,15 @@ function senderDisplayName(msg) {
 async function recordInboundWhatsAppMessages(upsert, log) {
   // "append" is history sync on (re)connect — replaying it would re-insert old
   // clicks with a wrong clicked_at and inflate inbound_count. Only live messages.
-  if (!upsert || upsert.type !== "notify" || !Array.isArray(upsert.messages)) return;
+  if (!upsert || !Array.isArray(upsert.messages)) return;
+  if (upsert.type !== "notify") {
+    if (typeof log === "function") {
+      log(`WhatsApp inbound: ignored ${upsert.messages.length} message(s) of type "${upsert.type}" (history sync)`);
+    }
+    return;
+  }
 
-  const supabase = getSupabase();
+  const supabase = getSupabase(log);
   if (!supabase) return;
 
   /** @type {Map<string, {phone:string, displayName:string|null, at:Date, ad:any}>} */
@@ -163,7 +186,15 @@ async function recordInboundWhatsAppMessages(upsert, log) {
     }
   }
 
-  if (contacts.size === 0) return;
+  if (contacts.size === 0) {
+    // Reached only for messages we sent, group/broadcast chats, or a JID whose
+    // number could not be normalized — worth a line, or "nothing happened" and
+    // "the listener never ran" look identical in the log.
+    if (typeof log === "function") {
+      log(`WhatsApp inbound: ${upsert.messages.length} message(s) seen, none recordable (own/group/unparseable)`);
+    }
+    return;
+  }
 
   try {
     // Contacts first: the sale picker must list the conversation even if the
