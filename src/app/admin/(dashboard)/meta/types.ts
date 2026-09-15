@@ -34,10 +34,11 @@ export type CtwaAdPerformanceRow = {
   /** Chats opened from this ad (rows in whatsapp_ad_clicks). */
   conversations: number;
   orders: number;
-  /** Orders that were not cancelled — confirmed, shipped, and beyond. */
+  /** Orders that reached "shipped" — the same realized-revenue definition
+   *  `isRevenueStatus` uses on /admin/analytics, so the two pages agree. */
   confirmed: number;
   cancelled: number;
-  /** Sum of total_price over `confirmed`. */
+  /** Sum of total_price over `confirmed` (shipped orders only). */
   revenue: number;
   currency: string;
 };
@@ -48,8 +49,11 @@ export type CtwaAdPerformance = {
   totalConversations: number;
   totalOrders: number;
   totalConfirmed: number;
-  totalRevenue: number;
-  currency: string;
+  /** Realized (shipped) revenue, grouped by currency — never summed across
+   *  currencies into one mixed number. Each ad's own row already carries a
+   *  single currency (one ad belongs to one market); this is the report-level
+   *  total, which used to silently mix them. */
+  totalRevenueByCurrency: { currency: string; revenue: number }[];
   /** True when either source hit the row cap — the numbers are a partial view. */
   truncated: boolean;
 };

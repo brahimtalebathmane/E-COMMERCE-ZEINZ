@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countStuckEventsFast } from "@/lib/meta/stuck-events";
+import { isRevenueStatus } from "@/lib/analytics/profit";
+import type { OrderStatus } from "@/types";
 import type { CtwaAdPerformance, CtwaAdPerformanceRow, MetaEventLogRow, MetaOverviewStats } from "./types";
 
 export const META_EVENT_LOG_SELECT =
@@ -139,9 +141,9 @@ export async function fetchCtwaAdPerformance(
       row.cancelled += 1;
       continue;
     }
-    // Revenue counts every order that was not cancelled — confirmed, shipped and
-    // the rest — so the number matches what the business actually booked.
-    if (status !== "pending") {
+    // Realized revenue only — same definition profit.ts uses (shipped only),
+    // so this report and /admin/analytics never disagree about the same orders.
+    if (isRevenueStatus(status as OrderStatus)) {
       row.confirmed += 1;
       const value = Number(order.total_price);
       if (Number.isFinite(value)) row.revenue += value;
@@ -155,14 +157,25 @@ export async function fetchCtwaAdPerformance(
     (x, y) => y.revenue - x.revenue || y.conversations - x.conversations,
   );
 
+  // Grouped by currency — never summed across currencies into one number
+  // (each row already carries a single currency; this just avoids collapsing
+  // several currencies' rows into one mixed total).
+  const revenueByCurrency = new Map<string, number>();
+  for (const r of rows) {
+    const code = r.currency || "—";
+    revenueByCurrency.set(code, (revenueByCurrency.get(code) ?? 0) + r.revenue);
+  }
+
   return {
     rangeDays: days,
     rows,
     totalConversations: rows.reduce((sum, r) => sum + r.conversations, 0),
     totalOrders: rows.reduce((sum, r) => sum + r.orders, 0),
     totalConfirmed: rows.reduce((sum, r) => sum + r.confirmed, 0),
-    totalRevenue: rows.reduce((sum, r) => sum + r.revenue, 0),
-    currency: rows.find((r) => r.currency)?.currency ?? "",
+    totalRevenueByCurrency: Array.from(revenueByCurrency.entries()).map(([currency, revenue]) => ({
+      currency,
+      revenue,
+    })),
     truncated:
       (clicksRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP ||
       (ordersRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP,

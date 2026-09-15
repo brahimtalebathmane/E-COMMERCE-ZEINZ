@@ -40,6 +40,9 @@ export type DashboardData = {
     total: number;
     orderedAt: string;
   }[];
+  /** Owned products with revenue but no cost price — netProfit above is
+   *  overstated by an unknown amount when this is > 0. See A9/C1. */
+  productsMissingCost: number;
 };
 
 const TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
@@ -93,12 +96,25 @@ export function DashboardHome({
                 value={formatMoney(data.grossRevenue, currency)}
                 accent={KPI_ACCENT.revenue}
               />
-              <AdminKpiTile
-                label={a.dashboard.kpiNetProfit}
-                value={formatMoney(data.netProfit, currency)}
-                accent={KPI_ACCENT.profit}
-                emphasize
-              />
+              <div>
+                <AdminKpiTile
+                  label={a.dashboard.kpiNetProfit}
+                  value={formatMoney(data.netProfit, currency)}
+                  accent={KPI_ACCENT.profit}
+                  emphasize
+                />
+                {data.productsMissingCost > 0 ? (
+                  <Link
+                    href="/admin/analytics"
+                    className="mt-1 block text-[11px] font-semibold text-amber-400 underline-offset-2 hover:underline"
+                  >
+                    {a.dashboard.kpiMissingCostWarning.replace(
+                      "{count}",
+                      String(data.productsMissingCost),
+                    )}
+                  </Link>
+                ) : null}
+              </div>
             </>
           ) : null}
           {visibility.orders ? (

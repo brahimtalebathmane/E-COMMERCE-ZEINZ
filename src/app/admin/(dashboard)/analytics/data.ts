@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderStatus } from "@/types";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ensureFreshAdSpend } from "@/lib/analytics/ad-spend-sync";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import {
   buildProductProfitRows,
   sumProfitTotals,
@@ -50,6 +51,10 @@ export type AnalyticsData = {
   adSpendFetchedAtByProduct: Map<string, string>;
   adSpendFreshness: { refreshed: boolean; lastError?: string };
   todayKey: string;
+  /** True when either the orders or the ad-spend read hit the pagination cap
+   *  and may be incomplete — see `fetchAllRows`. Must be surfaced loudly: a
+   *  totals figure built from a truncated read cannot be trusted. */
+  truncated: boolean;
 };
 
 export type LoadAnalyticsResult = { ok: true; data: AnalyticsData } | { ok: false; error: string };
@@ -85,30 +90,57 @@ export async function loadAnalyticsData(
   const campaignRows = campaignsRes.data ?? [];
   const ownedProductIds = new Set(productRows.map((p) => String(p.id)));
 
+  const ownedProductIdList = Array.from(ownedProductIds);
+
   // ensureFreshAdSpend WRITES to product_ad_spend_daily, so the read of that
   // same table below must wait for it to finish (otherwise the read can race
   // ahead and return stale data) — but it doesn't touch `orders` at all, so
-  // that fetch is genuinely independent and can run alongside it.
+  // that fetch is genuinely independent and can run alongside it. Both reads
+  // are paginated (fetchAllRows): a plain `.select()` truncates silently past
+  // PostgREST's default 1000-row cap, and this store is already over it.
   const [ordersRes, freshness] = await Promise.all([
-    cookieClient
-      .from("orders")
-      .select(
-        "product_id, total_price, status, ordered_at, delivery_cost, quantity, unit_cost_price",
-      ),
+    fetchAllRows<{
+      product_id: string;
+      total_price: number;
+      status: string;
+      ordered_at: string;
+      delivery_cost: number | null;
+      quantity: number | null;
+      unit_cost_price: number | null;
+      id: string;
+    }>(
+      () =>
+        cookieClient
+          .from("orders")
+          .select(
+            "id, product_id, total_price, status, ordered_at, delivery_cost, quantity, unit_cost_price",
+          )
+          .in("product_id", ownedProductIdList) as never,
+      "id",
+    ),
     ensureFreshAdSpend(
       createServiceClient(),
       productRows.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
     ),
   ]);
 
-  if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
+  if (ordersRes.error) return { ok: false, error: ordersRes.error };
 
-  const adSpendDailyRes = await cookieClient
-    .from("product_ad_spend_daily")
-    .select("product_id, date, amount, fetched_at")
-    .in("product_id", Array.from(ownedProductIds));
+  const adSpendDailyRes = await fetchAllRows<{
+    product_id: string;
+    date: string;
+    amount: number;
+    fetched_at: string | null;
+  }>(
+    () =>
+      cookieClient
+        .from("product_ad_spend_daily")
+        .select("product_id, date, amount, fetched_at")
+        .in("product_id", ownedProductIdList) as never,
+    "date",
+  );
 
-  if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error.message };
+  if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error };
 
   const products: ProductMetaInput[] = productRows.map((p) => ({
     productId: String(p.id),
@@ -127,17 +159,15 @@ export async function loadAnalyticsData(
     ]),
   );
 
-  const adSpendDaily = (adSpendDailyRes.data ?? []).map((r) => ({
+  const adSpendDaily = adSpendDailyRes.rows.map((r) => ({
     product_id: String(r.product_id),
     date: String(r.date),
     amount: Number(r.amount) || 0,
   }));
 
-  const adSpendByProduct = new Map<string, number>();
   const adSpendFetchedAtByProduct = new Map<string, string>();
-  for (const r of adSpendDailyRes.data ?? []) {
+  for (const r of adSpendDailyRes.rows) {
     const productId = String(r.product_id);
-    adSpendByProduct.set(productId, (adSpendByProduct.get(productId) ?? 0) + (Number(r.amount) || 0));
     const fetchedAt = String(r.fetched_at ?? "");
     const current = adSpendFetchedAtByProduct.get(productId);
     if (fetchedAt && (!current || fetchedAt > current)) {
@@ -145,20 +175,19 @@ export async function loadAnalyticsData(
     }
   }
 
-  const orders: ProfitOrderInput[] = (ordersRes.data ?? [])
-    .filter((o) => ownedProductIds.has(String(o.product_id)))
-    .map((o) => ({
-      product_id: String(o.product_id),
-      total_price: Number(o.total_price) || 0,
-      status: o.status as OrderStatus,
-      ordered_at: String(o.ordered_at ?? ""),
-      delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
-      quantity: o.quantity == null ? 1 : Number(o.quantity),
-      unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
-    }));
+  const orders: ProfitOrderInput[] = ordersRes.rows.map((o) => ({
+    product_id: String(o.product_id),
+    total_price: Number(o.total_price) || 0,
+    status: o.status as OrderStatus,
+    ordered_at: String(o.ordered_at ?? ""),
+    delivery_cost: o.delivery_cost == null ? null : Number(o.delivery_cost),
+    quantity: o.quantity == null ? 1 : Number(o.quantity),
+    unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
+  }));
 
-  const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendByProduct });
+  const rows = buildProductProfitRows({ orders, products: productMetaMap, adSpendDaily });
   const totals = sumProfitTotals(rows);
+  const truncated = ordersRes.truncated || adSpendDailyRes.truncated;
 
   const daily = buildDailyProfitSeries({ orders, products: productMetaMap, adSpendDaily });
   const combined = combineAcrossProducts(daily);
@@ -194,6 +223,7 @@ export async function loadAnalyticsData(
       adSpendFetchedAtByProduct,
       adSpendFreshness: freshness,
       todayKey,
+      truncated,
     },
   };
 }
@@ -215,6 +245,13 @@ export type AffiliateAnalyticsData = {
   orders: ProfitOrderInput[];
   products: AffiliateProductMetaInput[];
   adSpendDaily: AdSpendDailyInput[];
+  /** code -> MRU per unit (from `currency_rates`), for converting MRU ad spend
+   *  into each affiliate row's own currency. A code absent here cannot be
+   *  converted — the row must show "غير متاح", never an invented rate. Plain
+   *  object (not Map) so it survives the server->client prop boundary. */
+  mruPerUnitByCurrency: Record<string, number>;
+  /** True when the orders or ad-spend read hit the pagination cap (see `fetchAllRows`). */
+  truncated: boolean;
 };
 
 export type LoadAffiliateAnalyticsResult =
@@ -248,7 +285,10 @@ export async function loadAffiliateAnalyticsData(
   if (productsErr) return { ok: false, error: productsErr.message };
   const productRowsData = productRows ?? [];
   if (productRowsData.length === 0) {
-    return { ok: true, data: { orders: [], products: [], adSpendDaily: [] } };
+    return {
+      ok: true,
+      data: { orders: [], products: [], adSpendDaily: [], mruPerUnitByCurrency: {}, truncated: false },
+    };
   }
 
   const productIds = productRowsData.map((p) => String(p.id));
@@ -256,31 +296,64 @@ export async function loadAffiliateAnalyticsData(
   // Same write-then-read constraint as loadAnalyticsData: ensureFreshAdSpend
   // writes product_ad_spend_daily, so its read below must wait for it, but
   // the orders fetch touches neither table and can run concurrently with it.
-  const [ordersRes] = await Promise.all([
-    cookieClient
-      .from("orders")
-      .select(
-        "product_id, total_price, status, ordered_at, quantity, affiliate_other_costs, affiliate_costs_finalized, unit_cost_price, affiliate_commission_type_at_order, affiliate_fixed_commission_at_order, affiliate_sell_price_at_order",
-      )
-      .in("product_id", productIds),
+  // Both reads are paginated (fetchAllRows) — see loadAnalyticsData for why.
+  const [ordersRes, ratesRes] = await Promise.all([
+    fetchAllRows<{
+      id: string;
+      product_id: string;
+      total_price: number;
+      status: string;
+      ordered_at: string;
+      quantity: number | null;
+      affiliate_other_costs: number | null;
+      affiliate_costs_finalized: boolean | null;
+      unit_cost_price: number | null;
+      affiliate_commission_type_at_order: string | null;
+      affiliate_fixed_commission_at_order: number | null;
+      affiliate_sell_price_at_order: number | null;
+    }>(
+      () =>
+        cookieClient
+          .from("orders")
+          .select(
+            "id, product_id, total_price, status, ordered_at, quantity, affiliate_other_costs, affiliate_costs_finalized, unit_cost_price, affiliate_commission_type_at_order, affiliate_fixed_commission_at_order, affiliate_sell_price_at_order",
+          )
+          .in("product_id", productIds) as never,
+      "id",
+    ),
+    cookieClient.from("currency_rates").select("code, mru_per_unit"),
     ensureFreshAdSpend(
       createServiceClient(),
       productRowsData.map((p) => ({ id: String(p.id), createdAt: String(p.created_at ?? "") })),
     ),
   ]);
-  if (ordersRes.error) return { ok: false, error: ordersRes.error.message };
+  if (ordersRes.error) return { ok: false, error: ordersRes.error };
+  if (ratesRes.error) return { ok: false, error: ratesRes.error.message };
 
-  const { data: adSpendDailyRows, error: adSpendErr } = await cookieClient
-    .from("product_ad_spend_daily")
-    .select("product_id, date, amount")
-    .in("product_id", productIds);
-  if (adSpendErr) return { ok: false, error: adSpendErr.message };
+  const mruPerUnitByCurrency: Record<string, number> = {};
+  for (const r of ratesRes.data ?? []) {
+    const code = String(r.code ?? "").trim().toUpperCase();
+    const rate = Number(r.mru_per_unit);
+    if (code && Number.isFinite(rate) && rate > 0) mruPerUnitByCurrency[code] = rate;
+  }
 
-  const adSpendDaily: AdSpendDailyInput[] = (adSpendDailyRows ?? []).map((r) => ({
+  const adSpendDailyRes = await fetchAllRows<{ product_id: string; date: string; amount: number }>(
+    () =>
+      cookieClient
+        .from("product_ad_spend_daily")
+        .select("product_id, date, amount")
+        .in("product_id", productIds) as never,
+    "date",
+  );
+  if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error };
+
+  const adSpendDaily: AdSpendDailyInput[] = adSpendDailyRes.rows.map((r) => ({
     product_id: String(r.product_id),
     date: String(r.date),
     amount: Number(r.amount) || 0,
   }));
+
+  const truncated = ordersRes.truncated || adSpendDailyRes.truncated;
 
   const products: AffiliateProductMetaInput[] = productRowsData.map((p) => ({
     productId: String(p.id),
@@ -297,7 +370,7 @@ export async function loadAffiliateAnalyticsData(
     createdAt: String(p.created_at ?? ""),
   }));
 
-  const orders: ProfitOrderInput[] = (ordersRes.data ?? []).map((o) => ({
+  const orders: ProfitOrderInput[] = ordersRes.rows.map((o) => ({
     product_id: String(o.product_id),
     total_price: Number(o.total_price) || 0,
     status: o.status as OrderStatus,
@@ -306,12 +379,13 @@ export async function loadAffiliateAnalyticsData(
     affiliate_other_costs: o.affiliate_other_costs == null ? null : Number(o.affiliate_other_costs),
     affiliate_costs_finalized: Boolean(o.affiliate_costs_finalized),
     unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
-    affiliate_commission_type_at_order: o.affiliate_commission_type_at_order,
+    affiliate_commission_type_at_order:
+      o.affiliate_commission_type_at_order as ProfitOrderInput["affiliate_commission_type_at_order"],
     affiliate_fixed_commission_at_order:
       o.affiliate_fixed_commission_at_order == null ? null : Number(o.affiliate_fixed_commission_at_order),
     affiliate_sell_price_at_order:
       o.affiliate_sell_price_at_order == null ? null : Number(o.affiliate_sell_price_at_order),
   }));
 
-  return { ok: true, data: { orders, products, adSpendDaily } };
+  return { ok: true, data: { orders, products, adSpendDaily, mruPerUnitByCurrency, truncated } };
 }

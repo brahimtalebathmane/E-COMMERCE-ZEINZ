@@ -68,6 +68,22 @@ export function isOrderOnOrAfterStartDate(
   return created >= start;
 }
 
+/**
+ * Ad-spend twin of `isOrderOnOrAfterStartDate`. A cutoff that hides a
+ * product's old orders must hide the ad spend that produced them, or the
+ * product shows spend with no revenue for the whole excluded window.
+ */
+export function isAdSpendOnOrAfterStartDate(
+  date: string,
+  startDate: string | null | undefined,
+): boolean {
+  if (!startDate) return true;
+  const cutoff = String(startDate).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff)) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return true;
+  return date >= cutoff;
+}
+
 /** Per-product profit breakdown rendered by the analytics dashboard. */
 export type ProductProfitRow = {
   productId: string;
@@ -116,6 +132,16 @@ export type ProductProfitRow = {
   hasCost: boolean;
   /** Inclusive cutoff date (YYYY-MM-DD) or null for life-to-date metrics. */
   calculationStartDate: string | null;
+  /** Count of affiliate orders with neither a "fixed" nor "set_price" commission
+   *  type on the order snapshot or the current product — contribute nothing to
+   *  any total above (not revenue, not COGS, not ordersCount). Surfaced so a
+   *  misconfigured product doesn't silently look identical to "no orders". */
+  misconfigured: number;
+  /** True when this row's ad spend could not be converted from MRU into its
+   *  own currency (no `currency_rates` row) — `adSpend` was forced to 0 rather
+   *  than shown as a converted-looking number. The UI must render "غير متاح"
+   *  for this row's ad-spend/net-profit cells and exclude it from group totals. */
+  adSpendUnavailable: boolean;
 };
 
 /** Net Profit = Gross Revenue - (COGS + Delivery Cost + Other Costs + Ad Spend). */
@@ -141,6 +167,12 @@ export type ProfitTotals = {
   unitsSold: number;
   internalReturns: number;
   ordersCount: number;
+  /** Products in this total that contributed revenue with no cost price — their
+   *  COGS counted as 0, so netProfit and netMargin are OVERSTATED by an unknown
+   *  amount. Never render a total carrying this without the warning beside it. */
+  productsMissingCost: number;
+  /** Revenue contributed by those products, so the warning can state the size. */
+  revenueMissingCost: number;
 };
 
 /**
@@ -159,6 +191,8 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
     unitsSold: 0,
     internalReturns: 0,
     ordersCount: 0,
+    productsMissingCost: 0,
+    revenueMissingCost: 0,
   };
   for (const row of rows) {
     totals.grossRevenue += row.grossRevenue;
@@ -169,6 +203,10 @@ export function sumProfitTotals(rows: ProductProfitRow[]): ProfitTotals {
     totals.unitsSold += row.unitsSold;
     totals.internalReturns += row.internalReturns;
     totals.ordersCount += row.ordersCount;
+    if (!row.hasCost && row.grossRevenue > 0) {
+      totals.productsMissingCost += 1;
+      totals.revenueMissingCost += row.grossRevenue;
+    }
   }
   totals.netProfit = netProfit(totals);
   return totals;
@@ -187,16 +225,18 @@ export type ProductMeta = {
   currency?: string | null;
 };
 
+/** Per-day, per-product ad spend row, as stored in `product_ad_spend_daily`. */
+export type AdSpendDailyRow = { product_id: string; date: string; amount: number };
+
 /**
  * Builds per-product profit rows from raw orders, product metadata, and the
- * live ad-spend map (summed per product from `product_ad_spend_daily`). Pure &
- * deterministic so the same logic backs the server render and the client-side
- * live recalculation.
+ * per-day ad-spend series. Pure & deterministic so the same logic backs the
+ * server render and the client-side live recalculation.
  *
  * Formula by product type (all gated on isRevenueStatus, i.e. status='shipped'):
  * - owned: revenue − cost×qty − delivery_cost − adSpend (unchanged).
- * - affiliate fixed: +commission per order − adSpend. No COGS/delivery.
- * - affiliate set_price: sell_price − cost×qty − affiliate_other_costs − adSpend,
+ * - affiliate fixed: +commission×qty per order − adSpend. No COGS/delivery.
+ * - affiliate set_price: sell_price×qty − cost×qty − affiliate_other_costs − adSpend,
  *   but ONLY once affiliate_costs_finalized=true — otherwise the order is tallied
  *   into `awaitingCosts` and excluded from every total until finalized.
  *
@@ -206,13 +246,24 @@ export type ProductMeta = {
  * falling back to the product's current value only when the order predates
  * that snapshot (null). This is what makes editing a product's price/cost/
  * commission terms affect only future orders, never past profit.
+ *
+ * Ad spend is taken as per-day rows (not a pre-summed map) so each row can be
+ * gated by the product's own `calculationStartDate` cutoff exactly like
+ * orders are — a cutoff that hides a product's old orders must hide the ad
+ * spend that produced them too.
+ *
+ * `mruPerUnitByCurrency` (from `currency_rates`) converts an affiliate row's
+ * MRU-denominated ad spend into that row's own currency. When the row's
+ * currency has no rate, `adSpend` is forced to 0 and `adSpendUnavailable` is
+ * set — never a converted-looking number invented from a guessed rate.
  */
 export function buildProductProfitRows(params: {
   orders: ProfitOrderInput[];
   products: Map<string, ProductMeta>;
-  adSpendByProduct: Map<string, number>;
+  adSpendDaily: AdSpendDailyRow[];
+  mruPerUnitByCurrency?: Map<string, number>;
 }): ProductProfitRow[] {
-  const { orders, products, adSpendByProduct } = params;
+  const { orders, products, adSpendDaily, mruPerUnitByCurrency } = params;
   const byProduct = new Map<string, ProductProfitRow>();
 
   function ensureRow(productId: string): ProductProfitRow {
@@ -234,11 +285,13 @@ export function buildProductProfitRows(params: {
         cogs: 0,
         deliveryCost: 0,
         otherCosts: 0,
-        adSpend: adSpendByProduct.get(productId) ?? 0,
+        adSpend: 0,
         internalReturns: 0,
         awaitingCosts: 0,
         hasCost: cost != null && Number.isFinite(cost),
         calculationStartDate: meta?.calculationStartDate ?? null,
+        misconfigured: 0,
+        adSpendUnavailable: false,
       };
       byProduct.set(productId, row);
     }
@@ -280,7 +333,7 @@ export function buildProductProfitRows(params: {
       const commission = Number(order.affiliate_fixed_commission_at_order ?? meta?.affiliateFixedCommission) || 0;
       row.unitsSold += quantity;
       row.ordersCount += 1;
-      row.grossRevenue += commission;
+      row.grossRevenue += commission * quantity;
       continue;
     }
     if (commissionType === "set_price") {
@@ -292,17 +345,36 @@ export function buildProductProfitRows(params: {
       const other = Number(order.affiliate_other_costs) || 0;
       row.unitsSold += quantity;
       row.ordersCount += 1;
-      row.grossRevenue += sellPrice;
+      row.grossRevenue += sellPrice * quantity;
       row.cogs += unitCost * quantity;
       row.otherCosts += other;
+      continue;
     }
+    // Neither "fixed" nor "set_price": the order contributes nothing above —
+    // flagged so it doesn't silently look identical to "no orders".
+    row.misconfigured += 1;
   }
 
-  // Include products that only have ad spend (no revenue-generating orders yet)
-  // so the spend is still visible and reflected in the totals.
-  for (const [productId, amount] of adSpendByProduct) {
-    if (amount > 0 && !byProduct.has(productId)) {
-      ensureRow(productId);
+  // Ad spend, gated by the same per-product cutoff as orders.
+  for (const spend of adSpendDaily) {
+    if (!spend.product_id) continue;
+    const meta = products.get(spend.product_id);
+    if (!isAdSpendOnOrAfterStartDate(spend.date, meta?.calculationStartDate)) continue;
+    const row = ensureRow(spend.product_id);
+    row.adSpend += Number(spend.amount) || 0;
+  }
+
+  // Convert affiliate ad spend from MRU into the row's own currency. Owned
+  // rows (currency "MRU") never need conversion.
+  for (const row of byProduct.values()) {
+    const code = row.currency?.trim().toUpperCase();
+    if (!code || code === "MRU") continue;
+    const rate = mruPerUnitByCurrency?.get(code);
+    if (rate && rate > 0) {
+      row.adSpend = row.adSpend / rate;
+    } else if (row.adSpend > 0) {
+      row.adSpend = 0;
+      row.adSpendUnavailable = true;
     }
   }
 

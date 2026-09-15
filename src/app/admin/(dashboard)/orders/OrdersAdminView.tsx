@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
 import type { AdminOrderRow } from "./types";
@@ -382,9 +383,12 @@ type ConfirmState = {
 type Props = {
   orders: AdminOrderRow[];
   selectedCountryId: string;
+  /** Soft-deleted order count for the selected country — 0 (and the link
+   *  hidden) when the admin lacks cancel_orders or there are none. */
+  deletedCount: number;
 };
 
-export function OrdersAdminView({ orders, selectedCountryId }: Props) {
+export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Props) {
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const canCreateManualSale = useHasPermission(PERMISSIONS.confirm_orders);
@@ -746,6 +750,14 @@ export function OrdersAdminView({ orders, selectedCountryId }: Props) {
             <AdminButton type="button" variant="ghost" onClick={toggleSelectionMode}>
               {selectionMode ? a.orders.selectionModeExit : a.orders.selectionModeEnter}
             </AdminButton>
+          ) : null}
+          {canDeleteOrders && deletedCount > 0 ? (
+            <Link
+              href="/admin/orders/deleted"
+              className="shrink-0 text-xs font-semibold text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+            >
+              {a.orders.deletedLink.replace("{count}", String(deletedCount))}
+            </Link>
           ) : null}
         </div>
       ) : null}

@@ -76,6 +76,8 @@ export default async function ProductAnalyticsPage({
       awaitingCosts: 0,
       hasCost: productMeta.costPrice != null,
       calculationStartDate: productMeta.calculationStartDate,
+      misconfigured: 0,
+      adSpendUnavailable: false,
     };
 
   const productDaily = data.daily.filter((d) => d.productId === productId);

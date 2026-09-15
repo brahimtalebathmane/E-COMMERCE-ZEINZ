@@ -8,6 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { computeBackfillWindow, syncProductAdSpend } from "@/lib/analytics/ad-spend-sync";
 import { dayKey, daysBetween } from "@/lib/analytics/daily-profit";
 import { monthRange } from "@/lib/analytics/period";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export type LinkCampaignActionResult =
   | {
@@ -119,6 +120,13 @@ export async function unlinkAdCampaignAction(
     // campaign are intentionally NOT purged on unlink: Meta's per-campaign
     // spend was already folded into the product's daily total at sync time,
     // and retroactively subtracting it back out isn't attempted here.
+    const { data: campaignRow } = await supabase
+      .from("product_ad_campaigns")
+      .select("meta_campaign_id, label")
+      .eq("id", rowId)
+      .eq("product_id", pid)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("product_ad_campaigns")
       .delete()
@@ -126,6 +134,17 @@ export async function unlinkAdCampaignAction(
       .eq("product_id", pid);
 
     if (error) return { ok: false, error: error.message };
+
+    // Records the event so a later step change in this product's ad-spend
+    // series (the next sync only refreshes going forward) is explained by a
+    // dated marker instead of looking like unexplained data (A17).
+    if (campaignRow) {
+      await supabase.from("product_ad_campaign_unlinks").insert({
+        product_id: pid,
+        meta_campaign_id: String(campaignRow.meta_campaign_id),
+        label: campaignRow.label ?? null,
+      });
+    }
 
     revalidatePath("/admin/analytics");
     revalidatePath(`/admin/analytics/${pid}`);
@@ -195,7 +214,10 @@ export type EnsureMonthAdSpendResult =
       ok: true;
       /** false when every relevant product's window was already fully cached — no Meta call was made. */
       synced: boolean;
-      adSpendDaily: { product_id: string; date: string; amount: number }[];
+      /** Ad spend for OWNED products only — never mix into the affiliate dashboard. */
+      ownedAdSpendDaily: { product_id: string; date: string; amount: number }[];
+      /** Ad spend for AFFILIATE products only — never mix into the owned/MRU dashboard. */
+      affiliateAdSpendDaily: { product_id: string; date: string; amount: number }[];
       /** Products with a linked campaign whose entire window summed to zero spend — see doc comment below. */
       incompleteProductIds: string[];
     }
@@ -224,15 +246,22 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
     const { selectedCountryId } = await getCountryScope();
     const supabase = createServiceClient();
 
-    let productsQuery = supabase.from("products").select("id");
+    // fulfillment_type is required so the returned ad spend can be split by
+    // owned/affiliate below — mixing the two here is what used to leak a
+    // foreign-currency product's ad spend into the MRU dashboard and vice
+    // versa (a phantom "—" product materializing in the wrong section).
+    let productsQuery = supabase.from("products").select("id, fulfillment_type");
     if (selectedCountryId) productsQuery = productsQuery.eq("country_id", selectedCountryId);
     const { data: productRows, error: productsErr } = await productsQuery;
     if (productsErr) return { ok: false, error: productsErr.message };
 
     const productIds = (productRows ?? []).map((p) => String(p.id));
     if (productIds.length === 0) {
-      return { ok: true, synced: false, adSpendDaily: [], incompleteProductIds: [] };
+      return { ok: true, synced: false, ownedAdSpendDaily: [], affiliateAdSpendDaily: [], incompleteProductIds: [] };
     }
+    const ownedProductIds = new Set(
+      (productRows ?? []).filter((p) => p.fulfillment_type !== "affiliate").map((p) => String(p.id)),
+    );
 
     const { data: campaignRows, error: campaignErr } = await supabase
       .from("product_ad_campaigns")
@@ -242,7 +271,7 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
 
     const productsWithCampaigns = [...new Set((campaignRows ?? []).map((r) => String(r.product_id)))];
     if (productsWithCampaigns.length === 0) {
-      return { ok: true, synced: false, adSpendDaily: [], incompleteProductIds: [] };
+      return { ok: true, synced: false, ownedAdSpendDaily: [], affiliateAdSpendDaily: [], incompleteProductIds: [] };
     }
 
     const { startKey, endKey: monthEndKey } = monthRange(month);
@@ -250,16 +279,20 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
     const untilKey = monthEndKey < todayKey ? monthEndKey : todayKey;
     const daysInWindow = daysBetween(startKey, untilKey) + 1;
 
-    const { data: existingRows, error: existingErr } = await supabase
-      .from("product_ad_spend_daily")
-      .select("product_id, date, amount")
-      .in("product_id", productsWithCampaigns)
-      .gte("date", startKey)
-      .lte("date", untilKey);
-    if (existingErr) return { ok: false, error: existingErr.message };
+    const existingRes = await fetchAllRows<{ product_id: string; date: string; amount: number }>(
+      () =>
+        supabase
+          .from("product_ad_spend_daily")
+          .select("product_id, date, amount")
+          .in("product_id", productsWithCampaigns)
+          .gte("date", startKey)
+          .lte("date", untilKey) as never,
+      "date",
+    );
+    if (existingRes.error) return { ok: false, error: existingRes.error };
 
     const datesByProduct = new Map<string, Set<string>>();
-    for (const row of existingRows ?? []) {
+    for (const row of existingRes.rows) {
       const pid = String(row.product_id);
       const set = datesByProduct.get(pid) ?? new Set<string>();
       set.add(String(row.date));
@@ -283,17 +316,21 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
       synced = true;
     }
 
-    const { data: finalRows, error: finalErr } = synced
-      ? await supabase
-          .from("product_ad_spend_daily")
-          .select("product_id, date, amount")
-          .in("product_id", productsWithCampaigns)
-          .gte("date", startKey)
-          .lte("date", untilKey)
-      : { data: existingRows, error: null };
-    if (finalErr) return { ok: false, error: finalErr.message };
+    const finalRes = synced
+      ? await fetchAllRows<{ product_id: string; date: string; amount: number }>(
+          () =>
+            supabase
+              .from("product_ad_spend_daily")
+              .select("product_id, date, amount")
+              .in("product_id", productsWithCampaigns)
+              .gte("date", startKey)
+              .lte("date", untilKey) as never,
+          "date",
+        )
+      : existingRes;
+    if (finalRes.error) return { ok: false, error: finalRes.error };
 
-    const adSpendDaily = (finalRows ?? []).map((r) => ({
+    const adSpendDaily = finalRes.rows.map((r) => ({
       product_id: String(r.product_id),
       date: String(r.date),
       amount: Number(r.amount) || 0,
@@ -310,7 +347,10 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
     }
     const incompleteProductIds = productsWithCampaigns.filter((pid) => (sumByProduct.get(pid) ?? 0) === 0);
 
-    return { ok: true, synced, adSpendDaily, incompleteProductIds };
+    const ownedAdSpendDaily = adSpendDaily.filter((r) => ownedProductIds.has(r.product_id));
+    const affiliateAdSpendDaily = adSpendDaily.filter((r) => !ownedProductIds.has(r.product_id));
+
+    return { ok: true, synced, ownedAdSpendDaily, affiliateAdSpendDaily, incompleteProductIds };
   } catch (error) {
     return {
       ok: false,

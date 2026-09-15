@@ -43,6 +43,39 @@ export async function deleteOrdersAction(ids: string[]) {
     throw new Error("Some orders could not be deleted");
   }
   revalidatePath("/admin/orders");
+  revalidatePath("/admin/orders/deleted");
+}
+
+/**
+ * Undo a soft delete. Service role for the same reason deleteOrdersAction uses
+ * it: orders_select_admin/orders_update_admin filter on deleted_at, so a
+ * user-scoped client cannot even see the row it needs to restore.
+ *
+ * Restoring never re-fires a Meta event: it only clears `deleted_at`.
+ * `meta_purchase_sent` and friends keep whatever value they had, so a restored
+ * order that already sent its Purchase does not send a second one, and one
+ * that never sent will be picked up by the normal dispatch path.
+ */
+export async function restoreOrdersAction(ids: string[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
+  await assertPermission(PERMISSIONS.cancel_orders);
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ deleted_at: null })
+    .in("id", uniqueIds)
+    .not("deleted_at", "is", null)
+    .select("id");
+
+  if (error) throw new Error(error.message);
+  if ((data?.length ?? 0) !== uniqueIds.length) {
+    throw new Error("Some orders could not be restored");
+  }
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/orders/deleted");
 }
 
 export type DeliveryCostActionResult =

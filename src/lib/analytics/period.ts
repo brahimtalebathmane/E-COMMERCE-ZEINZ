@@ -1,5 +1,5 @@
 import { netProfit, type ProductProfitRow, type ProfitOrderInput } from "./profit";
-import { dayKey, daysBetween, shiftDateKey } from "./daily-profit";
+import { dayKey, daysBetween, moneySign, shiftDateKey } from "./daily-profit";
 
 /** Life-to-date (current behaviour), or one specific calendar month (Africa/Nouakchott). */
 export type Period = { kind: "all" } | { kind: "month"; month: string };
@@ -49,6 +49,36 @@ export function filterOrdersByPeriod<T extends ProfitOrderInput>(orders: T[], pe
 }
 
 /**
+ * Count of orders whose `ordered_at` cannot be parsed into a calendar day, for
+ * a month-scoped period. `dayKey()` returns `""` for those, which never falls
+ * inside any month range — so such an order sits in the life-to-date total but
+ * in NO monthly view, and the two can never be reconciled unless this is
+ * surfaced. Always 0 for period "all" (nothing is dropped there).
+ */
+export function countUnparseableOrderDates(
+  orders: { ordered_at: string }[],
+  period: Period,
+): number {
+  if (period.kind === "all") return 0;
+  return orders.filter((o) => !dayKey(o.ordered_at)).length;
+}
+
+/**
+ * Collapses a per-day ad-spend series to one row per (product, date). Later
+ * entries win, so a freshly synced row replaces the cached one it duplicates.
+ * Required because the month-sync action returns the WHOLE month — cached
+ * rows included — and the caller concatenates it onto the server-loaded
+ * series; without this every revisited month counts its ad spend twice.
+ */
+export function dedupeAdSpendDaily<T extends { product_id: string; date: string }>(
+  rows: T[],
+): T[] {
+  const byKey = new Map<string, T>();
+  for (const row of rows) byKey.set(`${row.product_id}|${row.date}`, row);
+  return Array.from(byKey.values());
+}
+
+/**
  * Filters any day-keyed series (daily/combined profit rows, or raw per-day
  * ad-spend rows) to a period. One generic filter reused everywhere a date
  * range needs applying, so there is exactly one place that logic can drift.
@@ -91,8 +121,9 @@ export function countWinningLosingDays(
   let cursor = startKey;
   while (cursor <= endKey) {
     const value = byDate.get(cursor) ?? 0;
-    if (value > 0) winningDays += 1;
-    else if (value < 0) losingDays += 1;
+    const sign = moneySign(value);
+    if (sign > 0) winningDays += 1;
+    else if (sign < 0) losingDays += 1;
     cursor = shiftDateKey(cursor, 1);
   }
   return { winningDays, losingDays };
@@ -102,6 +133,19 @@ export function countWinningLosingDays(
 export function daysInMonth(month: string): number {
   const { startKey, endKey } = monthRange(month);
   return daysBetween(startKey, endKey) + 1;
+}
+
+/**
+ * Elapsed days of a month — the full length for a past month, days-so-far for
+ * the month in progress, 0 for a month that hasn't started. Dividing a partial
+ * month's profit by its full length understates the run rate by up to 30×,
+ * worst on the 1st.
+ */
+export function elapsedDaysInMonth(month: string, todayKey: string): number {
+  const { startKey, endKey } = monthRange(month);
+  if (todayKey < startKey) return 0;
+  const until = todayKey < endKey ? todayKey : endKey;
+  return daysBetween(startKey, until) + 1;
 }
 
 /** `total / days`, 0 when `days` is not positive (never NaN/Infinity). */

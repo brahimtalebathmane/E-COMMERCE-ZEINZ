@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/auth/admin";
 import { getCountryScope } from "@/lib/auth/country-scope";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { adminAr as a } from "@/locales/admin-ar";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import {
   buildProductProfitRows,
   sumProfitTotals,
@@ -32,50 +33,90 @@ export default async function AdminHomePage() {
 
   const supabase = await createClient();
 
-  const [ordersRes, productsRes] = await Promise.all([
-    canLoadOrders
-      ? supabase
-          .from("orders")
-          .select(
-            "id, product_id, phone, total_price, status, created_at, ordered_at, delivery_cost, quantity, unit_cost_price, products!inner(name_ar, country_id)",
-          )
-          .eq("products.country_id", selectedCountryId)
-          .order("ordered_at", { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
+  // Owned-only, matching /admin/analytics: this KPI is deliberately the
+  // owned/MRU business, never affiliate orders (which carry a foreign
+  // currency and would otherwise get summed into the MRU total below).
+  const productsRes =
     canViewAnalytics || canManageProducts
-      ? supabase
+      ? await supabase
           .from("products")
-          .select(
-            "id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at",
-          )
+          .select("id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at")
           .eq("country_id", selectedCountryId)
-      : Promise.resolve({ data: [], error: null }),
+          .eq("fulfillment_type", "owned")
+          .is("deleted_at", null)
+      : { data: [], error: null };
+  if (productsRes.error) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold">{a.dashboard.title}</h1>
+        <p className="mt-4 text-sm text-red-400">
+          {a.dashboard.loadError} {productsRes.error.message}
+        </p>
+      </div>
+    );
+  }
+  const productIds = (productsRes.data ?? []).map((p) => String(p.id));
+
+  const [ordersRes, adSpendRes] = await Promise.all([
+    canLoadOrders
+      ? fetchAllRows<{
+          id: string;
+          product_id: string;
+          phone: string | null;
+          total_price: number;
+          status: string;
+          created_at: string;
+          ordered_at: string;
+          delivery_cost: number | null;
+          quantity: number | null;
+          unit_cost_price: number | null;
+          products: { name_ar: string; country_id: string } | { name_ar: string; country_id: string }[] | null;
+        }>(
+          () =>
+            supabase
+              .from("orders")
+              .select(
+                "id, product_id, phone, total_price, status, created_at, ordered_at, delivery_cost, quantity, unit_cost_price, products!inner(name_ar, country_id)",
+              )
+              .eq("products.country_id", selectedCountryId)
+              .in("product_id", productIds) as never,
+          "id",
+        )
+      : Promise.resolve({ rows: [], error: null, truncated: false }),
+    // Live ad spend cache (see /admin/analytics, which is the only page that
+    // triggers a live Meta refresh) — this home KPI just reads whatever's
+    // already cached, no sync call, to keep the home page fast. Constrained to
+    // this country's owned product ids so other countries'/affiliate ad spend
+    // never leaks in.
+    canViewAnalytics
+      ? fetchAllRows<{ product_id: string; date: string; amount: number }>(
+          () =>
+            supabase
+              .from("product_ad_spend_daily")
+              .select("product_id, date, amount")
+              .in("product_id", productIds) as never,
+          "date",
+        )
+      : Promise.resolve({ rows: [], error: null, truncated: false }),
   ]);
 
-  // Live ad spend cache (see /admin/analytics, which is the only page that
-  // triggers a live Meta refresh) — this home KPI just reads whatever's
-  // already cached, no sync call, to keep the home page fast. Constrained to
-  // this country's product ids so other countries' ad spend never leaks in.
-  const adSpendRes = canViewAnalytics
-    ? await supabase
-        .from("product_ad_spend_daily")
-        .select("product_id, amount")
-        .in("product_id", (productsRes.data ?? []).map((p) => String(p.id)))
-    : { data: [], error: null };
-
-  const error = ordersRes.error ?? productsRes.error ?? adSpendRes.error;
+  const error = ordersRes.error ?? adSpendRes.error;
   if (error) {
     return (
       <div>
         <h1 className="text-2xl font-bold">{a.dashboard.title}</h1>
         <p className="mt-4 text-sm text-red-400">
-          {a.dashboard.loadError} {error.message}
+          {a.dashboard.loadError} {error}
         </p>
       </div>
     );
   }
 
-  const orderRows = ordersRes.data ?? [];
+  // fetchAllRows orders by `id` (for pagination correctness) — re-sort by
+  // business date here, since "recent orders" and "today" both need that.
+  const orderRows = [...ordersRes.rows].sort(
+    (a, b) => new Date(b.ordered_at).getTime() - new Date(a.ordered_at).getTime(),
+  );
   const productRows = productsRes.data ?? [];
 
   const products = new Map(
@@ -90,14 +131,15 @@ export default async function AdminHomePage() {
       },
     ]),
   );
-  const adSpendByProduct = new Map<string, number>();
-  for (const r of adSpendRes.data ?? []) {
-    const productId = String(r.product_id);
-    adSpendByProduct.set(productId, (adSpendByProduct.get(productId) ?? 0) + (Number(r.amount) || 0));
-  }
+  const adSpendDaily = adSpendRes.rows.map((r) => ({
+    product_id: String(r.product_id),
+    date: String(r.date),
+    amount: Number(r.amount) || 0,
+  }));
 
   let grossRevenue = 0;
   let netProfit = 0;
+  let productsMissingCost = 0;
   if (canViewAnalytics) {
     const profitOrders: ProfitOrderInput[] = orderRows.map((o) => ({
       product_id: String(o.product_id),
@@ -109,10 +151,11 @@ export default async function AdminHomePage() {
       unit_cost_price: o.unit_cost_price == null ? null : Number(o.unit_cost_price),
     }));
     const totals = sumProfitTotals(
-      buildProductProfitRows({ orders: profitOrders, products, adSpendByProduct }),
+      buildProductProfitRows({ orders: profitOrders, products, adSpendDaily }),
     );
     grossRevenue = totals.grossRevenue;
     netProfit = totals.netProfit;
+    productsMissingCost = totals.productsMissingCost;
   }
 
   const todayKey = DAY_KEY.format(new Date());
@@ -159,6 +202,7 @@ export default async function AdminHomePage() {
     activeProducts: pipeline.winner,
     pipeline,
     recentOrders,
+    productsMissingCost,
   };
 
   const visibility: DashboardVisibility = {

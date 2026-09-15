@@ -6,17 +6,23 @@ function normalizeEnv(value: string | undefined): string {
   return value.trim().replace(/^['"]|['"]$/g, "");
 }
 
-/** Meta ad account reports spend in USD; convert to MRU (store currency) at read time. */
-const USD_TO_MRU_RATE = 43;
+/** One day's spend for one campaign, as Meta reported it AND converted to MRU. */
+export type CampaignDailySpendEntry = {
+  /** Spend converted to MRU via `currency_rates` — this is what gets persisted as `amount`. */
+  amountMRU: number;
+  /** Spend exactly as Meta reported it, in the ad account's own currency — the record of truth. */
+  sourceAmount: number;
+  sourceCurrency: string;
+};
 
-/** campaignId -> (YYYY-MM-DD -> spend amount, in MRU). */
-export type CampaignDailySpend = Map<string, Map<string, number>>;
+/** campaignId -> (YYYY-MM-DD -> spend entry). */
+export type CampaignDailySpend = Map<string, Map<string, CampaignDailySpendEntry>>;
 
 export type FetchCampaignSpendResult =
-  | { ok: true; data: CampaignDailySpend }
+  | { ok: true; data: CampaignDailySpend; accountCurrency: string | null }
   | {
       ok: false;
-      reason: "missing_credentials" | "http_error" | "network_error" | "rejected";
+      reason: "missing_credentials" | "http_error" | "network_error" | "rejected" | "missing_currency_rate" | "truncated";
       detail?: string;
     };
 
@@ -30,7 +36,7 @@ async function safeInsightsFetch(url: string, timeoutMs = 10000): Promise<Respon
   }
 }
 
-type InsightsRow = { campaign_id?: string; spend?: string; date_start?: string };
+type InsightsRow = { campaign_id?: string; spend?: string; date_start?: string; account_currency?: string };
 type InsightsPaging = { next?: string };
 type InsightsResponseBody = { data?: InsightsRow[]; paging?: InsightsPaging; error?: { message?: string } };
 
@@ -46,13 +52,16 @@ export async function fetchCampaignDailySpend(params: {
   campaignIds: string[];
   sinceISODate: string;
   untilISODate: string;
+  /** code (ISO, uppercase) -> MRU per unit, from `currency_rates`. No rate is
+   *  invented: a currency absent here fails the fetch instead of guessing. */
+  mruPerUnitByCurrency: Map<string, number>;
   accessToken?: string;
   adAccountId?: string;
   apiVersion?: string;
 }): Promise<FetchCampaignSpendResult> {
   const campaignIds = [...new Set(params.campaignIds.filter(Boolean))];
   if (campaignIds.length === 0) {
-    return { ok: true, data: new Map() };
+    return { ok: true, data: new Map(), accountCurrency: null };
   }
 
   const accessToken = normalizeEnv(params.accessToken ?? process.env.META_MARKETING_ACCESS_TOKEN);
@@ -83,7 +92,7 @@ export async function fetchCampaignDailySpend(params: {
   initialUrl.searchParams.set("level", "campaign");
   initialUrl.searchParams.set("time_increment", "1");
   initialUrl.searchParams.set("time_range", timeRange);
-  initialUrl.searchParams.set("fields", "campaign_id,spend");
+  initialUrl.searchParams.set("fields", "campaign_id,spend,account_currency");
   initialUrl.searchParams.set("filtering", filtering);
   initialUrl.searchParams.set("limit", "500");
   initialUrl.searchParams.set("access_token", accessToken);
@@ -92,6 +101,8 @@ export async function fetchCampaignDailySpend(params: {
   let nextUrl: string | null = initialUrl.toString();
   let pageCount = 0;
   const maxPages = 50; // safety cap against runaway pagination
+  let accountCurrency: string | null = null;
+  let mruPerUnit: number | null = null;
 
   try {
     while (nextUrl && pageCount < maxPages) {
@@ -119,11 +130,41 @@ export async function fetchCampaignDailySpend(params: {
       for (const row of parsed?.data ?? []) {
         const campaignId = row.campaign_id;
         const dateKey = row.date_start;
-        const spendUSD = Number(row.spend);
-        if (!campaignId || !dateKey || !Number.isFinite(spendUSD)) continue;
-        const spendMRU = spendUSD * USD_TO_MRU_RATE;
-        const byDate = result.get(campaignId) ?? new Map<string, number>();
-        byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + spendMRU);
+        const spendRaw = Number(row.spend);
+        if (!campaignId || !dateKey || !Number.isFinite(spendRaw)) continue;
+
+        // Insights `spend` is denominated in the ad account's own currency —
+        // resolve and validate it once, from the first row seen. Never fall
+        // back to a hardcoded rate: a currency this store hasn't recorded a
+        // rate for fails the whole fetch instead of silently mis-converting.
+        if (accountCurrency === null) {
+          accountCurrency = (row.account_currency || "").trim().toUpperCase();
+          if (!accountCurrency) {
+            return {
+              ok: false,
+              reason: "rejected",
+              detail: "Meta did not report account_currency on the Insights row.",
+            };
+          }
+          const rate = params.mruPerUnitByCurrency.get(accountCurrency);
+          if (rate == null) {
+            return {
+              ok: false,
+              reason: "missing_currency_rate",
+              detail: `No currency_rates row for ${accountCurrency} — refusing to invent a rate.`,
+            };
+          }
+          mruPerUnit = rate;
+        }
+
+        const spendMRU = spendRaw * (mruPerUnit as number);
+        const byDate = result.get(campaignId) ?? new Map<string, CampaignDailySpendEntry>();
+        const existing = byDate.get(dateKey);
+        byDate.set(dateKey, {
+          amountMRU: (existing?.amountMRU ?? 0) + spendMRU,
+          sourceAmount: (existing?.sourceAmount ?? 0) + spendRaw,
+          sourceCurrency: accountCurrency,
+        });
         result.set(campaignId, byDate);
       }
 
@@ -131,7 +172,19 @@ export async function fetchCampaignDailySpend(params: {
       pageCount += 1;
     }
 
-    return { ok: true, data: result };
+    // Stopping at the page cap with more pages still available means the
+    // sync is a PARTIAL window, not a complete one — an understated "success"
+    // here would get written as confident (possibly zero) daily spend and
+    // never be retried (see A13). Treat it as a failure so cached data wins.
+    if (nextUrl && pageCount >= maxPages) {
+      return {
+        ok: false,
+        reason: "truncated",
+        detail: "Insights pagination hit the page cap; treating as failed rather than a partial sync.",
+      };
+    }
+
+    return { ok: true, data: result, accountCurrency };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("[meta-marketing] Insights request error", { error: errMsg });

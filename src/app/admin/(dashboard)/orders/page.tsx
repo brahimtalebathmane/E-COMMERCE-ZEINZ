@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
+import { getAdminSession } from "@/lib/auth/admin";
+import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { getCountryScope } from "@/lib/auth/country-scope";
+import { createServiceClient } from "@/lib/supabase/service";
 import { ADMIN_ORDER_SELECT_SCOPED } from "./queries";
 import { OrdersAdminView } from "./OrdersAdminView";
 import { AffiliateAdminPanels, type SheetFailureRow } from "./AffiliateAdminPanels";
@@ -9,8 +12,26 @@ import type { AdminOrderRow } from "./types";
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
-  const supabase = await createClient();
-  const { selectedCountryId } = await getCountryScope();
+  const [supabase, session, { selectedCountryId }] = await Promise.all([
+    createClient(),
+    getAdminSession(),
+    getCountryScope(),
+  ]);
+  const canViewDeleted = session?.access ? hasPermission(session.access, PERMISSIONS.cancel_orders) : false;
+
+  // Deleted rows are invisible to the cookie/RLS client — a head-only, exact
+  // count via the service role costs one round trip and no rows, gated on the
+  // same permission that can delete/restore (B3).
+  const deletedCount = canViewDeleted
+    ? ((
+        await createServiceClient()
+          .from("orders")
+          .select("id, products!inner(country_id)", { count: "exact", head: true })
+          .not("deleted_at", "is", null)
+          .eq("products.country_id", selectedCountryId)
+      ).count ?? 0)
+    : 0;
+
   const { data, error } = await supabase
     .from("orders")
     .select(ADMIN_ORDER_SELECT_SCOPED)
@@ -40,7 +61,11 @@ export default async function AdminOrdersPage() {
   return (
     <>
       <AffiliateAdminPanels awaitingCosts={awaitingCosts} sheetFailures={sheetFailures} />
-      <OrdersAdminView orders={rows} selectedCountryId={selectedCountryId} />
+      <OrdersAdminView
+        orders={rows}
+        selectedCountryId={selectedCountryId}
+        deletedCount={canViewDeleted ? deletedCount : 0}
+      />
     </>
   );
 }

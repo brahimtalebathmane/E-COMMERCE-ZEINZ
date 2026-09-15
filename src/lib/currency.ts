@@ -14,9 +14,12 @@ export const CURRENCY_SYMBOL = "MRU" as const;
  * never silently mislabeled as MRU. Owned products keep using `formatPrice`.
  */
 export function formatMoney(amount: number, currencyCode: string): string {
-  const code = currencyCode.trim().toUpperCase() || CURRENCY_SYMBOL;
+  // An unknown/empty currency must never be relabeled as MRU (the store
+  // currency) — that is the exact mislabeling the owned/affiliate split
+  // exists to prevent. Show the amount with a "—" placeholder instead.
+  const code = currencyCode.trim().toUpperCase();
   if (!Number.isFinite(amount)) {
-    return `0 ${code}`;
+    return code ? `0 ${code}` : "0 —";
   }
   const rounded = Math.round(amount * 100) / 100;
   let numStr: string;
@@ -25,7 +28,7 @@ export function formatMoney(amount: number, currencyCode: string): string {
   } else {
     numStr = rounded.toFixed(2).replace(/\.?0+$/, "");
   }
-  return `${numStr} ${code}`;
+  return code ? `${numStr} ${code}` : `${numStr} —`;
 }
 
 /**

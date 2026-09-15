@@ -10,7 +10,7 @@ import {
   type ProfitTotals,
 } from "@/lib/analytics/profit";
 import { computeProfitabilityMetrics } from "@/lib/analytics/metrics";
-import { filterDailyByPeriod, filterOrdersByPeriod, sumAdSpendByProduct, type Period } from "@/lib/analytics/period";
+import { filterDailyByPeriod, filterOrdersByPeriod, type Period } from "@/lib/analytics/period";
 import { AdminBadge } from "@/components/admin/ui";
 import type { AffiliateAnalyticsData } from "./data";
 
@@ -64,13 +64,19 @@ export function AffiliateAnalyticsSection({
     [data.products],
   );
 
+  const mruPerUnitByCurrency = useMemo(
+    () => new Map(Object.entries(data.mruPerUnitByCurrency)),
+    [data.mruPerUnitByCurrency],
+  );
+
   const groups = useMemo<CurrencyGroup[]>(() => {
     const periodOrders = filterOrdersByPeriod(data.orders, period);
-    const periodAdSpendByProduct = sumAdSpendByProduct(filterDailyByPeriod(data.adSpendDaily, period));
+    const periodAdSpendDaily = filterDailyByPeriod(data.adSpendDaily, period);
     const rows = buildProductProfitRows({
       orders: periodOrders,
       products: productsMap,
-      adSpendByProduct: periodAdSpendByProduct,
+      adSpendDaily: periodAdSpendDaily,
+      mruPerUnitByCurrency,
     });
 
     const byCurrency = new Map<string, ProductProfitRow[]>();
@@ -82,9 +88,16 @@ export function AffiliateAnalyticsSection({
     }
 
     return Array.from(byCurrency.entries())
-      .map(([currency, groupRows]) => ({ currency, rows: groupRows, totals: sumProfitTotals(groupRows) }))
+      .map(([currency, groupRows]) => ({
+        currency,
+        rows: groupRows,
+        // A row whose ad spend couldn't be converted is excluded from the
+        // group's totals entirely (never a converted-looking number) — it
+        // still renders in the list below with "غير متاح" cells.
+        totals: sumProfitTotals(groupRows.filter((r) => !r.adSpendUnavailable)),
+      }))
       .sort((a, b) => a.currency.localeCompare(b.currency));
-  }, [data.orders, data.adSpendDaily, period, productsMap]);
+  }, [data.orders, data.adSpendDaily, period, productsMap, mruPerUnitByCurrency]);
 
   if (groups.length === 0) return null;
 
@@ -126,12 +139,19 @@ export function AffiliateAnalyticsSection({
                 return (
                   <div
                     key={row.productId}
-                    className="rounded-xl border border-[var(--admin-border)] p-3"
+                    className={`rounded-xl border p-3 ${
+                      row.adSpendUnavailable
+                        ? "border-amber-400/30 bg-amber-400/5"
+                        : "border-[var(--admin-border)]"
+                    }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold text-[var(--foreground)]">{row.name}</span>
-                      <span className={`font-bold ${profitToneClass(profit)}`} dir="ltr">
-                        {formatMoney(profit, row.currency)}
+                      <span
+                        className={`font-bold ${row.adSpendUnavailable ? "text-amber-400" : profitToneClass(profit)}`}
+                        dir="ltr"
+                      >
+                        {row.adSpendUnavailable ? "غير متاح" : formatMoney(profit, row.currency)}
                       </span>
                     </div>
                     <dl className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -146,7 +166,11 @@ export function AffiliateAnalyticsSection({
                           value={formatMoney(row.otherCosts, row.currency)}
                         />
                       ) : null}
-                      <Stat label="الإعلانات" value={formatMoney(row.adSpend, row.currency)} />
+                      <Stat
+                        label="الإعلانات"
+                        value={row.adSpendUnavailable ? "غير متاح" : formatMoney(row.adSpend, row.currency)}
+                        muted={row.adSpendUnavailable}
+                      />
                       {row.awaitingCosts > 0 ? (
                         <Stat
                           label="بانتظار التكاليف"
@@ -154,7 +178,15 @@ export function AffiliateAnalyticsSection({
                           muted
                         />
                       ) : null}
+                      {row.misconfigured > 0 ? (
+                        <Stat label="غير مُعدّ بشكل صحيح" value={String(row.misconfigured)} muted />
+                      ) : null}
                     </dl>
+                    {row.adSpendUnavailable ? (
+                      <p className="mt-2 text-[11px] text-amber-400">
+                        لا يوجد سعر صرف لعملة {row.currency || "هذا المنتج"} في currency_rates — تم استبعاد هذا الصف من إجمالي المجموعة.
+                      </p>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <MetricChip
                         label="الهامش"
@@ -163,8 +195,8 @@ export function AffiliateAnalyticsSection({
                       />
                       <MetricChip
                         label="ROAS"
-                        value={rowMetrics.roas === null ? "—" : rowMetrics.roas.toFixed(2)}
-                        tone={rowMetrics.roas}
+                        value={row.adSpendUnavailable || rowMetrics.roas === null ? "—" : rowMetrics.roas.toFixed(2)}
+                        tone={row.adSpendUnavailable ? null : rowMetrics.roas}
                       />
                     </div>
                   </div>

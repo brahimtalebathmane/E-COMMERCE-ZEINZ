@@ -39,8 +39,9 @@ export const adminAr = {
     title: "نظرة عامة",
     subtitle: "ملخص حي لأداء المتجر اليوم.",
     greeting: "مرحباً بك في لوحة التحكم",
-    kpiRevenue: "إجمالي الإيرادات",
-    kpiNetProfit: "صافي الربح",
+    kpiRevenue: "إجمالي الإيرادات (مملوك، MRU)",
+    kpiNetProfit: "صافي الربح (مملوك، MRU)",
+    kpiMissingCostWarning: "⚠ {count} منتج بلا سعر تكلفة — الربح أعلاه مبالغ فيه",
     kpiOrders: "إجمالي الطلبات",
     kpiOrdersToday: "طلبات اليوم",
     kpiPending: "بانتظار المعالجة",
@@ -342,6 +343,29 @@ export const adminAr = {
     // Manual (offline) sales
     manualSaleBadge: "بيع يدوي",
     addManualSale: "+ بيع يدوي",
+
+    // Deleted-orders entry point (Part B)
+    deletedLink: "المحذوفة ({count})",
+  },
+  deletedOrders: {
+    title: "الطلبات المحذوفة",
+    backToOrders: "← رجوع إلى الطلبات",
+    forbidden: "ليس لديك صلاحية الوصول إلى هذه الصفحة.",
+    loadError: "تعذر تحميل الطلبات المحذوفة:",
+    empty: "لا توجد طلبات محذوفة",
+    countLabel: "{count} طلب محذوف",
+    colDeletedAt: "تاريخ الحذف",
+    colOrderedAt: "تاريخ الطلب",
+    colStatusAtDeletion: "الحالة عند الحذف",
+    selectRow: "تحديد هذا الطلب",
+    restore: "استرجاع",
+    restoreSelected: "استرجاع المحدّد ({count})",
+    restoreConfirm: "هل تريد استرجاع {count} طلباً؟ سيعود للظهور في قائمة الطلبات.",
+    restoreSuccess: "تم استرجاع الطلب بنجاح",
+    restoreFailed: "تعذر استرجاع الطلب",
+    prevPage: "السابق",
+    nextPage: "التالي",
+    pageInfo: "صفحة {page} من {totalPages}",
   },
   manualSale: {
     title: "بيع واتساب جديد",
@@ -415,6 +439,8 @@ export const adminAr = {
     colAdSpend: "الإنفاق الإعلاني",
     colStartDate: "تاريخ بدء الحساب",
     colNetProfit: "صافي الربح",
+    colNetMargin: "هامش الربح",
+    sortBy: "ترتيب حسب",
     colReturns: "مرتجعات",
     save: "حفظ",
     saving: "جاري الحفظ…",
@@ -473,8 +499,19 @@ export const adminAr = {
     periodLastMonth: "الشهر الماضي",
     periodPickMonth: "اختر شهراً محدداً",
     periodSyncing: "جارٍ جلب الإنفاق الإعلاني من Meta لهذا الشهر…",
+    periodSoFar: "حتى اليوم",
+    periodMonthDaysSoFar: "{days} يوماً حتى الآن",
+    periodMonthDaysTotal: "{days} يوماً",
     periodAdSpendIncomplete:
       "قد يكون الإنفاق الإعلاني لهذا الشهر غير مكتمل (قد يسبق ربط الحملة، أو لا تتوفر بيانات من Meta لهذه الفترة).",
+
+    // Data-quality strip (Part C1)
+    dataQualityTruncated:
+      "بيانات مقتطعة: تجاوز عدد الطلبات أو صفوف الإنفاق الإعلاني حد الجلب — الأرقام أدناه قد تكون غير مكتملة.",
+    dataQualityMissingCost:
+      "تكلفة ناقصة: {count} منتج ساهم بإيراد {revenue} بدون سعر تكلفة محدد — الربح أدناه مبالغ فيه بمقدار غير معروف.",
+    dataQualityUnparseableDates:
+      "طلبات بتاريخ غير صالح: {count} طلب لا يمكن تحديد تاريخه، لذا يظهر في «كل الفترة» فقط وليس في أي شهر محدد.",
 
     // Month-mode overview tiles
     monthSummaryProfit: "ربح الشهر",

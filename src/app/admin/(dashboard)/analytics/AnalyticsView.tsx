@@ -30,18 +30,19 @@ import {
   type CombinedDailyProfit,
   type DailyProductProfit,
   type Granularity,
+  type WeeklyBucket,
 } from "@/lib/analytics/daily-profit";
 import { computeProfitabilityMetrics, percentChange, type ProfitabilityMetrics } from "@/lib/analytics/metrics";
 import {
   averagePerDay,
   countWinningLosingDays,
   daysInMonth,
+  elapsedDaysInMonth,
   filterDailyByPeriod,
   filterOrdersByPeriod,
   monthRange,
   pickBestWorstProduct,
   previousMonth,
-  sumAdSpendByProduct,
   type Period,
 } from "@/lib/analytics/period";
 import { AdminBadge, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
@@ -57,6 +58,8 @@ const FRESHNESS_TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+type TableSortKey = "netProfit" | "revenue" | "adSpend" | "units" | "margin";
 
 function profitToneClass(value: number): string {
   if (value > 0) return "text-emerald-400";
@@ -97,6 +100,7 @@ export function AnalyticsView({
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [expandedCampaigns, setExpandedCampaigns] = useState<string | null>(null);
   const [showPrevMonth, setShowPrevMonth] = useState(false);
+  const [sortKey, setSortKey] = useState<TableSortKey>("netProfit");
 
   const productsMap = useMemo(
     () =>
@@ -114,24 +118,48 @@ export function AnalyticsView({
   // instead of the life-to-date ones. For period "all" this reduces to
   // exactly today's inputs, so كل الفترة numbers cannot change.
   const periodOrders = useMemo(() => filterOrdersByPeriod(data.orders, period), [data.orders, period]);
-  const periodAdSpendByProduct = useMemo(
-    () => sumAdSpendByProduct(filterDailyByPeriod(adSpendDaily, period)),
+  const periodAdSpendDaily = useMemo(
+    () => filterDailyByPeriod(adSpendDaily, period),
     [adSpendDaily, period],
   );
   const rows = useMemo(
-    () => buildProductProfitRows({ orders: periodOrders, products: productsMap, adSpendByProduct: periodAdSpendByProduct }),
-    [periodOrders, productsMap, periodAdSpendByProduct],
+    () => buildProductProfitRows({ orders: periodOrders, products: productsMap, adSpendDaily: periodAdSpendDaily }),
+    [periodOrders, productsMap, periodAdSpendDaily],
   );
   const totals = useMemo(() => sumProfitTotals(rows), [rows]);
+
+  // C4: sortable product table — client-side, no refetch. `rows` already
+  // comes sorted by net profit descending; re-sort only when the admin picks
+  // something else.
+  const sortedRows = useMemo(() => {
+    if (sortKey === "netProfit") return rows;
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case "revenue":
+          return b.grossRevenue - a.grossRevenue;
+        case "adSpend":
+          return b.adSpend - a.adSpend;
+        case "units":
+          return b.unitsSold - a.unitsSold;
+        case "margin": {
+          const marginA = a.grossRevenue > 0 ? netProfit(a) / a.grossRevenue : -Infinity;
+          const marginB = b.grossRevenue > 0 ? netProfit(b) / b.grossRevenue : -Infinity;
+          return marginB - marginA;
+        }
+        default:
+          return 0;
+      }
+    });
+    return sorted;
+  }, [rows, sortKey]);
 
   const previousPeriodMonth = period.kind === "month" ? previousMonth(period.month) : null;
   const previousTotals = useMemo(() => {
     if (!previousPeriodMonth) return null;
     const prevOrders = filterOrdersByPeriod(data.orders, { kind: "month", month: previousPeriodMonth });
-    const prevAdSpend = sumAdSpendByProduct(
-      filterDailyByPeriod(adSpendDaily, { kind: "month", month: previousPeriodMonth }),
-    );
-    const prevRows = buildProductProfitRows({ orders: prevOrders, products: productsMap, adSpendByProduct: prevAdSpend });
+    const prevAdSpend = filterDailyByPeriod(adSpendDaily, { kind: "month", month: previousPeriodMonth });
+    const prevRows = buildProductProfitRows({ orders: prevOrders, products: productsMap, adSpendDaily: prevAdSpend });
     return sumProfitTotals(prevRows);
   }, [previousPeriodMonth, data.orders, adSpendDaily, productsMap]);
 
@@ -150,24 +178,28 @@ export function AnalyticsView({
     [data.combined, period],
   );
   const combinedBucketed = useMemo(
-    () => bucketWeekly(period.kind === "all" ? data.combined : combinedFiltered, granularity) as CombinedDailyProfit[],
+    () => bucketWeekly(period.kind === "all" ? data.combined : combinedFiltered, granularity),
     [data.combined, combinedFiltered, period, granularity],
   );
 
   const monthSummary = useMemo(() => {
     if (period.kind !== "month") return null;
     const { winningDays, losingDays } = countWinningLosingDays(combinedFiltered, period.month);
-    const days = daysInMonth(period.month);
+    // Elapsed days, not the full month length — dividing a partial month's
+    // profit by its full length understates the daily run-rate (A11).
+    const days = elapsedDaysInMonth(period.month, data.todayKey);
+    const { endKey } = monthRange(period.month);
     const { best, worst } = pickBestWorstProduct(rows);
     return {
       netProfit: totals.netProfit,
       avgDailyNetProfit: averagePerDay(totals.netProfit, days),
+      isInProgress: data.todayKey < endKey,
       winningDays,
       losingDays,
       best,
       worst,
     };
-  }, [period, combinedFiltered, rows, totals.netProfit]);
+  }, [period, combinedFiltered, rows, totals.netProfit, data.todayKey]);
 
   const prevChartData = useMemo(() => {
     if (period.kind !== "month" || !showPrevMonth || !previousPeriodMonth) return null;
@@ -224,9 +256,22 @@ export function AnalyticsView({
       <AdminPageHeader title={a.analytics.title} subtitle={a.analytics.subtitle} />
 
       <section className="admin-card p-4 sm:p-5">
-        <h2 className="text-base font-semibold text-[var(--foreground)]">
-          {a.analytics.sectionOverviewTitle}
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">
+            {a.analytics.sectionOverviewTitle}
+          </h2>
+          {period.kind === "month" ? (
+            <span className="text-xs text-[var(--muted)]" dir="ltr">
+              {monthLabel(period.month)} —{" "}
+              {monthSummary?.isInProgress
+                ? a.analytics.periodMonthDaysSoFar.replace(
+                    "{days}",
+                    String(elapsedDaysInMonth(period.month, data.todayKey)),
+                  )
+                : a.analytics.periodMonthDaysTotal.replace("{days}", String(daysInMonth(period.month)))}
+            </span>
+          ) : null}
+        </div>
         <div className="mt-4">
           {period.kind === "all" ? (
             <SummaryBar summary={data.summary} />
@@ -268,20 +313,38 @@ export function AnalyticsView({
 
       {/* Per-product breakdown */}
       <section className="admin-card overflow-hidden">
-        <div className="border-b border-[var(--admin-border)] px-4 py-4 sm:px-5">
-          <h2 className="text-base font-semibold text-[var(--foreground)]">
-            {a.analytics.tableTitle}
-          </h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">{a.analytics.tableHint}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-4 sm:px-5">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">
+              {a.analytics.tableTitle}
+            </h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">{a.analytics.tableHint}</p>
+          </div>
+          {rows.length > 1 ? (
+            <label className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
+              {a.analytics.sortBy}
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as TableSortKey)}
+                className="admin-input !w-auto !text-xs"
+              >
+                <option value="netProfit">{a.analytics.colNetProfit}</option>
+                <option value="revenue">{a.analytics.colRevenue}</option>
+                <option value="adSpend">{a.analytics.colAdSpend}</option>
+                <option value="units">{a.analytics.colUnits}</option>
+                <option value="margin">{a.analytics.chipMargin}</option>
+              </select>
+            </label>
+          ) : null}
         </div>
 
-        {rows.length === 0 ? (
+        {sortedRows.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-[var(--muted)] sm:px-5">
             {a.analytics.noData}
           </p>
         ) : (
           <div className="divide-y divide-[var(--admin-border)]">
-            {rows.map((row) => {
+            {sortedRows.map((row) => {
               const profit = netProfit(row);
               const productDaily = dailyByProduct.get(row.productId) ?? [];
               const trend = computeTrend({ productDaily, todayKey: data.todayKey });
@@ -294,8 +357,13 @@ export function AnalyticsView({
                 ordersCount: row.ordersCount,
               });
 
+              const missingCost = !row.hasCost && row.grossRevenue > 0;
+
               return (
-                <div key={row.productId} className="p-4 sm:p-5">
+                <div
+                  key={row.productId}
+                  className={`p-4 sm:p-5 ${missingCost ? "bg-amber-400/5" : ""}`}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -327,7 +395,7 @@ export function AnalyticsView({
                     </span>
                   </div>
 
-                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-7">
                     <Stat label={a.analytics.colUnits} value={String(row.unitsSold)} />
                     <Stat label={a.analytics.colRevenue} value={formatPrice(row.grossRevenue)} />
                     <Stat
@@ -337,6 +405,10 @@ export function AnalyticsView({
                     />
                     <Stat label={a.analytics.colDeliveryCost} value={formatPrice(row.deliveryCost)} />
                     <Stat label={a.analytics.colAdSpend} value={formatPrice(row.adSpend)} />
+                    <Stat
+                      label={a.analytics.colNetMargin}
+                      value={rowMetrics.netMargin === null ? "—" : formatPercent(rowMetrics.netMargin)}
+                    />
                     <div className="flex flex-col gap-0.5">
                       <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                         {a.analytics.colStartDate}
@@ -421,6 +493,7 @@ function SummaryBar({ summary }: { summary: AnalyticsData["summary"] }) {
 type MonthSummary = {
   netProfit: number;
   avgDailyNetProfit: number;
+  isInProgress: boolean;
   winningDays: number;
   losingDays: number;
   best: { productId: string; name: string; netProfit: number } | null;
@@ -436,7 +509,11 @@ function MonthSummaryBar({ summary }: { summary: MonthSummary }) {
         tone={profitToneClass(summary.netProfit)}
       />
       <SummaryTile
-        label={a.analytics.monthSummaryAvgDaily}
+        label={
+          summary.isInProgress
+            ? `${a.analytics.monthSummaryAvgDaily} (${a.analytics.periodSoFar})`
+            : a.analytics.monthSummaryAvgDaily
+        }
         value={formatPrice(summary.avgDailyNetProfit)}
         tone={profitToneClass(summary.avgDailyNetProfit)}
       />
@@ -714,7 +791,7 @@ function CombinedTrendChart({
   showPrevMonth,
   onTogglePrevMonth,
 }: {
-  rows: CombinedDailyProfit[];
+  rows: (CombinedDailyProfit | WeeklyBucket)[];
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
   showGranularityToggle: boolean;
@@ -727,6 +804,18 @@ function CombinedTrendChart({
   // a single consistent row type whether or not the previous-month overlay is active.
   const chartRows: { date: string; netProfit: number; prevNetProfit?: number }[] =
     prevChartData ?? rows.map((r) => ({ date: r.date, netProfit: r.netProfit }));
+
+  // Weekly buckets carry their true 7-day range (A10) — label the axis/tooltip
+  // with it ("٨–١٤ سبتمبر") instead of a single date that looks like one day.
+  const rangeByDate = new Map<string, string>();
+  if (granularity === "weekly") {
+    for (const r of rows) {
+      if ("startDate" in r && "endDate" in r) {
+        rangeByDate.set(r.date, `${tickDateLabel(r.startDate)}–${tickDateLabel(r.endDate)}`);
+      }
+    }
+  }
+  const dateLabel = (key: string) => rangeByDate.get(key) ?? tickDateLabel(key);
   return (
     <section className="admin-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -775,14 +864,14 @@ function CombinedTrendChart({
               <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" />
               <XAxis
                 dataKey="date"
-                tickFormatter={tickDateLabel}
+                tickFormatter={dateLabel}
                 stroke="var(--muted)"
                 fontSize={11}
               />
               <YAxis stroke="var(--muted)" fontSize={11} width={70} tickFormatter={(v) => formatPrice(Number(v))} />
               <Tooltip
                 formatter={(value) => formatPrice(Number(value))}
-                labelFormatter={(label) => String(label)}
+                labelFormatter={(label) => dateLabel(String(label))}
                 contentStyle={{
                   background: "var(--admin-elevated)",
                   border: "1px solid var(--admin-border-strong)",

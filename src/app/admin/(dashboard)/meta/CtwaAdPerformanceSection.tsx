@@ -49,11 +49,18 @@ export function CtwaAdPerformanceSection({ report }: Props) {
         <AdminKpiTile label={a.meta.ctwaConversations} value={formatCount(report.totalConversations)} />
         <AdminKpiTile label={a.meta.ctwaOrders} value={formatCount(report.totalOrders)} />
         <AdminKpiTile label={a.meta.ctwaConfirmed} value={formatCount(report.totalConfirmed)} />
-        <AdminKpiTile
-          label={a.meta.ctwaRevenue}
-          value={formatMoney(report.totalRevenue, report.currency)}
-          hint={`${a.meta.ctwaRate}: ${overallRate}`}
-        />
+        {report.totalRevenueByCurrency.length === 0 ? (
+          <AdminKpiTile label={a.meta.ctwaRevenue} value={formatMoney(0, "")} hint={`${a.meta.ctwaRate}: ${overallRate}`} />
+        ) : (
+          report.totalRevenueByCurrency.map((r, i) => (
+            <AdminKpiTile
+              key={r.currency}
+              label={i === 0 ? a.meta.ctwaRevenue : `${a.meta.ctwaRevenue} (${r.currency})`}
+              value={formatMoney(r.revenue, r.currency)}
+              hint={i === 0 ? `${a.meta.ctwaRate}: ${overallRate}` : undefined}
+            />
+          ))
+        )}
       </div>
 
       {report.truncated ? (
@@ -91,7 +98,7 @@ export function CtwaAdPerformanceSection({ report }: Props) {
                   <AdminTd align="end" mono>{formatCount(row.confirmed)}</AdminTd>
                   <AdminTd align="end" mono>{formatCount(row.cancelled)}</AdminTd>
                   <AdminTd align="end" mono>{conversionRate(row.confirmed, row.conversations)}</AdminTd>
-                  <AdminTd align="end" mono>{formatMoney(row.revenue, row.currency || report.currency)}</AdminTd>
+                  <AdminTd align="end" mono>{formatMoney(row.revenue, row.currency)}</AdminTd>
                 </AdminTableRow>
               ))}
             </AdminTableBody>

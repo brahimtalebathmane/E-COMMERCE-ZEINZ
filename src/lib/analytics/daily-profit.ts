@@ -1,4 +1,9 @@
-import { isOrderOnOrAfterStartDate, isRevenueStatus, type ProfitOrderInput } from "./profit";
+import {
+  isAdSpendOnOrAfterStartDate,
+  isOrderOnOrAfterStartDate,
+  isRevenueStatus,
+  type ProfitOrderInput,
+} from "./profit";
 
 /**
  * Same day-bucketing timezone used by the admin home dashboard's "orders today"
@@ -111,6 +116,8 @@ export function buildDailyProfitSeries(params: {
 
   for (const spend of adSpendDaily) {
     if (!spend.product_id || !spend.date) continue;
+    const meta = products.get(spend.product_id);
+    if (!isAdSpendOnOrAfterStartDate(spend.date, meta?.calculationStartDate)) continue;
     const row = ensure(spend.product_id, spend.date);
     row.adSpend += Number(spend.amount) || 0;
   }
@@ -160,36 +167,69 @@ type Bucketable = {
   netProfit: number;
 };
 
-/**
- * Buckets a sparse daily series into trailing 7-day windows keyed by each
- * bucket's END date, working backward from the most recent date present in
- * `daily` — NOT calendar/ISO weeks. This keeps "weekly" meaning "the last 7
- * days ending here", consistent with the 7/30-day rolling windows used
- * elsewhere in this file, instead of introducing an unrelated week-boundary
- * convention that could split an active week awkwardly.
- */
-export function bucketWeekly<T extends Bucketable>(daily: T[], granularity: Granularity): Bucketable[] {
-  if (granularity === "daily") return daily.map((d) => ({ ...d }));
+export type WeeklyBucket = Bucketable & { startDate: string; endDate: string };
 
-  const descending = [...daily].sort((a, b) => b.date.localeCompare(a.date));
-  const buckets: Bucketable[] = [];
-  for (let i = 0; i < descending.length; i += 7) {
-    const chunk = descending.slice(i, i + 7);
-    const bucketEndDate = chunk[0].date;
-    const agg = chunk.reduce<Bucketable>(
-      (acc, d) => ({
-        date: bucketEndDate,
-        revenue: acc.revenue + d.revenue,
-        cogs: acc.cogs + d.cogs,
-        deliveryCost: acc.deliveryCost + d.deliveryCost,
-        adSpend: acc.adSpend + d.adSpend,
-        netProfit: acc.netProfit + d.netProfit,
-      }),
-      { date: bucketEndDate, revenue: 0, cogs: 0, deliveryCost: 0, adSpend: 0, netProfit: 0 },
-    );
+/**
+ * Buckets a sparse daily series into trailing 7-CALENDAR-DAY windows, anchored
+ * on the most recent date present in `daily` and working backward — so a
+ * bucket always spans exactly 7 calendar days regardless of how many of those
+ * days actually have a row (the series is deliberately sparse). Bucketing by
+ * row COUNT instead (i.e. `daily.slice(i, i+7)`) silently aggregates however
+ * many days back it takes to find 7 rows — for a product active one day a
+ * week, that is 49 calendar days masquerading as "weekly". Keyed by `date` =
+ * the bucket's end date (kept for callers expecting `Bucketable`), plus
+ * explicit `startDate`/`endDate` so the UI can label the true range.
+ */
+export function bucketWeekly<T extends Bucketable>(daily: T[], granularity: Granularity): WeeklyBucket[] {
+  if (granularity === "daily") return daily.map((d) => ({ ...d, startDate: d.date, endDate: d.date }));
+  if (daily.length === 0) return [];
+
+  const byDate = new Map(daily.map((d) => [d.date, d] as const));
+  const sortedDates = [...byDate.keys()].sort();
+  const mostRecent = sortedDates[sortedDates.length - 1];
+  const earliest = sortedDates[0];
+
+  const buckets: WeeklyBucket[] = [];
+  let bucketEnd = mostRecent;
+  while (bucketEnd >= earliest) {
+    const bucketStart = shiftDateKey(bucketEnd, -6);
+    const agg: WeeklyBucket = {
+      date: bucketEnd,
+      startDate: bucketStart,
+      endDate: bucketEnd,
+      revenue: 0,
+      cogs: 0,
+      deliveryCost: 0,
+      adSpend: 0,
+      netProfit: 0,
+    };
+    let cursor = bucketStart;
+    while (cursor <= bucketEnd) {
+      const row = byDate.get(cursor);
+      if (row) {
+        agg.revenue += row.revenue;
+        agg.cogs += row.cogs;
+        agg.deliveryCost += row.deliveryCost;
+        agg.adSpend += row.adSpend;
+        agg.netProfit += row.netProfit;
+      }
+      cursor = shiftDateKey(cursor, 1);
+    }
     buckets.push(agg);
+    bucketEnd = shiftDateKey(bucketStart, -1);
   }
   return buckets.reverse();
+}
+
+/**
+ * Money below this is float residue from subtracting rounded amounts, not a
+ * real gain or loss. 0.005 MRU is half a cent — below any real transaction.
+ */
+export const MONEY_EPSILON = 0.005;
+export function moneySign(value: number): -1 | 0 | 1 {
+  if (value > MONEY_EPSILON) return 1;
+  if (value < -MONEY_EPSILON) return -1;
+  return 0;
 }
 
 function sumNetProfitInWindow(combined: CombinedDailyProfit[], todayKey: string, windowDays: number): number {
@@ -361,7 +401,7 @@ export function computeLossStreak(params: {
   let streak = 0;
   for (let i = 0; i < 365; i++) {
     const value = byDate.get(cursor);
-    if (value == null || value >= 0) break;
+    if (value == null || moneySign(value) >= 0) break;
     streak += 1;
     cursor = shiftDateKey(cursor, -1);
   }
