@@ -32,6 +32,15 @@ import {
 const WEBSITE_SHAPE_VALUE = 1.11;
 const CHAT_SHAPE_VALUE = 2.22;
 
+/**
+ * Meta rejects MRU on a Purchase event - error_subcode 2804011, "Invalid
+ * Currency For Purchase Event" - even though MRU is valid ISO 4217. Real sales
+ * already work around this: toMetaPixelPurchaseMoney() in src/lib/currency.ts
+ * converts every MRU total to USD before it reaches the pixel. The probe sends
+ * USD for the same reason, which also keeps it faithful to the real payload.
+ */
+const PROBE_CURRENCY = "USD";
+
 export type MetaTestShapeResult = {
   shape: "website" | "chat";
   actionSource: MetaActionSource;
@@ -90,7 +99,7 @@ export async function sendMetaTestEventsAction(): Promise<SendMetaTestEventsResu
     requestHeaders,
     actionSource: "website",
     userData: { externalId, clientIpAddress, clientUserAgent },
-    customData: { currency: "MRU", value: WEBSITE_SHAPE_VALUE },
+    customData: { currency: PROBE_CURRENCY, value: WEBSITE_SHAPE_VALUE },
   });
 
   const chatResult = await sendMetaEvent({
@@ -100,7 +109,7 @@ export async function sendMetaTestEventsAction(): Promise<SendMetaTestEventsResu
     requestHeaders,
     actionSource: "chat",
     userData: { externalId },
-    customData: { currency: "MRU", value: CHAT_SHAPE_VALUE },
+    customData: { currency: PROBE_CURRENCY, value: CHAT_SHAPE_VALUE },
   });
 
   return {
