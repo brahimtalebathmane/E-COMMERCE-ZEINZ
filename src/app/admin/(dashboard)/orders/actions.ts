@@ -418,40 +418,117 @@ export type WhatsAppConversation = {
 };
 
 /**
+ * Strips everything PostgREST's `or()` mini-language treats as syntax before a
+ * user string is embedded in a filter. `or()` is parsed from a STRING, so a
+ * comma, parenthesis or quote in the search box would otherwise change the
+ * meaning of the filter rather than being matched literally. `%` and `_` are
+ * `ilike` wildcards and are dropped for the same reason.
+ */
+function sanitizeContactSearch(raw: string): string {
+  return raw
+    .replace(/[,()"'%_\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
+/** Selected columns for a conversation row — one definition, two callers. */
+const WHATSAPP_CONTACT_COLUMNS =
+  "phone, display_name, last_inbound_at, inbound_count, last_ad_source_id, last_ad_clicked_at";
+
+type WhatsAppContactRow = {
+  phone: string;
+  display_name: string | null;
+  last_inbound_at: string;
+  inbound_count: number | null;
+  last_ad_source_id: string | null;
+  last_ad_clicked_at: string | null;
+};
+
+function toConversation(row: WhatsAppContactRow, now: number): WhatsAppConversation {
+  const adClickedAt = row.last_ad_clicked_at ?? null;
+  const clickedMs = adClickedAt ? Date.parse(adClickedAt) : NaN;
+  return {
+    phone: row.phone,
+    displayName: (row.display_name ?? "").trim() || null,
+    lastInboundAt: row.last_inbound_at,
+    inboundCount: Number(row.inbound_count) || 0,
+    adSourceId: (row.last_ad_source_id ?? "").trim() || null,
+    adClickedAt,
+    adAttributable:
+      Number.isFinite(clickedMs) && now - clickedMs <= CTWA_ATTRIBUTION_WINDOW_MS,
+  };
+}
+
+/**
  * Conversations the admin can record a sale against, newest first.
  *
  * Sourced from `whatsapp_contacts`, which the WhatsApp worker writes on every
  * inbound message — so an organic chat with no ad behind it is listed too.
+ *
+ * `search` filters SERVER-side on purpose: the list is capped, so filtering the
+ * already-loaded page would hide older conversations from the very search meant
+ * to find them.
  */
 export async function listWhatsAppConversationsAction(
   limit = 60,
+  search?: string,
 ): Promise<WhatsAppConversation[]> {
   await assertPermission(PERMISSIONS.confirm_orders);
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("whatsapp_contacts")
-    .select("phone, display_name, last_inbound_at, inbound_count, last_ad_source_id, last_ad_clicked_at")
+    .select(WHATSAPP_CONTACT_COLUMNS)
     .order("last_inbound_at", { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 200));
 
+  const term = sanitizeContactSearch(search ?? "");
+  if (term) {
+    // Digits are matched anywhere in the stored E.164 form, so typing the local
+    // 8-digit number finds the contact stored as 222XXXXXXXX. A term with any
+    // non-digit is also matched against the WhatsApp profile name.
+    const digits = term.replace(/\D/g, "");
+    const filters: string[] = [];
+    if (digits) filters.push(`phone.ilike.*${digits}*`);
+    if (/\D/.test(term)) filters.push(`display_name.ilike.*${term}*`);
+    if (filters.length > 0) query = query.or(filters.join(","));
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   const now = Date.now();
-  return (data ?? []).map((row) => {
-    const adClickedAt = (row.last_ad_clicked_at as string | null) ?? null;
-    const clickedMs = adClickedAt ? Date.parse(adClickedAt) : NaN;
-    return {
-      phone: row.phone as string,
-      displayName: ((row.display_name as string | null) ?? "").trim() || null,
-      lastInboundAt: row.last_inbound_at as string,
-      inboundCount: Number(row.inbound_count) || 0,
-      adSourceId: ((row.last_ad_source_id as string | null) ?? "").trim() || null,
-      adClickedAt,
-      adAttributable:
-        Number.isFinite(clickedMs) && now - clickedMs <= CTWA_ATTRIBUTION_WINDOW_MS,
-    };
-  });
+  return ((data ?? []) as WhatsAppContactRow[]).map((row) => toConversation(row, now));
+}
+
+/**
+ * One conversation by phone, for the manual-entry mode of the sale form.
+ *
+ * The admin types a number that may or may not have chatted with us. Returning
+ * the same shape as the picker lets the form show the SAME attribution card, so
+ * a typed number is never silently less attributed than a picked one — it either
+ * resolves to a real conversation (and its ad click) or the form says plainly
+ * that no conversation exists.
+ */
+export async function lookupWhatsAppContactAction(
+  phone: string,
+): Promise<WhatsAppConversation | null> {
+  await assertPermission(PERMISSIONS.confirm_orders);
+
+  const normalized = sanitizePhoneForMetaE164(phone ?? "");
+  if (!normalized) return null;
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("whatsapp_contacts")
+    .select(WHATSAPP_CONTACT_COLUMNS)
+    .eq("phone", normalized)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return toConversation(data as WhatsAppContactRow, Date.now());
 }
 
 /**

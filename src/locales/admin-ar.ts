@@ -369,13 +369,26 @@ export const adminAr = {
   },
   manualSale: {
     title: "بيع واتساب جديد",
-    subtitle: "سجّل بيعاً تم عبر محادثة واتساب — اختر المحادثة ليُربط الإعلان تلقائياً.",
+    subtitle:
+      "سجّل بيعاً تم عبر محادثة واتساب — ابحث عن المحادثة أو أدخل رقماً يدوياً، وسيُربط الإعلان تلقائياً إن وُجدت محادثة له.",
     conversation: "المحادثة",
     selectConversation: "اختر محادثة…",
     loadingConversations: "جاري تحميل المحادثات…",
     noConversations: "لا توجد محادثات واردة بعد. تظهر هنا فور وصول أول رسالة.",
     conversationsFailed: "تعذر تحميل المحادثات",
     conversationRequired: "اختر المحادثة التي تم البيع خلالها.",
+    modeConversation: "من المحادثات",
+    modeManual: "إدخال رقم يدوياً",
+    searchPlaceholder: "ابحث بالاسم أو الرقم…",
+    searching: "جاري البحث…",
+    noSearchResults: "لا توجد محادثة مطابقة",
+    useManualInstead: "استخدم هذا الرقم يدوياً",
+    manualPhone: "رقم واتساب",
+    manualPhoneInvalid: "رقم الهاتف غير صالح (8 أرقام تبدأ بـ 2 أو 3 أو 4)",
+    manualPhoneRequired: "أدخل رقم واتساب صالحاً.",
+    manualContactFound: "هذا الرقم له محادثة واردة — سيُربط الإعلان تلقائياً.",
+    manualContactMissing:
+      "لا توجد محادثة بهذا الرقم — سيُسجَّل البيع بدون نسبته إلى إعلان.",
     adSource: "الإعلان",
     adSourceNone: "بدون إعلان",
     adWindowExpired:
