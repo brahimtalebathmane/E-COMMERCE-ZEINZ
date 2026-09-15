@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types";
@@ -389,6 +390,7 @@ type Props = {
 };
 
 export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Props) {
+  const router = useRouter();
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
   const canCreateManualSale = useHasPermission(PERMISSIONS.confirm_orders);
@@ -614,6 +616,11 @@ export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Pro
     });
     try {
       await deleteOrderAction(orderId);
+      // The deleted-orders counter beside the search box is a server prop, and
+      // /admin/orders/deleted is a server component. Without this they both keep
+      // showing the pre-delete state, which reads as "the order was not moved to
+      // the trash at all".
+      router.refresh();
     } catch (e) {
       setRows(prev);
       toast.error(e instanceof Error ? e.message : a.orders.deleteFailed);
@@ -645,6 +652,7 @@ export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Pro
     setSelectedIds(new Set());
     try {
       await deleteOrdersAction(ids);
+      router.refresh();
     } catch (e) {
       setRows(prev);
       toast.error(e instanceof Error ? e.message : a.orders.deleteFailed);
@@ -751,7 +759,7 @@ export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Pro
               {selectionMode ? a.orders.selectionModeExit : a.orders.selectionModeEnter}
             </AdminButton>
           ) : null}
-          {canDeleteOrders && deletedCount > 0 ? (
+          {canDeleteOrders ? (
             <Link
               href="/admin/orders/deleted"
               className="shrink-0 text-xs font-semibold text-[var(--muted)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { adminAr as a } from "@/locales/admin-ar";
@@ -34,7 +35,11 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("ar", {
 function productName(row: DeletedOrderRow): string {
   const p = row.products;
   const name = Array.isArray(p) ? p[0]?.name_ar : p?.name_ar;
-  return name ?? "—";
+  // `p` is null for an order whose product row is itself gone (see Part 2
+  // item 3) — say so plainly rather than the generic "—" used elsewhere,
+  // since this specific case is exactly what would otherwise look like a
+  // silent data-loading bug.
+  return name ?? a.deletedOrders.productDeleted;
 }
 
 export function DeletedOrdersView({
@@ -42,16 +47,25 @@ export function DeletedOrdersView({
   total,
   page,
   pageSize,
+  countryName,
+  showingAllCountries,
 }: {
   rows: DeletedOrderRow[];
   total: number;
   page: number;
   pageSize: number;
+  countryName: string;
+  showingAllCountries: boolean;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  /** Ids restored in this render pass — hidden immediately so the row does not
+   *  sit there looking un-restored while the server re-render is in flight. */
+  const [restoredIds, setRestoredIds] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState<{ ids: string[] } | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const visibleRows = rows.filter((row) => !restoredIds.has(row.id));
 
   function toggle(id: string) {
     setSelected((cur) => {
@@ -67,11 +81,20 @@ export function DeletedOrdersView({
       try {
         await restoreOrdersAction(ids);
         toast.success(a.deletedOrders.restoreSuccess);
+        setRestoredIds((cur) => {
+          const next = new Set(cur);
+          for (const id of ids) next.add(id);
+          return next;
+        });
         setSelected((cur) => {
           const next = new Set(cur);
           for (const id of ids) next.delete(id);
           return next;
         });
+        // The count, the pagination and the orders list all live in server
+        // components — without this they keep showing the pre-restore state
+        // until a full page reload.
+        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : a.deletedOrders.restoreFailed);
       } finally {
@@ -97,9 +120,15 @@ export function DeletedOrdersView({
         ) : null}
       </div>
 
-      {rows.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div className="p-6">
-          <AdminEmptyState title={a.deletedOrders.empty} />
+          <AdminEmptyState
+            title={
+              showingAllCountries
+                ? a.deletedOrders.emptyAllCountries
+                : a.deletedOrders.empty.replace("{country}", countryName || "—")
+            }
+          />
         </div>
       ) : (
         <>
@@ -119,7 +148,7 @@ export function DeletedOrdersView({
                 </AdminTableRow>
               </AdminTableHead>
               <AdminTableBody>
-                {rows.map((row) => (
+                {visibleRows.map((row) => (
                   <AdminTableRow key={row.id}>
                     <AdminTd>
                       <input
