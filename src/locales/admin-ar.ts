@@ -718,6 +718,17 @@ export const adminAr = {
     healthOk: "إعدادات Meta تبدو سليمة.",
     healthFail: "مشكلة في إعدادات Meta.",
     healthFetchError: "تعذر الاتصال بفحص الصحة.",
+    testEventTitle: "اختبار الأحداث",
+    testEventSend: "إرسال حدثي اختبار",
+    testEventSending: "جاري الإرسال…",
+    testEventHelp:
+      "يرسل حدثي شراء تجريبيين إلى Meta بشكلين مختلفين ليظهرا في Events Manager ← Test Events. لا يُنشئ أي طلب ولا يُسجَّل في السجل أدناه. يعمل فقط عند ضبط META_CAPI_TEST_EVENT_CODE.",
+    testEventPixel: "البكسل المُرسَل إليه",
+    testEventCode: "كود الاختبار المُرسَل",
+    testEventShapeWebsite: "شكل المتجر (بمتصفح و IP)",
+    testEventShapeChat: "شكل بيع واتساب (بلا متصفح ولا IP)",
+    testEventRead:
+      "افتح Test Events وقارن: القيمة 1.11 هي شكل المتجر، و2.22 شكل بيع واتساب. إن ظهرت 1.11 وحدها فالبكسل والكود سليمان، والأداة لا تعرض أحداث المحادثات. وإن لم يظهر شيء فالبكسل أعلاه ليس البكسل المفتوح لديك.",
     lastSuccessTitle: "آخر نجاح لكل نوع حدث",
     logTitle: "سجل الأحداث",
     filterAllTypes: "كل الأنواع",
