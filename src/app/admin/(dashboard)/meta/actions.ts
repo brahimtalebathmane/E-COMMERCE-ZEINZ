@@ -138,3 +138,84 @@ export async function sendMetaTestEventsAction(): Promise<SendMetaTestEventsResu
     ],
   };
 }
+
+/**
+ * Creates — or retrieves, if it already exists — the Conversions API dataset
+ * linked to the WhatsApp Business Account.
+ *
+ * Why this exists: a `business_messaging` Purchase cannot be sent to the website
+ * pixel. Meta rejects it with error_subcode 2804132, "No WhatsApp Business
+ * Account Linked to This Dataset", and says in the error itself to POST to
+ * `/{waba-id}/dataset`. That endpoint is idempotent — it returns the existing
+ * dataset id when there is one — so this is safe to press more than once.
+ *
+ * The token needs `whatsapp_business_management` and
+ * `whatsapp_business_manage_events`, which a website-CAPI token usually lacks;
+ * `META_WHATSAPP_CAPI_ACCESS_TOKEN` overrides `META_CAPI_ACCESS_TOKEN` for this
+ * call. A permission failure is surfaced verbatim rather than summarised —
+ * Meta's own message names the missing scope.
+ */
+export type ResolveWhatsAppDatasetResult =
+  | { ok: true; datasetId: string; wabaId: string; alreadyConfigured: boolean }
+  | { ok: false; error: string };
+
+export async function resolveWhatsAppDatasetAction(): Promise<ResolveWhatsAppDatasetResult> {
+  try {
+    await assertPermission(PERMISSIONS.view_meta_monitoring);
+  } catch {
+    return { ok: false, error: "غير مصرح لك بهذا الإجراء." };
+  }
+
+  const wabaId = readEnv("META_WHATSAPP_BUSINESS_ACCOUNT_ID");
+  if (!wabaId) {
+    return { ok: false, error: "META_WHATSAPP_BUSINESS_ACCOUNT_ID غير مضبوط." };
+  }
+
+  const token =
+    readEnv("META_WHATSAPP_CAPI_ACCESS_TOKEN") || readEnv("META_CAPI_ACCESS_TOKEN");
+  if (!token) {
+    return { ok: false, error: "لا يوجد رمز وصول إلى Meta." };
+  }
+
+  const version = readEnv("META_CAPI_VERSION") || "v22.0";
+  const endpoint = `https://graph.facebook.com/${version}/${encodeURIComponent(wabaId)}/dataset`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: token }),
+      cache: "no-store",
+    });
+    const body = await res.text().catch(() => "");
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      parsed = body ? (JSON.parse(body) as Record<string, unknown>) : null;
+    } catch {
+      parsed = null;
+    }
+
+    if (!res.ok) {
+      return { ok: false, error: `status=${res.status} ${body.slice(0, 600)}` };
+    }
+
+    // Meta has returned this id under both spellings across versions.
+    const raw = parsed?.id ?? parsed?.dataset_id;
+    const datasetId = typeof raw === "string" ? raw.trim() : String(raw ?? "").trim();
+    if (!datasetId) {
+      return { ok: false, error: `لم يُعِد Meta معرّف dataset: ${body.slice(0, 400)}` };
+    }
+
+    return {
+      ok: true,
+      datasetId,
+      wabaId,
+      alreadyConfigured: readEnv("META_WHATSAPP_DATASET_ID") === datasetId,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}

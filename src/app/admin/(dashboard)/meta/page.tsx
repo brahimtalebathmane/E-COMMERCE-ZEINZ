@@ -6,7 +6,7 @@ import { CtwaAdPerformancePanel } from "./CtwaAdPerformancePanel";
 import { MetaMonitoringView } from "./MetaMonitoringView";
 import { MetaOverviewPanel } from "./MetaOverviewPanel";
 import { MetaOverviewSkeleton } from "./MetaOverviewSection";
-import { MetaTestEventPanel } from "./MetaTestEventPanel";
+import { MetaTestEventPanel, WhatsAppDatasetPanel } from "./MetaTestEventPanel";
 import { fetchMetaEventLogPage } from "./queries";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,7 @@ export default async function AdminMetaPage({ searchParams }: Props) {
           <CtwaAdPerformancePanel />
         </Suspense>
         <MetaTestEventPanel />
+        <WhatsAppDatasetPanel />
         <MetaMonitoringView
           initialRows={logPage.rows}
           initialTotal={logPage.total}

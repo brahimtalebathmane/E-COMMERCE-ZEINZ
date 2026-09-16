@@ -70,6 +70,20 @@ type SendMetaEventParams = {
   actionSource?: MetaActionSource;
   /** Meta `messaging_channel` — set only when actionSource is "business_messaging". */
   messagingChannel?: MetaMessagingChannel;
+  /**
+   * Destination for a business_messaging event. Meta does NOT accept these on
+   * the website pixel: the dataset linked to the WhatsApp Business Account is a
+   * separate id, created once via `POST /{waba-id}/dataset`. Sending to the
+   * pixel instead fails with error_subcode 2804132, "No WhatsApp Business
+   * Account Linked to This Dataset". Ignored for every other action source.
+   */
+  datasetId?: string | null;
+  /**
+   * Token for the business_messaging dataset, which needs
+   * `whatsapp_business_management` + `whatsapp_business_manage_events` — scopes
+   * the website CAPI token usually lacks. Falls back to META_CAPI_ACCESS_TOKEN.
+   */
+  accessTokenOverride?: string | null;
 };
 
 function normalizeEnv(value: string | undefined): string {
@@ -371,8 +385,15 @@ function metaErrorSubcode(parsed: Record<string, unknown> | null): number | unde
  * `event_time` is locked on the first HTTP attempt (not before), then reused for retries only.
  */
 export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMetaEventResult> {
-  const accessToken = normalizeEnv(process.env.META_CAPI_ACCESS_TOKEN);
-  const pixelId = params.pixelId?.trim();
+  const actionSourceForRouting: MetaActionSource = params.actionSource ?? "website";
+  const datasetId =
+    actionSourceForRouting === "business_messaging" ? params.datasetId?.trim() || null : null;
+  const accessToken =
+    (datasetId ? normalizeEnv(params.accessTokenOverride ?? undefined) : "") ||
+    normalizeEnv(process.env.META_CAPI_ACCESS_TOKEN);
+  // A business_messaging event goes to the WABA's own dataset, never the website
+  // pixel — see `datasetId` on SendMetaEventParams.
+  const pixelId = datasetId ?? params.pixelId?.trim();
   if (!accessToken) {
     console.warn("[meta] CAPI skipped: META_CAPI_ACCESS_TOKEN is not set", {
       eventName: params.eventName,
@@ -393,7 +414,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
   });
 
   const customDataForCapi = params.customData || undefined;
-  const actionSource: MetaActionSource = params.actionSource ?? "website";
+  const actionSource: MetaActionSource = actionSourceForRouting;
 
   const dataRowBase: Record<string, unknown> = {
     event_name: params.eventName,

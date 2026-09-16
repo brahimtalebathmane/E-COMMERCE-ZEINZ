@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AdminButton, AdminCard } from "@/components/admin/ui";
 import {
+  resolveWhatsAppDatasetAction,
   sendMetaTestEventsAction,
+  type ResolveWhatsAppDatasetResult,
   type SendMetaTestEventsResult,
 } from "./actions";
 
@@ -96,6 +98,63 @@ export function MetaTestEventPanel() {
           </ul>
 
           <p className="text-sm text-[var(--admin-muted)]">{a.meta.testEventRead}</p>
+        </div>
+      )}
+    </AdminCard>
+  );
+}
+
+/**
+ * A `business_messaging` Purchase cannot be sent to the website pixel — Meta
+ * rejects it with subcode 2804132 and names the fix in the error itself: POST
+ * to `/{waba-id}/dataset`. This button makes that one call so no one has to
+ * run curl or paste a token anywhere.
+ */
+export function WhatsAppDatasetPanel() {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<ResolveWhatsAppDatasetResult | null>(null);
+
+  const run = () => {
+    setResult(null);
+    startTransition(async () => {
+      try {
+        setResult(await resolveWhatsAppDatasetAction());
+      } catch (error) {
+        setResult({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  };
+
+  return (
+    <AdminCard
+      title={a.meta.datasetTitle}
+      action={
+        <AdminButton onClick={run} disabled={pending}>
+          {pending ? a.meta.datasetFetching : a.meta.datasetFetch}
+        </AdminButton>
+      }
+    >
+      <p className="text-sm text-[var(--admin-muted)]">{a.meta.datasetHelp}</p>
+
+      {result && !result.ok && (
+        <pre dir="ltr" className="admin-alert-error mt-4 whitespace-pre-wrap break-all">
+          {result.error}
+        </pre>
+      )}
+
+      {result?.ok && (
+        <div className="mt-4 space-y-1 text-sm">
+          <div>
+            <span dir="ltr" className="font-mono">
+              {result.datasetId}
+            </span>
+          </div>
+          <p className="text-[var(--admin-muted)]">
+            {result.alreadyConfigured ? a.meta.datasetAlready : a.meta.datasetCopyHint}
+          </p>
         </div>
       )}
     </AdminCard>

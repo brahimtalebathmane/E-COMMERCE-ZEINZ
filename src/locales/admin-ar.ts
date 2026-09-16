@@ -785,6 +785,13 @@ export const adminAr = {
     testEventShapeChat: "شكل بيع واتساب (بلا متصفح ولا IP)",
     testEventRead:
       "افتح Test Events وقارن: القيمة 1.11 هي شكل المتجر، و2.22 شكل بيع واتساب. إن ظهرت 1.11 وحدها فالبكسل والكود سليمان، والأداة لا تعرض أحداث المحادثات. وإن لم يظهر شيء فالبكسل أعلاه ليس البكسل المفتوح لديك.",
+    datasetTitle: "معرّف dataset لواتساب",
+    datasetFetch: "احصل على معرّف dataset لواتساب",
+    datasetFetching: "جاري الطلب…",
+    datasetCopyHint: "انسخ هذا وضعه في META_WHATSAPP_DATASET_ID ثم أعد النشر.",
+    datasetAlready: "مضبوط بالفعل ✓",
+    datasetHelp:
+      "أحداث المحادثات لا تُرسل إلى بكسل الموقع بل إلى dataset خاص بحساب واتساب للأعمال. اضغط الزر مرة واحدة للحصول على معرّفه.",
     lastSuccessTitle: "آخر نجاح لكل نوع حدث",
     logTitle: "سجل الأحداث",
     filterAllTypes: "كل الأنواع",

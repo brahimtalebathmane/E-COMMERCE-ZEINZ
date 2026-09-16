@@ -157,6 +157,24 @@ function resolveWhatsAppBusinessAccountId(): string | null {
 }
 
 /**
+ * The dataset a business_messaging event must be sent to. Meta rejects these on
+ * the website pixel with error_subcode 2804132 ("No WhatsApp Business Account
+ * Linked to This Dataset"); the WABA has its own dataset id, created once with
+ * `POST /{waba-id}/dataset`. Without it there is no point attempting the
+ * business_messaging shape at all.
+ */
+function resolveWhatsAppDatasetId(): string | null {
+  const raw = process.env.META_WHATSAPP_DATASET_ID?.trim().replace(/^['"]|['"]$/g, "");
+  return raw || null;
+}
+
+/** Token for the WhatsApp dataset — needs whatsapp_business_manage_events. */
+function resolveWhatsAppCapiToken(): string | null {
+  const raw = process.env.META_WHATSAPP_CAPI_ACCESS_TOKEN?.trim().replace(/^['"]|['"]$/g, "");
+  return raw || null;
+}
+
+/**
  * Meta CAPI `action_source`: "business_messaging" for a Purchase that can be
  * tied back to a Click-to-WhatsApp ad conversation (ctwa_clid + WABA id both
  * present); otherwise "website" for real storefront checkouts, "chat" for a
@@ -435,11 +453,22 @@ export async function dispatchMetaEvent(
   }
 
   const ctwaClid = (order.meta_ctwa_clid as string | null)?.trim() || null;
-  const wabaId = resolveWhatsAppBusinessAccountId();
+  const wabaIdEnv = resolveWhatsAppBusinessAccountId();
+  const whatsappDatasetId = resolveWhatsAppDatasetId();
+  // All three are required together. A business_messaging event with no dataset
+  // is rejected (2804132) and a dataset with no click id has nothing to
+  // attribute — so treat a partial configuration as "not configured" rather
+  // than sending a request that is known to fail.
+  const wabaId = wabaIdEnv && whatsappDatasetId ? wabaIdEnv : null;
   if (ctwaClid && !wabaId) {
     console.warn(
-      "[meta] CTWA click id present but META_WHATSAPP_BUSINESS_ACCOUNT_ID is not set — falling back to offline action_source",
-      { orderId, eventType },
+      "[meta] CTWA click id present but the business_messaging destination is incomplete — falling back to offline action_source",
+      {
+        orderId,
+        eventType,
+        hasWabaId: Boolean(wabaIdEnv),
+        hasDatasetId: Boolean(whatsappDatasetId),
+      },
     );
   }
   const actionSource = resolveOrderActionSource(order, eventType, ctwaClid, wabaId);
@@ -462,6 +491,9 @@ export async function dispatchMetaEvent(
         eventTimeSec: eventType === "lead" ? context.eventTimeSec : undefined,
         actionSource: source,
         messagingChannel: source === "business_messaging" ? "whatsapp" : undefined,
+        datasetId: source === "business_messaging" ? whatsappDatasetId : null,
+        accessTokenOverride:
+          source === "business_messaging" ? resolveWhatsAppCapiToken() : null,
         userData: {
           name: order.customer_name as string | null,
           phone: order.phone as string | null,
