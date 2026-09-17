@@ -14,6 +14,8 @@ import {
 import { buildPublicProductUrl } from "@/lib/site-url";
 import { sendMetaEvent, type MetaActionSource } from "@/utils/meta";
 import { buildMetaCustomerKey } from "@/lib/meta-user-data";
+import { isCtwaClickAttributable } from "@/lib/meta/ctwa-window";
+import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 
 export type MetaDispatchEventType = "lead" | "purchase" | "cancel";
 
@@ -166,6 +168,77 @@ function resolveWhatsAppBusinessAccountId(): string | null {
 function resolveWhatsAppDatasetId(): string | null {
   const raw = process.env.META_WHATSAPP_DATASET_ID?.trim().replace(/^['"]|['"]$/g, "");
   return raw || null;
+}
+
+/**
+ * Last-chance lookup for a Click-to-WhatsApp click id.
+ *
+ * `createWhatsAppSaleAction` resolves the click id when the ORDER IS CREATED. If
+ * the customer's ad-referral message is captured moments later — the WhatsApp
+ * worker and the admin are racing — the order is stored with no click id and the
+ * sale loses its attribution permanently, even though the conversation clearly
+ * came from an ad. One sale in nineteen was lost this way.
+ *
+ * So the click id is resolved again HERE, at dispatch time, from the same
+ * `whatsapp_contacts` row the sale form reads. Only a click inside Meta's
+ * attribution window is used: an older one would be accepted by Meta but
+ * credited to nothing, while making the admin report claim an attribution that
+ * does not exist.
+ *
+ * The value found is written back to the order so the database and the event
+ * agree — otherwise the ad-performance report would keep counting this sale as
+ * organic.
+ */
+async function backfillCtwaFromContact(
+  supabase: SupabaseClient,
+  orderId: string,
+  phone: string | null,
+): Promise<{ ctwaClid: string | null; adSourceId: string | null }> {
+  const normalized = sanitizePhoneForMetaE164(phone ?? "");
+  if (!normalized) return { ctwaClid: null, adSourceId: null };
+
+  try {
+    const { data, error } = await supabase
+      .from("whatsapp_contacts")
+      .select("last_ctwa_clid, last_ad_source_id, last_ad_clicked_at")
+      .eq("phone", normalized)
+      .maybeSingle();
+    if (error || !data) return { ctwaClid: null, adSourceId: null };
+
+    const ctwaClid = (data.last_ctwa_clid as string | null)?.trim() || null;
+    if (!ctwaClid) return { ctwaClid: null, adSourceId: null };
+    if (!isCtwaClickAttributable(data.last_ad_clicked_at as string | null)) {
+      return { ctwaClid: null, adSourceId: null };
+    }
+
+    const adSourceId = (data.last_ad_source_id as string | null)?.trim() || null;
+
+    // Best-effort: a failed write must not block the event it was meant to enrich.
+    const { error: writeError } = await supabase
+      .from("orders")
+      .update({ meta_ctwa_clid: ctwaClid, meta_ad_source_id: adSourceId })
+      .eq("id", orderId)
+      .is("meta_ctwa_clid", null);
+    if (writeError) {
+      console.warn("[meta] CTWA backfill found a click id but could not store it", {
+        orderId,
+        error: writeError.message,
+      });
+    } else {
+      console.warn("[meta] CTWA click id backfilled from the conversation at dispatch", {
+        orderId,
+        adSourceId,
+      });
+    }
+
+    return { ctwaClid, adSourceId };
+  } catch (error) {
+    console.warn("[meta] CTWA backfill lookup failed", {
+      orderId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { ctwaClid: null, adSourceId: null };
+  }
 }
 
 /** Token for the WhatsApp dataset — needs whatsapp_business_manage_events. */
@@ -442,17 +515,44 @@ export async function dispatchMetaEvent(
 
   const session = orderCustomerSessionContext(order);
   if (session.missingStoredSession) {
-    console.warn("[meta] CAPI missing stored shopper session (IP/UA omitted)", {
+    // A conversation sale has no browser behind it by definition — fbp/fbc are
+    // browser cookies and the shopper never opened a page. Logging that as a
+    // warning on every WhatsApp sale trains everyone to ignore the line, which
+    // then hides the case that IS a defect: a storefront order missing its own
+    // session.
+    const isConversationSale =
+      (order.manual_sale_channel as string | null) === "whatsapp" ||
+      (order.source as string | null) === "manual";
+    const message = isConversationSale
+      ? "[meta] CAPI conversation sale — no browser session (expected for this channel)"
+      : "[meta] CAPI missing stored shopper session (IP/UA omitted)";
+    const detail = {
       orderId,
       eventType,
       hasIp: Boolean(session.clientIpAddress),
       hasUserAgent: Boolean(session.clientUserAgent),
       hasFbp: Boolean(session.fbp),
       hasFbc: Boolean(session.fbc),
-    });
+    };
+    if (isConversationSale) console.info(message, detail);
+    else console.warn(message, detail);
   }
 
-  const ctwaClid = (order.meta_ctwa_clid as string | null)?.trim() || null;
+  let ctwaClid = (order.meta_ctwa_clid as string | null)?.trim() || null;
+  // Only WhatsApp sales can gain a click id after the fact, and only a purchase
+  // is worth the extra read — a cancel carries no attribution value.
+  if (
+    !ctwaClid &&
+    eventType === "purchase" &&
+    (order.manual_sale_channel as string | null) === "whatsapp"
+  ) {
+    const backfilled = await backfillCtwaFromContact(
+      supabase,
+      orderId,
+      order.phone as string | null,
+    );
+    ctwaClid = backfilled.ctwaClid;
+  }
   const wabaIdEnv = resolveWhatsAppBusinessAccountId();
   const whatsappDatasetId = resolveWhatsAppDatasetId();
   // All three are required together. A business_messaging event with no dataset

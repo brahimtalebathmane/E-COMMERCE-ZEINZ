@@ -12,6 +12,7 @@ import { logOrderCommunicationEvent } from "@/lib/order-communication-log";
 import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 import { dayKey } from "@/lib/analytics/daily-profit";
 import { isValidOrderDateKey, resolveOrderedAtIso } from "@/lib/orders/ordered-at";
+import { isCtwaClickAttributable } from "@/lib/meta/ctwa-window";
 import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -394,17 +395,6 @@ export type ManualSaleLineInput = { productId: string; quantity: number };
 /** Browser cookies (fbp/fbc) stay useful for Meta's full 90-day window. */
 const META_COOKIE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
-/**
- * Meta's Click-to-WhatsApp attribution window. A click id older than this can
- * still be sent, but Meta will not credit the campaign for it — so the admin is
- * warned rather than the sale being silently mis-attributed.
- *
- * NOT exported: this is a "use server" module, where Next.js allows only async
- * functions as runtime exports. A plain `export const` here throws at module
- * evaluation and takes down every action in the file.
- */
-const CTWA_ATTRIBUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
 export type WhatsAppConversation = {
   /** E.164 digits, no "+" — the primary key of whatsapp_contacts. */
   phone: string;
@@ -447,7 +437,6 @@ type WhatsAppContactRow = {
 
 function toConversation(row: WhatsAppContactRow, now: number): WhatsAppConversation {
   const adClickedAt = row.last_ad_clicked_at ?? null;
-  const clickedMs = adClickedAt ? Date.parse(adClickedAt) : NaN;
   return {
     phone: row.phone,
     displayName: (row.display_name ?? "").trim() || null,
@@ -455,8 +444,7 @@ function toConversation(row: WhatsAppContactRow, now: number): WhatsAppConversat
     inboundCount: Number(row.inbound_count) || 0,
     adSourceId: (row.last_ad_source_id ?? "").trim() || null,
     adClickedAt,
-    adAttributable:
-      Number.isFinite(clickedMs) && now - clickedMs <= CTWA_ATTRIBUTION_WINDOW_MS,
+    adAttributable: isCtwaClickAttributable(adClickedAt, now),
   };
 }
 

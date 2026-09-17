@@ -479,6 +479,11 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
           console.warn("[meta] CAPI event accepted", {
             eventName: params.eventName,
             eventIdPrefix: params.eventId?.slice(0, 12),
+            // Which SHAPE was accepted, and where it went. Without these two a
+            // successful line cannot be told apart from a silent downgrade to
+            // the offline shape, which is the failure that matters most here.
+            actionSource,
+            destination: datasetId ? "whatsapp_dataset" : "pixel",
             eventSourceUrl: resolvedSourceUrl,
             eventsReceived,
             testEventIncluded: Boolean(testEventCode),
