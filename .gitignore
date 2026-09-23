@@ -50,3 +50,6 @@ public/swe-worker*
 
 # Claude Code local-only settings (machine-specific permissions)
 .claude/settings.local.json
+
+# customer-list exports (contain phone numbers — never commit)
+/exports/
