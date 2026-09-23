@@ -7,6 +7,7 @@ import { MetaMonitoringView } from "./MetaMonitoringView";
 import { MetaOverviewPanel } from "./MetaOverviewPanel";
 import { MetaOverviewSkeleton } from "./MetaOverviewSection";
 import { MetaTestEventPanel, WhatsAppDatasetPanel } from "./MetaTestEventPanel";
+import { DatasetGapPanel, SignalCoveragePanel } from "./WhatsAppDatasetHealthPanel";
 import { fetchMetaEventLogPage } from "./queries";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,12 @@ export default async function AdminMetaPage({ searchParams }: Props) {
         <AdminPageHeader title={a.meta.title} subtitle={a.meta.subtitle} />
         <Suspense fallback={<MetaOverviewSkeleton />}>
           <MetaOverviewPanel />
+        </Suspense>
+        <Suspense fallback={<MetaOverviewSkeleton />}>
+          <DatasetGapPanel />
+        </Suspense>
+        <Suspense fallback={<MetaOverviewSkeleton />}>
+          <SignalCoveragePanel />
         </Suspense>
         <Suspense fallback={<MetaOverviewSkeleton />}>
           <CtwaAdPerformancePanel />

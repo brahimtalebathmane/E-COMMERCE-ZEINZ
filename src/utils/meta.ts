@@ -84,6 +84,12 @@ type SendMetaEventParams = {
    * the website CAPI token usually lacks. Falls back to META_CAPI_ACCESS_TOKEN.
    */
   accessTokenOverride?: string | null;
+  /**
+   * Log label only — never part of the payload. "primary" is the leg that
+   * decides whether a sale counts as sent (the pixel); "attribution" is the
+   * WhatsApp dataset copy of the same Purchase.
+   */
+  leg?: "primary" | "attribution";
 };
 
 function normalizeEnv(value: string | undefined): string {
@@ -482,6 +488,7 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
             // Which SHAPE was accepted, and where it went. Without these two a
             // successful line cannot be told apart from a silent downgrade to
             // the offline shape, which is the failure that matters most here.
+            leg: params.leg ?? "primary",
             actionSource,
             destination: datasetId ? "whatsapp_dataset" : "pixel",
             eventSourceUrl: resolvedSourceUrl,
@@ -498,6 +505,8 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
         if (isMetaCapiDedupOrAlreadyProcessed(parsed, eventsReceived)) {
           console.warn("[meta] CAPI event deduplicated (already received)", {
             eventName: params.eventName,
+            leg: params.leg ?? "primary",
+            destination: datasetId ? "whatsapp_dataset" : "pixel",
             eventIdPrefix: params.eventId?.slice(0, 12),
             eventsReceived,
             fbtrace_id:
@@ -511,6 +520,8 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
         console.error("[meta] CAPI event rejected by Meta", {
           eventName: params.eventName,
           eventIdPrefix: params.eventId?.slice(0, 12),
+          leg: params.leg ?? "primary",
+          destination: datasetId ? "whatsapp_dataset" : "pixel",
           pixelIdPrefix: pixelId.slice(0, 6),
           status: res.status,
           body: body.slice(0, 500),
@@ -526,6 +537,8 @@ export async function sendMetaEvent(params: SendMetaEventParams): Promise<SendMe
       const retryable = isRetryableMetaHttpStatus(res.status);
       console.error("[meta] CAPI request failed", {
         eventName: params.eventName,
+        leg: params.leg ?? "primary",
+        destination: datasetId ? "whatsapp_dataset" : "pixel",
         attempt: attempt + 1,
         status: res.status,
         body: body.slice(0, 500),

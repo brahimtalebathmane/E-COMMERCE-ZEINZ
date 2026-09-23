@@ -57,3 +57,33 @@ export type CtwaAdPerformance = {
   /** True when either source hit the row cap — the numbers are a partial view. */
   truncated: boolean;
 };
+
+/** One window of the WhatsApp signal-ceiling report. */
+export type WhatsAppSignalCoverageWindow = {
+  days: number;
+  /** WhatsApp manual sales that reached confirmation — the denominator. */
+  purchases: number;
+  /** …of those, carrying a `meta_ctwa_clid` — the only ones the dataset can ever see. */
+  attributable: number;
+  /** …of the attributable ones, accepted by the WhatsApp dataset. */
+  reachedDataset: number;
+};
+
+export type WhatsAppSignalCoverage = {
+  last30: WhatsAppSignalCoverageWindow;
+  last7: WhatsAppSignalCoverageWindow;
+  /** True when the query hit its row cap — the numbers are a partial view. */
+  truncated: boolean;
+};
+
+/** What /admin/meta shows about the WhatsApp dataset gap before any button is pressed. */
+export type DatasetGapStatus = {
+  eligible: number;
+  expired: number;
+  lookbackDays: number;
+  oldest: string | null;
+  newest: string | null;
+  lastError: { orderId: string; message: string; updatedAt: string } | null;
+  lastRun: { at: string; state: "success" | "failed" | "skipped"; detail: string | null } | null;
+  configured: boolean;
+};

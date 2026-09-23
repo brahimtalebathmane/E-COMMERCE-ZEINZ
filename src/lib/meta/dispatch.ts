@@ -12,7 +12,11 @@ import {
   mapDispatchEventTypeToLog,
 } from "@/lib/meta/event-log";
 import { buildPublicProductUrl } from "@/lib/site-url";
-import { sendMetaEvent, type MetaActionSource } from "@/utils/meta";
+import {
+  sendMetaEvent,
+  type MetaActionSource,
+  type SendMetaEventResult,
+} from "@/utils/meta";
 import { buildMetaCustomerKey } from "@/lib/meta-user-data";
 import { isCtwaClickAttributable } from "@/lib/meta/ctwa-window";
 import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
@@ -248,20 +252,59 @@ function resolveWhatsAppCapiToken(): string | null {
 }
 
 /**
- * Meta CAPI `action_source`: "business_messaging" for a Purchase that can be
- * tied back to a Click-to-WhatsApp ad conversation (ctwa_clid + WABA id both
- * present); otherwise "website" for real storefront checkouts, "chat" for a
- * sale recorded against a WhatsApp conversation, or the historical
- * "phone_call" / "other" channels retained on old manual-sale rows. Falls
- * back to "phone_call" if a manual order somehow has no channel stored.
+ * `META_WHATSAPP_PIXEL_LEG` — "on" (default) or "off".
+ *
+ * An attributable WhatsApp Purchase goes to two destinations: the website pixel
+ * (the "primary" leg, what every campaign optimised on until the messaging goal)
+ * and the WABA dataset (the "attribution" leg, the only source the
+ * "Maximize number of purchases through messaging" goal reads). The pixel leg is
+ * a bridge: it lets the campaigns fall back to the pixel within a day if the
+ * messaging goal underperforms. Once it has proven itself the pixel leg can be
+ * retired here, without a deploy.
+ *
+ * Only an explicit "off" disables it, and only for orders whose attribution leg
+ * is actually being sent — a WhatsApp sale with no click id, and every storefront
+ * sale, still reach the pixel whatever this says. Unset or malformed means "on".
  */
-function resolveOrderActionSource(
-  order: Record<string, unknown>,
-  eventType: MetaDispatchEventType,
-  ctwaClid: string | null,
-  wabaId: string | null,
-): MetaActionSource {
-  if (eventType === "purchase" && ctwaClid && wabaId) return "business_messaging";
+function isWhatsAppPixelLegEnabled(): boolean {
+  const raw = process.env.META_WHATSAPP_PIXEL_LEG?.trim()
+    .replace(/^['"]|['"]$/g, "")
+    .toLowerCase();
+  return raw !== "off";
+}
+
+/** Where a WhatsApp attribution event is sent. Both ids are required together. */
+export type WhatsAppDatasetDestination = { datasetId: string; wabaId: string };
+
+/**
+ * The WABA dataset, or null when it is not fully configured. A business_messaging
+ * event with no dataset is rejected (2804132) and one with no WABA id cannot carry
+ * a `ctwa_clid` — so a partial configuration counts as "not configured" rather
+ * than sending a request that is known to fail.
+ */
+export function resolveWhatsAppDatasetDestination(): WhatsAppDatasetDestination | null {
+  const datasetId = resolveWhatsAppDatasetId();
+  const wabaId = resolveWhatsAppBusinessAccountId();
+  return datasetId && wabaId ? { datasetId, wabaId } : null;
+}
+
+function isWhatsAppSale(order: Record<string, unknown>): boolean {
+  return (
+    order.source === "manual" &&
+    (order.manual_sale_channel as string | null) === "whatsapp"
+  );
+}
+
+/**
+ * Meta CAPI `action_source` for the pixel: "website" for real storefront
+ * checkouts, "chat" for a sale recorded against a WhatsApp conversation, or the
+ * historical "phone_call" / "other" channels retained on old manual-sale rows.
+ * Falls back to "phone_call" if a manual order somehow has no channel stored.
+ *
+ * "business_messaging" is never a pixel action source — it belongs to the
+ * attribution leg alone, see `buildLegParams`.
+ */
+function resolveOrderActionSource(order: Record<string, unknown>): MetaActionSource {
   if (order.source !== "manual") return "website";
   const channel = order.manual_sale_channel as string | null;
   // A sale recorded against a WhatsApp conversation is a chat conversion, not a
@@ -295,9 +338,303 @@ function orderCustomerSessionContext(order: Record<string, unknown>): {
   };
 }
 
+/** Every order column the dispatcher and the dataset resend read. */
+export const ORDER_DISPATCH_SELECT =
+  "id, product_id, status, customer_name, phone, total_price, currency, quantity, source, manual_sale_channel, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_ctwa_clid, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_purchase_dataset_sent, meta_cancel_sent, ordered_at, deleted_at";
+
+/**
+ * Everything a CAPI event for an order needs that does not depend on WHERE it
+ * is sent. The live dispatcher and the dataset resend both build their payload
+ * from this, so there is exactly one implementation of it.
+ */
+export type OrderEventPayload = {
+  pixelId: string;
+  eventId: string;
+  eventName: "Lead" | "Purchase" | "CancelledLead";
+  storedSourceUrl: string | null;
+  headers: Headers | null;
+  customData: NonNullable<ReturnType<typeof buildMetaOrderValueCustomData>>;
+  session: ReturnType<typeof orderCustomerSessionContext>;
+  countryIsoCode: string | null;
+};
+
+type PrepareOrderEventResult =
+  | { ok: true; payload: OrderEventPayload }
+  | {
+      ok: false;
+      reason: "product_not_found" | "missing_content_ids" | "missing_meta_data";
+    };
+
+export async function prepareOrderEventPayload(
+  supabase: SupabaseClient,
+  order: Record<string, unknown>,
+  eventType: MetaDispatchEventType,
+  eventId: string,
+  context: MetaClientContext = {},
+): Promise<PrepareOrderEventResult> {
+  const orderId = order.id as string;
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("name_ar, name_fr, default_language, deleted_at, slug, country_id")
+    .eq("id", order.product_id as string)
+    .maybeSingle();
+
+  if (!product || product.deleted_at != null) {
+    console.warn("[meta] CAPI skipped: product not found for order", {
+      orderId,
+      eventType,
+      productId: order.product_id,
+    });
+    return { ok: false, reason: "product_not_found" };
+  }
+
+  const countryPixelIds = await resolveCountryPixelIds(supabase, product.country_id as string | null);
+  const pixelId = resolveServerMetaPixelId(countryPixelIds.server) || "";
+
+  const productCustomData = buildMetaProductCustomData({
+    productId: order.product_id as string,
+    productName: resolveMetaProductDisplayName({
+      name_ar: product.name_ar as string | null,
+      name_fr: product.name_fr as string | null,
+      default_language: product.default_language as "ar" | "fr" | null,
+    }),
+    quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
+  });
+
+  if (!productCustomData?.content_ids?.length) {
+    console.warn("[meta] CAPI skipped: unresolved content_ids", { orderId, eventType });
+    return { ok: false, reason: "missing_content_ids" };
+  }
+
+  console.warn("[meta] CAPI dispatch attempt", {
+    orderId,
+    eventType,
+    eventIdPrefix:
+      eventType === "lead" ? resolveLeadEventIdForOrder(order).slice(0, 20) : undefined,
+    hasPixelId: Boolean(pixelId),
+    tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
+  });
+
+  if (!pixelId) {
+    console.warn("[meta] CAPI skipped: META_PIXEL_ID not set", {
+      orderId,
+      eventType,
+    });
+    return { ok: false, reason: "missing_meta_data" };
+  }
+
+  const headers =
+    eventType === "lead" ? (context.requestHeaders ?? new Headers()) : null;
+  const eventName =
+    eventType === "lead" ? "Lead" : eventType === "purchase" ? "Purchase" : "CancelledLead";
+
+  const storedSourceUrl =
+    (order.meta_event_source_url as string | null)?.trim() ||
+    buildPublicProductUrl((product.slug as string | null) ?? "") ||
+    null;
+
+  const orderMoney = metaPurchaseMoneyFromOrderTotal(
+    Number(order.total_price),
+    (order.currency as string) ?? "MRU",
+  );
+
+  const customData = buildMetaOrderValueCustomData({
+    ...orderMoney,
+    productId: order.product_id as string,
+    productName: productCustomData.content_name,
+    quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
+  });
+
+  if (
+    !customData ||
+    !Array.isArray(customData.content_ids) ||
+    customData.content_ids.length === 0
+  ) {
+    console.warn("[meta] CAPI skipped: missing content_ids in payload", { orderId, eventType });
+    return { ok: false, reason: "missing_content_ids" };
+  }
+
+  const session = orderCustomerSessionContext(order);
+  if (session.missingStoredSession) {
+    // A conversation sale has no browser behind it by definition — fbp/fbc are
+    // browser cookies and the shopper never opened a page. Logging that as a
+    // warning on every WhatsApp sale trains everyone to ignore the line, which
+    // then hides the case that IS a defect: a storefront order missing its own
+    // session.
+    const isConversationSale =
+      (order.manual_sale_channel as string | null) === "whatsapp" ||
+      (order.source as string | null) === "manual";
+    const message = isConversationSale
+      ? "[meta] CAPI conversation sale — no browser session (expected for this channel)"
+      : "[meta] CAPI missing stored shopper session (IP/UA omitted)";
+    const detail = {
+      orderId,
+      eventType,
+      hasIp: Boolean(session.clientIpAddress),
+      hasUserAgent: Boolean(session.clientUserAgent),
+      hasFbp: Boolean(session.fbp),
+      hasFbc: Boolean(session.fbc),
+    };
+    if (isConversationSale) console.info(message, detail);
+    else console.warn(message, detail);
+  }
+
+  return {
+    ok: true,
+    payload: {
+      pixelId,
+      eventId,
+      eventName,
+      storedSourceUrl,
+      headers,
+      customData,
+      session,
+      countryIsoCode: countryPixelIds.isoCode,
+    },
+  };
+}
+
+type EventLeg =
+  | { kind: "primary"; actionSource: MetaActionSource }
+  | { kind: "attribution"; ctwaClid: string; destination: WhatsAppDatasetDestination };
+
+/**
+ * One destination of the same event. `event_id` is identical on both legs; the
+ * two destinations are separate datasets, so Meta does not deduplicate across
+ * them — and does not deduplicate business_messaging events within the dataset
+ * either. `meta_purchase_dataset_sent` is the only guard against a double send
+ * on the attribution leg.
+ */
+function buildLegParams(
+  order: Record<string, unknown>,
+  payload: OrderEventPayload,
+  leg: EventLeg,
+  eventTimeSec?: number,
+): Parameters<typeof sendMetaEvent>[0] {
+  const attribution = leg.kind === "attribution" ? leg : null;
+  return {
+    // The attribution leg never names the pixel. With nothing to fall back to,
+    // a missing dataset id fails closed instead of landing a second Purchase on
+    // the pixel.
+    pixelId: attribution ? null : payload.pixelId,
+    eventName: payload.eventName,
+    eventId: payload.eventId,
+    eventSourceUrl: payload.storedSourceUrl,
+    requestHeaders: payload.headers,
+    eventTimeSec,
+    actionSource: attribution ? "business_messaging" : leg.kind === "primary" ? leg.actionSource : undefined,
+    messagingChannel: attribution ? "whatsapp" : undefined,
+    datasetId: attribution ? attribution.destination.datasetId : null,
+    accessTokenOverride: attribution ? resolveWhatsAppCapiToken() : null,
+    leg: leg.kind,
+    userData: {
+      name: order.customer_name as string | null,
+      phone: order.phone as string | null,
+      fbp: payload.session.fbp,
+      fbc: payload.session.fbc,
+      clientIpAddress: payload.session.clientIpAddress,
+      clientUserAgent: payload.session.clientUserAgent,
+      // Stable per-shopper key; the order id only remains as a last resort so
+      // an unparseable phone still yields *some* external_id.
+      externalId:
+        buildMetaCustomerKey(order.phone as string | null) ?? (order.id as string),
+      country: payload.countryIsoCode,
+      // Both are only valid together, and only on a business_messaging event.
+      ctwaClid: attribution ? attribution.ctwaClid : null,
+      whatsappBusinessAccountId: attribution ? attribution.destination.wabaId : null,
+    },
+    customData: payload.customData,
+  };
+}
+
+/** A thrown send becomes an ordinary failure, so one leg can never sink the other. */
+function settledSendResult(
+  settled: PromiseSettledResult<SendMetaEventResult | null>,
+): SendMetaEventResult | null {
+  if (settled.status === "fulfilled") return settled.value;
+  return {
+    ok: false,
+    reason: "network_error",
+    detail: settled.reason instanceof Error ? settled.reason.message : String(settled.reason),
+  };
+}
+
+/**
+ * The WhatsApp dataset leg of a Purchase. Shared by the live dispatcher and the
+ * dataset resend — the resend passes the real purchase time, the live path
+ * sends "now".
+ */
+export function sendAttributionLeg(
+  order: Record<string, unknown>,
+  payload: OrderEventPayload,
+  ctwaClid: string,
+  destination: WhatsAppDatasetDestination,
+  eventTimeSec?: number,
+): Promise<SendMetaEventResult> {
+  return sendMetaEvent(
+    buildLegParams(order, payload, { kind: "attribution", ctwaClid, destination }, eventTimeSec),
+  );
+}
+
+/**
+ * Short, greppable reason for a dataset gap: when, why, and Meta's subcode —
+ * enough to tell a token problem, a 2804117 WABA mismatch and a network blip
+ * apart at a glance on /admin/meta.
+ */
+export function formatAttributionLegError(
+  result: Extract<SendMetaEventResult, { ok: false }> | { reason: string; detail?: string; errorSubcode?: number },
+  now: Date = new Date(),
+): string {
+  const subcode = result.errorSubcode != null ? ` subcode=${result.errorSubcode}` : "";
+  const detail = result.detail?.trim() ? ` ${result.detail.trim().slice(0, 300)}` : "";
+  return `[${now.toISOString()}] ${result.reason}${subcode}${detail}`;
+}
+
+/**
+ * Persists the dataset leg's outcome. Acceptance flips the flag with the same
+ * guarded-update pattern as `meta_purchase_sent`; a failure only records why.
+ * Never throws — the sale's own outcome must not depend on this write.
+ */
+export async function recordAttributionLegOutcome(
+  supabase: SupabaseClient,
+  orderId: string,
+  result: SendMetaEventResult | { ok: false; reason: string; detail?: string },
+): Promise<void> {
+  try {
+    const { error } = result.ok
+      ? await supabase
+          .from("orders")
+          .update({ meta_purchase_dataset_sent: true, meta_dataset_last_error: null })
+          .eq("id", orderId)
+          .eq("meta_purchase_dataset_sent", false)
+      : await supabase
+          .from("orders")
+          .update({ meta_dataset_last_error: formatAttributionLegError(result) })
+          .eq("id", orderId);
+    if (error) {
+      console.error("[meta] could not record the attribution leg outcome", {
+        orderId,
+        accepted: result.ok,
+        error: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("[meta] could not record the attribution leg outcome", {
+      orderId,
+      accepted: result.ok,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Single-path Meta CAPI dispatcher with idempotency ledger.
  * Callers must enforce order status preconditions before invoking.
+ *
+ * A Purchase for a WhatsApp sale carrying an attributable click id is sent to
+ * two destinations at once — see `isWhatsAppPixelLegEnabled`. The pixel leg
+ * alone decides the result; the dataset leg is tracked on its own column.
  */
 export async function dispatchMetaEvent(
   supabase: SupabaseClient,
@@ -309,9 +646,7 @@ export async function dispatchMetaEvent(
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select(
-      "id, product_id, status, customer_name, phone, total_price, currency, quantity, source, manual_sale_channel, meta_event_id, meta_event_source_url, meta_fbp, meta_fbc, meta_ctwa_clid, meta_client_ip_address, meta_client_user_agent, meta_lead_sent, meta_purchase_sent, meta_cancel_sent, deleted_at",
-    )
+    .select(ORDER_DISPATCH_SELECT)
     .eq("id", orderId)
     .maybeSingle();
 
@@ -392,20 +727,10 @@ export async function dispatchMetaEvent(
       ? resolveLeadEventIdForOrder(order)
       : transactionalEventId(orderId, eventType);
 
-  const { data: product } = await supabase
-    .from("products")
-    .select("name_ar, name_fr, default_language, deleted_at, slug, country_id")
-    .eq("id", order.product_id as string)
-    .maybeSingle();
-
-  if (!product || product.deleted_at != null) {
+  const prepared = await prepareOrderEventPayload(supabase, order, eventType, eventId, context);
+  if (!prepared.ok) {
     await releaseMetaDispatchClaim(supabase, orderId, eventType);
-    console.warn("[meta] CAPI skipped: product not found for order", {
-      orderId,
-      eventType,
-      productId: order.product_id,
-    });
-    const result = { sent: false, skipped: true, reason: "product_not_found" } as const;
+    const result = { sent: false, skipped: true, reason: prepared.reason } as const;
     recordDispatchOutcome(supabase, {
       orderId,
       productId: order.product_id as string,
@@ -415,137 +740,12 @@ export async function dispatchMetaEvent(
     });
     return result;
   }
-
-  const countryPixelIds = await resolveCountryPixelIds(supabase, product.country_id as string | null);
-  const pixelId = resolveServerMetaPixelId(countryPixelIds.server) || "";
-
-  const productCustomData = buildMetaProductCustomData({
-    productId: order.product_id as string,
-    productName: resolveMetaProductDisplayName({
-      name_ar: product.name_ar as string | null,
-      name_fr: product.name_fr as string | null,
-      default_language: product.default_language as "ar" | "fr" | null,
-    }),
-    quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
-  });
-
-  if (!productCustomData?.content_ids?.length) {
-    await releaseMetaDispatchClaim(supabase, orderId, eventType);
-    console.warn("[meta] CAPI skipped: unresolved content_ids", { orderId, eventType });
-    const result = { sent: false, skipped: true, reason: "missing_content_ids" } as const;
-    recordDispatchOutcome(supabase, {
-      orderId,
-      productId: order.product_id as string,
-      eventType,
-      eventId,
-      result,
-    });
-    return result;
-  }
-
-  console.warn("[meta] CAPI dispatch attempt", {
-    orderId,
-    eventType,
-    eventIdPrefix:
-      eventType === "lead" ? resolveLeadEventIdForOrder(order).slice(0, 20) : undefined,
-    hasPixelId: Boolean(pixelId),
-    tokenConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN?.trim()),
-  });
-
-  if (!pixelId) {
-    await releaseMetaDispatchClaim(supabase, orderId, eventType);
-    console.warn("[meta] CAPI skipped: META_PIXEL_ID not set", {
-      orderId,
-      eventType,
-    });
-    const result = { sent: false, skipped: true, reason: "missing_meta_data" } as const;
-    recordDispatchOutcome(supabase, {
-      orderId,
-      productId: order.product_id as string,
-      eventType,
-      eventId,
-      result,
-    });
-    return result;
-  }
-
-  const headers =
-    eventType === "lead" ? (context.requestHeaders ?? new Headers()) : null;
-  const eventName =
-    eventType === "lead" ? "Lead" : eventType === "purchase" ? "Purchase" : "CancelledLead";
-
-  const storedSourceUrl =
-    (order.meta_event_source_url as string | null)?.trim() ||
-    buildPublicProductUrl((product.slug as string | null) ?? "") ||
-    null;
-
-  const orderMoney = metaPurchaseMoneyFromOrderTotal(
-    Number(order.total_price),
-    (order.currency as string) ?? "MRU",
-  );
-
-  const customData =
-    eventType === "purchase" || eventType === "lead" || eventType === "cancel"
-      ? buildMetaOrderValueCustomData({
-          ...orderMoney,
-          productId: order.product_id as string,
-          productName: productCustomData.content_name,
-          quantity: Number(order.quantity) > 0 ? Number(order.quantity) : 1,
-        })
-      : productCustomData;
-
-  if (
-    !customData ||
-    !("content_ids" in customData) ||
-    !Array.isArray(customData.content_ids) ||
-    customData.content_ids.length === 0
-  ) {
-    await releaseMetaDispatchClaim(supabase, orderId, eventType);
-    console.warn("[meta] CAPI skipped: missing content_ids in payload", { orderId, eventType });
-    const result = { sent: false, skipped: true, reason: "missing_content_ids" } as const;
-    recordDispatchOutcome(supabase, {
-      orderId,
-      productId: order.product_id as string,
-      eventType,
-      eventId,
-      result,
-    });
-    return result;
-  }
-
-  const session = orderCustomerSessionContext(order);
-  if (session.missingStoredSession) {
-    // A conversation sale has no browser behind it by definition — fbp/fbc are
-    // browser cookies and the shopper never opened a page. Logging that as a
-    // warning on every WhatsApp sale trains everyone to ignore the line, which
-    // then hides the case that IS a defect: a storefront order missing its own
-    // session.
-    const isConversationSale =
-      (order.manual_sale_channel as string | null) === "whatsapp" ||
-      (order.source as string | null) === "manual";
-    const message = isConversationSale
-      ? "[meta] CAPI conversation sale — no browser session (expected for this channel)"
-      : "[meta] CAPI missing stored shopper session (IP/UA omitted)";
-    const detail = {
-      orderId,
-      eventType,
-      hasIp: Boolean(session.clientIpAddress),
-      hasUserAgent: Boolean(session.clientUserAgent),
-      hasFbp: Boolean(session.fbp),
-      hasFbc: Boolean(session.fbc),
-    };
-    if (isConversationSale) console.info(message, detail);
-    else console.warn(message, detail);
-  }
+  const payload = prepared.payload;
 
   let ctwaClid = (order.meta_ctwa_clid as string | null)?.trim() || null;
   // Only WhatsApp sales can gain a click id after the fact, and only a purchase
   // is worth the extra read — a cancel carries no attribution value.
-  if (
-    !ctwaClid &&
-    eventType === "purchase" &&
-    (order.manual_sale_channel as string | null) === "whatsapp"
-  ) {
+  if (!ctwaClid && eventType === "purchase" && isWhatsAppSale(order)) {
     const backfilled = await backfillCtwaFromContact(
       supabase,
       orderId,
@@ -553,103 +753,97 @@ export async function dispatchMetaEvent(
     );
     ctwaClid = backfilled.ctwaClid;
   }
-  const wabaIdEnv = resolveWhatsAppBusinessAccountId();
-  const whatsappDatasetId = resolveWhatsAppDatasetId();
-  // All three are required together. A business_messaging event with no dataset
-  // is rejected (2804132) and a dataset with no click id has nothing to
-  // attribute — so treat a partial configuration as "not configured" rather
-  // than sending a request that is known to fail.
-  const wabaId = wabaIdEnv && whatsappDatasetId ? wabaIdEnv : null;
-  if (ctwaClid && !wabaId) {
+
+  const destination = eventType === "purchase" ? resolveWhatsAppDatasetDestination() : null;
+  const hasAttributableClick = eventType === "purchase" && isWhatsAppSale(order) && Boolean(ctwaClid);
+  if (hasAttributableClick && !destination) {
     console.warn(
-      "[meta] CTWA click id present but the business_messaging destination is incomplete — falling back to offline action_source",
+      "[meta] CTWA click id present but the WhatsApp dataset is not configured — attribution leg not sent",
       {
         orderId,
         eventType,
-        hasWabaId: Boolean(wabaIdEnv),
-        hasDatasetId: Boolean(whatsappDatasetId),
+        hasWabaId: Boolean(resolveWhatsAppBusinessAccountId()),
+        hasDatasetId: Boolean(resolveWhatsAppDatasetId()),
       },
     );
   }
-  const actionSource = resolveOrderActionSource(order, eventType, ctwaClid, wabaId);
-  const isBusinessMessaging = actionSource === "business_messaging";
+
+  // The attribution leg is owed exactly once per order: an earlier attempt that
+  // reached the dataset — while the pixel leg failed and released the claim —
+  // must not be repeated when the pixel leg is retried.
+  const attributable = hasAttributableClick && destination != null;
+  const attributionAlreadySent = order.meta_purchase_dataset_sent === true;
+  const sendAttribution = attributable && !attributionAlreadySent;
+  const sendPixel = !(attributable && !isWhatsAppPixelLegEnabled());
+  if (!sendPixel) {
+    console.warn(
+      "[meta] pixel leg disabled by META_WHATSAPP_PIXEL_LEG — attribution leg is authoritative",
+      { orderId, eventType, attributionAlreadySent },
+    );
+  }
 
   try {
-    /**
-     * One shape of the same event. Called twice at most: once as chosen, and — if
-     * Meta rejects a business_messaging attempt — once more with the offline
-     * shape. `eventId` is identical across both, so a first attempt that did
-     * reach Meta is deduplicated rather than double-counted.
-     */
-    const sendAs = (source: MetaActionSource) =>
-      sendMetaEvent({
-        pixelId,
-        eventName,
-        eventId,
-        eventSourceUrl: storedSourceUrl,
-        requestHeaders: headers,
-        eventTimeSec: eventType === "lead" ? context.eventTimeSec : undefined,
-        actionSource: source,
-        messagingChannel: source === "business_messaging" ? "whatsapp" : undefined,
-        datasetId: source === "business_messaging" ? whatsappDatasetId : null,
-        accessTokenOverride:
-          source === "business_messaging" ? resolveWhatsAppCapiToken() : null,
-        userData: {
-          name: order.customer_name as string | null,
-          phone: order.phone as string | null,
-          fbp: session.fbp,
-          fbc: session.fbc,
-          clientIpAddress: session.clientIpAddress,
-          clientUserAgent: session.clientUserAgent,
-          // Stable per-shopper key; the order id only remains as a last resort so
-          // an unparseable phone still yields *some* external_id.
-          externalId:
-            buildMetaCustomerKey(order.phone as string | null) ?? (order.id as string),
-          country: countryPixelIds.isoCode,
-          // Both are only valid together, and only on a business_messaging event.
-          ctwaClid: source === "business_messaging" ? ctwaClid : null,
-          whatsappBusinessAccountId: source === "business_messaging" ? wabaId : null,
-        },
-        customData,
+    // Awaited together, never fire-and-forget: Netlify freezes the function as
+    // soon as the response returns, which can kill an un-awaited request before
+    // it leaves the box.
+    const [primarySettled, attributionSettled] = await Promise.allSettled([
+      sendPixel
+        ? sendMetaEvent(
+            buildLegParams(
+              order,
+              payload,
+              { kind: "primary", actionSource: resolveOrderActionSource(order) },
+              eventType === "lead" ? context.eventTimeSec : undefined,
+            ),
+          )
+        : Promise.resolve(null),
+      sendAttribution && ctwaClid && destination
+        ? sendAttributionLeg(order, payload, ctwaClid, destination)
+        : Promise.resolve(null),
+    ]);
+    const primary = settledSendResult(primarySettled);
+    const attribution = settledSendResult(attributionSettled);
+
+    // Recorded BEFORE `meta_purchase_sent` is set: the dataset resend only picks
+    // up orders whose pixel leg is marked sent, so by the time an order becomes
+    // visible to it, its live attribution leg has already settled.
+    if (attribution) {
+      if (!attribution.ok) {
+        console.warn(
+          sendPixel
+            ? "[meta] attribution leg rejected — the sale stands on the pixel leg"
+            : "[meta] attribution leg rejected — pixel leg disabled, the sale is not sent",
+          {
+            orderId,
+            eventType,
+            reason: attribution.reason,
+            errorSubcode: attribution.errorSubcode,
+            detail: attribution.detail?.slice(0, 300),
+          },
+        );
+      }
+      await recordAttributionLegOutcome(supabase, orderId, attribution);
+    } else if (hasAttributableClick && !destination) {
+      await recordAttributionLegOutcome(supabase, orderId, {
+        ok: false,
+        reason: "dataset_not_configured",
       });
-
-    let capi = await sendAs(actionSource);
-
-    /**
-     * A rejected business_messaging event means Meta refused the SHAPE, not the
-     * sale — most often subcode 2804117, "the ctwa_clid was not generated by the
-     * Page associated with this whatsapp_business_account_id". Losing the
-     * Purchase over that is strictly worse than losing the ad attribution, so
-     * retry once as the plain offline event this order would have sent anyway.
-     *
-     * Only payload rejections qualify: a missing token or an exhausted network
-     * retry would fail identically in any shape.
-     */
-    if (
-      !capi.ok &&
-      isBusinessMessaging &&
-      (capi.reason === "rejected" || capi.reason === "http_error")
-    ) {
-      const fallback = resolveOrderActionSource(order, eventType, null, null);
-      console.warn(
-        "[meta] business_messaging rejected — resending without ad attribution",
-        {
-          orderId,
-          eventType,
-          reason: capi.reason,
-          errorSubcode: capi.errorSubcode,
-          fallbackActionSource: fallback,
-        },
-      );
-      capi = await sendAs(fallback);
     }
+
+    // The pixel leg decides whether the sale counts as sent. Only when it is
+    // switched off does the attribution leg take its place — and if that leg
+    // already reached the dataset on an earlier attempt, there is nothing left
+    // to send.
+    const capi: SendMetaEventResult =
+      (sendPixel ? primary : attribution) ?? { ok: true, detail: "attribution_already_sent" };
 
     if (!capi.ok) {
       await releaseMetaDispatchClaim(supabase, orderId, eventType);
       console.warn("[meta] CAPI dispatch failed", {
         orderId,
         eventType,
-        pixelIdPrefix: pixelId.slice(0, 6),
+        leg: sendPixel ? "primary" : "attribution",
+        pixelIdPrefix: payload.pixelId.slice(0, 6),
         reason: capi.reason,
       });
       const result = { sent: false, reason: capi.reason ?? "capi_failed" } as const;

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "node server.js",
     "lint": "next lint",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --import ./tests/support/server-only-stub.mjs --test tests/*.test.ts",
     "check:server-actions": "node scripts/check-server-actions.mjs",
     "audit:meta-isolation": "node scripts/audit-meta-product-isolation.mjs",
     "audit:media-urls": "node scripts/audit-media-urls.mjs",

@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
+import { runDatasetResend, type DatasetResendOutcome } from "@/lib/meta/dataset-resend";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   resolveClientIpAddress,
   sendMetaEvent,
@@ -218,4 +220,37 @@ export async function resolveWhatsAppDatasetAction(): Promise<ResolveWhatsAppDat
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+/**
+ * WhatsApp dataset gap — dry run and resend. See src/lib/meta/dataset-resend.ts.
+ *
+ * The resend only ever sends the dataset (attribution) leg: every order it
+ * touches already produced a pixel Purchase, and a second one would be a
+ * duplicate sale.
+ */
+export type DatasetResendActionResult =
+  | { ok: true; outcome: DatasetResendOutcome }
+  | { ok: false; error: string };
+
+async function runDatasetResendAction(dryRun: boolean): Promise<DatasetResendActionResult> {
+  try {
+    await assertPermission(PERMISSIONS.view_meta_monitoring);
+  } catch {
+    return { ok: false, error: "غير مصرح لك بهذا الإجراء." };
+  }
+  try {
+    const outcome = await runDatasetResend(createServiceClient(), { dryRun });
+    return { ok: true, outcome };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function datasetGapDryRunAction(): Promise<DatasetResendActionResult> {
+  return runDatasetResendAction(true);
+}
+
+export async function datasetGapResendAction(): Promise<DatasetResendActionResult> {
+  return runDatasetResendAction(false);
 }

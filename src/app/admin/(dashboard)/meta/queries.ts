@@ -2,7 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { countStuckEventsFast } from "@/lib/meta/stuck-events";
 import { isRevenueStatus } from "@/lib/analytics/profit";
 import type { OrderStatus } from "@/types";
-import type { CtwaAdPerformance, CtwaAdPerformanceRow, MetaEventLogRow, MetaOverviewStats } from "./types";
+import type {
+  CtwaAdPerformance,
+  CtwaAdPerformanceRow,
+  MetaEventLogRow,
+  MetaOverviewStats,
+  WhatsAppSignalCoverage,
+  WhatsAppSignalCoverageWindow,
+} from "./types";
 
 export const META_EVENT_LOG_SELECT =
   "id, event_type, order_id, product_id, event_id, state, reason, detail, attempt_count, created_at";
@@ -238,4 +245,51 @@ export async function fetchMetaEventLogPage(
     rows: (data ?? []) as MetaEventLogRow[],
     total: count ?? 0,
   };
+}
+
+/** Statuses a WhatsApp sale passes through once its Purchase has fired. */
+const PURCHASED_STATUSES: OrderStatus[] = ["confirmed", "shipped", "internal_return"];
+const SIGNAL_COVERAGE_ROW_CAP = 5000;
+
+/**
+ * The signal ceiling of the "purchases through messaging" goal.
+ *
+ * A WhatsApp sale with no `ctwa_clid` can never reach the WhatsApp dataset, by
+ * design — so the share of sales carrying one is the most signal that goal will
+ * ever see. Read-only: no writes, no events.
+ */
+export async function fetchWhatsAppSignalCoverage(
+  supabase: SupabaseClient,
+): Promise<WhatsAppSignalCoverage> {
+  const now = Date.now();
+  const since30 = now - 30 * 24 * 60 * 60 * 1000;
+  const since7 = now - 7 * 24 * 60 * 60 * 1000;
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("ordered_at, meta_ctwa_clid, meta_purchase_dataset_sent")
+    .is("deleted_at", null)
+    .eq("source", "manual")
+    .eq("manual_sale_channel", "whatsapp")
+    .in("status", PURCHASED_STATUSES)
+    .gte("ordered_at", new Date(since30).toISOString())
+    .limit(SIGNAL_COVERAGE_ROW_CAP);
+  if (error) throw new Error(error.message);
+
+  const last30: WhatsAppSignalCoverageWindow = { days: 30, purchases: 0, attributable: 0, reachedDataset: 0 };
+  const last7: WhatsAppSignalCoverageWindow = { days: 7, purchases: 0, attributable: 0, reachedDataset: 0 };
+
+  for (const row of data ?? []) {
+    const orderedAt = Date.parse(row.ordered_at as string);
+    const windows = orderedAt >= since7 ? [last30, last7] : [last30];
+    const attributable = Boolean((row.meta_ctwa_clid as string | null)?.trim());
+    const reached = attributable && row.meta_purchase_dataset_sent === true;
+    for (const w of windows) {
+      w.purchases += 1;
+      if (attributable) w.attributable += 1;
+      if (reached) w.reachedDataset += 1;
+    }
+  }
+
+  return { last30, last7, truncated: (data?.length ?? 0) >= SIGNAL_COVERAGE_ROW_CAP };
 }
