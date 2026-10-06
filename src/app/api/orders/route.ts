@@ -147,6 +147,7 @@ export async function POST(request: Request) {
       .from("orders")
       .insert({
         product_id: data.product_id,
+        country_id: product.country_id,
         customer_name: data.customer_name,
         phone: data.phone,
         payment_method: null,

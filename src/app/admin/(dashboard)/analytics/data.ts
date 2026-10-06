@@ -115,7 +115,10 @@ export async function loadAnalyticsData(
           .select(
             "id, product_id, total_price, status, ordered_at, delivery_cost, quantity, unit_cost_price",
           )
-          .in("product_id", ownedProductIdList) as never,
+          .in("product_id", ownedProductIdList)
+          // Explicit, not left to RLS: orders_select_admin (042) doesn't hide
+          // soft-deleted rows, and money totals must never include them.
+          .is("deleted_at", null) as never,
       "id",
     ),
     ensureFreshAdSpend(
@@ -137,7 +140,7 @@ export async function loadAnalyticsData(
         .from("product_ad_spend_daily")
         .select("product_id, date, amount, fetched_at")
         .in("product_id", ownedProductIdList) as never,
-    "date",
+    ["date", "product_id"],
   );
 
   if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error };
@@ -274,15 +277,26 @@ export async function loadAffiliateAnalyticsData(
   let affiliateProductsQuery = cookieClient
     .from("products")
     .select(
-      "id, name_ar, cost_price, profit_calculation_start_date, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price, affiliate_currency, created_at",
+      "id, name_ar, cost_price, profit_calculation_start_date, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price, country_id, created_at",
     )
     .eq("fulfillment_type", "affiliate");
   if (countryId) {
     affiliateProductsQuery = affiliateProductsQuery.eq("country_id", countryId);
   }
-  const { data: productRows, error: productsErr } = await affiliateProductsQuery;
+  // A product's money is denominated in its market's ISO currency
+  // (countries.currency), never the legacy free-text products.affiliate_currency
+  // (which holds values like "ريال"). Read through countries_public because
+  // non-owner staff have no SELECT policy on the base countries table.
+  const [{ data: productRows, error: productsErr }, countriesRes] = await Promise.all([
+    affiliateProductsQuery,
+    cookieClient.from("countries_public").select("id, currency"),
+  ]);
 
   if (productsErr) return { ok: false, error: productsErr.message };
+  if (countriesRes.error) return { ok: false, error: countriesRes.error.message };
+  const currencyByCountry = new Map(
+    (countriesRes.data ?? []).map((c) => [String(c.id), String(c.currency)]),
+  );
   const productRowsData = productRows ?? [];
   if (productRowsData.length === 0) {
     return {
@@ -318,7 +332,9 @@ export async function loadAffiliateAnalyticsData(
           .select(
             "id, product_id, total_price, status, ordered_at, quantity, affiliate_other_costs, affiliate_costs_finalized, unit_cost_price, affiliate_commission_type_at_order, affiliate_fixed_commission_at_order, affiliate_sell_price_at_order",
           )
-          .in("product_id", productIds) as never,
+          .in("product_id", productIds)
+          // Explicit — see the owned loader above.
+          .is("deleted_at", null) as never,
       "id",
     ),
     cookieClient.from("currency_rates").select("code, mru_per_unit"),
@@ -343,7 +359,7 @@ export async function loadAffiliateAnalyticsData(
         .from("product_ad_spend_daily")
         .select("product_id, date, amount")
         .in("product_id", productIds) as never,
-    "date",
+    ["date", "product_id"],
   );
   if (adSpendDailyRes.error) return { ok: false, error: adSpendDailyRes.error };
 
@@ -366,7 +382,7 @@ export async function loadAffiliateAnalyticsData(
     affiliateFixedCommission:
       p.affiliate_fixed_commission == null ? null : Number(p.affiliate_fixed_commission),
     affiliateSellPrice: p.affiliate_sell_price == null ? null : Number(p.affiliate_sell_price),
-    currency: p.affiliate_currency,
+    currency: currencyByCountry.get(String(p.country_id)) ?? null,
     createdAt: String(p.created_at ?? ""),
   }));
 

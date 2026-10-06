@@ -8,6 +8,7 @@ import {
 import { BRAND_COLOR } from "@/lib/site-branding";
 import { assertPermission, isAuthError } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Testimonial,
@@ -352,22 +353,46 @@ async function assertProductMediaUrlsValid(payload: ProductPayload): Promise<voi
 }
 
 /**
- * Owned products always belong to Mauritania — not a user choice in the
- * form, so it's resolved here rather than trusting a client-supplied id.
+ * Owned products always belong to the local-operations market (Mauritania) —
+ * we stock and ship them ourselves. Not a user choice in the form, so it's
+ * resolved here rather than trusting a client-supplied id.
  */
-async function resolveMauritaniaCountryId(supabase: SupabaseClient): Promise<string> {
+async function resolveLocalOperationsCountryId(supabase: SupabaseClient): Promise<string> {
   // Non-owner staff have no SELECT policy on the base `countries` table —
   // this view is readable by any authenticated panel user.
   const { data, error } = await supabase
     .from("countries_public")
     .select("id")
-    .eq("iso_code", "MR")
+    .eq("has_local_operations", true)
     .maybeSingle();
 
   if (error || !data) {
-    throw new Error("Mauritania country row is missing — check the Countries admin screen.");
+    throw new Error("Local-operations country row is missing — check the Countries admin screen.");
   }
   return (data as { id: string }).id;
+}
+
+/**
+ * A product that already has orders keeps its country: its orders (and their
+ * currency) belong to the original market. Mirrors trg_products_block_country_change
+ * (migration 068) so the admin gets a clear message instead of a raw DB error.
+ * Service role, because a staff member without order permissions can't see
+ * the orders through RLS and would otherwise always pass this check.
+ */
+async function assertCountryChangeAllowed(
+  productId: string,
+  currentCountryId: string | null,
+  nextCountryId: string | null,
+): Promise<void> {
+  if (currentCountryId === nextCountryId) return;
+  const { count, error } = await createServiceClient()
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+  if (error) throw new Error(error.message);
+  if ((count ?? 0) > 0) {
+    throw new Error("لا يمكن تغيير بلد منتج لديه طلبات — أنشئ منتجاً جديداً لهذا البلد.");
+  }
 }
 
 async function pipelineFieldsFromPayload(supabase: SupabaseClient, payload: ProductPayload) {
@@ -384,7 +409,7 @@ async function affiliateFieldsFromPayload(supabase: SupabaseClient, payload: Pro
   const isAffiliate = payload.fulfillment_type === "affiliate";
   const country_id = isAffiliate
     ? payload.country_id
-    : await resolveMauritaniaCountryId(supabase);
+    : await resolveLocalOperationsCountryId(supabase);
   return {
     fulfillment_type: payload.fulfillment_type,
     country_id,
@@ -517,7 +542,7 @@ export async function createResearchProductAction(payload: ResearchProductPayloa
   validateResearchProductPayload(payload);
   const { supabase } = await assertPermission(PERMISSIONS.manage_products);
   const candidate = await allocateUniqueSlug(supabase, payload.name_ar);
-  const countryId = await resolveMauritaniaCountryId(supabase);
+  const countryId = await resolveLocalOperationsCountryId(supabase);
 
   const { error } = await supabase
     .from("products")
@@ -808,13 +833,20 @@ export async function saveLandingConfigurationAction(
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
-      .select("id, slug, old_slugs, test_status, price, media_type, media_url")
+      .select("id, slug, old_slugs, test_status, price, media_type, media_url, country_id")
       .eq("id", id)
       .maybeSingle();
 
     if (fetchErr || !existing) {
       return { ok: false, error: "Product not found" };
     }
+
+    const affiliateFields = await affiliateFieldsFromPayload(supabase, payload);
+    await assertCountryChangeAllowed(
+      id,
+      existing.country_id as string | null,
+      affiliateFields.country_id,
+    );
 
     const { slug, old_slugs } = await resolveProductSlugFields(
       supabase,
@@ -850,7 +882,7 @@ export async function saveLandingConfigurationAction(
         sourcing_type: payload.sourcing_type,
         sourcing_link: payload.sourcing_link.trim(),
         cost_price: payload.cost_price,
-        ...(await affiliateFieldsFromPayload(supabase, payload)),
+        ...affiliateFields,
       })
       .eq("id", id);
 
@@ -937,13 +969,20 @@ export async function updateProductAction(
 
     const { data: existing, error: fetchErr } = await supabase
       .from("products")
-      .select("id, slug, old_slugs")
+      .select("id, slug, old_slugs, country_id")
       .eq("id", id)
       .maybeSingle();
 
     if (fetchErr || !existing) {
       return { ok: false, error: "Product not found" };
     }
+
+    const pipelineFields = await pipelineFieldsFromPayload(supabase, payload);
+    await assertCountryChangeAllowed(
+      id,
+      existing.country_id as string | null,
+      pipelineFields.country_id,
+    );
 
     const { slug, old_slugs } = await resolveProductSlugFields(
       supabase,
@@ -965,7 +1004,7 @@ export async function updateProductAction(
         price: payload.price,
         media_type: payload.media_type,
         media_url: payload.media_url.trim(),
-        ...(await pipelineFieldsFromPayload(supabase, payload)),
+        ...pipelineFields,
       })
       .eq("id", id);
 

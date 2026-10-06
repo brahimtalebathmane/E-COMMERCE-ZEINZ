@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export type CampaignStatus = "draft" | "sending" | "completed" | "failed";
 export type AudienceType = "all_confirmed" | "by_product" | "manual";
@@ -93,9 +94,15 @@ export type RecipientRow = {
 export async function shippedPhonesForProducts(productIds: string[]): Promise<Set<string>> {
   if (productIds.length === 0) return new Set();
   const service = createServiceClient();
-  const { data, error } = await service.rpc("marketing_shipped_phones", { p_product_ids: productIds });
-  if (error) throw new Error(error.message);
-  return new Set((data ?? []).map((row: { phone: string }) => row.phone));
+  // Paginated: an RPC result is cut at PostgREST's 1000-row cap like any
+  // select, and a short exclusion list would let shipped customers through.
+  const { rows, error, truncated } = await fetchAllRows<{ phone: string }>(
+    () => service.rpc("marketing_shipped_phones", { p_product_ids: productIds }) as never,
+    "phone",
+  );
+  if (error) throw new Error(error);
+  if (truncated) throw new Error("Shipped-customer exclusion list is too large to load completely.");
+  return new Set(rows.map((row) => row.phone));
 }
 
 function excludeByPhone(recipients: RecipientRow[], excluded: Set<string>): RecipientRow[] {
@@ -119,12 +126,23 @@ export async function resolveAudience(
   countryId?: string | null,
 ): Promise<RecipientRow[]> {
   const service = createServiceClient();
-  const { data, error } = await service.rpc("marketing_audience_confirmed", {
-    p_product_id: audienceType === "by_product" ? productId ?? null : null,
-    p_country_id: countryId ?? null,
-  });
-  if (error) throw new Error(error.message);
-  const recipients = (data ?? []).map((row: { phone: string; customer_name: string | null }) => ({
+  // Paginated by phone (unique in this RPC's result — distinct on phone):
+  // an unpaginated call is silently cut at PostgREST's 1000-row cap, which
+  // would send a campaign to only the first 1000 customers.
+  const { rows, error, truncated } = await fetchAllRows<{
+    phone: string;
+    customer_name: string | null;
+  }>(
+    () =>
+      service.rpc("marketing_audience_confirmed", {
+        p_product_id: audienceType === "by_product" ? productId ?? null : null,
+        p_country_id: countryId ?? null,
+      }) as never,
+    "phone",
+  );
+  if (error) throw new Error(error);
+  if (truncated) throw new Error("Audience is too large to load completely.");
+  const recipients = rows.map((row) => ({
     phone: row.phone,
     customerName: row.customer_name,
   }));

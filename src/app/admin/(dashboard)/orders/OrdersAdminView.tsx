@@ -387,13 +387,21 @@ type Props = {
   /** Soft-deleted order count for the selected country — 0 (and the link
    *  hidden) when the admin lacks cancel_orders or there are none. */
   deletedCount: number;
+  /** WhatsApp sales are recorded only in the local-operations market (owned products). */
+  canRecordWhatsAppSale: boolean;
 };
 
-export function OrdersAdminView({ orders, selectedCountryId, deletedCount }: Props) {
+export function OrdersAdminView({
+  orders,
+  selectedCountryId,
+  deletedCount,
+  canRecordWhatsAppSale,
+}: Props) {
   const router = useRouter();
   const access = useAdminAccess();
   const canDeleteOrders = useHasPermission(PERMISSIONS.cancel_orders);
-  const canCreateManualSale = useHasPermission(PERMISSIONS.confirm_orders);
+  const canCreateManualSale =
+    useHasPermission(PERMISSIONS.confirm_orders) && canRecordWhatsAppSale;
   const [manualSaleOpen, setManualSaleOpen] = useState(false);
   const [rows, setRows] = useState<AdminOrderRow[]>(orders);
   const [active, setActive] = useState<AdminOrderRow | null>(null);

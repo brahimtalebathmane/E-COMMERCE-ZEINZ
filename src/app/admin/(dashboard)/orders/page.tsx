@@ -3,6 +3,7 @@ import { adminAr as a } from "@/locales/admin-ar";
 import { getAdminSession } from "@/lib/auth/admin";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { getCountryScope } from "@/lib/auth/country-scope";
+import { hasLocalOperations } from "@/lib/local-operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ADMIN_ORDER_SELECT_SCOPED } from "./queries";
 import { OrdersAdminView } from "./OrdersAdminView";
@@ -12,7 +13,7 @@ import type { AdminOrderRow } from "./types";
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage() {
-  const [supabase, session, { selectedCountryId }] = await Promise.all([
+  const [supabase, session, { selectedCountryId, selectedCountry }] = await Promise.all([
     createClient(),
     getAdminSession(),
     getCountryScope(),
@@ -32,10 +33,14 @@ export default async function AdminOrdersPage() {
       ).count ?? 0)
     : 0;
 
+  // Explicit deleted_at filter: the orders_select_admin policy (042) does not
+  // hide soft-deleted rows, and it deliberately stays that way so Realtime
+  // still delivers the UPDATE that removes a deleted order from open tabs.
   const { data, error } = await supabase
     .from("orders")
     .select(ADMIN_ORDER_SELECT_SCOPED)
     .eq("products.country_id", selectedCountryId)
+    .is("deleted_at", null)
     .order("ordered_at", { ascending: false });
 
   if (error) {
@@ -65,6 +70,7 @@ export default async function AdminOrdersPage() {
         orders={rows}
         selectedCountryId={selectedCountryId}
         deletedCount={canViewDeleted ? deletedCount : 0}
+        canRecordWhatsAppSale={hasLocalOperations(selectedCountry)}
       />
     </>
   );

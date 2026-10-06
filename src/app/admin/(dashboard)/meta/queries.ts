@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countStuckEventsFast } from "@/lib/meta/stuck-events";
 import { isRevenueStatus } from "@/lib/analytics/profit";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { OrderStatus } from "@/types";
 import type {
   CtwaAdPerformance,
@@ -73,8 +74,6 @@ export async function fetchMetaOverview(
   };
 }
 
-/** Safety cap — this store's volume is in the hundreds; a wider range degrades to a partial view rather than a slow page. */
-const CTWA_REPORT_ROW_CAP = 5000;
 
 /**
  * "Which Click-to-WhatsApp ad produced which sale."
@@ -87,7 +86,9 @@ const CTWA_REPORT_ROW_CAP = 5000;
  * click with no order is exactly the row the report exists to surface.
  *
  * Aggregation happens in JS because supabase-js has no GROUP BY; at this store's
- * volume that is cheaper than adding an RPC, and the row cap keeps it bounded.
+ * volume that is cheaper than adding an RPC. Both sides are read in full with
+ * fetchAllRows: a plain select is silently cut at PostgREST's 1000-row cap,
+ * which would undercount conversations, orders and revenue.
  */
 export async function fetchCtwaAdPerformance(
   supabase: SupabaseClient,
@@ -97,23 +98,34 @@ export async function fetchCtwaAdPerformance(
   const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const [clicksRes, ordersRes] = await Promise.all([
-    supabase
-      .from("whatsapp_ad_clicks")
-      .select("ad_source_id")
-      .not("ad_source_id", "is", null)
-      .gte("clicked_at", sinceIso)
-      .limit(CTWA_REPORT_ROW_CAP),
-    supabase
-      .from("orders")
-      .select("meta_ad_source_id, status, total_price, currency")
-      .not("meta_ad_source_id", "is", null)
-      .is("deleted_at", null)
-      .gte("created_at", sinceIso)
-      .limit(CTWA_REPORT_ROW_CAP),
+    fetchAllRows<{ ad_source_id: string | null }>(
+      () =>
+        supabase
+          .from("whatsapp_ad_clicks")
+          .select("id, ad_source_id")
+          .not("ad_source_id", "is", null)
+          .gte("clicked_at", sinceIso) as never,
+      "id",
+    ),
+    fetchAllRows<{
+      meta_ad_source_id: string | null;
+      status: string;
+      total_price: number;
+      currency: string | null;
+    }>(
+      () =>
+        supabase
+          .from("orders")
+          .select("id, meta_ad_source_id, status, total_price, currency")
+          .not("meta_ad_source_id", "is", null)
+          .is("deleted_at", null)
+          .gte("created_at", sinceIso) as never,
+      "id",
+    ),
   ]);
 
-  if (clicksRes.error) throw new Error(clicksRes.error.message);
-  if (ordersRes.error) throw new Error(ordersRes.error.message);
+  if (clicksRes.error) throw new Error(clicksRes.error);
+  if (ordersRes.error) throw new Error(ordersRes.error);
 
   const byAd = new Map<string, CtwaAdPerformanceRow>();
   const ensure = (adSourceId: string): CtwaAdPerformanceRow => {
@@ -133,12 +145,12 @@ export async function fetchCtwaAdPerformance(
     return row;
   };
 
-  for (const click of clicksRes.data ?? []) {
+  for (const click of clicksRes.rows) {
     const id = (click.ad_source_id as string | null)?.trim();
     if (id) ensure(id).conversations += 1;
   }
 
-  for (const order of ordersRes.data ?? []) {
+  for (const order of ordersRes.rows) {
     const id = (order.meta_ad_source_id as string | null)?.trim();
     if (!id) continue;
     const row = ensure(id);
@@ -183,9 +195,7 @@ export async function fetchCtwaAdPerformance(
       currency,
       revenue,
     })),
-    truncated:
-      (clicksRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP ||
-      (ordersRes.data?.length ?? 0) >= CTWA_REPORT_ROW_CAP,
+    truncated: clicksRes.truncated || ordersRes.truncated,
   };
 }
 
@@ -249,7 +259,6 @@ export async function fetchMetaEventLogPage(
 
 /** Statuses a WhatsApp sale passes through once its Purchase has fired. */
 const PURCHASED_STATUSES: OrderStatus[] = ["confirmed", "shipped", "internal_return"];
-const SIGNAL_COVERAGE_ROW_CAP = 5000;
 
 /**
  * The signal ceiling of the "purchases through messaging" goal.
@@ -265,21 +274,30 @@ export async function fetchWhatsAppSignalCoverage(
   const since30 = now - 30 * 24 * 60 * 60 * 1000;
   const since7 = now - 7 * 24 * 60 * 60 * 1000;
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("ordered_at, meta_ctwa_clid, meta_purchase_dataset_sent")
-    .is("deleted_at", null)
-    .eq("source", "manual")
-    .eq("manual_sale_channel", "whatsapp")
-    .in("status", PURCHASED_STATUSES)
-    .gte("ordered_at", new Date(since30).toISOString())
-    .limit(SIGNAL_COVERAGE_ROW_CAP);
-  if (error) throw new Error(error.message);
+  // Read in full (fetchAllRows): a plain select is silently cut at
+  // PostgREST's 1000-row cap, which would undercount every window.
+  const { rows, error, truncated } = await fetchAllRows<{
+    ordered_at: string;
+    meta_ctwa_clid: string | null;
+    meta_purchase_dataset_sent: boolean | null;
+  }>(
+    () =>
+      supabase
+        .from("orders")
+        .select("id, ordered_at, meta_ctwa_clid, meta_purchase_dataset_sent")
+        .is("deleted_at", null)
+        .eq("source", "manual")
+        .eq("manual_sale_channel", "whatsapp")
+        .in("status", PURCHASED_STATUSES)
+        .gte("ordered_at", new Date(since30).toISOString()) as never,
+    "id",
+  );
+  if (error) throw new Error(error);
 
   const last30: WhatsAppSignalCoverageWindow = { days: 30, purchases: 0, attributable: 0, reachedDataset: 0 };
   const last7: WhatsAppSignalCoverageWindow = { days: 7, purchases: 0, attributable: 0, reachedDataset: 0 };
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const orderedAt = Date.parse(row.ordered_at as string);
     const windows = orderedAt >= since7 ? [last30, last7] : [last30];
     const attributable = Boolean((row.meta_ctwa_clid as string | null)?.trim());
@@ -291,5 +309,5 @@ export async function fetchWhatsAppSignalCoverage(
     }
   }
 
-  return { last30, last7, truncated: (data?.length ?? 0) >= SIGNAL_COVERAGE_ROW_CAP };
+  return { last30, last7, truncated };
 }

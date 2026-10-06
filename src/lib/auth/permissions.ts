@@ -7,6 +7,12 @@ export const PERMISSIONS = {
   view_analytics: "view_analytics",
   view_meta_monitoring: "view_meta_monitoring",
   marketing_messages: "marketing_messages",
+  /** Inventory (local-operations market only — see hasLocalOperations). */
+  manage_inventory: "manage_inventory",
+  /** Treasury read access (local-operations market only). */
+  view_treasury: "view_treasury",
+  /** Treasury writes: expenses, transfers, collections (local-operations market only). */
+  manage_treasury: "manage_treasury",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -36,6 +42,8 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey | PermissionKey[] |
   "/admin/analytics": PERMISSIONS.view_analytics,
   "/admin/meta": PERMISSIONS.view_meta_monitoring,
   "/admin/marketing": PERMISSIONS.marketing_messages,
+  "/admin/inventory": PERMISSIONS.manage_inventory,
+  "/admin/treasury": [PERMISSIONS.view_treasury, PERMISSIONS.manage_treasury],
 };
 
 export function parsePermissions(raw: unknown): PermissionKey[] {
@@ -164,5 +172,23 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
     labelAr: "الرسائل التسويقية",
     shortAr: "التسويق",
     descriptionAr: "إرسال حملات واتساب تسويقية للعملاء السابقين.",
+  },
+  {
+    key: PERMISSIONS.manage_inventory,
+    labelAr: "إدارة المخزون",
+    shortAr: "المخزون",
+    descriptionAr: "عرض المخزون وتسجيل المشتريات والتعديلات (موريتانيا فقط).",
+  },
+  {
+    key: PERMISSIONS.view_treasury,
+    labelAr: "عرض الخزينة",
+    shortAr: "الخزينة",
+    descriptionAr: "عرض الحسابات والأرصدة والحركات المالية (موريتانيا فقط).",
+  },
+  {
+    key: PERMISSIONS.manage_treasury,
+    labelAr: "إدارة الخزينة",
+    shortAr: "تسجيل مالي",
+    descriptionAr: "تسجيل المصاريف والتحويلات والتحصيلات (موريتانيا فقط).",
   },
 ];

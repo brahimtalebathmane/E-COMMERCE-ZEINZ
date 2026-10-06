@@ -36,6 +36,9 @@ export default async function AdminHomePage() {
   // Owned-only, matching /admin/analytics: this KPI is deliberately the
   // owned/MRU business, never affiliate orders (which carry a foreign
   // currency and would otherwise get summed into the MRU total below).
+  // Archived products are included on purpose — archiving hides a product
+  // from lists, it doesn't erase its sales — so these totals match
+  // /admin/analytics. The pipeline counts below skip them.
   const productsRes =
     canViewAnalytics || canManageProducts
       ? await supabase
@@ -43,7 +46,6 @@ export default async function AdminHomePage() {
           .select("id, name_ar, cost_price, test_status, profit_calculation_start_date, deleted_at")
           .eq("country_id", selectedCountryId)
           .eq("fulfillment_type", "owned")
-          .is("deleted_at", null)
       : { data: [], error: null };
   if (productsRes.error) {
     return (
@@ -79,7 +81,9 @@ export default async function AdminHomePage() {
                 "id, product_id, phone, total_price, status, created_at, ordered_at, delivery_cost, quantity, unit_cost_price, products!inner(name_ar, country_id)",
               )
               .eq("products.country_id", selectedCountryId)
-              .in("product_id", productIds) as never,
+              .in("product_id", productIds)
+              // Explicit, not left to RLS (042 doesn't hide soft-deleted rows).
+              .is("deleted_at", null) as never,
           "id",
         )
       : Promise.resolve({ rows: [], error: null, truncated: false }),
@@ -95,7 +99,7 @@ export default async function AdminHomePage() {
               .from("product_ad_spend_daily")
               .select("product_id, date, amount")
               .in("product_id", productIds) as never,
-          "date",
+          ["date", "product_id"],
         )
       : Promise.resolve({ rows: [], error: null, truncated: false }),
   ]);

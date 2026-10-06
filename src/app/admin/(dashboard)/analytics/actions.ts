@@ -287,7 +287,7 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
           .in("product_id", productsWithCampaigns)
           .gte("date", startKey)
           .lte("date", untilKey) as never,
-      "date",
+      ["date", "product_id"],
     );
     if (existingRes.error) return { ok: false, error: existingRes.error };
 
@@ -325,7 +325,7 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
               .in("product_id", productsWithCampaigns)
               .gte("date", startKey)
               .lte("date", untilKey) as never,
-          "date",
+          ["date", "product_id"],
         )
       : existingRes;
     if (finalRes.error) return { ok: false, error: finalRes.error };

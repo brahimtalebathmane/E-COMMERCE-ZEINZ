@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchCampaignDailySpend } from "@/lib/meta/marketing-api";
 import { dayKey, daysBetween, shiftDateKey } from "@/lib/analytics/daily-profit";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /** Avoid hammering the Marketing API on rapid dashboard reloads. */
 const STALE_TTL_MS = 10 * 60 * 1000;
@@ -208,17 +209,27 @@ export async function ensureFreshAdSpend(
   // separate sync (capped at one extra batched call per page load).
   const gapWindowStart = shiftDateKey(todayKey, -(GAP_BACKFILL_WINDOW_DAYS - 1));
   const createdByProduct = new Map(products.map((p) => [p.id, p.createdAt]));
-  const { data: existingDateRows, error: existingErr } = await supabase
-    .from("product_ad_spend_daily")
-    .select("product_id, date")
-    .in("product_id", productsWithCampaigns)
-    .gte("date", gapWindowStart)
-    .lte("date", todayKey);
+  // 90 days × every linked product passes 1000 rows quickly; an unpaginated
+  // read was cut at PostgREST's cap, so products looked like they had gaps
+  // and were re-synced from Meta on every dashboard load.
+  const { rows: existingDateRows, error: existingErr } = await fetchAllRows<{
+    product_id: string;
+    date: string;
+  }>(
+    () =>
+      supabase
+        .from("product_ad_spend_daily")
+        .select("product_id, date")
+        .in("product_id", productsWithCampaigns)
+        .gte("date", gapWindowStart)
+        .lte("date", todayKey) as never,
+    ["date", "product_id"],
+  );
 
   const gapProductIds: string[] = [];
   if (!existingErr) {
     const datesByProduct = new Map<string, Set<string>>();
-    for (const row of existingDateRows ?? []) {
+    for (const row of existingDateRows) {
       const pid = String(row.product_id);
       const set = datesByProduct.get(pid) ?? new Set<string>();
       set.add(String(row.date));

@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { assertAdminUser, assertPermission, AuthError } from "@/lib/auth/admin";
 import { canEditOrderDetails, PERMISSIONS, permissionForOrderStatus } from "@/lib/auth/permissions";
-import { getCountryScope } from "@/lib/auth/country-scope";
+import { requireCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
 import { updateOrderStatusWithEffects, type MetaSideEffect } from "@/lib/orders/update-status";
 import { createOrderPhoneSchema } from "@/lib/validation/phone";
@@ -361,21 +361,27 @@ export type ManualSaleProductOption = {
   currency: string;
 };
 
+/** WhatsApp (admin-entered) sales exist only where we fulfil orders ourselves. */
+const WHATSAPP_SALE_LOCAL_ONLY_ERROR = "بيع واتساب متاح فقط في السوق المحلي (موريتانيا).";
+
 /**
- * Active (non-archived) products for the manual-sale product picker,
+ * Active (non-archived) OWNED products for the manual-sale product picker,
  * scoped to the currently-selected country — this also guarantees every
  * option shares one currency, so the form's combined total is never a
- * meaningless sum across currencies.
+ * meaningless sum across currencies. Affiliate products are excluded: the
+ * COD Partner fulfils those from its Google Sheet, which a manual sale never
+ * reaches. Empty for a market without local operations.
  */
 export async function listActiveProductsForManualSaleAction(): Promise<ManualSaleProductOption[]> {
   await assertPermission(PERMISSIONS.confirm_orders);
-  const { selectedCountryId, selectedCountry } = await getCountryScope();
-  const currency = selectedCountry?.currency ?? "MRU";
+  const scope = await requireCountryScope();
+  if (!scope.hasLocalOperations) return [];
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("products")
     .select("id, name_ar, price, discount_price")
-    .eq("country_id", selectedCountryId)
+    .eq("country_id", scope.countryId)
+    .eq("fulfillment_type", "owned")
     .is("deleted_at", null)
     .order("name_ar", { ascending: true });
 
@@ -386,7 +392,7 @@ export async function listActiveProductsForManualSaleAction(): Promise<ManualSal
     name: p.name_ar,
     price: Number(p.price),
     discountPrice: p.discount_price == null ? null : Number(p.discount_price),
-    currency,
+    currency: scope.currency,
   }));
 }
 
@@ -676,8 +682,12 @@ export async function createWhatsAppSaleAction(
     // Scoped to the currently-selected country — not just for consistency
     // with the picker, but so a tampered request can't slip in a product
     // from a different country (which would also carry the wrong currency).
-    const { selectedCountryId, selectedCountry } = await getCountryScope();
-    const currency = selectedCountry?.currency ?? "MRU";
+    // Local-operations market and owned products only: an affiliate product
+    // sold here would never reach the COD Partner's Google Sheet.
+    const scope = await requireCountryScope();
+    if (!scope.hasLocalOperations) {
+      return { ok: false, error: WHATSAPP_SALE_LOCAL_ONLY_ERROR };
+    }
 
     const supabase = createServiceClient();
     const productIds = [...new Set(lines.map((line) => line.productId))];
@@ -687,7 +697,8 @@ export async function createWhatsAppSaleAction(
         "id, price, discount_price, cost_price, affiliate_commission_type, affiliate_fixed_commission, affiliate_sell_price",
       )
       .in("id", productIds)
-      .eq("country_id", selectedCountryId)
+      .eq("country_id", scope.countryId)
+      .eq("fulfillment_type", "owned")
       .is("deleted_at", null);
 
     if (productsErr) {
@@ -709,7 +720,8 @@ export async function createWhatsAppSaleAction(
       const totalPrice = Math.round(unitPrice * line.quantity * 100) / 100;
       return {
         product_id: line.productId,
-        currency,
+        country_id: scope.countryId,
+        currency: scope.currency,
         customer_name: customerName,
         phone,
         total_price: totalPrice,

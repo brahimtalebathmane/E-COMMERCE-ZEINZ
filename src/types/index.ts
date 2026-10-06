@@ -190,6 +190,8 @@ export type CountryRow = {
   meta_pixel_id_public: string | null;
   is_active: boolean;
   created_at: string;
+  /** We hold stock and cash in this market ourselves (Mauritania only — DB-enforced, migration 067). Read it through `hasLocalOperations()`. */
+  has_local_operations: boolean;
 };
 
 /** Owner-only shape (base `countries` table) — adds the server-side Meta CAPI pixel. */
@@ -258,10 +260,12 @@ export type OrderStatus =
 export type OrderRow = {
   id: string;
   product_id: string;
+  /** Market of the order, fixed at creation; always equals the product's country at insert time (migration 068). */
+  country_id: string;
   customer_name: string | null;
   phone: string | null;
   total_price: number;
-  /** MRU for owned orders; the product's own affiliate_currency for affiliate orders. */
+  /** ISO 4217 code (DB-enforced): MRU for owned orders, the product's country currency for affiliate orders. */
   currency: string;
   status: OrderStatus;
   completion_token: string;

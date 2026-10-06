@@ -453,6 +453,9 @@ async function listOrders(ctx: AdminToolContext, args: ToolResult): Promise<Tool
     .from("orders")
     .select(ORDER_SUMMARY_COLUMNS)
     .eq("products.country_id", ctx.countryId)
+    // Service-role client: RLS doesn't apply, so soft-deleted orders must be
+    // excluded explicitly.
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
 

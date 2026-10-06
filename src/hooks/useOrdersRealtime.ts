@@ -28,6 +28,7 @@ async function fetchOrderById(id: string, countryId: string): Promise<AdminOrder
     .select(ADMIN_ORDER_SELECT_SCOPED)
     .eq("id", id)
     .eq("products.country_id", countryId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error || !data) return null;
   return data as unknown as AdminOrderRow;
@@ -116,10 +117,14 @@ export function useOrdersRealtime({ setRows, setActive, countryId }: Options) {
         Math.max(current.length + 20, RECONCILE_LIMIT_MIN),
       );
 
+      // Soft-deleted rows are filtered here, not by RLS: the UPDATE handler
+      // below must keep receiving the event that sets deleted_at in order to
+      // remove the row from this tab, which an RLS filter would suppress.
       const { data, error } = await supabase
         .from("orders")
         .select(ADMIN_ORDER_SELECT_SCOPED)
         .eq("products.country_id", countryIdRef.current)
+        .is("deleted_at", null)
         .order("ordered_at", { ascending: false })
         .limit(limit);
 

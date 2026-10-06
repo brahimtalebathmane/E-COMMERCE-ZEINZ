@@ -150,7 +150,7 @@ export async function dispatchInitiateCheckoutMetaEvent(
   const { data: product, error: productErr } = await supabase
     .from("products")
     .select(
-      "id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug, fulfillment_type, affiliate_currency, country_id",
+      "id, price, discount_price, name_ar, name_fr, default_language, deleted_at, test_status, slug, fulfillment_type, country_id, countries(currency)",
     )
     .eq("id", productId)
     .maybeSingle();
@@ -177,8 +177,27 @@ export async function dispatchInitiateCheckoutMetaEvent(
     product.discount_price != null
       ? Number(product.discount_price)
       : Number(product.price);
+  // The market's ISO code (countries.currency) — same source the order itself
+  // uses — never the legacy free-text products.affiliate_currency, which held
+  // values like "ريال" that Meta can't read as a currency.
+  const productCountry = product.countries as { currency?: string } | { currency?: string }[] | null;
+  const countryCurrency = Array.isArray(productCountry)
+    ? productCountry[0]?.currency
+    : productCountry?.currency;
   const productCurrency =
-    product.fulfillment_type === "affiliate" ? String(product.affiliate_currency || "MRU") : "MRU";
+    product.fulfillment_type === "affiliate" ? countryCurrency?.trim() || "" : "MRU";
+  if (!productCurrency) {
+    // Never relabel a foreign-currency price as MRU — POST /api/orders refuses
+    // the same misconfiguration for the order itself.
+    await releaseFunnelMetaDispatchClaim(supabase, eventId);
+    console.warn("[meta] InitiateCheckout CAPI skipped: affiliate product has no country currency", {
+      eventId,
+      productId,
+    });
+    const result = { sent: false, skipped: true, reason: "missing_currency" } as const;
+    recordInitiateCheckoutOutcome(supabase, { eventId, productId, result });
+    return result;
+  }
   const { value, currency } = toMetaPixelPurchaseMoney(totalLocal, productCurrency);
   const productName = resolveMetaProductDisplayName({
     name_ar: product.name_ar as string | null,
