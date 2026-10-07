@@ -328,6 +328,26 @@ export const adminAr = {
     // Search
     searchPlaceholder: "ابحث بالاسم أو رقم الهاتف…",
     searchNoResults: "لا توجد نتائج مطابقة للبحث.",
+    filters: {
+      title: "تصفية",
+      status: "الحالة",
+      dateFrom: "من تاريخ",
+      dateTo: "إلى تاريخ",
+      olderThan: "أقدم من {days} يوماً",
+      product: "المنتج",
+      allProducts: "كل المنتجات",
+      source: "المصدر",
+      allSources: "كل المصادر",
+      sourceManual: "بيع واتساب",
+      sourceStorefront: "المتجر",
+      clear: "مسح الفلاتر",
+      applying: "جاري التصفية…",
+      matching: "{count} طلب مطابق",
+      matchingTotal: "المجموع: {amount}",
+      noMatches: "لا توجد طلبات مطابقة لهذه الفلاتر.",
+      selectAllMatching: "تحديد كل الطلبات المطابقة ({count})",
+      bulkProgress: "جاري التطبيق… {done} من {total}",
+    },
 
     // Selection mode
     selectionModeEnter: "تحديد",

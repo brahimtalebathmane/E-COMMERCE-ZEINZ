@@ -10,15 +10,32 @@ import { ADMIN_ORDER_SELECT_SCOPED, sortOrdersNewestFirst } from "./queries";
 import { OrdersAdminView } from "./OrdersAdminView";
 import { AffiliateAdminPanels, type SheetFailureRow } from "./AffiliateAdminPanels";
 import type { AdminOrderRow } from "./types";
+import {
+  hasServerFilters,
+  orderDateBounds,
+  parseOrderListFilters,
+  serializeOrderListFilters,
+} from "@/lib/orders/list-filters";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersPage() {
-  const [supabase, session, { selectedCountryId, selectedCountry }] = await Promise.all([
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [supabase, session, { selectedCountryId, selectedCountry }, params] = await Promise.all([
     createClient(),
     getAdminSession(),
     getCountryScope(),
+    searchParams,
   ]);
+  // Filters from the URL, applied to the server query below so they cover
+  // every order of the country. "Older than N days" is fixed to this request
+  // time and handed to the client with the rows.
+  const filters = parseOrderListFilters(params);
+  const bounds = orderDateBounds(filters, new Date());
+  const filtered = hasServerFilters(filters);
   const canViewDeleted = session?.access ? hasPermission(session.access, PERMISSIONS.cancel_orders) : false;
 
   // Deleted rows are invisible to the cookie/RLS client — a head-only, exact
@@ -41,15 +58,22 @@ export default async function AdminOrdersPage() {
   // Explicit deleted_at filter: the orders_select_admin policy (042) does not
   // hide soft-deleted rows, and it deliberately stays that way so Realtime
   // still delivers the UPDATE that removes a deleted order from open tabs.
-  const { rows: fetched, error } = await fetchAllRows<AdminOrderRow>(
-    () =>
-      supabase
+  const [{ rows: fetched, error }, productsRes] = await Promise.all([
+    fetchAllRows<AdminOrderRow>(() => {
+      let query = supabase
         .from("orders")
         .select(ADMIN_ORDER_SELECT_SCOPED)
         .eq("products.country_id", selectedCountryId)
-        .is("deleted_at", null) as never,
-    "id",
-  );
+        .is("deleted_at", null);
+      if (filters.statuses.length > 0) query = query.in("status", filters.statuses);
+      if (filters.productId) query = query.eq("product_id", filters.productId);
+      if (filters.source) query = query.eq("source", filters.source);
+      if (bounds.gte) query = query.gte("ordered_at", bounds.gte);
+      if (bounds.lt) query = query.lt("ordered_at", bounds.lt);
+      return query as never;
+    }, "id"),
+    supabase.from("products").select("id, name_ar").eq("country_id", selectedCountryId).order("name_ar"),
+  ]);
 
   if (error) {
     return (
@@ -61,7 +85,11 @@ export default async function AdminOrdersPage() {
 
   const rows = sortOrdersNewestFirst(fetched);
 
-  const awaitingCosts = rows.filter(
+  // The affiliate panels always describe the whole country, never the filtered
+  // list: with filters on, their orders are read separately.
+  const affiliateRows = filtered ? await loadAffiliateRows(supabase, selectedCountryId) : rows;
+
+  const awaitingCosts = affiliateRows.filter(
     (r) =>
       r.products?.fulfillment_type === "affiliate" &&
       r.products?.affiliate_commission_type === "set_price" &&
@@ -69,19 +97,42 @@ export default async function AdminOrdersPage() {
       !r.affiliate_costs_finalized,
   );
 
-  const sheetFailures = await loadAffiliateSheetFailures(rows);
+  const sheetFailures = await loadAffiliateSheetFailures(affiliateRows);
 
   return (
     <>
       <AffiliateAdminPanels awaitingCosts={awaitingCosts} sheetFailures={sheetFailures} />
       <OrdersAdminView
+        // Remount on a filter change: the view keeps its own copy of the rows.
+        key={serializeOrderListFilters({ ...filters, q: "" })}
         orders={rows}
+        filters={filters}
+        dateBounds={bounds}
+        products={(productsRes.data ?? []).map((p) => ({ id: String(p.id), name: String(p.name_ar ?? "—") }))}
         selectedCountryId={selectedCountryId}
         deletedCount={canViewDeleted ? deletedCount : 0}
         canRecordWhatsAppSale={hasLocalOperations(selectedCountry)}
       />
     </>
   );
+}
+
+/** Every live affiliate order of the country (for the panels above the list). */
+async function loadAffiliateRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  countryId: string,
+): Promise<AdminOrderRow[]> {
+  const { rows } = await fetchAllRows<AdminOrderRow>(
+    () =>
+      supabase
+        .from("orders")
+        .select(ADMIN_ORDER_SELECT_SCOPED)
+        .eq("products.country_id", countryId)
+        .eq("products.fulfillment_type", "affiliate")
+        .is("deleted_at", null) as never,
+    "id",
+  );
+  return rows;
 }
 
 /**

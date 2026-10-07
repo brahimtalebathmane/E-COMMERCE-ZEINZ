@@ -20,6 +20,17 @@ import { hasPermission, permissionForOrderStatus, PERMISSIONS } from "@/lib/auth
 import { useOrdersRealtime } from "@/hooks/useOrdersRealtime";
 import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { formatMoney } from "@/lib/currency";
+import {
+  chunkIds,
+  hasServerFilters,
+  matchesOrderListFilters,
+  serializeOrderListFilters,
+  summarizeOrders,
+  type OrderDateBounds,
+  type OrderListFilters,
+} from "@/lib/orders/list-filters";
+import { OrderFiltersBar } from "./OrderFiltersBar";
 import { ChatIcon, PhoneIcon, SearchIcon } from "@/components/admin/AdminIcons";
 import {
   AdminBadge,
@@ -102,6 +113,10 @@ function digitsOnly(value: string): string {
 }
 
 const ALL_PRODUCTS = "__all__";
+
+/** Orders per server call in a bulk action, so each call stays well inside the function time limit. */
+const BULK_STATUS_CHUNK = 20;
+const BULK_DELETE_CHUNK = 100;
 
 const BULK_STATUS_OPTIONS: OrderStatus[] = [
   "pending",
@@ -389,6 +404,11 @@ type Props = {
   deletedCount: number;
   /** WhatsApp sales are recorded only in the local-operations market (owned products). */
   canRecordWhatsAppSale: boolean;
+  /** URL filters; `orders` already holds every order of the country that matches them. */
+  filters: OrderListFilters;
+  dateBounds: OrderDateBounds;
+  /** Products of the selected country, for the product filter. */
+  products: { id: string; name: string }[];
 };
 
 export function OrdersAdminView({
@@ -396,6 +416,9 @@ export function OrdersAdminView({
   selectedCountryId,
   deletedCount,
   canRecordWhatsAppSale,
+  filters,
+  dateBounds,
+  products,
 }: Props) {
   const router = useRouter();
   const access = useAdminAccess();
@@ -411,7 +434,9 @@ export function OrdersAdminView({
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>(ALL_PRODUCTS);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(filters.q);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const filtersActive = hasServerFilters(filters);
   const [bulkStatusValue, setBulkStatusValue] = useState<OrderStatus | "">("");
   const [bulkStatusApplying, setBulkStatusApplying] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -431,11 +456,31 @@ export function OrdersAdminView({
 
   const showCheckboxes = selectionMode && canDeleteOrders;
 
+  // The server already applied the filters; this re-checks rows that changed
+  // or arrived through Realtime afterwards (e.g. a status change that takes an
+  // order out of a status filter).
+  const matchingRows = useMemo(
+    () => (filtersActive ? rows.filter((r) => matchesOrderListFilters(r, filters, dateBounds)) : rows),
+    [rows, filters, dateBounds, filtersActive],
+  );
+
+  // Keep the text search in the URL too (no server round trip: it runs on the loaded rows).
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const qs = serializeOrderListFilters({ ...filters, q: search });
+      const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      if (url !== `${window.location.pathname}${window.location.search}`) {
+        window.history.replaceState(window.history.state, "", url);
+      }
+    }, 300);
+    return () => clearTimeout(id);
+  }, [search, filters]);
+
   // Aggregate per-product metrics. Order of appearance mirrors `rows` (newest
   // first), so the most recently active products surface at the front.
   const productTabs = useMemo<ProductTab[]>(() => {
     const byId = new Map<string, ProductTab>();
-    for (const row of rows) {
+    for (const row of matchingRows) {
       let tab = byId.get(row.product_id);
       if (!tab) {
         tab = {
@@ -448,7 +493,7 @@ export function OrdersAdminView({
       tallyStatus(tab, row.status);
     }
     return Array.from(byId.values());
-  }, [rows]);
+  }, [matchingRows]);
 
   // If the selected product disappears (e.g. last order deleted), fall back.
   useEffect(() => {
@@ -463,8 +508,8 @@ export function OrdersAdminView({
   const filteredRows = useMemo(() => {
     let list =
       selectedProduct === ALL_PRODUCTS
-        ? rows
-        : rows.filter((r) => r.product_id === selectedProduct);
+        ? matchingRows
+        : matchingRows.filter((r) => r.product_id === selectedProduct);
 
     const term = search.trim();
     if (term) {
@@ -477,17 +522,19 @@ export function OrdersAdminView({
       });
     }
     return list;
-  }, [rows, selectedProduct, search]);
+  }, [matchingRows, selectedProduct, search]);
+
+  const matchingSummary = useMemo(() => summarizeOrders(filteredRows), [filteredRows]);
 
   const segmentCounts = useMemo(() => {
     if (selectedProduct === ALL_PRODUCTS) {
       const counts = emptyCounts();
-      for (const row of rows) tallyStatus(counts, row.status);
+      for (const row of matchingRows) tallyStatus(counts, row.status);
       return counts;
     }
     const tab = productTabs.find((t) => t.id === selectedProduct);
     return tab ?? emptyCounts();
-  }, [rows, productTabs, selectedProduct]);
+  }, [matchingRows, productTabs, selectedProduct]);
 
   const selectedCount = selectedIds.size;
   const allFilteredSelected =
@@ -659,7 +706,7 @@ export function OrdersAdminView({
     setActive((cur) => (cur && idSet.has(cur.id) ? null : cur));
     setSelectedIds(new Set());
     try {
-      await deleteOrdersAction(ids);
+      for (const chunk of chunkIds(ids, BULK_DELETE_CHUNK)) await deleteOrdersAction(chunk);
       router.refresh();
     } catch (e) {
       setRows(prev);
@@ -685,14 +732,24 @@ export function OrdersAdminView({
 
   async function onBulkStatusChange(ids: string[], nextStatus: OrderStatus) {
     setBulkStatusApplying(true);
+    // Same server action and rules as before (Meta events, stock, permissions),
+    // sent in small chunks so a large "all matching" selection never runs into
+    // the server time limit. Progress is shown between chunks.
+    const res = { succeededIds: [] as string[], failedIds: [] as string[] };
+    setBulkProgress({ done: 0, total: ids.length });
     try {
-      const res = await updateOrdersStatusBulkAction(ids, nextStatus);
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      for (const id of res.succeededIds) {
-        patchOrder(id, { status: nextStatus });
+      for (const chunk of chunkIds(ids, BULK_STATUS_CHUNK)) {
+        const part = await updateOrdersStatusBulkAction(chunk, nextStatus);
+        if (!part.ok) {
+          toast.error(part.error);
+          if (res.succeededIds.length === 0) return;
+          res.failedIds.push(...chunk);
+          continue;
+        }
+        for (const id of part.succeededIds) patchOrder(id, { status: nextStatus });
+        res.succeededIds.push(...part.succeededIds);
+        res.failedIds.push(...part.failedIds);
+        setBulkProgress({ done: res.succeededIds.length + res.failedIds.length, total: ids.length });
       }
       setSelectedIds(new Set());
       setBulkStatusValue("");
@@ -709,6 +766,7 @@ export function OrdersAdminView({
       toast.error(e instanceof Error ? e.message : a.orders.bulkStatusFailed);
     } finally {
       setBulkStatusApplying(false);
+      setBulkProgress(null);
     }
   }
 
@@ -745,11 +803,11 @@ export function OrdersAdminView({
         }
       />
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && !filtersActive ? (
         <p className="text-sm text-[var(--muted)]">{a.orders.noOrdersHint}</p>
       ) : null}
 
-      {rows.length > 0 ? (
+      {rows.length > 0 || filtersActive ? (
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <SearchIcon
@@ -780,6 +838,28 @@ export function OrdersAdminView({
         </div>
       ) : null}
 
+      {rows.length > 0 || filtersActive ? (
+        <OrderFiltersBar filters={filters} search={search} products={products} />
+      ) : null}
+
+      {filtersActive || search.trim() ? (
+        <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">
+          {a.orders.filters.matching.replace("{count}", String(matchingSummary.count))}
+          {matchingSummary.totals.length > 0 ? (
+            <span className="ms-2 font-normal text-[var(--muted)]">
+              {a.orders.filters.matchingTotal.replace(
+                "{amount}",
+                matchingSummary.totals.map((t) => formatMoney(t.amount, t.currency)).join(" + "),
+              )}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+
+      {filtersActive && rows.length === 0 ? (
+        <p className="mt-6 text-sm text-[var(--muted)]">{a.orders.filters.noMatches}</p>
+      ) : null}
+
       {/* Product isolation tabs */}
       {rows.length > 0 ? (
       <div className="mt-4">
@@ -787,7 +867,7 @@ export function OrdersAdminView({
           <div className="flex gap-2 overflow-x-auto scroll-smooth px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <ProductTabButton
               label={a.orders.allProducts}
-              count={rows.length}
+              count={matchingRows.length}
               active={selectedProduct === ALL_PRODUCTS}
               onClick={() => setSelectedProduct(ALL_PRODUCTS)}
             />
@@ -853,6 +933,23 @@ export function OrdersAdminView({
                 ? a.orders.selectedCountLabel.replace("{count}", String(selectedCount))
                 : a.orders.selectAll}
             </span>
+            {!allFilteredSelected && filteredRows.length > 0 ? (
+              <button
+                type="button"
+                disabled={deleteBusy || bulkStatusApplying}
+                className="min-h-[40px] rounded-lg border border-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white/[0.04] disabled:opacity-60"
+                onClick={() => setSelectedIds(new Set(filteredRows.map((row) => row.id)))}
+              >
+                {a.orders.filters.selectAllMatching.replace("{count}", String(filteredRows.length))}
+              </button>
+            ) : null}
+            {bulkProgress ? (
+              <span className="text-xs text-[var(--muted)]" aria-live="polite">
+                {a.orders.filters.bulkProgress
+                  .replace("{done}", String(bulkProgress.done))
+                  .replace("{total}", String(bulkProgress.total))}
+              </span>
+            ) : null}
           </div>
           {selectedCount > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
