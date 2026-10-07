@@ -38,7 +38,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 |---|---|---|---|---|
 | Phase A (country scoping) | `phase-a` → main | done | 031, 067–069 (2026-10-07) | `6b4ff5f` |
 | Phase A close-out | main | done | — | **not yet** (`d389c83`, goes with stage 1) |
-| 1. Follow-ups | `followups` | done, awaiting approval | none needed | — |
+| 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | pending |
 | 2. Phase B inventory | `phase-b` | — | — | — |
 | 3. Phase C treasury | `phase-c` | — | — | — |
 | 4. Phase D reconciliation | `phase-d` | — | — | — |
@@ -50,7 +50,8 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] 1.3 Link Meta campaigns to affiliate products (SA/KW) from the analytics page; then explain SAR/KWD rates
 - [x] 1.4 Owner warning when `orders_country_id_autofill_log` has rows after 2026-10-07 01:54 UTC
 - [x] 1.5 Test for `POST /api/orders` (country_id, currency, snapshot) with mocks (`tests/orders-route.test.mts`)
-- [ ] Checks green → ask "backup done, apply" (no migrations expected) → merge + push (with `d389c83`) → post-deploy checks
+- [x] 070 SAR/KWD rates (owner chose 11.47 / 140), applied 2026-10-07 03:18 UTC
+- [ ] Merge + push (with `d389c83`) → post-deploy checks
 
 ## Stage 2 — Phase B inventory
 

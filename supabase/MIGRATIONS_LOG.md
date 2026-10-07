@@ -122,3 +122,4 @@ not known.
 | `067_countries_local_operations.sql` | 2026-10-06, branch `phase-a` | applied — confirmed 2026-10-07 by the post-068 check | 2026-10-07 |
 | `068_orders_country_id.sql` | 2026-10-06, branch `phase-a` | applied — confirmed 2026-10-07 by the post-068 check (creates `orders_country_id_autofill_log`) | 2026-10-07 |
 | `069_orders_country_id_not_null.sql` | 2026-10-06, branch `phase-a` | applied — check: NOT NULL, 0 orders without country, log kept, 0 autofills since deploy. Trigger fills a missing `country_id` from the product permanently and logs it | 2026-10-07 |
+| `070_currency_rates_sar_kwd.sql` | 2026-10-07, branch `followups` | applied — SAR = 11.47, KWD = 140 MRU (insert-only) | 2026-10-07 03:18 UTC |

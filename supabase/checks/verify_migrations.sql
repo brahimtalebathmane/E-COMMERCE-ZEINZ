@@ -335,7 +335,10 @@ with c(num, file, kind, obj, detail, extra) as (values
   -- 069
   ('069','069_orders_country_id_not_null.sql','notnull','orders','country_id',null),
   ('069','069_orders_country_id_not_null.sql','table','orders_country_id_autofill_log',null,null),
-  ('069','069_orders_country_id_not_null.sql','view_comment','orders_country_id_autofill_log',null,'%Permanent since 069%')
+  ('069','069_orders_country_id_not_null.sql','view_comment','orders_country_id_autofill_log',null,'%Permanent since 069%'),
+  -- 070
+  ('070','070_currency_rates_sar_kwd.sql','data_zero','currency_rates','code',
+     'select 2 - count(*) as n from public.currency_rates where code in (''SAR'', ''KWD'')')
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),
