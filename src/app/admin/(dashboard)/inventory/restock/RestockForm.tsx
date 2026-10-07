@@ -12,6 +12,7 @@ import {
   createStockPurchaseAction,
   type CostSuggestion,
 } from "../actions";
+import { payStockPurchaseAction } from "../../treasury/actions";
 
 type Product = { productId: string; name: string; costPrice: number | null };
 type Line = { key: number; productId: string; quantity: string; unitCost: string };
@@ -19,13 +20,23 @@ type Line = { key: number; productId: string; quantity: string; unitCost: string
 let lineKey = 0;
 const emptyLine = (): Line => ({ key: ++lineKey, productId: "", quantity: "", unitCost: "" });
 
-export function RestockForm({ products, today }: { products: Product[]; today: string }) {
+export function RestockForm({
+  products,
+  today,
+  accounts,
+}: {
+  products: Product[];
+  today: string;
+  /** Treasury accounts the purchase can be paid from (empty when the treasury is off or not allowed). */
+  accounts: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [supplier, setSupplier] = useState("");
   const [purchasedOn, setPurchasedOn] = useState(today);
   const [extraCosts, setExtraCosts] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [payFrom, setPayFrom] = useState(accounts[0]?.id ?? "");
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<CostSuggestion[] | null>(null);
   const [applied, setApplied] = useState<Set<string>>(new Set());
@@ -60,6 +71,10 @@ export function RestockForm({ products, today }: { products: Product[]; today: s
       });
       if (!res.ok) throw new Error(res.error);
       toast.success(a.inventory.restockDone);
+      if (payFrom) {
+        const paid = await payStockPurchaseAction(res.purchaseId, payFrom);
+        if (!paid.ok) toast.error(a.treasury.stockPaymentFailed.replace("{error}", paid.error));
+      }
       setSuggestions(res.suggestions);
       setLines([emptyLine()]);
       setSupplier("");
@@ -134,6 +149,16 @@ export function RestockForm({ products, today }: { products: Product[]; today: s
             onChange={(e) => setExtraCosts(e.target.value)}
           />
           <AdminInput label={a.inventory.restockNote} value={note} disabled={saving} onChange={(e) => setNote(e.target.value)} />
+          {accounts.length > 0 ? (
+            <AdminSelect label={a.treasury.paidFromAccount} value={payFrom} disabled={saving} onChange={(e) => setPayFrom(e.target.value)}>
+              <option value="">{a.treasury.notPaidFromTreasury}</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name}
+                </option>
+              ))}
+            </AdminSelect>
+          ) : null}
         </div>
 
         <h3 className="mt-5 text-sm font-semibold">{a.inventory.restockLines}</h3>

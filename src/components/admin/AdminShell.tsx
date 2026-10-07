@@ -23,6 +23,7 @@ import {
   GlobeIcon,
   HomeIcon,
   InventoryIcon,
+  TreasuryIcon,
   LogoutIcon,
   MenuIcon,
   MetaIcon,
@@ -71,6 +72,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
     label: a.nav.inventory,
     icon: InventoryIcon,
     permission: PERMISSIONS.manage_inventory,
+    localOperationsOnly: true,
+  },
+  {
+    href: "/admin/treasury",
+    label: a.nav.treasury,
+    icon: TreasuryIcon,
+    anyPermission: [PERMISSIONS.view_treasury, PERMISSIONS.manage_treasury],
     localOperationsOnly: true,
   },
   {

@@ -39,8 +39,8 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | Phase A (country scoping) | `phase-a` → main | done | 031, 067–069 (2026-10-07) | `6b4ff5f` |
 | Phase A close-out | main | done | — | **not yet** (`d389c83`, goes with stage 1) |
 | 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
-| 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | pushing |
-| 3. Phase C treasury | `phase-c` | — | — | — |
+| 2. Phase B inventory | `phase-b` → main | done, pushed `30e27f6` | 071, 072 (2026-10-07 03:49 UTC) | pushing |
+| 3. Phase C treasury | `phase-c` | code done, awaiting approval | 073, 074 pending | — |
 | 4. Phase D reconciliation | `phase-d` | — | — | — |
 
 ## Stage 1 — follow-ups
@@ -91,3 +91,4 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - 2026-10-07: stage 1 code complete on `followups` (no migrations). Checks: tsc, lint (no errors), 36 unit tests, 16 migration checks, check:server-actions, next build. Waiting for push approval.
 - 2026-10-07: Phase B code complete on `phase-b`: tsc, lint (no errors), 49 unit tests, 55 migration checks, check:server-actions, next build. Production pre-check: no name clashes; 182 orders currently confirmed (they will show as reserved). Waiting for "backup done, apply".
 - 2026-10-07 03:49 UTC: 071 + 072 applied on production; verification query clean.
+- 2026-10-07: Phase B pushed (`30e27f6`, 03:49 UTC). Phase C code complete on `phase-c`: tsc, lint, 55 unit tests, 98 migration checks (43 for 073/074), next build. NEXT: owner approval → apply 073 then 074 on production (wrap each file in begin/commit via MCP execute_sql), verify, merge phase-c, push. Then Phase D (reconciliation) — not started.
