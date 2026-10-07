@@ -41,8 +41,8 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
-| 4. Phase D reconciliation | `phase-d` | done, awaiting push approval | none (code only) | — |
-| 5. Admin redesign (mobile-first) | `stage-5-redesign` | not started — begins after Phase D is live | none planned | — |
+| 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
+| 5. Admin redesign (mobile-first) | `stage-5-redesign` | not started — Phase D is live, next: Step 1 audit | none planned | — |
 
 ## Stage 1 — follow-ups
 
@@ -83,7 +83,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] Profits page + home: net = order gross profit − opex from treasury (by category, from treasury go-live) — `OpexCard` on /admin/analytics, home KPI caption; categories counted "orders" never subtracted twice
 - [x] Reconciliation report (period): /admin/treasury/reconciliation — shipped revenue vs settled / with agents / outside, unlinked sales, profit → cash bridge (exact identity, "unexplained" must be 0), opex by category, agents, flags (no delivery cost, no cost price, no Meta campaign, ads paid ≠ Meta)
 - [x] Full-scenario test: tests/phase-d-scenario.test.mts (PGlite + real migrations) + tests/reconciliation.test.ts
-- [ ] Approval → push → checks (no migrations in Phase D)
+- [x] Approval → push → checks (no migrations in Phase D) — `7f6b61e`, Railway success
 - [x] Final summary + Arabic daily usage guide: docs/DAILY_GUIDE_AR.md
 
 ## Stage 5 — Admin redesign: fast, smooth, mobile-first (Apple-level quality)
@@ -160,3 +160,4 @@ Motion and feel
 - 2026-10-07 ~22:00 UTC: Railway deployment for `ef6168c` succeeded. Phase D code complete on `phase-d` (no migrations): lib src/lib/treasury/reconciliation.ts (pure) + reconciliation-data.ts (loaders), OpexCard, home KPI, reconciliation page + tab, guide. Checks: tsc, lint (no errors), 63 unit tests, 98 migration checks, check:server-actions, next build. NEXT: owner approval → merge phase-d into main → push → check Railway. Then the owner's physical steps (tidy confirmed orders, opening count, treasury go-live).
 - 2026-10-07 22:43 UTC: side task — orders list filters (status multi-select, date range + older than 7/30/60 days, product, source; server-side, in the URL, matching count/total, select all matching, chunked bulk actions) pushed as `ab8bc13` from branch `orders-filters` (no migration: existing indexes cover status/product/ordered_at). main merged into `phase-d` (`6ea0ddc`); Phase D still awaiting push approval.
 - 2026-10-07: Stage 5 (admin redesign, mobile-first) added to the roadmap at the owner's request; starts only after Phase D is live.
+- 2026-10-07: Phase D pushed (`7f6b61e`, includes orders filters merge and Stage 5 roadmap); Railway deployment success. Owner to confirm Netlify Published. NEXT: Stage 5 Step 1 audit (no code changes; owner logs in once in a browser window, read-only navigation only).
