@@ -4,6 +4,8 @@ import { getCountryScope } from "@/lib/auth/country-scope";
 import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { adminAr as a } from "@/locales/admin-ar";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { createServiceClient } from "@/lib/supabase/service";
+import { countLateCountryAutofills } from "@/lib/orders/country-autofill";
 import {
   buildProductProfitRows,
   sumProfitTotals,
@@ -209,6 +211,12 @@ export default async function AdminHomePage() {
     productsMissingCost,
   };
 
+  // Owner-only technical warning: an insert path that forgot country_id
+  // (the trigger filled it, so the order itself is fine).
+  const countryAutofills = access?.isOwner
+    ? await countLateCountryAutofills(createServiceClient())
+    : 0;
+
   const visibility: DashboardVisibility = {
     analytics: canViewAnalytics,
     orders: canViewOrders,
@@ -217,7 +225,12 @@ export default async function AdminHomePage() {
 
   return (
     <div>
-      <DashboardHome data={data} visibility={visibility} currency={currency} />
+      <DashboardHome
+        data={data}
+        visibility={visibility}
+        currency={currency}
+        countryAutofills={countryAutofills}
+      />
     </div>
   );
 }

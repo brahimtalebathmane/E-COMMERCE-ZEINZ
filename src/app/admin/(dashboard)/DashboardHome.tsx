@@ -77,15 +77,24 @@ export function DashboardHome({
   data,
   visibility,
   currency,
+  countryAutofills = 0,
 }: {
   data: DashboardData;
   visibility: DashboardVisibility;
   /** Currency of the admin's currently-selected country — all figures here are scoped to that one country. */
   currency: string;
+  /** Owner only: orders created after the Phase A deploy that arrived without country_id. Expected 0. */
+  countryAutofills?: number;
 }) {
   return (
     <div className="space-y-6">
       <AdminPageHeader title={a.dashboard.title} subtitle={a.dashboard.subtitle} />
+
+      {countryAutofills > 0 ? (
+        <p className="admin-alert-error" role="alert">
+          {a.dashboard.countryAutofillWarning.replace("{count}", String(countryAutofills))}
+        </p>
+      ) : null}
 
       {(visibility.analytics || visibility.orders) && (
         <section className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 lg:grid-cols-3">

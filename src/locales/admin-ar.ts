@@ -42,6 +42,8 @@ export const adminAr = {
     kpiRevenue: "إجمالي الإيرادات (مملوك، MRU)",
     kpiNetProfit: "صافي الربح (مملوك، MRU)",
     kpiMissingCostWarning: "⚠ {count} منتج بلا سعر تكلفة — الربح أعلاه مبالغ فيه",
+    countryAutofillWarning:
+      "⚠ تنبيه تقني: {count} طلب أُنشئ بعد 7 أكتوبر 2026 دون تحديد البلد، فملأته قاعدة البيانات تلقائياً من المنتج. الطلبات سليمة، لكن مساراً في الكود لا يرسل البلد — أبلغ المطوّر.",
     kpiOrders: "إجمالي الطلبات",
     kpiOrdersToday: "طلبات اليوم",
     kpiPending: "بانتظار المعالجة",

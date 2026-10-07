@@ -5,7 +5,8 @@ import { hasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import { getCountryScope } from "@/lib/auth/country-scope";
 import { hasLocalOperations } from "@/lib/local-operations";
 import { createServiceClient } from "@/lib/supabase/service";
-import { ADMIN_ORDER_SELECT_SCOPED } from "./queries";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { ADMIN_ORDER_SELECT_SCOPED, sortOrdersNewestFirst } from "./queries";
 import { OrdersAdminView } from "./OrdersAdminView";
 import { AffiliateAdminPanels, type SheetFailureRow } from "./AffiliateAdminPanels";
 import type { AdminOrderRow } from "./types";
@@ -33,25 +34,32 @@ export default async function AdminOrdersPage() {
       ).count ?? 0)
     : 0;
 
+  // Every order of the country, read in pages: a single select is silently
+  // cut at PostgREST's 1000-row cap (Mauritania is past it), which hid the
+  // oldest orders and made the status tab counts — computed client-side from
+  // these rows — wrong. Paged by the unique id, then sorted by business date.
   // Explicit deleted_at filter: the orders_select_admin policy (042) does not
   // hide soft-deleted rows, and it deliberately stays that way so Realtime
   // still delivers the UPDATE that removes a deleted order from open tabs.
-  const { data, error } = await supabase
-    .from("orders")
-    .select(ADMIN_ORDER_SELECT_SCOPED)
-    .eq("products.country_id", selectedCountryId)
-    .is("deleted_at", null)
-    .order("ordered_at", { ascending: false });
+  const { rows: fetched, error } = await fetchAllRows<AdminOrderRow>(
+    () =>
+      supabase
+        .from("orders")
+        .select(ADMIN_ORDER_SELECT_SCOPED)
+        .eq("products.country_id", selectedCountryId)
+        .is("deleted_at", null) as never,
+    "id",
+  );
 
   if (error) {
     return (
       <p className="admin-alert-error">
-        {a.orders.loadError} {error.message}
+        {a.orders.loadError} {error}
       </p>
     );
   }
 
-  const rows = (data ?? []) as unknown as AdminOrderRow[];
+  const rows = sortOrdersNewestFirst(fetched);
 
   const awaitingCosts = rows.filter(
     (r) =>

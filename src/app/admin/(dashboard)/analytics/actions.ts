@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { getCountryScope } from "@/lib/auth/country-scope";
+import { assertInCountryScope, getCountryScope, requireCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
 import { computeBackfillWindow, syncProductAdSpend } from "@/lib/analytics/ad-spend-sync";
 import { dayKey, daysBetween } from "@/lib/analytics/daily-profit";
@@ -38,15 +38,19 @@ export async function linkAdCampaignAction(
 
   try {
     await assertPermission(PERMISSIONS.view_analytics);
+    const scope = await requireCountryScope();
     const supabase = createServiceClient();
 
     const { data: product, error: productErr } = await supabase
       .from("products")
-      .select("id, created_at")
+      .select("id, created_at, country_id")
       .eq("id", pid)
       .maybeSingle();
     if (productErr) return { ok: false, error: productErr.message };
     if (!product) return { ok: false, error: "Product not found." };
+    // Owned and affiliate products alike, but only in the selected market:
+    // a tampered request can't attach spend to another country's product.
+    assertInCountryScope(scope, product.country_id as string | null);
 
     const { data: inserted, error: insertErr } = await supabase
       .from("product_ad_campaigns")
@@ -114,7 +118,17 @@ export async function unlinkAdCampaignAction(
 
   try {
     await assertPermission(PERMISSIONS.view_analytics);
+    const scope = await requireCountryScope();
     const supabase = createServiceClient();
+
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("country_id")
+      .eq("id", pid)
+      .maybeSingle();
+    if (productErr) return { ok: false, error: productErr.message };
+    if (!product) return { ok: false, error: "Product not found." };
+    assertInCountryScope(scope, product.country_id as string | null);
 
     // Historical `product_ad_spend_daily` rows already attributed via this
     // campaign are intentionally NOT purged on unlink: Meta's per-campaign

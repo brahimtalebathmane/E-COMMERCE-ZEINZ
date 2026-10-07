@@ -198,6 +198,7 @@ export function AnalyticsPageClient({
         <AffiliateAnalyticsSection
           data={{ ...affiliateData, adSpendDaily: affiliateAdSpendDaily }}
           period={period}
+          campaignsByProduct={data.campaignsByProduct}
         />
       ) : null}
     </div>

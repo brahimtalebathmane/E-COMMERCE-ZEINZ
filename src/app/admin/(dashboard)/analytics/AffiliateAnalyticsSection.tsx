@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { adminAr as a } from "@/locales/admin-ar";
 import { formatMoney } from "@/lib/currency";
 import {
   buildProductProfitRows,
@@ -12,7 +14,8 @@ import {
 import { computeProfitabilityMetrics } from "@/lib/analytics/metrics";
 import { filterDailyByPeriod, filterOrdersByPeriod, type Period } from "@/lib/analytics/period";
 import { AdminBadge } from "@/components/admin/ui";
-import type { AffiliateAnalyticsData } from "./data";
+import type { AffiliateAnalyticsData, LinkedCampaign } from "./data";
+import { CampaignManager } from "./CampaignManager";
 
 function profitToneClass(value: number): string {
   if (value > 0) return "text-emerald-400";
@@ -40,10 +43,15 @@ type CurrencyGroup = { currency: string; rows: ProductProfitRow[]; totals: Profi
 export function AffiliateAnalyticsSection({
   data,
   period,
+  campaignsByProduct,
 }: {
   data: AffiliateAnalyticsData;
   period: Period;
+  /** Linked Meta campaigns per product (same map the owned dashboard uses). */
+  campaignsByProduct: Map<string, LinkedCampaign[]>;
 }) {
+  const router = useRouter();
+  const [expandedCampaigns, setExpandedCampaigns] = useState<string | null>(null);
   const productsMap = useMemo(
     () =>
       new Map(
@@ -198,6 +206,24 @@ export function AffiliateAnalyticsSection({
                         value={row.adSpendUnavailable || rowMetrics.roas === null ? "—" : rowMetrics.roas.toFixed(2)}
                         tone={row.adSpendUnavailable ? null : rowMetrics.roas}
                       />
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedCampaigns((cur) => (cur === row.productId ? null : row.productId))
+                        }
+                        className="text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                      >
+                        {a.analytics.manageCampaigns} ({(campaignsByProduct.get(row.productId) ?? []).length})
+                      </button>
+                      {expandedCampaigns === row.productId ? (
+                        <CampaignManager
+                          productId={row.productId}
+                          initialCampaigns={campaignsByProduct.get(row.productId) ?? []}
+                          onChanged={() => router.refresh()}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 );

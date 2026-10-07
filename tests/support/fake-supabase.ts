@@ -8,6 +8,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type Row = Record<string, unknown>;
 type Filter = (row: Row) => boolean;
 
+/** Column defaults applied on insert (only where a test relies on them). */
+const INSERT_DEFAULTS: Record<string, () => Row> = {
+  orders: () => ({ completion_token: crypto.randomUUID(), source: "storefront", quantity: 1 }),
+};
+
 /** Composite unique keys, so a duplicate insert fails with 23505 like Postgres. */
 const UNIQUE_KEYS: Record<string, string[]> = {
   order_meta_dispatches: ["order_id", "event_type"],
@@ -147,13 +152,22 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
     if (this.op === "insert") {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload as Row];
       const unique = UNIQUE_KEYS[this.table];
+      const inserted: Row[] = [];
       for (const row of list) {
         if (unique && rows.some((r) => unique.every((k) => r[k] === row[k]))) {
           return { data: null, error: { message: "duplicate key", code: "23505" } };
         }
-        rows.push({ created_at: new Date().toISOString(), ...row });
+        const full: Row = {
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          ...(INSERT_DEFAULTS[this.table]?.() ?? {}),
+          ...row,
+        };
+        rows.push(full);
+        inserted.push(full);
       }
-      return { data: null, error: null };
+      // insert(...).select() returns the inserted rows, like PostgREST.
+      return this.returning ? this.shape(inserted) : { data: null, error: null };
     }
     if (this.op === "update") {
       const hits = this.matching();

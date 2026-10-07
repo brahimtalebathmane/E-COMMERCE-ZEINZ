@@ -481,13 +481,17 @@ async function getOrder(ctx: AdminToolContext, args: ToolResult): Promise<ToolRe
   const orderId = asTrimmed(args.order_id);
   if (!orderId) return fail("order_id is required.");
 
+  // form_data was dropped in migration 008 — selecting it made this tool fail
+  // on every call. Service-role client: soft-deleted orders must be excluded
+  // explicitly, like listOrders.
   const { data, error } = await ctx.supabase
     .from("orders")
     .select(
-      "id, customer_name, phone, payment_method, payment_number, transaction_reference, total_price, currency, status, form_data, created_at, product_id, products!inner(country_id)",
+      "id, customer_name, phone, total_price, currency, quantity, status, source, manual_sale_channel, ordered_at, created_at, delivery_cost, note, product_id, products!inner(country_id)",
     )
     .eq("id", orderId)
     .eq("products.country_id", ctx.countryId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error) return fail(error.message);
