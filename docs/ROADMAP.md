@@ -39,7 +39,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | Phase A (country scoping) | `phase-a` → main | done | 031, 067–069 (2026-10-07) | `6b4ff5f` |
 | Phase A close-out | main | done | — | **not yet** (`d389c83`, goes with stage 1) |
 | 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
-| 2. Phase B inventory | `phase-b` | done, awaiting approval | 071, 072 pending | — |
+| 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | pushing |
 | 3. Phase C treasury | `phase-c` | — | — | — |
 | 4. Phase D reconciliation | `phase-d` | — | — | — |
 
@@ -63,7 +63,9 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] UI: /admin/inventory, /admin/inventory/[productId], /admin/inventory/restock; WhatsApp sale picker shows available + warning
 - [x] Weighted average cost offered after a restock (applySuggestedCostAction)
 - [x] Tests: 36 PGlite checks (tests/pglite/scenarios/phase-b.mjs) + unit tests (inventory, update-status)
-- [ ] Approval → apply → push → checks
+- [x] Owner approved; 071 + 072 applied 2026-10-07 03:49 UTC (verified: all objects present, 0 movements, go-live not set, 175 units reserved)
+- [ ] Push → post-deploy checks
+- [ ] Owner: tidy old confirmed orders (ship/cancel) BEFORE the opening count, then print the count sheet and enter the opening count
 
 ## Stage 3 — Phase C treasury
 
@@ -88,3 +90,4 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - 2026-10-07: connection verified (production `ultlrcfsamyekgeerqcv`, MR/SA/KW present, 1,325 orders / 1,222 live). Branch `followups` created from `d389c83`.
 - 2026-10-07: stage 1 code complete on `followups` (no migrations). Checks: tsc, lint (no errors), 36 unit tests, 16 migration checks, check:server-actions, next build. Waiting for push approval.
 - 2026-10-07: Phase B code complete on `phase-b`: tsc, lint (no errors), 49 unit tests, 55 migration checks, check:server-actions, next build. Production pre-check: no name clashes; 182 orders currently confirmed (they will show as reserved). Waiting for "backup done, apply".
+- 2026-10-07 03:49 UTC: 071 + 072 applied on production; verification query clean.
