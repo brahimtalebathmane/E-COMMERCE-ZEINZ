@@ -195,8 +195,17 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
   }
 }
 
+type RpcHandler = (args: Record<string, unknown>, db: FakeDb) => unknown;
+
 export class FakeDb {
   private tables = new Map<string, Row[]>();
+  private rpcs = new Map<string, RpcHandler>();
+  readonly rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+
+  /** Registers a database function. Throw an Error to return { error: { message } }. */
+  onRpc(name: string, handler: RpcHandler) {
+    this.rpcs.set(name, handler);
+  }
 
   rows(table: string): Row[] {
     let rows = this.tables.get(table);
@@ -220,6 +229,18 @@ export class FakeDb {
   }
 
   client(): SupabaseClient {
-    return { from: (table: string) => new Query(this, table) } as unknown as SupabaseClient;
+    return {
+      from: (table: string) => new Query(this, table),
+      rpc: async (name: string, args: Record<string, unknown> = {}) => {
+        this.rpcCalls.push({ name, args });
+        const handler = this.rpcs.get(name);
+        if (!handler) return { data: null, error: { message: `fake-supabase: no rpc ${name}` } };
+        try {
+          return { data: await handler(args, this), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : String(error) } };
+        }
+      },
+    } as unknown as SupabaseClient;
   }
 }

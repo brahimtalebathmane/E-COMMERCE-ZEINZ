@@ -184,7 +184,7 @@ export const ADMIN_ASSISTANT_TOOLS = [
     function: {
       name: "update_order_status",
       description:
-        "Change an order's status across the state machine (pending → confirmed/cancelled/requires_human_intervention, confirmed → shipped/cancelled/internal_return, shipped → internal_return). Setting it to 'confirmed' fires the Meta CAPI Purchase event and 'cancelled' fires CancelledLead. 'internal_return' is a bookkeeping-only return that removes the order from profit metrics and NEVER fires any Meta CAPI event. Invalid transitions are rejected.",
+        "Change an order's status across the state machine (pending → confirmed/cancelled/requires_human_intervention, confirmed → shipped/cancelled/internal_return, shipped → internal_return). Setting it to 'confirmed' fires the Meta CAPI Purchase event and 'cancelled' fires CancelledLead. 'internal_return' is a bookkeeping-only return that removes the order from profit metrics and NEVER fires any Meta CAPI event. For a shipped owned order returning to stock, pass return_disposition (resellable by default, or damaged). Invalid transitions are rejected.",
       parameters: {
         type: "object",
         properties: {
@@ -199,6 +199,11 @@ export const ADMIN_ASSISTANT_TOOLS = [
               "requires_human_intervention",
               "internal_return",
             ],
+          },
+          return_disposition: {
+            type: "string",
+            enum: ["resellable", "damaged"],
+            description: "Only for shipped → internal_return: whether the returned item can be sold again (default resellable).",
           },
         },
         required: ["order_id", "status"],

@@ -338,7 +338,28 @@ with c(num, file, kind, obj, detail, extra) as (values
   ('069','069_orders_country_id_not_null.sql','view_comment','orders_country_id_autofill_log',null,'%Permanent since 069%'),
   -- 070
   ('070','070_currency_rates_sar_kwd.sql','data_zero','currency_rates','code',
-     'select 2 - count(*) as n from public.currency_rates where code in (''SAR'', ''KWD'')')
+     'select 2 - count(*) as n from public.currency_rates where code in (''SAR'', ''KWD'')'),
+  -- 071
+  ('071','071_inventory.sql','column','orders','shipped_at',null),
+  ('071','071_inventory.sql','column','orders','returned_at',null),
+  ('071','071_inventory.sql','constraint','orders','orders_return_disposition_check',null),
+  ('071','071_inventory.sql','column','products','low_stock_threshold',null),
+  ('071','071_inventory.sql','table','inventory_settings',null,null),
+  ('071','071_inventory.sql','table','stock_purchases',null,null),
+  ('071','071_inventory.sql','table','stock_purchase_lines',null,null),
+  ('071','071_inventory.sql','table','inventory_movements',null,null),
+  ('071','071_inventory.sql','index','inventory_movements_order_primary_key',null,null),
+  ('071','071_inventory.sql','function','sync_order_stock',null,null),
+  ('071','071_inventory.sql','trigger','trg_orders_sync_stock',null,null),
+  ('071','071_inventory.sql','trigger','trg_orders_stamp_fulfillment',null,null),
+  ('071','071_inventory.sql','trigger','trg_inventory_movements_guard',null,null),
+  ('071','071_inventory.sql','view','inventory_stock',null,null),
+  ('071','071_inventory.sql','policy','inventory_movements','inventory_movements_select','%manage_inventory%'),
+  -- 072
+  ('072','072_inventory_functions.sql','function','change_order_status',null,null),
+  ('072','072_inventory_functions.sql','function','inventory_go_live',null,null),
+  ('072','072_inventory_functions.sql','function','create_stock_purchase',null,null),
+  ('072','072_inventory_functions.sql','function','record_inventory_adjustment',null,null)
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),

@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { toast } from "sonner";
 import { adminAr as a } from "@/locales/admin-ar";
+import { exceedsAvailable } from "@/lib/inventory/calculations";
 import { formatMoney } from "@/lib/currency";
 import { AdminButton, AdminInput, AdminSelect } from "@/components/admin/ui";
 import { dayKey } from "@/lib/analytics/daily-profit";
@@ -224,6 +225,18 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
       return sum + unitPriceFor(productMap.get(line.productId)) * qty;
     }, 0);
   }, [lines, productMap]);
+
+  // Total quantity per product across lines (a product can be added twice),
+  // compared with available stock for the non-blocking warning.
+  const qtyByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const line of lines) {
+      const qty = Number(line.quantity);
+      if (!line.productId || !Number.isFinite(qty) || qty <= 0) continue;
+      map.set(line.productId, (map.get(line.productId) ?? 0) + qty);
+    }
+    return map;
+  }, [lines]);
 
   // The picked row in conversation mode, the looked-up contact in manual mode
   // — the attribution card below reads this one value regardless of mode.
@@ -564,8 +577,13 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
             {loadError ? (
               <p className="text-sm text-red-400">{a.manualSale.loadProductsFailed}</p>
             ) : null}
-            {lines.map((line) => (
-              <div key={line.key} className="flex items-center gap-2">
+            {lines.map((line) => {
+              const product = productMap.get(line.productId);
+              const wanted = qtyByProduct.get(line.productId) ?? 0;
+              const overStock = product ? exceedsAvailable(wanted, product.available) : false;
+              return (
+              <div key={line.key} className="space-y-1">
+              <div className="flex items-center gap-2">
                 <AdminSelect
                   className="flex-1"
                   value={line.productId}
@@ -575,7 +593,9 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                   <option value="">{a.manualSale.selectProduct}</option>
                   {(products ?? []).map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.available == null
+                        ? p.name
+                        : `${p.name} — ${a.inventory.stockAvailableInPicker.replace("{count}", String(p.available))}`}
                     </option>
                   ))}
                 </AdminSelect>
@@ -599,7 +619,16 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                   {a.manualSale.removeLine}
                 </button>
               </div>
-            ))}
+              {overStock && product ? (
+                <p className="text-xs font-semibold text-amber-400" role="status">
+                  {a.inventory.stockExceedsWarning
+                    .replace("{qty}", String(wanted))
+                    .replace("{available}", String(product.available))}
+                </p>
+              ) : null}
+              </div>
+              );
+            })}
             <AdminButton type="button" variant="ghost" disabled={submitting} onClick={addLine}>
               {a.manualSale.addLine}
             </AdminButton>

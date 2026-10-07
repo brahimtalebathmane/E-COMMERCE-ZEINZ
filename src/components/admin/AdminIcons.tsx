@@ -211,3 +211,24 @@ export function SearchIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function InventoryIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9Z" />
+      <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5V9H2V5.5Z" />
+      <path d="M10 13h4" />
+    </Base>
+  );
+}
+
+export function TreasuryIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="2.5" y="6" width="19" height="13" rx="2" />
+      <path d="M2.5 10h19" />
+      <path d="M16 14.5h2" />
+      <path d="M6 3.5h12" />
+    </Base>
+  );
+}

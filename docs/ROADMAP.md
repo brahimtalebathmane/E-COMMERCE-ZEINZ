@@ -38,8 +38,8 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 |---|---|---|---|---|
 | Phase A (country scoping) | `phase-a` → main | done | 031, 067–069 (2026-10-07) | `6b4ff5f` |
 | Phase A close-out | main | done | — | **not yet** (`d389c83`, goes with stage 1) |
-| 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | pending |
-| 2. Phase B inventory | `phase-b` | — | — | — |
+| 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
+| 2. Phase B inventory | `phase-b` | done, awaiting approval | 071, 072 pending | — |
 | 3. Phase C treasury | `phase-c` | — | — | — |
 | 4. Phase D reconciliation | `phase-d` | — | — | — |
 
@@ -51,18 +51,18 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] 1.4 Owner warning when `orders_country_id_autofill_log` has rows after 2026-10-07 01:54 UTC
 - [x] 1.5 Test for `POST /api/orders` (country_id, currency, snapshot) with mocks (`tests/orders-route.test.mts`)
 - [x] 070 SAR/KWD rates (owner chose 11.47 / 140), applied 2026-10-07 03:18 UTC
-- [ ] Merge + push (with `d389c83`) → post-deploy checks
+- [x] Merge + push (with `d389c83`) → `f374d20`; Railway redeployed. Netlify: owner to confirm Published (the `.env` site URL is not the live domain).
 
 ## Stage 2 — Phase B inventory
 
-- [ ] Schema: stock_purchases, stock_purchase_lines, inventory_movements (append-only), inventory settings (go-live date), product low-stock threshold, stock view
-- [ ] One Postgres function for order status changes: compare-and-set, history row, stock movement, unique (order_id, type)
-- [ ] All callers through it (API route, bulk, WhatsApp sale, assistant); Meta side effects only after success, unchanged
-- [ ] Rules: confirmed = reserved; shipped = sale_out; internal_return asks resellable/damaged; cancel before ship = nothing; qty edit on shipped = correction; soft-delete/restore of shipped = reverse/re-apply
-- [ ] Go-live: printable count sheet, bulk opening-quantity screen; only orders shipped after go-live deduct; returns of pre-go-live orders still add
-- [ ] UI: on hand / reserved / available, negative highlight, movement history, restock, adjustment (reason), low-stock threshold + list, stock shown in WhatsApp sale picker with a non-blocking warning
-- [ ] Weighted average cost after a purchase, offer (not apply) to update cost_price
-- [ ] Tests (PGlite + unit): exactly-once deduction, retries, return resellable/damaged, cancel, qty edit, soft-delete/restore, affiliate untouched, go-live rule
+- [x] Schema (071): stock_purchases, stock_purchase_lines, inventory_movements (append-only), inventory_settings (go-live, immutable), products.low_stock_threshold, inventory_stock view, orders.shipped_at/returned_at/return_disposition
+- [x] change_order_status (072): compare-and-set + history; stock via trg_orders_sync_stock → sync_order_stock (net reconciliation, unique primary (order, product, type))
+- [x] All callers go through updateOrderStatusWithEffects → rpc; Meta unchanged, after success
+- [x] Rules implemented in sync_order_stock; return choice in the order modal (bulk = resellable)
+- [x] Go-live: /admin/inventory/count-sheet, /admin/inventory/opening (inventory_go_live, once)
+- [x] UI: /admin/inventory, /admin/inventory/[productId], /admin/inventory/restock; WhatsApp sale picker shows available + warning
+- [x] Weighted average cost offered after a restock (applySuggestedCostAction)
+- [x] Tests: 36 PGlite checks (tests/pglite/scenarios/phase-b.mjs) + unit tests (inventory, update-status)
 - [ ] Approval → apply → push → checks
 
 ## Stage 3 — Phase C treasury
@@ -87,3 +87,4 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 
 - 2026-10-07: connection verified (production `ultlrcfsamyekgeerqcv`, MR/SA/KW present, 1,325 orders / 1,222 live). Branch `followups` created from `d389c83`.
 - 2026-10-07: stage 1 code complete on `followups` (no migrations). Checks: tsc, lint (no errors), 36 unit tests, 16 migration checks, check:server-actions, next build. Waiting for push approval.
+- 2026-10-07: Phase B code complete on `phase-b`: tsc, lint (no errors), 49 unit tests, 55 migration checks, check:server-actions, next build. Production pre-check: no name clashes; 182 orders currently confirmed (they will show as reserved). Waiting for "backup done, apply".

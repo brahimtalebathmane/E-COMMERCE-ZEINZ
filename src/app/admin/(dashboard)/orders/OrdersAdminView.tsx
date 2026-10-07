@@ -718,9 +718,11 @@ export function OrdersAdminView({
     const nextStatus = bulkStatusValue;
     setConfirmState({
       title: a.orders.confirmTitle,
-      message: a.orders.bulkStatusConfirm
-        .replace("{count}", String(ids.length))
-        .replace("{status}", a.orderStatus[nextStatus]),
+      message:
+        a.orders.bulkStatusConfirm
+          .replace("{count}", String(ids.length))
+          .replace("{status}", a.orderStatus[nextStatus]) +
+        (nextStatus === "internal_return" ? ` ${a.orders.bulkReturnResellableNote}` : ""),
       tone: "default",
       onConfirm: () => {
         setConfirmState(null);

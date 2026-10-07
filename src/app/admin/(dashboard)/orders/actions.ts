@@ -13,6 +13,7 @@ import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 import { dayKey } from "@/lib/analytics/daily-profit";
 import { isValidOrderDateKey, resolveOrderedAtIso } from "@/lib/orders/ordered-at";
 import { isCtwaClickAttributable } from "@/lib/meta/ctwa-window";
+import { loadAvailableByProduct } from "@/lib/inventory/data";
 import type { OrderStatus } from "@/types";
 
 /** Soft-delete: hides the order from admin UI while preserving audit data. */
@@ -359,6 +360,8 @@ export type ManualSaleProductOption = {
   discountPrice: number | null;
   /** All products here belong to the same (currently selected) country, so this is one shared currency. */
   currency: string;
+  /** Available stock (on hand − reserved), or null while inventory isn't live. Informational: never blocks a sale. */
+  available: number | null;
 };
 
 /** WhatsApp (admin-entered) sales exist only where we fulfil orders ourselves. */
@@ -387,12 +390,15 @@ export async function listActiveProductsForManualSaleAction(): Promise<ManualSal
 
   if (error) throw new Error(error.message);
 
+  const availableByProduct = await loadAvailableByProduct(supabase, scope.countryId);
+
   return (data ?? []).map((p) => ({
     id: p.id,
     name: p.name_ar,
     price: Number(p.price),
     discountPrice: p.discount_price == null ? null : Number(p.discount_price),
     currency: scope.currency,
+    available: availableByProduct ? availableByProduct.get(String(p.id)) ?? 0 : null,
   }));
 }
 

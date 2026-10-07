@@ -10,6 +10,7 @@ import { useAdminAssistant } from "./AdminAssistantContext";
 import { useAdminAccess } from "./AdminPermissionsContext";
 import { useAdminCountryScope } from "./AdminCountryContext";
 import { setAdminCountryAction } from "@/lib/auth/country-scope-actions";
+import { hasLocalOperations } from "@/lib/local-operations";
 import {
   PERMISSIONS,
   type PermissionKey,
@@ -21,6 +22,7 @@ import {
   CloseIcon,
   GlobeIcon,
   HomeIcon,
+  InventoryIcon,
   LogoutIcon,
   MenuIcon,
   MetaIcon,
@@ -37,7 +39,11 @@ type NavItem = {
   icon: ComponentType<{ size?: number; className?: string }>;
   exact?: boolean;
   permission?: PermissionKey;
+  /** Any one of these is enough (used when read and write permissions differ). */
+  anyPermission?: PermissionKey[];
   ownerOnly?: boolean;
+  /** Inventory/treasury: only while the local-operations market is selected. */
+  localOperationsOnly?: boolean;
 };
 
 const ALL_NAV_ITEMS: NavItem[] = [
@@ -59,6 +65,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
     label: a.nav.analytics,
     icon: AnalyticsIcon,
     permission: PERMISSIONS.view_analytics,
+  },
+  {
+    href: "/admin/inventory",
+    label: a.nav.inventory,
+    icon: InventoryIcon,
+    permission: PERMISSIONS.manage_inventory,
+    localOperationsOnly: true,
   },
   {
     href: "/admin/meta",
@@ -109,12 +122,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const selectedHasLocalOperations = hasLocalOperations(
+    countries.find((c) => c.id === selectedCountryId),
+  );
+
   const navItems = useMemo(() => {
     return ALL_NAV_ITEMS.filter((item) => {
+      if (item.localOperationsOnly && !selectedHasLocalOperations) return false;
+      if (item.anyPermission) {
+        return access.isOwner || item.anyPermission.some((p) => access.permissions.includes(p));
+      }
       if (!item.permission) return true;
       return access.isOwner || access.permissions.includes(item.permission);
     });
-  }, [access]);
+  }, [access, selectedHasLocalOperations]);
 
   const bottomPrimaryItems = useMemo(
     () => navItems.filter((item) => PRIMARY_BOTTOM_HREFS.has(item.href)),

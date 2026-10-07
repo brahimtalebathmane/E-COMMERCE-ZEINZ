@@ -21,6 +21,8 @@ const patchBodySchema = z.object({
     "requires_human_intervention",
     "internal_return",
   ]),
+  /** shipped → internal_return only: is the returned item resellable (default) or damaged? */
+  return_disposition: z.enum(["resellable", "damaged"]).optional(),
 });
 
 export async function PATCH(
@@ -60,12 +62,16 @@ export async function PATCH(
       {
         requestHeaders: request.headers,
         changedBy: session.access.userId,
+        returnDisposition: parsed.data.return_disposition ?? null,
       },
     );
 
     if (!result.ok) {
       if (result.code === "not_found") {
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
+      if (result.code === "conflict") {
+        return NextResponse.json({ error: result.error }, { status: 409 });
       }
       if (result.code === "invalid_transition") {
         return NextResponse.json(

@@ -525,6 +525,7 @@ async function updateOrderStatus(ctx: AdminToolContext, args: ToolResult): Promi
     {
       requestHeaders: ctx.requestHeaders,
       changedBy: ctx.changedBy ?? null,
+      returnDisposition: asTrimmed(args.return_disposition) === "damaged" ? "damaged" : null,
     },
   );
 

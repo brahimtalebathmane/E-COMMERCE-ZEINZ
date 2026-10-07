@@ -160,6 +160,7 @@ function toastMetaRetryResult(
 export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdated }: Props) {
   const titleId = useId();
   const [draftStatus, setDraftStatus] = useState<OrderStatus>("pending");
+  const [returnDisposition, setReturnDisposition] = useState<"resellable" | "damaged">("resellable");
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
   const saveLockRef = useRef(false);
@@ -189,6 +190,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
   useEffect(() => {
     if (!order) return;
     setDraftStatus(order.status);
+    setReturnDisposition("resellable");
     setSaving(false);
   }, [order]);
 
@@ -209,7 +211,11 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ status: draftStatus }),
+        body: JSON.stringify(
+          draftStatus === "internal_return" && prevStatus === "shipped"
+            ? { status: draftStatus, return_disposition: returnDisposition }
+            : { status: draftStatus },
+        ),
       });
       const json = (await res.json().catch(() => ({}))) as {
         success?: boolean;
@@ -356,6 +362,8 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
               order={currentOrder}
               draftStatus={draftStatus}
               onDraftStatusChange={setDraftStatus}
+              returnDisposition={returnDisposition}
+              onReturnDispositionChange={setReturnDisposition}
               saving={saving}
               hasChanges={hasChanges}
               onSaveChanges={() => void onSaveChanges()}
@@ -374,6 +382,9 @@ type SectionsProps = {
   order: AdminOrderRow;
   draftStatus: OrderStatus;
   onDraftStatusChange: (status: OrderStatus) => void;
+  /** Shipped owned order → internal_return: does the item go back into stock? */
+  returnDisposition: "resellable" | "damaged";
+  onReturnDispositionChange: (value: "resellable" | "damaged") => void;
   saving: boolean;
   hasChanges: boolean;
   onSaveChanges: () => void;
@@ -406,6 +417,8 @@ function OrderDetailSections({
   order,
   draftStatus,
   onDraftStatusChange,
+  returnDisposition,
+  onReturnDispositionChange,
   saving,
   hasChanges,
   onSaveChanges,
@@ -621,6 +634,30 @@ function OrderDetailSections({
               );
             })}
           </select>
+          {draftStatus === "internal_return" &&
+          order.status === "shipped" &&
+          order.products?.fulfillment_type !== "affiliate" ? (
+            <fieldset className="rounded-xl border border-[var(--accent-muted)] p-3">
+              <legend className="px-1 text-xs font-semibold text-[var(--foreground)]">
+                {a.orders.returnDispositionTitle}
+              </legend>
+              <div className="mt-1 flex flex-col gap-2 text-sm sm:flex-row sm:gap-4">
+                {(["resellable", "damaged"] as const).map((value) => (
+                  <label key={value} className="flex min-h-[40px] items-center gap-2">
+                    <input
+                      type="radio"
+                      name="return-disposition"
+                      value={value}
+                      disabled={saving}
+                      checked={returnDisposition === value}
+                      onChange={() => onReturnDispositionChange(value)}
+                    />
+                    {value === "resellable" ? a.orders.returnResellable : a.orders.returnDamaged}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
           <button
             type="button"
             disabled={saving || !hasChanges || !canChangeOrderStatus(access, draftStatus)}

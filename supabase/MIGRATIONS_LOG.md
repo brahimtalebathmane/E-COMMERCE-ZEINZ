@@ -123,3 +123,5 @@ not known.
 | `068_orders_country_id.sql` | 2026-10-06, branch `phase-a` | applied — confirmed 2026-10-07 by the post-068 check (creates `orders_country_id_autofill_log`) | 2026-10-07 |
 | `069_orders_country_id_not_null.sql` | 2026-10-06, branch `phase-a` | applied — check: NOT NULL, 0 orders without country, log kept, 0 autofills since deploy. Trigger fills a missing `country_id` from the product permanently and logs it | 2026-10-07 |
 | `070_currency_rates_sar_kwd.sql` | 2026-10-07, branch `followups` | applied — SAR = 11.47, KWD = 140 MRU (insert-only) | 2026-10-07 03:18 UTC |
+| `071_inventory.sql` | 2026-10-07, branch `phase-b` | pending — inventory ledger, order → stock sync trigger, stock view, RLS (no movement until go-live) | |
+| `072_inventory_functions.sql` | 2026-10-07, branch `phase-b` | pending — change_order_status (compare-and-set), go-live, restock, adjustment | |
