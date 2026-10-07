@@ -49,6 +49,8 @@ import { AdminBadge, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 import type { AnalyticsData } from "./data";
 import { monthLabel } from "./PeriodFilterBar";
 import { CampaignManager } from "./CampaignManager";
+import { OpexCard } from "./OpexCard";
+import type { OpexData } from "@/lib/treasury/reconciliation";
 import {
   updateCalculationStartDateAction,
 } from "./actions";
@@ -86,10 +88,13 @@ export function AnalyticsView({
   data,
   period,
   adSpendDaily,
+  opex = null,
 }: {
   data: AnalyticsData;
   period: Period;
   adSpendDaily: AdSpendDailyInput[];
+  /** Treasury operating expenses (Mauritania, once the treasury is live). */
+  opex?: OpexData | null;
 }) {
   const router = useRouter();
   const [startDates, setStartDates] = useState<Record<string, string>>(() =>
@@ -301,6 +306,8 @@ export function AnalyticsView({
           <p className="mt-2 text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
         ) : null}
       </div>
+
+      {opex ? <OpexCard opex={opex} period={period} orderNetProfit={totals.netProfit} /> : null}
 
       <MetricsCard
         metrics={metrics}

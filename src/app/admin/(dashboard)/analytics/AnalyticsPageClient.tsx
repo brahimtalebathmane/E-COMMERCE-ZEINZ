@@ -15,6 +15,7 @@ import { AffiliateAnalyticsSection } from "./AffiliateAnalyticsSection";
 import { PeriodFilterBar } from "./PeriodFilterBar";
 import type { AnalyticsData, AffiliateAnalyticsData } from "./data";
 import { ensureMonthAdSpendAction } from "./actions";
+import type { OpexData } from "@/lib/treasury/reconciliation";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
@@ -43,10 +44,12 @@ export function AnalyticsPageClient({
   data,
   affiliateData,
   initialPeriod,
+  opex,
 }: {
   data: AnalyticsData;
   affiliateData: AffiliateAnalyticsData | null;
   initialPeriod?: string;
+  opex: OpexData | null;
 }) {
   const [period, setPeriod] = useState<Period>(() => parseInitialPeriod(initialPeriod));
   const [extraOwnedAdSpendDaily, setExtraOwnedAdSpendDaily] = useState<Record<string, AdSpendDailyInput[]>>({});
@@ -193,7 +196,7 @@ export function AnalyticsPageClient({
         </div>
       ) : null}
 
-      <AnalyticsView data={data} period={period} adSpendDaily={ownedAdSpendDaily} />
+      <AnalyticsView data={data} period={period} adSpendDaily={ownedAdSpendDaily} opex={opex} />
       {affiliateData ? (
         <AffiliateAnalyticsSection
           data={{ ...affiliateData, adSpendDaily: affiliateAdSpendDaily }}

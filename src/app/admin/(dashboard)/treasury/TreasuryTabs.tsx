@@ -8,6 +8,7 @@ const TABS = [
   { href: "/admin/treasury", label: a.treasury.nav.dashboard, exact: true },
   { href: "/admin/treasury/transactions", label: a.treasury.nav.transactions },
   { href: "/admin/treasury/settle", label: a.treasury.nav.settle },
+  { href: "/admin/treasury/reconciliation", label: a.treasury.reconciliation.nav },
   { href: "/admin/treasury/setup", label: a.treasury.nav.setup },
 ];
 

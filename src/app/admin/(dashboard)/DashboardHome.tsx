@@ -43,6 +43,8 @@ export type DashboardData = {
   /** Owned products with revenue but no cost price — netProfit above is
    *  overstated by an unknown amount when this is > 0. See A9/C1. */
   productsMissingCost: number;
+  /** Treasury operating expenses already subtracted from netProfit (null: treasury off or not live). */
+  opexSince: { amount: number; date: string } | null;
 };
 
 const TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
@@ -112,6 +114,13 @@ export function DashboardHome({
                   accent={KPI_ACCENT.profit}
                   emphasize
                 />
+                {data.opexSince ? (
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">
+                    {a.treasury.opex.homeCaption
+                      .replace("{amount}", formatMoney(data.opexSince.amount, currency))
+                      .replace("{date}", data.opexSince.date)}
+                  </p>
+                ) : null}
                 {data.productsMissingCost > 0 ? (
                   <Link
                     href="/admin/analytics"

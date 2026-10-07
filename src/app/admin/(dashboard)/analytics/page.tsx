@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminAr as a } from "@/locales/admin-ar";
 import { getCountryScope } from "@/lib/auth/country-scope";
+import { hasLocalOperations } from "@/lib/local-operations";
+import { createServiceClient } from "@/lib/supabase/service";
+import { loadOpexForProfit } from "@/lib/treasury/reconciliation-data";
 import { AnalyticsPageClient } from "./AnalyticsPageClient";
 import { loadAnalyticsData, loadAffiliateAnalyticsData } from "./data";
 
@@ -11,14 +14,19 @@ export default async function AdminAnalyticsPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
-  const [supabase, { selectedCountryId }, { period }] = await Promise.all([
+  const [supabase, { selectedCountryId, selectedCountry }, { period }] = await Promise.all([
     createClient(),
     getCountryScope(),
     searchParams,
   ]);
-  const [result, affiliateResult] = await Promise.all([
+  const [result, affiliateResult, opex] = await Promise.all([
     loadAnalyticsData(supabase, selectedCountryId),
     loadAffiliateAnalyticsData(supabase, selectedCountryId),
+    // Operating expenses from the treasury (Mauritania only, once it is live).
+    // A failure here must not take the profits page down with it.
+    hasLocalOperations(selectedCountry)
+      ? loadOpexForProfit(createServiceClient(), selectedCountryId).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   if (!result.ok) {
@@ -36,6 +44,7 @@ export default async function AdminAnalyticsPage({
     <AnalyticsPageClient
       data={result.data}
       affiliateData={affiliateResult.ok ? affiliateResult.data : null}
+      opex={opex}
       initialPeriod={period}
     />
   );

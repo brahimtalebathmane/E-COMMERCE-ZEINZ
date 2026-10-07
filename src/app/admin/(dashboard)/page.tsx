@@ -6,6 +6,9 @@ import { adminAr as a } from "@/locales/admin-ar";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { createServiceClient } from "@/lib/supabase/service";
 import { countLateCountryAutofills } from "@/lib/orders/country-autofill";
+import { hasLocalOperations } from "@/lib/local-operations";
+import { loadOpexForProfit } from "@/lib/treasury/reconciliation-data";
+import { clipToTreasury, summarizeOpex } from "@/lib/treasury/reconciliation";
 import {
   buildProductProfitRows,
   sumProfitTotals,
@@ -164,6 +167,23 @@ export default async function AdminHomePage() {
     productsMissingCost = totals.productsMissingCost;
   }
 
+  // Phase D: operating expenses recorded in the treasury since its go-live
+  // (Mauritania only). Sales, delivery fees and ads are already in the order
+  // profit above and are never subtracted twice.
+  let opexSince: DashboardData["opexSince"] = null;
+  if (canViewAnalytics && hasLocalOperations(selectedCountry)) {
+    const opex = await loadOpexForProfit(createServiceClient(), selectedCountryId).catch(() => null);
+    if (opex) {
+      const total = summarizeOpex(
+        opex.txns,
+        opex.categories,
+        clipToTreasury({ kind: "all" }, opex.goLiveOn, opex.todayKey),
+      ).total;
+      netProfit -= total;
+      opexSince = { amount: total, date: opex.goLiveOn };
+    }
+  }
+
   const todayKey = DAY_KEY.format(new Date());
   let ordersToday = 0;
   let pendingOrders = 0;
@@ -209,6 +229,7 @@ export default async function AdminHomePage() {
     pipeline,
     recentOrders,
     productsMissingCost,
+    opexSince,
   };
 
   // Owner-only technical warning: an insert path that forgot country_id

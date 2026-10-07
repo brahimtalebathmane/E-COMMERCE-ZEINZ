@@ -41,7 +41,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
-| 4. Phase D reconciliation | `phase-d` | — | — | — |
+| 4. Phase D reconciliation | `phase-d` | done, awaiting push approval | none (code only) | — |
 
 ## Stage 1 — follow-ups
 
@@ -79,11 +79,11 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 
 ## Stage 4 — Phase D reconciliation
 
-- [ ] Profits page + home: net = order gross profit − opex from treasury (by category, from treasury go-live)
-- [ ] Reconciliation report (period): shipped revenue vs settled sales, unsettled, unlinked sales, profit vs cash gap explained, data-quality flags
-- [ ] Full-scenario test
-- [ ] Approval → apply → push → checks
-- [ ] Final summary + Arabic daily usage guide
+- [x] Profits page + home: net = order gross profit − opex from treasury (by category, from treasury go-live) — `OpexCard` on /admin/analytics, home KPI caption; categories counted "orders" never subtracted twice
+- [x] Reconciliation report (period): /admin/treasury/reconciliation — shipped revenue vs settled / with agents / outside, unlinked sales, profit → cash bridge (exact identity, "unexplained" must be 0), opex by category, agents, flags (no delivery cost, no cost price, no Meta campaign, ads paid ≠ Meta)
+- [x] Full-scenario test: tests/phase-d-scenario.test.mts (PGlite + real migrations) + tests/reconciliation.test.ts
+- [ ] Approval → push → checks (no migrations in Phase D)
+- [x] Final summary + Arabic daily usage guide: docs/DAILY_GUIDE_AR.md
 
 ## Log
 
@@ -94,3 +94,4 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - 2026-10-07: Phase B pushed (`30e27f6`, 03:49 UTC). Phase C code complete on `phase-c`: tsc, lint, 55 unit tests, 98 migration checks (43 for 073/074), next build. NEXT: owner approval → apply 073 then 074 on production (wrap each file in begin/commit via MCP execute_sql), verify, merge phase-c, push. Then Phase D (reconciliation) — not started.
 - 2026-10-07 ~21:55 UTC: 073 + 074 applied on production (first 073 attempt hit a network error, nothing applied, retried). Verified: 9 tables, 3 views, 2 order triggers, orders.delivery_agent_id, 14 MR system categories, 0 transactions, treasury not live, RLS on all 9 tables, functions service_role only. phase-c merged into main and pushed. NEXT: Phase D on branch `phase-d`.
 - Owner: open /admin/treasury/setup to go live (accounts + opening balances, default delivery agent, tick shipped orders still unpaid).
+- 2026-10-07 ~22:00 UTC: Railway deployment for `ef6168c` succeeded. Phase D code complete on `phase-d` (no migrations): lib src/lib/treasury/reconciliation.ts (pure) + reconciliation-data.ts (loaders), OpexCard, home KPI, reconciliation page + tab, guide. Checks: tsc, lint (no errors), 63 unit tests, 98 migration checks, check:server-actions, next build. NEXT: owner approval → merge phase-d into main → push → check Railway. Then the owner's physical steps (tidy confirmed orders, opening count, treasury go-live).
