@@ -39,8 +39,8 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | Phase A (country scoping) | `phase-a` → main | done | 031, 067–069 (2026-10-07) | `6b4ff5f` |
 | Phase A close-out | main | done | — | **not yet** (`d389c83`, goes with stage 1) |
 | 1. Follow-ups | `followups` → main | done | 070 (2026-10-07 03:18 UTC) | `f374d20` (2026-10-07 03:19 UTC) |
-| 2. Phase B inventory | `phase-b` → main | done, pushed `30e27f6` | 071, 072 (2026-10-07 03:49 UTC) | pushing |
-| 3. Phase C treasury | `phase-c` | code done, awaiting approval | 073, 074 pending | — |
+| 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
+| 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` | — | — | — |
 
 ## Stage 1 — follow-ups
@@ -64,18 +64,18 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] Weighted average cost offered after a restock (applySuggestedCostAction)
 - [x] Tests: 36 PGlite checks (tests/pglite/scenarios/phase-b.mjs) + unit tests (inventory, update-status)
 - [x] Owner approved; 071 + 072 applied 2026-10-07 03:49 UTC (verified: all objects present, 0 movements, go-live not set, 175 units reserved)
-- [ ] Push → post-deploy checks
+- [x] Push → post-deploy checks
 - [ ] Owner: tidy old confirmed orders (ship/cancel) BEFORE the opening count, then print the count sheet and enter the opening count
 
 ## Stage 3 — Phase C treasury
 
-- [ ] Schema: treasury settings (go-live), accounts (cash/bank/mobile_wallet/person_custody), categories (+ subcategories, direction, counted_in_profit_by), parties (delivery agents, default), transactions (append-only, transfers paired, reversals), settlements, audit log; orders.delivery_agent_id
-- [ ] Go-live: opening balances; tick still-unpaid recent shipped orders; everything else pre-go-live = settled
-- [ ] Settlement screen (collected, fees, expected net, received, account, difference with reason); one Sales income per order (unique), Delivery fees expense; return after settlement reverses
-- [ ] Stock purchase → Stock purchases expense; cash count adjustment
-- [ ] UI: balances, money held per agent, transaction list + filters, quick add, settlement, party statement
-- [ ] Tests: settlement math, no double settlement, return after settlement, transfers vs profit, reversals, MR only
-- [ ] Approval → apply → push → checks
+- [x] Schema: treasury settings (go-live), accounts (cash/bank/mobile_wallet/person_custody), categories (+ subcategories, direction, counted_in_profit_by), parties (delivery agents, default), transactions (append-only, transfers paired, reversals), settlements, audit log; orders.delivery_agent_id
+- [x] Go-live: opening balances; tick still-unpaid recent shipped orders; everything else pre-go-live = settled
+- [x] Settlement screen (collected, fees, expected net, received, account, difference with reason); one Sales income per order (unique), Delivery fees expense; return after settlement reverses
+- [x] Stock purchase → Stock purchases expense; cash count adjustment
+- [x] UI: balances, money held per agent, transaction list + filters, quick add, settlement, party statement
+- [x] Tests: settlement math, no double settlement, return after settlement, transfers vs profit, reversals, MR only
+- [x] Approval → apply (073 + 074, 2026-10-07 ~21:55 UTC, verified) → push → checks
 
 ## Stage 4 — Phase D reconciliation
 
@@ -92,3 +92,5 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - 2026-10-07: Phase B code complete on `phase-b`: tsc, lint (no errors), 49 unit tests, 55 migration checks, check:server-actions, next build. Production pre-check: no name clashes; 182 orders currently confirmed (they will show as reserved). Waiting for "backup done, apply".
 - 2026-10-07 03:49 UTC: 071 + 072 applied on production; verification query clean.
 - 2026-10-07: Phase B pushed (`30e27f6`, 03:49 UTC). Phase C code complete on `phase-c`: tsc, lint, 55 unit tests, 98 migration checks (43 for 073/074), next build. NEXT: owner approval → apply 073 then 074 on production (wrap each file in begin/commit via MCP execute_sql), verify, merge phase-c, push. Then Phase D (reconciliation) — not started.
+- 2026-10-07 ~21:55 UTC: 073 + 074 applied on production (first 073 attempt hit a network error, nothing applied, retried). Verified: 9 tables, 3 views, 2 order triggers, orders.delivery_agent_id, 14 MR system categories, 0 transactions, treasury not live, RLS on all 9 tables, functions service_role only. phase-c merged into main and pushed. NEXT: Phase D on branch `phase-d`.
+- Owner: open /admin/treasury/setup to go live (accounts + opening balances, default delivery agent, tick shipped orders still unpaid).

@@ -125,5 +125,5 @@ not known.
 | `070_currency_rates_sar_kwd.sql` | 2026-10-07, branch `followups` | applied — SAR = 11.47, KWD = 140 MRU (insert-only) | 2026-10-07 03:18 UTC |
 | `071_inventory.sql` | 2026-10-07, branch `phase-b` | applied — inventory ledger, order → stock sync trigger, stock view, RLS (no movement until go-live) | 2026-10-07 03:49 UTC |
 | `072_inventory_functions.sql` | 2026-10-07, branch `phase-b` | applied — change_order_status (compare-and-set), go-live, restock, adjustment | 2026-10-07 03:49 UTC |
-| `073_treasury.sql` | 2026-10-07, branch `phase-c` | pending — treasury accounts, categories, parties, settlements, append-only transactions, audit log, order hooks, views, RLS | |
-| `074_treasury_functions.sql` | 2026-10-07, branch `phase-c` | pending — go-live, settle/void, quick add, transfer, reverse, cash count, stock purchase payment | |
+| `073_treasury.sql` | 2026-10-07, branch `phase-c` | applied — treasury accounts, categories, parties, settlements, append-only transactions, audit log, order hooks, views, RLS (14 system categories seeded, treasury not live) | 2026-10-07 ~21:50 UTC |
+| `074_treasury_functions.sql` | 2026-10-07, branch `phase-c` | applied — go-live, settle/void, quick add, transfer, reverse, cash count, stock purchase payment (service_role only) | 2026-10-07 21:55 UTC |
