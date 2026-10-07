@@ -42,6 +42,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` | done, awaiting push approval | none (code only) | — |
+| 5. Admin redesign (mobile-first) | `stage-5-redesign` | not started — begins after Phase D is live | none planned | — |
 
 ## Stage 1 — follow-ups
 
@@ -85,6 +86,68 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [ ] Approval → push → checks (no migrations in Phase D)
 - [x] Final summary + Arabic daily usage guide: docs/DAILY_GUIDE_AR.md
 
+## Stage 5 — Admin redesign: fast, smooth, mobile-first (Apple-level quality)
+
+**Start only after Phase D is live** (pushed and checked). Branch `stage-5-redesign`, delivered in small pushes (navigation shell first, then screen by screen), each one pushed only with the owner's approval.
+
+Goal: the admin feels like a native iPhone app made by a world-class company: clean, calm, organized, fast, and comfortable one-handed on an iPhone. The owner runs the business from the phone, so mobile comes first and desktop must still work well.
+
+### Hard rules
+- UI only. No change to business logic, data, database, permissions, Meta events, order status rules, inventory or treasury behavior. No migration unless the owner approves one.
+- Arabic RTL everywhere, done properly: logical CSS properties, directional icons mirrored, numbers and amounts aligned correctly.
+- Every existing feature and label stays reachable. Nothing disappears; things only get reorganized.
+- Every push needs the owner's approval, as usual.
+
+### Step 1 — Audit (no code changes)
+- [ ] Measure the current admin on a mobile profile: load time, Web Vitals (LCP, INP, CLS), JavaScript size per page (from `next build` output), slow database queries (Supabase advisors / query logs, read-only).
+- [ ] Screenshots of every admin page at 390×844 and 430×932 with WebKit, plus desktop. Sign-in: open a browser window where the owner logs in once, then reuse that session. Never ask for the password in chat. On production: only navigate and take screenshots; never submit a form or change any data.
+- [ ] Page-by-page problem list: layout, overflow, tap targets, slowness, inconsistencies.
+
+### Step 2 — Design system (show the owner before applying)
+- [ ] Tokens inspired by Apple's HIG: calm neutral grays plus one accent color, typography scale, 4/8 spacing grid, corner radius, shadows. Light and dark mode follow the phone setting.
+- [ ] Typography: `system-ui` first (SF Arabic / SF Pro on iPhone), no heavy web fonts. Clear hierarchy: large titles, readable body, quiet secondary text.
+- [ ] Components: buttons, inputs, selects, segmented controls, list rows, cards, bottom sheets, dialogs, toasts, order-status badges, empty states, skeleton loaders.
+- [ ] Before/after mockups at iPhone size of 3 key screens (orders list, WhatsApp sale form, dashboard home). **Wait for the owner's approval of the direction.**
+
+### Step 3 — Apply, mobile-first
+Navigation
+- [ ] iPhone: bottom tab bar (Orders, WhatsApp sale, Inventory, Treasury, More), large titles, sticky blurred header.
+- [ ] Desktop: a clean sidebar.
+
+iPhone details
+- [ ] Safe areas (`viewport-fit=cover`, `env(safe-area-inset-*)`), `dvh` instead of `vh`.
+- [ ] Inputs at least 16px (no Safari zoom); touch targets at least 44×44.
+- [ ] Bottom sheets instead of centered popups on mobile.
+- [ ] The right keyboard per field: numeric for amounts and quantities, `tel` for phones.
+- [ ] No horizontal scrolling anywhere; on mobile, tables become clean card lists.
+
+Key workflows, one-handed, in this priority order
+1. [ ] Create a WhatsApp sale (all sales happen here, so make it as fast as possible)
+2. [ ] Change an order's status (shipped, internal return, cancelled)
+3. [ ] Settle with the delivery agent
+4. [ ] Add an expense
+5. [ ] Restock and inventory count
+6. [ ] Today's numbers on the dashboard
+
+Speed
+- [ ] Server components where possible, less client JS, lazy-load heavy parts (charts).
+- [ ] Virtualized or paginated long lists. The orders list has more than 1,200 orders and already loads them all for the server-side filters (`ab8bc13`), so keep "select all matching" and the count/total correct.
+- [ ] Skeleton loaders instead of blank screens, optimistic UI where safe, no layout shift.
+- [ ] Fix the slow queries found in the audit.
+
+Motion and feel
+- [ ] Subtle 200–300ms transitions, smooth scrolling, respect `prefers-reduced-motion`.
+
+### Step 4 — Install as an app on iPhone (PWA)
+- [ ] Web app manifest, apple-touch-icon, `apple-mobile-web-app-capable`, status bar style, splash screens, so the admin opens full screen from the home screen.
+- [ ] Service worker: static assets only; never cache orders, money or any admin data. Note: a serwist worker already exists (`/sw.js`, scope `/admin/`). Audit its caching rules first.
+
+### Step 5 — Verify
+- [ ] Re-measure Web Vitals and JS size; show before vs after.
+- [ ] Screenshots of every page at iPhone sizes in light and dark mode, plus desktop.
+- [ ] tsc, lint, tests, build pass.
+- [ ] Short Arabic checklist for testing on the owner's iPhone, including adding the app to the home screen.
+
 ## Log
 
 - 2026-10-07: connection verified (production `ultlrcfsamyekgeerqcv`, MR/SA/KW present, 1,325 orders / 1,222 live). Branch `followups` created from `d389c83`.
@@ -96,3 +159,4 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - Owner: open /admin/treasury/setup to go live (accounts + opening balances, default delivery agent, tick shipped orders still unpaid).
 - 2026-10-07 ~22:00 UTC: Railway deployment for `ef6168c` succeeded. Phase D code complete on `phase-d` (no migrations): lib src/lib/treasury/reconciliation.ts (pure) + reconciliation-data.ts (loaders), OpexCard, home KPI, reconciliation page + tab, guide. Checks: tsc, lint (no errors), 63 unit tests, 98 migration checks, check:server-actions, next build. NEXT: owner approval → merge phase-d into main → push → check Railway. Then the owner's physical steps (tidy confirmed orders, opening count, treasury go-live).
 - 2026-10-07 22:43 UTC: side task — orders list filters (status multi-select, date range + older than 7/30/60 days, product, source; server-side, in the URL, matching count/total, select all matching, chunked bulk actions) pushed as `ab8bc13` from branch `orders-filters` (no migration: existing indexes cover status/product/ordered_at). main merged into `phase-d` (`6ea0ddc`); Phase D still awaiting push approval.
+- 2026-10-07: Stage 5 (admin redesign, mobile-first) added to the roadmap at the owner's request; starts only after Phase D is live.
