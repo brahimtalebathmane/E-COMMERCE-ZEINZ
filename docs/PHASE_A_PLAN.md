@@ -1,8 +1,9 @@
 # Phase A — Country scoping
 
-Status (2026-10-06): **approved and implemented in the working tree; nothing
-applied to production yet.** The SQL files are `supabase/migrations/067–069`
-— they are the source of truth; the SQL quoted below is the approved draft.
+Status (2026-10-07): **done.** Migrations 031 and 067–069 are applied to
+production, and the code (`6b4ff5f`) was deployed 2026-10-07 01:52 UTC (see
+`supabase/MIGRATIONS_LOG.md`). The SQL files in `supabase/migrations/` are the
+source of truth; the SQL quoted below is the approved draft.
 Changes made during implementation, on top of this plan:
 
 - 068 also rewrites the 3 `SARL` orders to `SAR` (aborting if any SARL order
@@ -21,10 +22,15 @@ Changes made during implementation, on top of this plan:
   and shipped-customer exclusion RPCs, and the ad-spend gap check now read
   every row. `fetchAllRows` takes a column list, and every ad-spend read pages
   on `(date, product_id)` — paging on `date` alone could repeat or skip rows.
-- 068 creates a temporary `orders_country_id_autofill_log` (one row per insert
-  the transitional trigger had to fill); step 5 checks it on real orders
+- 068 creates `orders_country_id_autofill_log` (one row per insert the
+  trigger had to fill); step 5 checks it on real orders
   (`supabase/checks/phase_a_step5_autofill.sql`) instead of placing a test
-  storefront order, which would send a real Lead to Meta. 069 drops it.
+  storefront order, which would send a real Lead to Meta.
+- 069 (changed 2026-10-07): NOT NULL, but the trigger keeps filling a missing
+  `country_id` from the product permanently and logs it, so a forgotten insert
+  path can never block a customer order. The log is kept and should stay empty
+  for orders after 2026-10-07 01:54 UTC. An explicit wrong country is still
+  rejected.
 - `000_manual_migrations_only.sql`: a tripwire that only raises, so any
   `supabase db push` fails before running anything.
 - Tested: 45 migration checks on PGlite across 5 scenarios, 31 unit tests,

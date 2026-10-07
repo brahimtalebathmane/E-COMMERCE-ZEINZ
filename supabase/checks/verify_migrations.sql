@@ -334,13 +334,14 @@ with c(num, file, kind, obj, detail, extra) as (values
      'select count(*) as n from public.orders where currency = ''SARL'''),
   -- 069
   ('069','069_orders_country_id_not_null.sql','notnull','orders','country_id',null),
-  ('069','069_orders_country_id_not_null.sql','fn_body','orders_enforce_country',null,'%is required%')
+  ('069','069_orders_country_id_not_null.sql','table','orders_country_id_autofill_log',null,null),
+  ('069','069_orders_country_id_not_null.sql','view_comment','orders_country_id_autofill_log',null,'%Permanent since 069%')
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),
   ('013_meta_initiate_checkout.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),
   ('015_lock_brand_identity.sql', 'Trigger missing is expected and deliberate — NEVER re-run this file (see MIGRATIONS_LOG.md).'),
-  ('069_orders_country_id_not_null.sql', 'Apply only after the deploy that sets orders.country_id on every insert.'),
+  ('069_orders_country_id_not_null.sql', 'Keeps the autofill safety net permanently; the log should stay empty for orders after 2026-10-07 01:54 UTC.'),
   ('005_form_fields_required_backfill.sql', 'Data-only on products.form_fields, which 008 dropped — cannot be verified.'),
   ('017_offer_section_fields.sql', 'All its columns were dropped by 021 — cannot be verified.'),
   ('026_ai_agent_whatsapp.sql', 'Its tables were dropped by 030; only the requires_human_intervention status is checked.'),

@@ -81,7 +81,7 @@ not known.
 | `028_meta_client_session.sql` | 2026-06-07 `fae398c` | present — verified 2026-10-06 | |
 | `029_whatsapp_message_template.sql` | 2026-06-08 `d29ed3a` | present — verified 2026-10-06 | |
 | `030_remove_whatsapp_ai_agent.sql` | 2026-06-21 `5230e5d` | present — verified 2026-10-06 | |
-| `031_admin_panel_performance_indexes.sql` | 2026-06-21 `5b8e003` | **MISSING on 2026-10-06** — Phase A step 1 | |
+| `031_admin_panel_performance_indexes.sql` | 2026-06-21 `5b8e003` | applied — was missing on 2026-10-06, run in Phase A step 1 | 2026-10-07 |
 | `032_profit_analytics_ad_spend.sql` | 2026-06-21 `5f2aec5` | present — verified 2026-10-06 | |
 | `033_product_profit_calculation_start_date.sql` | 2026-06-21 `38bdb77` | present — verified 2026-10-06 | |
 | `034_product_soft_delete.sql` | 2026-06-21 `38b2b8c` | present — verified 2026-10-06 | |
@@ -119,6 +119,6 @@ not known.
 | `064_whatsapp_sale.sql` | 2026-09-14 `95dd471` | present — verified 2026-10-06 · commit says applied | |
 | `065_ad_spend_currency.sql` | 2026-09-15 `c45b28f` | present — verified 2026-10-06 | |
 | `066_whatsapp_dataset_leg.sql` | 2026-09-23 `bd93821` | present — verified 2026-10-06 | |
-| `067_countries_local_operations.sql` | 2026-10-06, branch `phase-a` | pending — Phase A step 2 | |
-| `068_orders_country_id.sql` | 2026-10-06, branch `phase-a` | pending — Phase A step 3 (creates the temporary `orders_country_id_autofill_log`) | |
-| `069_orders_country_id_not_null.sql` | 2026-10-06, branch `phase-a` | pending — Phase A step 6, only once real orders of both kinds arrived after the deploy with none in the autofill log (drops it) | |
+| `067_countries_local_operations.sql` | 2026-10-06, branch `phase-a` | applied — confirmed 2026-10-07 by the post-068 check | 2026-10-07 |
+| `068_orders_country_id.sql` | 2026-10-06, branch `phase-a` | applied — confirmed 2026-10-07 by the post-068 check (creates `orders_country_id_autofill_log`) | 2026-10-07 |
+| `069_orders_country_id_not_null.sql` | 2026-10-06, branch `phase-a` | applied — check: NOT NULL, 0 orders without country, log kept, 0 autofills since deploy. Trigger fills a missing `country_id` from the product permanently and logs it | 2026-10-07 |

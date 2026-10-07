@@ -11,7 +11,7 @@
 -- filled_by_trigger is 0 on every row.
 
 with params as (
-  select timestamptz '2026-10-06 12:00:00+00' as deployed_at
+  select timestamptz '2026-10-07 01:54:00+00' as deployed_at
 )
 select
   o.source,
