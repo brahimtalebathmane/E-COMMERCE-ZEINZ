@@ -127,3 +127,4 @@ not known.
 | `072_inventory_functions.sql` | 2026-10-07, branch `phase-b` | applied — change_order_status (compare-and-set), go-live, restock, adjustment | 2026-10-07 03:49 UTC |
 | `073_treasury.sql` | 2026-10-07, branch `phase-c` | applied — treasury accounts, categories, parties, settlements, append-only transactions, audit log, order hooks, views, RLS (14 system categories seeded, treasury not live) | 2026-10-07 ~21:50 UTC |
 | `074_treasury_functions.sql` | 2026-10-07, branch `phase-c` | applied — go-live, settle/void, quick add, transfer, reverse, cash count, stock purchase payment (service_role only) | 2026-10-07 21:55 UTC |
+| `075_orders_rls_initplan.sql` | 2026-10-12, branch `stage-5-redesign` | pending — orders policies wrapped in (select …) so auth checks run once per query (speed only, same rules); needs owner approval | |

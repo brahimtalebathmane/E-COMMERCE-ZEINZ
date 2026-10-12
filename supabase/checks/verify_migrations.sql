@@ -391,7 +391,10 @@ with c(num, file, kind, obj, detail, extra) as (values
   ('074','074_treasury_functions.sql','function','treasury_reverse',null,null),
   ('074','074_treasury_functions.sql','function','treasury_cash_count',null,null),
   ('074','074_treasury_functions.sql','function','treasury_record_stock_purchase',null,null),
-  ('074','074_treasury_functions.sql','function','treasury_assign_agent',null,null)
+  ('074','074_treasury_functions.sql','function','treasury_assign_agent',null,null),
+  ('075','075_orders_rls_initplan.sql','policy','orders','orders_admin_all','%( SELECT auth.uid()%'),
+  ('075','075_orders_rls_initplan.sql','policy','orders','orders_select_admin','%( SELECT has_panel_permission(%'),
+  ('075','075_orders_rls_initplan.sql','policy','orders','orders_update_admin','%( SELECT has_panel_permission(%')
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),
