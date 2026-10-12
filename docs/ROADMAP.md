@@ -42,7 +42,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
-| 5. Admin redesign (mobile-first) | `stage-5-redesign` | Step 1 audit done (docs/stage5/AUDIT.md); next: Step 2 design system mockups | none planned | — |
+| 5. Admin redesign (mobile-first) | `stage-5-redesign` | Step 1 audit done; Step 2 design + mockups shown, awaiting owner approval of the direction | none planned | — |
 
 ## Stage 1 — follow-ups
 
@@ -162,3 +162,4 @@ Motion and feel
 - 2026-10-07: Stage 5 (admin redesign, mobile-first) added to the roadmap at the owner's request; starts only after Phase D is live.
 - 2026-10-07: Phase D pushed (`7f6b61e`, includes orders filters merge and Stage 5 roadmap); Railway deployment success. Owner to confirm Netlify Published. NEXT: Stage 5 Step 1 audit (no code changes; owner logs in once in a browser window, read-only navigation only).
 - 2026-10-12: Stage 5 Step 1 audit done on production (read-only, owner signed in in the built-in browser; Chromium at iPhone sizes, no WebKit; desktop screenshots deferred, pane too narrow). Findings in docs/stage5/AUDIT.md. Biggest: orders list renders ~1,050 cards + ~2,100 rows (59k DOM nodes). Proposed (needs approval): RLS migration for orders policies. NEXT: Step 2 design system + 3 mockups, wait for owner approval.
+- 2026-10-12: Stage 5 Step 2 — design system and before/after mockups (orders + status sheet, WhatsApp sale, home; light and dark) published as a private canvas: https://claude.ai/artifact/PW83FozyEeTRAuKWDQhyrA . Waiting for the owner to approve the direction before any code change.
