@@ -42,7 +42,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
-| 5. Admin redesign (mobile-first) | `stage-5-redesign` | not started — Phase D is live, next: Step 1 audit | none planned | — |
+| 5. Admin redesign (mobile-first) | `stage-5-redesign` | Step 1 audit done (docs/stage5/AUDIT.md); next: Step 2 design system mockups | none planned | — |
 
 ## Stage 1 — follow-ups
 
@@ -99,9 +99,9 @@ Goal: the admin feels like a native iPhone app made by a world-class company: cl
 - Every push needs the owner's approval, as usual.
 
 ### Step 1 — Audit (no code changes)
-- [ ] Measure the current admin on a mobile profile: load time, Web Vitals (LCP, INP, CLS), JavaScript size per page (from `next build` output), slow database queries (Supabase advisors / query logs, read-only).
-- [ ] Screenshots of every admin page at 390×844 and 430×932 with WebKit, plus desktop. Sign-in: open a browser window where the owner logs in once, then reuse that session. Never ask for the password in chat. On production: only navigate and take screenshots; never submit a form or change any data.
-- [ ] Page-by-page problem list: layout, overflow, tap targets, slowness, inconsistencies.
+- [x] Measure the current admin on a mobile profile: load time, Web Vitals (LCP, INP, CLS), JavaScript size per page (from `next build` output), slow database queries (Supabase advisors / query logs, read-only).
+- [x] Screenshots of every admin page at 390×844 and 430×932 with WebKit, plus desktop. Sign-in: open a browser window where the owner logs in once, then reuse that session. Never ask for the password in chat. On production: only navigate and take screenshots; never submit a form or change any data.
+- [x] Page-by-page problem list: layout, overflow, tap targets, slowness, inconsistencies.
 
 ### Step 2 — Design system (show the owner before applying)
 - [ ] Tokens inspired by Apple's HIG: calm neutral grays plus one accent color, typography scale, 4/8 spacing grid, corner radius, shadows. Light and dark mode follow the phone setting.
@@ -161,3 +161,4 @@ Motion and feel
 - 2026-10-07 22:43 UTC: side task — orders list filters (status multi-select, date range + older than 7/30/60 days, product, source; server-side, in the URL, matching count/total, select all matching, chunked bulk actions) pushed as `ab8bc13` from branch `orders-filters` (no migration: existing indexes cover status/product/ordered_at). main merged into `phase-d` (`6ea0ddc`); Phase D still awaiting push approval.
 - 2026-10-07: Stage 5 (admin redesign, mobile-first) added to the roadmap at the owner's request; starts only after Phase D is live.
 - 2026-10-07: Phase D pushed (`7f6b61e`, includes orders filters merge and Stage 5 roadmap); Railway deployment success. Owner to confirm Netlify Published. NEXT: Stage 5 Step 1 audit (no code changes; owner logs in once in a browser window, read-only navigation only).
+- 2026-10-12: Stage 5 Step 1 audit done on production (read-only, owner signed in in the built-in browser; Chromium at iPhone sizes, no WebKit; desktop screenshots deferred, pane too narrow). Findings in docs/stage5/AUDIT.md. Biggest: orders list renders ~1,050 cards + ~2,100 rows (59k DOM nodes). Proposed (needs approval): RLS migration for orders policies. NEXT: Step 2 design system + 3 mockups, wait for owner approval.
