@@ -63,15 +63,15 @@ const FRESHNESS_TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
 type TableSortKey = "netProfit" | "revenue" | "adSpend" | "units" | "margin";
 
 function profitToneClass(value: number): string {
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-red-400";
+  if (value > 0) return "text-[var(--success)]";
+  if (value < 0) return "text-[var(--danger)]";
   return "text-[var(--foreground)]";
 }
 
 /** For a COST metric, an increase is bad — invert the usual up=green/down=red convention. */
 function costDeltaToneClass(pct: number): string {
-  if (pct > 0) return "text-red-400";
-  if (pct < 0) return "text-emerald-400";
+  if (pct > 0) return "text-[var(--danger)]";
+  if (pct < 0) return "text-[var(--success)]";
   return "text-[var(--foreground)]";
 }
 
@@ -303,7 +303,7 @@ export function AnalyticsView({
           previousMonth={previousPeriodMonth}
         />
         {!data.adSpendFreshness.refreshed && data.adSpendFreshness.lastError ? (
-          <p className="mt-2 text-xs text-amber-300">{a.analytics.adSpendRefreshFailed}</p>
+          <p className="mt-2 text-xs text-[var(--warning)]">{a.analytics.adSpendRefreshFailed}</p>
         ) : null}
       </div>
 
@@ -934,14 +934,14 @@ function TrendArrow({
   }
   if (direction === "up") {
     return (
-      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-emerald-400" aria-label={a.analytics.trendUp}>
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-[var(--success)]" aria-label={a.analytics.trendUp}>
         <path d="M8 3l5 6H3z" fill="currentColor" />
       </svg>
     );
   }
   if (direction === "down") {
     return (
-      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-red-400" aria-label={a.analytics.trendDown}>
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-[var(--danger)]" aria-label={a.analytics.trendDown}>
         <path d="M8 13l-5-6h10z" fill="currentColor" />
       </svg>
     );
@@ -956,7 +956,7 @@ function TrendArrow({
 function LossStreakBadge({ streak }: { streak: number }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-400/10 px-2 py-0.5 text-[10px] font-semibold text-red-300"
+      className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-400/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--danger)]"
       title={a.analytics.lossStreakWarning.replace("{count}", String(streak))}
     >
       <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden>

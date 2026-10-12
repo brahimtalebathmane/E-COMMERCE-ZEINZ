@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import { BRAND_NAME } from "@/lib/site-branding";
 
@@ -23,6 +23,14 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: `${BRAND_NAME} Admin`,
   },
+};
+
+// Status-bar / browser chrome colour follows the phone (matches the blurred header).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9f9f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#161618" },
+  ],
 };
 
 export default function AdminRootLayout({

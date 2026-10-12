@@ -227,11 +227,11 @@ function MetricPill({
 }) {
   const hueMap = {
     pending: "amber",
-    confirmed: "emerald",
-    shipped: "sky",
-    cancelled: "red",
-    attention: "violet",
-    return: "slate",
+    confirmed: "sky",
+    shipped: "emerald",
+    cancelled: "slate",
+    attention: "red",
+    return: "violet",
   } as const;
   return <AdminMetricPill label={label} value={value} hue={hueMap[tone]} />;
 }
@@ -245,7 +245,7 @@ function PhoneActions({ phone }: { phone: string | null }) {
   const baseClass =
     "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition";
   const enabledClass =
-    "border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--foreground)] hover:bg-white/[0.06]";
+    "border-[var(--admin-border-strong)] bg-[var(--fill)] text-[var(--foreground)] hover:bg-[var(--fill-strong)]";
   const disabledClass =
     "cursor-not-allowed border-[var(--admin-border)] text-[var(--muted)] opacity-40";
 
@@ -937,7 +937,7 @@ export function OrdersAdminView({
               <button
                 type="button"
                 disabled={deleteBusy || bulkStatusApplying}
-                className="min-h-[40px] rounded-lg border border-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white/[0.04] disabled:opacity-60"
+                className="min-h-[40px] rounded-lg border border-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--fill-strong)] disabled:opacity-60"
                 onClick={() => setSelectedIds(new Set(filteredRows.map((row) => row.id)))}
               >
                 {a.orders.filters.selectAllMatching.replace("{count}", String(filteredRows.length))}
@@ -956,7 +956,7 @@ export function OrdersAdminView({
               <button
                 type="button"
                 disabled={deleteBusy}
-                className="min-h-[40px] rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white/[0.04] disabled:opacity-60"
+                className="min-h-[40px] rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--fill-strong)] disabled:opacity-60"
                 onClick={() => setSelectedIds(new Set())}
               >
                 {a.orders.deselectAll}
@@ -989,7 +989,7 @@ export function OrdersAdminView({
               <button
                 type="button"
                 disabled={deleteBusy}
-                className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/20 disabled:opacity-60"
+                className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-[var(--danger)] transition hover:bg-red-400/20 disabled:opacity-60"
                 onClick={requestDeleteSelected}
               >
                 {bulkDeleting ? a.orders.deletingBulk : a.orders.deleteSelected}
@@ -1037,7 +1037,7 @@ export function OrdersAdminView({
                       setActive(o);
                     }
                   }}
-                  className={`admin-card w-full cursor-pointer p-4 text-start transition hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
+                  className={`admin-card w-full cursor-pointer p-4 text-start transition hover:bg-[var(--fill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                 >
                   <div className="flex gap-4">
                     {showCheckboxes ? (
@@ -1089,7 +1089,7 @@ export function OrdersAdminView({
                           <button
                             type="button"
                             disabled={deleteBusy && deletingId === o.id}
-                            className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
+                            className="min-h-[40px] rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-1.5 text-xs font-semibold text-[var(--danger)] transition hover:bg-red-400/15 disabled:opacity-60"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1111,7 +1111,7 @@ export function OrdersAdminView({
             {/* Desktop table */}
             <div className="admin-card hidden overflow-hidden md:block">
               <table className="w-full table-fixed border-collapse text-sm">
-                <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <thead className="bg-[var(--fill)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
                     {showCheckboxes ? <th className="w-[4%] px-3 py-3" aria-hidden /> : null}
                     <th className="w-[30%] px-4 py-3 text-start">{a.orders.phone}</th>
@@ -1128,7 +1128,7 @@ export function OrdersAdminView({
                     <Fragment key={o.id}>
                     <tr
                       tabIndex={0}
-                      className={`cursor-pointer transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
+                      className={`cursor-pointer transition-colors hover:bg-[var(--fill)] focus-visible:bg-[var(--fill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]${isNew ? " admin-order-row-new" : ""}`}
                       onClick={() => setActive(o)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -1178,7 +1178,7 @@ export function OrdersAdminView({
                         <button
                           type="button"
                           disabled={deleteBusy && deletingId === o.id}
-                          className="min-h-[40px] rounded-xl border border-red-400/40 bg-red-400/5 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/15 disabled:opacity-60"
+                          className="min-h-[40px] rounded-xl border border-red-400/40 bg-red-400/5 px-3 py-2 text-xs font-semibold text-[var(--danger)] transition hover:bg-red-400/15 disabled:opacity-60"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1193,7 +1193,7 @@ export function OrdersAdminView({
                       </td>
                     </tr>
                     <tr className="border-none">
-                      <td colSpan={colCount} className="bg-white/[0.01] px-4 pb-3 pt-0">
+                      <td colSpan={colCount} className="bg-[var(--fill)] px-4 pb-3 pt-0">
                         <NoteEditor order={o} onSaved={(note) => patchOrder(o.id, { note })} />
                       </td>
                     </tr>
@@ -1284,7 +1284,7 @@ function ProductTabButton({
       <span className="max-w-[14rem] truncate">{label}</span>
       <span
         className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-          active ? "bg-white/20 text-white" : "bg-white/[0.06] text-[var(--muted)]"
+          active ? "bg-white/20 text-white" : "bg-[var(--fill-strong)] text-[var(--muted)]"
         }`}
         dir="ltr"
       >

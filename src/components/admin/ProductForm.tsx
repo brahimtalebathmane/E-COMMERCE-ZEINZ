@@ -1636,7 +1636,7 @@ export function ProductForm({ mode, initial, countries }: Props) {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-sm text-[var(--danger)] dark:text-[var(--danger)]">{error}</p>
       ) : null}
 
       <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-2 border-t border-[var(--admin-border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur sm:flex-row sm:flex-wrap sm:gap-3 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
@@ -1670,7 +1670,7 @@ export function ProductForm({ mode, initial, countries }: Props) {
             type="button"
             disabled={busy}
             onClick={() => void onDelete()}
-            className="admin-btn-ghost w-full !border-red-500/30 !text-red-300 hover:!bg-red-500/10 sm:w-auto"
+            className="admin-btn-ghost w-full !border-red-500/30 !text-[var(--danger)] hover:!bg-red-500/10 sm:w-auto"
           >
             {a.productForm.delete}
           </button>

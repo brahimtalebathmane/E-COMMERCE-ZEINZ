@@ -47,7 +47,7 @@ export default async function TreasuryPartyPage({ params }: { params: Promise<{ 
         <AdminCard title={a.treasury.agentsTitle}>
           <p className="text-sm">
             {a.treasury.agentOrders.replace("{count}", String(owed.length))} ·{" "}
-            <span className="font-bold text-amber-300" dir="ltr">
+            <span className="font-bold text-[var(--warning)]" dir="ltr">
               {formatMoney(owedTotal, "MRU")}
             </span>
           </p>
@@ -64,7 +64,7 @@ export default async function TreasuryPartyPage({ params }: { params: Promise<{ 
         noPadding
         title={a.treasury.nav.transactions}
         action={
-          <span className={`text-sm font-bold tabular-nums ${net < 0 ? "text-red-400" : "text-emerald-400"}`} dir="ltr">
+          <span className={`text-sm font-bold tabular-nums ${net < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}`} dir="ltr">
             {formatMoney(net, "MRU")}
           </span>
         }

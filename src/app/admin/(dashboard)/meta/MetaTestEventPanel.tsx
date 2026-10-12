@@ -84,7 +84,7 @@ export function MetaTestEventPanel() {
                   <span dir="ltr" className="font-mono text-xs">
                     action_source={row.actionSource} · value={row.value}
                   </span>
-                  <span className={row.ok ? "text-emerald-400" : "text-red-400"}>
+                  <span className={row.ok ? "text-[var(--success)]" : "text-[var(--danger)]"}>
                     {row.ok ? a.meta.stateSuccess : a.meta.stateFailed}
                   </span>
                 </div>

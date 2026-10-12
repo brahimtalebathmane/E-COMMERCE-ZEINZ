@@ -22,8 +22,8 @@ import type { PurchaseRow, StockRow } from "@/lib/inventory/data";
 type Filter = "all" | "low" | "negative";
 
 function availableClass(level: StockRow["level"]): string {
-  if (level === "negative") return "font-bold text-red-400";
-  if (level === "low") return "font-bold text-amber-400";
+  if (level === "negative") return "font-bold text-[var(--danger)]";
+  if (level === "low") return "font-bold text-[var(--warning)]";
   return "text-[var(--foreground)]";
 }
 
@@ -74,7 +74,7 @@ export function InventoryView({
         <p className="admin-alert-error">{a.inventory.negativeCount.replace("{count}", String(negativeCount))}</p>
       ) : null}
       {lowCount > 0 ? (
-        <p className="text-sm font-semibold text-amber-400">
+        <p className="text-sm font-semibold text-[var(--warning)]">
           {a.inventory.lowCount.replace("{count}", String(lowCount))}
         </p>
       ) : null}

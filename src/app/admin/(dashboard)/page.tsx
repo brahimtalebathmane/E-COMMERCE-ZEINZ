@@ -56,7 +56,7 @@ export default async function AdminHomePage() {
     return (
       <div>
         <h1 className="text-2xl font-bold">{a.dashboard.title}</h1>
-        <p className="mt-4 text-sm text-red-400">
+        <p className="mt-4 text-sm text-[var(--danger)]">
           {a.dashboard.loadError} {productsRes.error.message}
         </p>
       </div>
@@ -114,7 +114,7 @@ export default async function AdminHomePage() {
     return (
       <div>
         <h1 className="text-2xl font-bold">{a.dashboard.title}</h1>
-        <p className="mt-4 text-sm text-red-400">
+        <p className="mt-4 text-sm text-[var(--danger)]">
           {a.dashboard.loadError} {error}
         </p>
       </div>

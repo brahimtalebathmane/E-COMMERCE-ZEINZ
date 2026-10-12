@@ -62,7 +62,7 @@ export function CampaignManager({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-[var(--admin-border)] bg-white/[0.02] p-3">
+    <div className="mt-3 rounded-xl border border-[var(--admin-border)] bg-[var(--fill)] p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
         {a.analytics.campaignsTitle}
       </p>
@@ -79,7 +79,7 @@ export function CampaignManager({
                 type="button"
                 disabled={unlinkingId === c.id}
                 onClick={() => void onUnlink(c.id)}
-                className="shrink-0 text-[11px] font-semibold text-red-300 underline-offset-2 hover:underline disabled:opacity-60"
+                className="shrink-0 text-[11px] font-semibold text-[var(--danger)] underline-offset-2 hover:underline disabled:opacity-60"
               >
                 {a.analytics.unlinkCampaign}
               </button>

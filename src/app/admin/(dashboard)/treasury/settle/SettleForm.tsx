@@ -275,13 +275,13 @@ export function SettleForm({
             </div>
             <div>
               <dt className="text-xs text-[var(--muted)]">{a.treasury.expected}</dt>
-              <dd className={`font-bold tabular-nums ${preview.expectedNet < 0 ? "text-amber-300" : "text-emerald-400"}`} dir="ltr">
+              <dd className={`font-bold tabular-nums ${preview.expectedNet < 0 ? "text-[var(--warning)]" : "text-[var(--success)]"}`} dir="ltr">
                 {formatMoney(preview.expectedNet, "MRU")}
               </dd>
             </div>
           </dl>
-          {preview.expectedNet < 0 ? <p className="mt-1 text-xs text-amber-300">{a.treasury.expectedNegative}</p> : null}
-          {missingFee ? <p className="mt-1 text-xs text-amber-400">{a.treasury.feeMissing}</p> : null}
+          {preview.expectedNet < 0 ? <p className="mt-1 text-xs text-[var(--warning)]">{a.treasury.expectedNegative}</p> : null}
+          {missingFee ? <p className="mt-1 text-xs text-[var(--warning)]">{a.treasury.feeMissing}</p> : null}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <AdminInput
@@ -314,7 +314,7 @@ export function SettleForm({
           </div>
           {received.trim() !== "" && preview.difference !== 0 ? (
             <div className="mt-3 space-y-2">
-              <p className="text-sm font-semibold text-amber-400">
+              <p className="text-sm font-semibold text-[var(--warning)]">
                 {a.treasury.difference}: <span dir="ltr">{formatMoney(preview.difference, "MRU")}</span>
               </p>
               <AdminInput label={a.treasury.differenceReason} value={reason} disabled={saving} onChange={(e) => setReason(e.target.value)} />

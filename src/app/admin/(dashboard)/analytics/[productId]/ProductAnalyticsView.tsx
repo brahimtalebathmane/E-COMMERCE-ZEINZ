@@ -21,8 +21,8 @@ import {
 } from "@/lib/analytics/daily-profit";
 
 function profitToneClass(value: number): string {
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-red-400";
+  if (value > 0) return "text-[var(--success)]";
+  if (value < 0) return "text-[var(--danger)]";
   return "text-[var(--foreground)]";
 }
 
@@ -129,7 +129,7 @@ export function ProductAnalyticsView({
       <section className="admin-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
-            <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <thead className="bg-[var(--fill)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3 text-start">{a.analytics.granularityDaily}</th>
                 <th className="px-4 py-3 text-start">{a.analytics.colRevenue}</th>

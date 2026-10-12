@@ -30,7 +30,7 @@ export default function AdminDashboardError({
       aria-live="assertive"
       className="admin-card mx-auto mt-10 flex max-w-lg flex-col items-center gap-4 px-6 py-10 text-center"
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-400/40 bg-red-400/10 text-2xl text-red-300">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-400/40 bg-red-400/10 text-2xl text-[var(--danger)]">
         !
       </div>
       <div className="space-y-1.5">

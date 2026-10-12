@@ -57,13 +57,13 @@ export function SettlementsList({ settlements, canManage }: { settlements: Settl
               <span>{formatMoney(s.collected, "MRU")}</span>
               <span className="text-[var(--muted)]">− {formatMoney(s.fees, "MRU")}</span>
               <span className="font-bold">= {formatMoney(s.received, "MRU")}</span>
-              {s.difference !== 0 ? <span className="text-amber-400">({formatMoney(s.difference, "MRU")})</span> : null}
+              {s.difference !== 0 ? <span className="text-[var(--warning)]">({formatMoney(s.difference, "MRU")})</span> : null}
             </span>
             {canManage && !s.voidedAt ? (
               <button
                 type="button"
                 onClick={() => setVoiding(s)}
-                className="text-xs font-semibold text-red-300 underline-offset-2 hover:underline"
+                className="text-xs font-semibold text-[var(--danger)] underline-offset-2 hover:underline"
               >
                 {a.treasury.voidSettlement}
               </button>
@@ -72,7 +72,7 @@ export function SettlementsList({ settlements, canManage }: { settlements: Settl
         ))}
       </ul>
       {voiding ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4" role="dialog" aria-modal="true">
           <div className="admin-card w-full max-w-md space-y-3 p-5">
             <h2 className="text-base font-semibold">{a.treasury.voidSettlement}</h2>
             <p className="text-xs text-[var(--muted)]">{a.treasury.voidHint}</p>

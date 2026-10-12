@@ -232,3 +232,21 @@ export function TreasuryIcon(props: IconProps) {
     </Base>
   );
 }
+
+/** "Forward" chevron: points left in RTL (mirrored with rtl:-scale-x-100 by callers). */
+export function ChevronIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M9 6l6 6-6 6" />
+    </Base>
+  );
+}
+
+export function SaleIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
+    </Base>
+  );
+}

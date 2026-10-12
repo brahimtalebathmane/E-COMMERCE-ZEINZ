@@ -161,7 +161,7 @@ function PipelineActions({
             variant="sm-ghost"
             disabled={busy}
             onClick={() => onStatus(row.id, "winner")}
-            className="flex-1 !border-emerald-400/40 !bg-emerald-400/10 !text-emerald-300 hover:!bg-emerald-400/20 sm:flex-none"
+            className="flex-1 !border-emerald-400/40 !bg-emerald-400/10 !text-[var(--success)] hover:!bg-emerald-400/20 sm:flex-none"
           >
             {a.pipeline.markWinner}
           </AdminButton>
@@ -312,7 +312,7 @@ export function ProductsAdminView({ products, currency }: Props) {
               {t.label}
               <span
                 className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
-                  tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-white/[0.06] text-[var(--muted)]"
+                  tab === t.id ? "bg-[var(--accent)]/25 text-[var(--foreground)]" : "bg-[var(--fill-strong)] text-[var(--muted)]"
                 }`}
                 dir="ltr"
               >
@@ -324,7 +324,7 @@ export function ProductsAdminView({ products, currency }: Props) {
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -390,7 +390,7 @@ export function ProductsAdminView({ products, currency }: Props) {
           <div className="admin-card mt-5 hidden overflow-hidden md:block">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-[var(--admin-border)] text-sm">
-                <thead className="bg-white/[0.02] text-start text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <thead className="bg-[var(--fill)] text-start text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <tr>
                     {tab === "research" ? (
                       <>
@@ -417,7 +417,7 @@ export function ProductsAdminView({ products, currency }: Props) {
                 <tbody className="divide-y divide-[var(--admin-border)]">
                   {visible.map((p) =>
                     tab === "research" ? (
-                      <tr key={p.id} className="transition hover:bg-white/[0.02]">
+                      <tr key={p.id} className="transition hover:bg-[var(--fill)]">
                         <td className="px-4 py-3">
                           <ProductThumb row={p} />
                         </td>
@@ -441,7 +441,7 @@ export function ProductsAdminView({ products, currency }: Props) {
                         </td>
                       </tr>
                     ) : (
-                      <tr key={p.id} className="transition hover:bg-white/[0.02]">
+                      <tr key={p.id} className="transition hover:bg-[var(--fill)]">
                         <td className="px-4 py-3 font-medium">{p.name_ar}</td>
                         <td className="px-4 py-3 font-mono text-xs text-[var(--muted)]" dir="ltr">
                           {p.slug}

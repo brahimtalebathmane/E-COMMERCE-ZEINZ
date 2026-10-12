@@ -151,7 +151,7 @@ export function GoLiveForm({ shippedOrders, today }: { shippedOrders: UnsettledO
           </ul>
         )}
         {unpaid.size > 0 ? (
-          <p className="mt-2 text-sm font-semibold text-amber-300" dir="rtl">
+          <p className="mt-2 text-sm font-semibold text-[var(--warning)]" dir="rtl">
             {unpaid.size} · <span dir="ltr">{formatMoney(unpaidTotal, "MRU")}</span>
           </p>
         ) : null}

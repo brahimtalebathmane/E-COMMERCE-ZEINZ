@@ -9,8 +9,8 @@ type Props = {
 export function AdminKpiTile({ label, value, accent, emphasize, hint }: Props) {
   const valueClass = emphasize
     ? value.trim().startsWith("-")
-      ? "text-red-400"
-      : "text-emerald-400"
+      ? "text-[var(--danger)]"
+      : "text-[var(--success)]"
     : "text-[var(--foreground)]";
 
   return (

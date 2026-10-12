@@ -18,8 +18,8 @@ import type { AffiliateAnalyticsData, LinkedCampaign } from "./data";
 import { CampaignManager } from "./CampaignManager";
 
 function profitToneClass(value: number): string {
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-red-400";
+  if (value > 0) return "text-[var(--success)]";
+  if (value < 0) return "text-[var(--danger)]";
   return "text-[var(--foreground)]";
 }
 
@@ -156,7 +156,7 @@ export function AffiliateAnalyticsSection({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold text-[var(--foreground)]">{row.name}</span>
                       <span
-                        className={`font-bold ${row.adSpendUnavailable ? "text-amber-400" : profitToneClass(profit)}`}
+                        className={`font-bold ${row.adSpendUnavailable ? "text-[var(--warning)]" : profitToneClass(profit)}`}
                         dir="ltr"
                       >
                         {row.adSpendUnavailable ? "غير متاح" : formatMoney(profit, row.currency)}
@@ -191,7 +191,7 @@ export function AffiliateAnalyticsSection({
                       ) : null}
                     </dl>
                     {row.adSpendUnavailable ? (
-                      <p className="mt-2 text-[11px] text-amber-400">
+                      <p className="mt-2 text-[11px] text-[var(--warning)]">
                         لا يوجد سعر صرف لعملة {row.currency || "هذا المنتج"} في currency_rates — تم استبعاد هذا الصف من إجمالي المجموعة.
                       </p>
                     ) : null}

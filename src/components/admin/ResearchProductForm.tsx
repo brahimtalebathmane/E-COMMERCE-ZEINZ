@@ -215,7 +215,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
       {marginPct != null ? (
         <p
           className={`text-sm font-semibold ${
-            marginPct > 60 ? "text-emerald-400" : "text-amber-300"
+            marginPct > 60 ? "text-[var(--success)]" : "text-[var(--warning)]"
           }`}
           dir="ltr"
         >
@@ -254,7 +254,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -283,7 +283,7 @@ export function ResearchProductForm({ mode, initial }: Props) {
             type="button"
             disabled={busy}
             onClick={() => void onDelete()}
-            className="admin-btn-ghost w-full !border-red-500/30 !text-red-300 hover:!bg-red-500/10 sm:w-auto"
+            className="admin-btn-ghost w-full !border-red-500/30 !text-[var(--danger)] hover:!bg-red-500/10 sm:w-auto"
           >
             {a.researchForm.delete}
           </button>

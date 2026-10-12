@@ -13,6 +13,8 @@ import {
   isOneSignalAllowedOrigin,
 } from "@/lib/onesignal/is-allowed-origin";
 
+const PROMPT_DISMISSED_KEY = "zeinz-admin-push-prompt-dismissed";
+
 type SubState = "unknown" | "unsupported" | "blocked" | "default" | "subscribed";
 
 function readState(OneSignal: OneSignalClient): SubState {
@@ -100,6 +102,24 @@ export function OneSignalAdminInit() {
     ensureInit();
   }, [ensureInit]);
 
+  // Per-device convenience: hiding the prompt is remembered in this browser only.
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      setDismissed(window.localStorage.getItem(PROMPT_DISMISSED_KEY) === "1");
+    } catch {
+      // Storage unavailable (private mode): keep showing the prompt.
+    }
+  }, []);
+  const dismiss = useCallback(() => {
+    setDismissed(true);
+    try {
+      window.localStorage.setItem(PROMPT_DISMISSED_KEY, "1");
+    } catch {
+      // Ignore: the prompt simply comes back next visit.
+    }
+  }, []);
+
   const handleEnable = useCallback(() => {
     setBusy(true);
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -137,19 +157,25 @@ export function OneSignalAdminInit() {
         strategy="afterInteractive"
         onLoad={ensureInit}
       />
-      {(state === "default" || state === "blocked") && (
-        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] start-3 z-40 max-w-[min(100%-1.5rem,20rem)] lg:bottom-4 lg:start-4">
+      {/* Only the actionable state floats over the page. "Blocked" can only be
+          fixed in the phone settings, so it is not shown on every screen. */}
+      {state === "default" && !dismissed && (
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] start-3 z-40 flex max-w-[min(100%-1.5rem,20rem)] items-center gap-1 rounded-full bg-[var(--accent)] shadow-lg lg:bottom-4 lg:start-4">
           <button
             type="button"
             onClick={handleEnable}
-            disabled={busy || state === "blocked"}
-            className="min-h-[44px] w-full touch-manipulation rounded-full bg-[var(--accent,#111)] px-4 py-2.5 text-sm font-medium text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={busy}
+            className="min-h-[44px] flex-1 touch-manipulation rounded-full ps-4 text-[15px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {state === "blocked"
-              ? "الإشعارات محظورة — فعّلها من إعدادات المتصفح"
-              : busy
-                ? "جاري التفعيل…"
-                : "تفعيل إشعارات الطلبات"}
+            {busy ? "جاري التفعيل…" : "تفعيل إشعارات الطلبات"}
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="إخفاء"
+            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full text-white/80"
+          >
+            ✕
           </button>
         </div>
       )}

@@ -19,7 +19,7 @@ export function AdminInput({ label, hint, error, className = "", id, ...props }:
         {...props}
       />
       {error ? (
-        <span className="block text-xs text-red-400">{error}</span>
+        <span className="block text-xs text-[var(--danger)]">{error}</span>
       ) : hint ? (
         <span className="block text-xs text-[var(--muted)]">{hint}</span>
       ) : null}

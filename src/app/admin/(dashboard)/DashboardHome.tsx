@@ -57,7 +57,7 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("ar", {
 
 function PipelineStat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-4 py-3">
+    <div className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-[var(--fill)] px-4 py-3">
       <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
         <span className={`h-2.5 w-2.5 rounded-full ${tone}`} aria-hidden />
         {label}
@@ -124,7 +124,7 @@ export function DashboardHome({
                 {data.productsMissingCost > 0 ? (
                   <Link
                     href="/admin/analytics"
-                    className="mt-1 block text-[11px] font-semibold text-amber-400 underline-offset-2 hover:underline"
+                    className="mt-1 block text-[11px] font-semibold text-[var(--warning)] underline-offset-2 hover:underline"
                   >
                     {a.dashboard.kpiMissingCostWarning.replace(
                       "{count}",
@@ -187,7 +187,7 @@ export function DashboardHome({
                 {data.recentOrders.map((o) => (
                   <li
                     key={o.id}
-                    className="flex flex-col gap-2 px-4 py-3 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:gap-3 sm:px-5"
+                    className="flex flex-col gap-2 px-4 py-3 transition hover:bg-[var(--fill)] sm:flex-row sm:items-center sm:gap-3 sm:px-5"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm font-medium text-[var(--foreground)]">

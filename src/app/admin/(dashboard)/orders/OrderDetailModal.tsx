@@ -292,7 +292,7 @@ export function OrderDetailModal({ order, open, onClose, onDeleted, onOrderUpdat
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-[2px]"
         aria-label={a.orders.closeDetail}
         onClick={onClose}
       />
@@ -549,7 +549,7 @@ function OrderDetailSections({
         </h3>
         <ul className="mt-3 space-y-2 text-sm">
           <li className="flex flex-wrap items-center justify-between gap-2">
-            <span className={metaFlagSent(order.meta_lead_sent) ? "text-emerald-400" : "text-amber-300"}>
+            <span className={metaFlagSent(order.meta_lead_sent) ? "text-[var(--success)]" : "text-[var(--warning)]"}>
               {metaFlagSent(order.meta_lead_sent) ? a.orders.metaLeadSent : a.orders.metaLeadNotSent}
             </span>
             {!metaFlagSent(order.meta_lead_sent) ? (
@@ -565,7 +565,7 @@ function OrderDetailSections({
           </li>
           {order.status === "confirmed" || metaFlagSent(order.meta_purchase_sent) ? (
             <li className="flex flex-wrap items-center justify-between gap-2">
-              <span className={metaFlagSent(order.meta_purchase_sent) ? "text-emerald-400" : "text-amber-300"}>
+              <span className={metaFlagSent(order.meta_purchase_sent) ? "text-[var(--success)]" : "text-[var(--warning)]"}>
                 {metaFlagSent(order.meta_purchase_sent)
                   ? a.orders.metaPurchaseSent
                   : a.orders.metaPurchaseNotSent}
@@ -584,7 +584,7 @@ function OrderDetailSections({
           ) : null}
           {order.status === "cancelled" || metaFlagSent(order.meta_cancel_sent) ? (
             <li className="flex flex-wrap items-center justify-between gap-2">
-              <span className={metaFlagSent(order.meta_cancel_sent) ? "text-emerald-400" : "text-amber-300"}>
+              <span className={metaFlagSent(order.meta_cancel_sent) ? "text-[var(--success)]" : "text-[var(--warning)]"}>
                 {metaFlagSent(order.meta_cancel_sent)
                   ? a.orders.metaCancelSent
                   : a.orders.metaCancelNotSent}
@@ -696,7 +696,7 @@ function OrderDetailSections({
           <button
             type="button"
             disabled={saving}
-            className="min-h-[44px] w-full rounded-xl border border-red-400/40 bg-red-400/5 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-400/15"
+            className="min-h-[44px] w-full rounded-xl border border-red-400/40 bg-red-400/5 px-4 py-2 text-sm font-semibold text-[var(--danger)] transition hover:bg-red-400/15"
             onClick={() => onDeleted(order.id)}
           >
             {a.orders.delete}

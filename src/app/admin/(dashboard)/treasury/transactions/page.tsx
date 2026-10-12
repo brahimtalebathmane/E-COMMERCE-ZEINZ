@@ -111,12 +111,12 @@ export default async function TreasuryTransactionsPage({
         noPadding
         title={a.treasury.nav.transactions}
         action={
-          <span className={`text-sm font-bold tabular-nums ${sum < 0 ? "text-red-400" : "text-emerald-400"}`} dir="ltr">
+          <span className={`text-sm font-bold tabular-nums ${sum < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}`} dir="ltr">
             {formatMoney(sum, "MRU")}
           </span>
         }
       >
-        {result.truncated ? <p className="px-4 pt-3 text-xs text-amber-400">{a.treasury.truncated}</p> : null}
+        {result.truncated ? <p className="px-4 pt-3 text-xs text-[var(--warning)]">{a.treasury.truncated}</p> : null}
         <TransactionsTable rows={result.rows} canManage={ctx.canManage} />
       </AdminCard>
     </div>

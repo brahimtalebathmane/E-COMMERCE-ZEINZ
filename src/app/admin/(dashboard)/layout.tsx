@@ -23,7 +23,7 @@ export default async function AdminDashboardLayout({
   }
 
   return (
-    <div className="admin-shell min-h-screen font-sans" dir="rtl" lang="ar">
+    <div className="admin-shell admin-root" dir="rtl" lang="ar">
       <OneSignalAdminInit />
       <AdminPermissionsProvider access={session.access}>
         <AdminCountryProvider
@@ -36,7 +36,7 @@ export default async function AdminDashboardLayout({
           </AdminAssistantProvider>
         </AdminCountryProvider>
       </AdminPermissionsProvider>
-      <Toaster position="top-center" richColors theme="dark" dir="rtl" />
+      <Toaster position="top-center" richColors theme="system" dir="rtl" offset="calc(env(safe-area-inset-top) + 12px)" />
     </div>
   );
 }

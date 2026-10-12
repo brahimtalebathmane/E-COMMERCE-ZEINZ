@@ -126,7 +126,7 @@ export function CountriesAdminView({ initialCountries }: Props) {
       />
 
       {error && editingId === null ? (
-        <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -188,14 +188,14 @@ export function CountriesAdminView({ initialCountries }: Props) {
       </div>
 
       {editingId !== null ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
           <div className="admin-card w-full max-w-lg space-y-4 p-5">
             <h2 className="text-lg font-bold">
               {editingId === "new" ? a.countries.newCountry : a.countries.editCountry}
             </h2>
 
             {error ? (
-              <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">
                 {error}
               </p>
             ) : null}

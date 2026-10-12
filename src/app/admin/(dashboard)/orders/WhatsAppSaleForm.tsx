@@ -382,7 +382,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-[2px]"
         aria-label={a.manualSale.close}
         onClick={onClose}
       />
@@ -450,7 +450,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                   />
 
                   {searchError ? (
-                    <p className="mt-1.5 text-sm text-red-400">{a.manualSale.conversationsFailed}</p>
+                    <p className="mt-1.5 text-sm text-[var(--danger)]">{a.manualSale.conversationsFailed}</p>
                   ) : showResultsList ? (
                     <div
                       role="listbox"
@@ -518,9 +518,9 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                     manualLookupPending ? (
                       <p className="mt-1.5 text-xs text-[var(--muted)]">{a.manualSale.searching}</p>
                     ) : manualContact ? (
-                      <p className="mt-1.5 text-xs text-emerald-400">{a.manualSale.manualContactFound}</p>
+                      <p className="mt-1.5 text-xs text-[var(--success)]">{a.manualSale.manualContactFound}</p>
                     ) : (
-                      <p className="mt-1.5 text-xs text-amber-500">{a.manualSale.manualContactMissing}</p>
+                      <p className="mt-1.5 text-xs text-[var(--warning)]">{a.manualSale.manualContactMissing}</p>
                     )
                   ) : null}
                 </div>
@@ -546,7 +546,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                   )}
                 </div>
                 {selectedConversation.adSourceId && !selectedConversation.adAttributable ? (
-                  <p className="mt-2 text-amber-500">{a.manualSale.adWindowExpired}</p>
+                  <p className="mt-2 text-[var(--warning)]">{a.manualSale.adWindowExpired}</p>
                 ) : null}
               </div>
             ) : null}
@@ -575,7 +575,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
               {a.manualSale.product}
             </span>
             {loadError ? (
-              <p className="text-sm text-red-400">{a.manualSale.loadProductsFailed}</p>
+              <p className="text-sm text-[var(--danger)]">{a.manualSale.loadProductsFailed}</p>
             ) : null}
             {lines.map((line) => {
               const product = productMap.get(line.productId);
@@ -614,13 +614,13 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                   type="button"
                   disabled={submitting || lines.length <= 1}
                   onClick={() => removeLine(line.key)}
-                  className="min-h-[44px] shrink-0 rounded-xl border border-red-400/30 px-3 text-xs font-semibold text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="min-h-[44px] shrink-0 rounded-xl border border-red-400/30 px-3 text-xs font-semibold text-[var(--danger)] transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {a.manualSale.removeLine}
                 </button>
               </div>
               {overStock && product ? (
-                <p className="text-xs font-semibold text-amber-400" role="status">
+                <p className="text-xs font-semibold text-[var(--warning)]" role="status">
                   {a.inventory.stockExceedsWarning
                     .replace("{qty}", String(wanted))
                     .replace("{available}", String(product.available))}

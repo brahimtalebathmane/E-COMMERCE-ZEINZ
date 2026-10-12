@@ -77,7 +77,7 @@ export const ProductFormGallerySection = memo(function ProductFormGallerySection
             </div>
             <button
               type="button"
-              className="rounded-lg border border-[var(--accent-muted)] px-2 py-2 text-xs text-red-700"
+              className="rounded-lg border border-[var(--accent-muted)] px-2 py-2 text-xs text-[var(--danger)]"
               onClick={() => setGalleryUrls((prev) => prev.filter((_, j) => j !== gi))}
             >
               {a.productForm.removeItem}
@@ -459,7 +459,7 @@ export const ProductFormFeaturesSection = memo(function ProductFormFeaturesSecti
               </button>
               <button
                 type="button"
-                className="admin-btn-ghost !min-h-[44px] !border-red-500/30 !px-3 !text-xs !text-red-300"
+                className="admin-btn-ghost !min-h-[44px] !border-red-500/30 !px-3 !text-xs !text-[var(--danger)]"
                 onClick={() => setFeatureRows((prev) => prev.filter((_, j) => j !== i))}
               >
                 {a.productForm.removeItem}
@@ -751,7 +751,7 @@ export const ProductFormTestimonialsSection = memo(function ProductFormTestimoni
               </button>
               <button
                 type="button"
-                className="text-xs text-red-600 underline dark:text-red-400"
+                className="text-xs text-[var(--danger)] underline dark:text-[var(--danger)]"
                 onClick={() => setTestimonials((prev) => prev.filter((_, j) => j !== i))}
               >
                 {a.productForm.removeItem}
@@ -886,7 +886,7 @@ export const ProductFormFaqsSection = memo(function ProductFormFaqsSection({
               </button>
               <button
                 type="button"
-                className="text-xs text-red-600 underline dark:text-red-400"
+                className="text-xs text-[var(--danger)] underline dark:text-[var(--danger)]"
                 onClick={() => setFaqs((prev) => prev.filter((_, j) => j !== i))}
               >
                 {a.productForm.removeItem}
@@ -1026,7 +1026,7 @@ export const ProductFormSpecsSection = memo(function ProductFormSpecsSection({
               </button>
               <button
                 type="button"
-                className="text-xs text-red-600 underline dark:text-red-400"
+                className="text-xs text-[var(--danger)] underline dark:text-[var(--danger)]"
                 onClick={() => setSpecs((prev) => prev.filter((_, j) => j !== i))}
               >
                 {a.productForm.removeItem}

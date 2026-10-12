@@ -161,7 +161,7 @@ export function MetaMonitoringView({
               {rows.map((row) => (
                 <article
                   key={row.id}
-                  className={`rounded-2xl border border-[var(--admin-border)] bg-white/[0.02] p-4 ${
+                  className={`rounded-2xl border border-[var(--admin-border)] bg-[var(--fill)] p-4 ${
                     highlightedIds.has(row.id) ? "bg-sky-400/10 ring-1 ring-sky-400/30" : ""
                   }`}
                 >

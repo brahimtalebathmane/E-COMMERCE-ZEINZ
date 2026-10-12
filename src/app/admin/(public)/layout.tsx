@@ -4,7 +4,7 @@ export default function AdminPublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="admin-shell min-h-screen font-sans" dir="rtl" lang="ar">
+    <div className="admin-shell admin-root" dir="rtl" lang="ar">
       {children}
     </div>
   );

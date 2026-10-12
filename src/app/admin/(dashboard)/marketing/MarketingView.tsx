@@ -416,7 +416,7 @@ export function MarketingView({ data }: { data: MarketingData }) {
                         <button
                           type="button"
                           onClick={() => removeManualRecipient(r.phone)}
-                          className="shrink-0 text-xs font-semibold text-red-300 underline-offset-2 hover:underline"
+                          className="shrink-0 text-xs font-semibold text-[var(--danger)] underline-offset-2 hover:underline"
                         >
                           {a.marketing.removeRecipient}
                         </button>
@@ -565,7 +565,7 @@ function RecipientsDrawer({
 }) {
   return (
     <div className="admin-shell fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4" dir="rtl" lang="ar">
-      <button type="button" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-label={a.marketing.close} />
+      <button type="button" className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-[2px]" onClick={onClose} aria-label={a.marketing.close} />
       <div className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col rounded-t-2xl border border-[var(--admin-border-strong)] bg-[var(--admin-elevated)] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-h-[85vh] sm:rounded-2xl">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--accent-muted)] px-4 py-4 sm:px-5">
           <div className="min-w-0">

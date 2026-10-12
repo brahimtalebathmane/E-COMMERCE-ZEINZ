@@ -26,6 +26,12 @@
   --shadow-accent: 0 16px 34px -14px rgba(0, 107, 12, 0.5);
 }
 
+/* System font everywhere by default (SF Arabic / SF Pro on iPhone). The storefront
+   layout sets its own web fonts (Tajawal, Geist) on its wrapper. */
+html {
+  font-family: system-ui, -apple-system, "SF Arabic", "SF Pro Text", "Segoe UI", Tahoma, sans-serif;
+}
+
 /* Storefront + landing pages are designed as a fixed light theme. iOS Safari in Dark Mode
    otherwise flips :root tokens while ProductLanding still forces light card surfaces,
    producing unreadable light-on-light text. Admin uses `.admin-shell` for its own dark palette. */
@@ -218,54 +224,120 @@ body {
 }
 
 /* ==========================================================================
-   ADMIN DASHBOARD — premium dark design system
+   ADMIN DASHBOARD — Apple-style system (light + dark, follows the phone)
    Scoped to `.admin-shell` so the storefront tokens stay untouched. Every
    existing admin component reads var(--background/--card/--accent-muted/...),
    so overriding those here re-skins the whole dashboard with zero churn.
    ========================================================================== */
 .admin-shell {
-  color-scheme: dark;
+  /* Light (default) — follows the phone: dark values below under prefers-color-scheme. */
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "SF Arabic", "SF Pro Text", "Segoe UI", Tahoma, sans-serif;
 
-  /* Core tokens (override storefront values within the admin only) */
-  --background: #080c0a;
-  --foreground: #e8f1ec;
-  --accent: #22c55e;
+  --background: #f2f2f7;
+  --foreground: #1c1c1e;
+  --accent: #1f7a45;
   --accent-foreground: #ffffff;
-  --accent-muted: #232f29;
-  --card: #111815;
-  --muted: #8b9b91;
+  --accent-muted: #e3f1e8;
+  --card: #ffffff;
+  --muted: #6e6e73;
 
-  /* Extended premium tokens */
-  --admin-surface: #0d1311;
-  --admin-elevated: #1a221e;
-  --admin-glass: rgba(14, 20, 17, 0.78);
-  --admin-border: rgba(255, 255, 255, 0.08);
-  --admin-border-strong: rgba(255, 255, 255, 0.14);
-  --admin-accent-soft: rgba(34, 197, 94, 0.14);
-  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.7);
-  --admin-shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
+  --admin-surface: #ffffff;
+  --admin-elevated: #ffffff;
+  --admin-glass: rgba(249, 249, 249, 0.86);
+  --admin-border: rgba(60, 60, 67, 0.12);
+  --admin-border-strong: rgba(60, 60, 67, 0.22);
+  --admin-accent-soft: #e7f6ec;
+  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --admin-shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, 0.22);
 
-  /* Semantic status accents (KPI bars, charts) */
-  --status-emerald: #34d399;
-  --status-sky: #38bdf8;
-  --status-violet: #a78bfa;
-  --status-amber: #fbbf24;
-  --status-pink: #f472b6;
-  --status-red: #f87171;
+  /* Semantic colours (text-safe on --card and --background) */
+  --danger: #c1121f;
+  --success: #1f7a45;
+  --warning: #a04100;
+  --info: #0a5bbf;
+  --purple: #7a3a9c;
+  --fill: rgba(118, 118, 128, 0.08);
+  --fill-strong: rgba(118, 118, 128, 0.16);
+  --input-bg: rgba(118, 118, 128, 0.12);
+  --overlay: rgba(0, 0, 0, 0.35);
+
+  /* Status hues: soft background + readable text + dot */
+  --hue-amber-bg: #fff4e5; --hue-amber-fg: #a04100; --hue-amber-dot: #ff9500;
+  --hue-emerald-bg: #e7f6ec; --hue-emerald-fg: #1f7a45; --hue-emerald-dot: #34c759;
+  --hue-sky-bg: #e8f1fd; --hue-sky-fg: #0a5bbf; --hue-sky-dot: #007aff;
+  --hue-red-bg: #fdebec; --hue-red-fg: #c1121f; --hue-red-dot: #ff3b30;
+  --hue-violet-bg: #f3eaf8; --hue-violet-fg: #7a3a9c; --hue-violet-dot: #af52de;
+  --hue-slate-bg: #efeff4; --hue-slate-fg: #55555a; --hue-slate-dot: #8e8e93;
+
+  --status-emerald: #34c759;
+  --status-sky: #007aff;
+  --status-violet: #af52de;
+  --status-amber: #ff9500;
+  --status-pink: #ff2d55;
+  --status-red: #ff3b30;
   --primary: var(--accent);
 
   color: var(--foreground);
-  background:
-    radial-gradient(1100px 520px at 100% -8%, rgba(34, 197, 94, 0.1), transparent 62%),
-    radial-gradient(900px 480px at -10% 110%, rgba(34, 197, 94, 0.06), transparent 60%),
-    var(--background);
-  background-attachment: fixed;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-shell {
+    color-scheme: dark;
+    --background: #000000;
+    --foreground: #f5f5f7;
+    --accent: #2a9d4e;
+    --accent-foreground: #ffffff;
+    --accent-muted: rgba(48, 209, 88, 0.16);
+    --card: #1c1c1e;
+    --muted: #98989f;
+
+    --admin-surface: #1c1c1e;
+    --admin-elevated: #2c2c2e;
+    --admin-glass: rgba(22, 22, 24, 0.86);
+    --admin-border: rgba(84, 84, 88, 0.45);
+    --admin-border-strong: rgba(84, 84, 88, 0.7);
+    --admin-accent-soft: rgba(48, 209, 88, 0.16);
+    --admin-shadow: none;
+    --admin-shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, 0.8);
+
+    --danger: #ff6961;
+    --success: #30d158;
+    --warning: #ffb340;
+    --info: #64a8ff;
+    --purple: #d08cf0;
+    --fill: rgba(118, 118, 128, 0.18);
+    --fill-strong: rgba(118, 118, 128, 0.28);
+    --input-bg: rgba(118, 118, 128, 0.24);
+    --overlay: rgba(0, 0, 0, 0.55);
+
+    --hue-amber-bg: rgba(255, 159, 10, 0.18); --hue-amber-fg: #ffb340; --hue-amber-dot: #ff9f0a;
+    --hue-emerald-bg: rgba(48, 209, 88, 0.18); --hue-emerald-fg: #30d158; --hue-emerald-dot: #30d158;
+    --hue-sky-bg: rgba(10, 132, 255, 0.2); --hue-sky-fg: #64a8ff; --hue-sky-dot: #0a84ff;
+    --hue-red-bg: rgba(255, 69, 58, 0.2); --hue-red-fg: #ff6961; --hue-red-dot: #ff453a;
+    --hue-violet-bg: rgba(191, 90, 242, 0.2); --hue-violet-fg: #d08cf0; --hue-violet-dot: #bf5af2;
+    --hue-slate-bg: rgba(142, 142, 147, 0.22); --hue-slate-fg: #c7c7cc; --hue-slate-dot: #98989d;
+
+    --status-emerald: #30d158;
+    --status-sky: #0a84ff;
+    --status-violet: #bf5af2;
+    --status-amber: #ff9f0a;
+    --status-pink: #ff375f;
+    --status-red: #ff453a;
+  }
+}
+
+/* Page background lives on the layout root only, never on the portalled
+   overlays that also carry .admin-shell for the tokens. */
+.admin-root {
+  background: var(--background);
+  min-height: 100dvh;
 }
 
 @layer components {
   .admin-card {
-    border-radius: 1rem;
-    border: 1px solid var(--admin-border);
+    border-radius: 14px;
     background: var(--card);
     box-shadow: var(--admin-shadow);
   }
@@ -273,20 +345,20 @@ body {
   .admin-glass {
     background: var(--admin-glass);
     border-color: var(--admin-border);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
   }
 
   .admin-nav-link {
-    @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition-colors duration-200;
+    @apply relative flex min-h-[44px] items-center gap-3 rounded-[10px] px-3 py-2.5 text-[15px] font-medium text-[var(--foreground)] transition-colors duration-200;
   }
   .admin-nav-link:hover {
-    color: var(--foreground);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--fill);
   }
   .admin-nav-link[data-active="true"] {
-    color: var(--foreground);
+    color: var(--accent);
     background: var(--admin-accent-soft);
+    font-weight: 600;
   }
   .admin-nav-link[data-active="true"]::before {
     content: "";
@@ -299,7 +371,7 @@ body {
   }
 
   .admin-bottom-link {
-    @apply relative flex min-h-[48px] flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold text-[var(--muted)] transition-colors duration-200;
+    @apply relative flex min-h-[49px] min-w-[44px] flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[10px] font-medium text-[var(--muted)] transition-colors duration-200;
     -webkit-tap-highlight-color: transparent;
   }
   .admin-bottom-link[data-active="true"] {
@@ -307,22 +379,23 @@ body {
   }
 
   .admin-btn-primary {
-    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_8px_20px_-8px_rgba(34,197,94,0.55)] transition hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-[15px] font-semibold text-[var(--accent-foreground)] transition hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-60;
   }
   .admin-btn-ghost {
-    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl border border-[var(--admin-border-strong)] bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[var(--fill)] px-4 py-2.5 text-[15px] font-semibold text-[var(--accent)] transition hover:bg-[var(--fill-strong)] disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .admin-input {
-    @apply w-full min-h-[44px] rounded-xl border border-[var(--admin-border-strong)] bg-[var(--admin-surface)] px-3.5 py-2.5 text-sm text-start text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(34,197,94,0.35)];
+    /* 16px minimum: iOS Safari zooms into any smaller field on focus. */
+    @apply w-full min-h-[44px] rounded-[10px] border border-transparent bg-[var(--input-bg)] px-3.5 py-2.5 text-base text-start text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--admin-accent-soft)];
   }
 
   .admin-page-title {
-    @apply text-2xl font-bold tracking-tight text-[var(--foreground)];
+    @apply text-[28px] font-bold leading-tight tracking-tight text-[var(--foreground)] sm:text-[34px];
   }
 
   .admin-section-title {
-    @apply text-sm font-bold text-[var(--foreground)];
+    @apply text-[17px] font-semibold text-[var(--foreground)];
   }
 
   .admin-kpi-tile {
@@ -334,7 +407,7 @@ body {
   }
 
   .admin-kpi-label {
-    @apply text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)];
+    @apply text-[13px] font-medium text-[var(--muted)];
   }
 
   .admin-kpi-value {
@@ -359,11 +432,11 @@ body {
   }
   .admin-scroll-fade::before {
     inset-inline-start: 0;
-    background: linear-gradient(to right, var(--admin-surface), transparent);
+    background: linear-gradient(to right, var(--background), transparent);
   }
   .admin-scroll-fade::after {
     inset-inline-end: 0;
-    background: linear-gradient(to left, var(--admin-surface), transparent);
+    background: linear-gradient(to left, var(--background), transparent);
   }
 
   .admin-table {
@@ -375,11 +448,11 @@ body {
   }
 
   .admin-th {
-    @apply px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] first:ps-5 last:pe-5;
+    @apply px-4 py-3 text-[13px] font-medium text-[var(--muted)] first:ps-5 last:pe-5;
   }
 
   .admin-table-body .admin-table-row {
-    @apply border-b border-[var(--admin-border)] transition-colors last:border-b-0 hover:bg-white/[0.03];
+    @apply border-b border-[var(--admin-border)] transition-colors last:border-b-0 hover:bg-[var(--fill)];
   }
 
   .admin-td {
@@ -387,7 +460,7 @@ body {
   }
 
   .admin-tab-pill {
-    @apply inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition;
+    @apply inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[15px] font-medium transition;
   }
 
   .admin-tab-pill[data-active="true"] {
@@ -397,19 +470,19 @@ body {
   }
 
   .admin-tab-pill[data-active="false"] {
-    @apply border-[var(--admin-border-strong)] bg-white/[0.02] text-[var(--muted)] hover:bg-white/[0.05] hover:text-[var(--foreground)];
+    @apply border-transparent bg-[var(--fill)] text-[var(--foreground)] hover:bg-[var(--fill-strong)];
   }
 
   .admin-alert-error {
-    @apply rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300;
+    @apply rounded-xl bg-[var(--hue-red-bg)] px-4 py-3 text-[15px] text-[var(--danger)];
   }
 
   .admin-alert-warn {
-    @apply rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200;
+    @apply rounded-xl bg-[var(--hue-amber-bg)] px-4 py-3 text-[15px] text-[var(--warning)];
   }
 
   .admin-skeleton {
-    @apply animate-pulse rounded-lg bg-white/[0.06];
+    @apply animate-pulse rounded-lg bg-[var(--fill-strong)];
   }
 }
 
@@ -426,7 +499,7 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   .admin-fade-in {
-    animation: admin-fade-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: admin-fade-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 
@@ -460,13 +533,13 @@ body {
   height: 10px;
 }
 .admin-shell ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fill-strong);
   border-radius: 9999px;
   border: 3px solid transparent;
   background-clip: padding-box;
 }
 .admin-shell ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--muted);
   background-clip: padding-box;
 }
 

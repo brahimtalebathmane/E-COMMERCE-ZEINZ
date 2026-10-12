@@ -154,7 +154,7 @@ export function AdminAssistant() {
         type="button"
         aria-label={a.assistant.close}
         onClick={() => setOpen(false)}
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-[var(--overlay)]"
       />
       <div className="relative flex h-full w-full max-w-md flex-col border-e border-[var(--admin-border)] bg-[var(--admin-elevated)] shadow-[var(--admin-shadow-lg)]">
         <header className="admin-glass flex items-center justify-between gap-3 border-b px-4 py-3.5">
@@ -203,7 +203,7 @@ export function AdminAssistant() {
                   m.role === "user"
                     ? "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-[0_6px_16px_-8px_rgba(34,197,94,0.6)]"
                     : m.role === "error"
-                      ? "me-auto max-w-[90%] rounded-2xl border border-red-400/35 bg-red-400/10 px-4 py-2.5 text-sm text-red-300"
+                      ? "me-auto max-w-[90%] rounded-2xl border border-red-400/35 bg-red-400/10 px-4 py-2.5 text-sm text-[var(--danger)]"
                       : "me-auto max-w-[90%] rounded-2xl rounded-ss-sm border border-[var(--admin-border-strong)] bg-[var(--admin-surface)] px-4 py-2.5 text-sm"
                 }
               >

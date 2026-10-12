@@ -10,7 +10,7 @@ export function AdminEmptyState({ title, description, action }: Props) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
       <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--admin-border)] bg-white/[0.03] text-2xl text-[var(--muted)]"
+        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--admin-border)] bg-[var(--fill)] text-2xl text-[var(--muted)]"
         aria-hidden
       >
         ◌

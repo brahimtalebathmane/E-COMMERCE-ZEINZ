@@ -64,7 +64,7 @@ function PermissionToggles({
             className={`flex min-h-[56px] cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
               checked
                 ? "border-[var(--accent-muted)] bg-[var(--accent)]/10"
-                : "border-[var(--admin-border-strong)] bg-white/[0.02] hover:bg-white/[0.04]"
+                : "border-[var(--admin-border-strong)] bg-[var(--fill)] hover:bg-[var(--fill-strong)]"
             } ${disabled ? "pointer-events-none opacity-60" : ""}`}
           >
             <input
@@ -87,7 +87,7 @@ function PermissionToggles({
 
 function PermissionLegend() {
   return (
-    <div className="rounded-xl border border-[var(--admin-border)] bg-white/[0.02] px-3 py-2.5">
+    <div className="rounded-xl border border-[var(--admin-border)] bg-[var(--fill)] px-3 py-2.5">
       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
         {a.staff.permissionLegendTitle}
       </p>
@@ -116,8 +116,8 @@ function PermissionMatrix({ permissions }: { permissions: PermissionKey[] }) {
             aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
             className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${
               granted
-                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                : "border-[var(--admin-border)] bg-white/[0.02] text-[var(--muted)]/50"
+                ? "border-emerald-400/30 bg-emerald-400/10 text-[var(--success)]"
+                : "border-[var(--admin-border)] bg-[var(--fill)] text-[var(--muted)]/50"
             }`}
           >
             {granted ? <CheckIcon size={12} /> : null}
@@ -279,7 +279,7 @@ export function StaffAdminView({ initialStaff }: Props) {
           {/* Desktop / laptop: dense data table with at-a-glance permission matrix */}
           <div className="admin-card mt-4 hidden overflow-hidden lg:block">
             <table className="w-full table-fixed border-collapse text-sm">
-              <thead className="bg-white/[0.02] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <thead className="bg-[var(--fill)] text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="w-[26%] px-4 py-3 text-start">{a.staff.colEmployee}</th>
                   {PERMISSION_CATALOG.map((perm) => (
@@ -301,7 +301,7 @@ export function StaffAdminView({ initialStaff }: Props) {
               </thead>
               <tbody className="divide-y divide-[var(--admin-border)]">
                 {staff.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-white/[0.02]">
+                  <tr key={row.id} className="transition-colors hover:bg-[var(--fill)]">
                     <td className="px-4 py-3 align-middle">
                       <p className="truncate font-semibold text-[var(--foreground)]">
                         {row.displayName || row.email || a.staff.unnamed}
@@ -320,8 +320,8 @@ export function StaffAdminView({ initialStaff }: Props) {
                             aria-label={`${perm.labelAr}: ${granted ? a.staff.permissionGranted : a.staff.permissionDenied}`}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${
                               granted
-                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                                : "border-[var(--admin-border)] bg-white/[0.01] text-[var(--muted)]/40"
+                                ? "border-emerald-400/30 bg-emerald-400/10 text-[var(--success)]"
+                                : "border-[var(--admin-border)] bg-[var(--fill)] text-[var(--muted)]/40"
                             }`}
                           >
                             {granted ? <CheckIcon size={14} /> : <span className="text-xs">—</span>}
@@ -339,7 +339,7 @@ export function StaffAdminView({ initialStaff }: Props) {
                         <button
                           type="button"
                           onClick={() => openEdit(row)}
-                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-white/[0.06]"
+                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--fill-strong)]"
                         >
                           {a.staff.edit}
                         </button>
@@ -347,7 +347,7 @@ export function StaffAdminView({ initialStaff }: Props) {
                           type="button"
                           disabled={pending}
                           onClick={() => onToggleSuspend(row)}
-                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-60"
+                          className="rounded-lg border border-[var(--admin-border-strong)] px-3 py-1.5 text-xs font-semibold transition hover:bg-[var(--fill-strong)] disabled:opacity-60"
                         >
                           {row.isActive ? a.staff.suspend : a.staff.reactivate}
                         </button>
@@ -370,8 +370,8 @@ export function StaffAdminView({ initialStaff }: Props) {
                   <span
                     className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                       row.isActive
-                        ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-                        : "border border-red-400/30 bg-red-400/10 text-red-300"
+                        ? "border border-emerald-400/30 bg-emerald-400/10 text-[var(--success)]"
+                        : "border border-red-400/30 bg-red-400/10 text-[var(--danger)]"
                     }`}
                   >
                     {row.isActive ? a.staff.active : a.staff.suspended}
@@ -429,7 +429,7 @@ export function StaffAdminView({ initialStaff }: Props) {
           <button
             type="button"
             aria-label={a.staff.closeForm}
-            className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-[2px]"
             onClick={closeForm}
           />
           <div

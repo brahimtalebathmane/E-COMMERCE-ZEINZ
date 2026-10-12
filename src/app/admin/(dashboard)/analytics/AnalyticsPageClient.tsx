@@ -186,8 +186,8 @@ export function AnalyticsPageClient({
               key={item.key}
               className={
                 item.tone === "red"
-                  ? "rounded-xl border border-red-400/30 bg-red-400/5 px-4 py-3 text-xs font-semibold text-red-300"
-                  : "rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-xs text-amber-300"
+                  ? "rounded-xl border border-red-400/30 bg-red-400/5 px-4 py-3 text-xs font-semibold text-[var(--danger)]"
+                  : "rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-xs text-[var(--warning)]"
               }
             >
               {item.text}

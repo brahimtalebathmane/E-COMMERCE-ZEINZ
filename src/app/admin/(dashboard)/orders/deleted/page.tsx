@@ -54,7 +54,7 @@ export default async function DeletedOrdersPage({ searchParams }: Props) {
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.deletedOrders.title}</h1>
-        <p className="mt-4 text-sm text-red-400">{a.deletedOrders.forbidden}</p>
+        <p className="mt-4 text-sm text-[var(--danger)]">{a.deletedOrders.forbidden}</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export default async function DeletedOrdersPage({ searchParams }: Props) {
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.deletedOrders.title}</h1>
-        <p className="mt-4 text-sm text-red-400">
+        <p className="mt-4 text-sm text-[var(--danger)]">
           {a.deletedOrders.loadError} {error.message}
         </p>
       </div>
@@ -138,7 +138,7 @@ export default async function DeletedOrdersPage({ searchParams }: Props) {
         </Link>
       </p>
       {outsideScopeCount > 0 ? (
-        <p className="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
+        <p className="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-xs text-[var(--warning)]">
           {a.deletedOrders.outsideScope.replace("{count}", String(outsideScopeCount))}{" "}
           <Link
             href="/admin/orders/deleted?allCountries=1"

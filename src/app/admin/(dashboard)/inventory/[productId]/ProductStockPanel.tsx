@@ -183,7 +183,7 @@ export function ProductStockPanel({
                     {m.isCorrection ? ` · ${a.inventory.correction}` : ""}
                   </AdminTd>
                   <AdminTd align="end" mono>
-                    <span className={m.quantity < 0 ? "text-red-400" : "text-emerald-400"} dir="ltr">
+                    <span className={m.quantity < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"} dir="ltr">
                       {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                     </span>
                   </AdminTd>

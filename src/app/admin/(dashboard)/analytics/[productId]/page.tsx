@@ -29,7 +29,7 @@ export default async function ProductAnalyticsPage({
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.analytics.title}</h1>
-        <p className="mt-4 text-sm text-red-600">
+        <p className="mt-4 text-sm text-[var(--danger)]">
           {a.orders.loadError} {result.error}
         </p>
       </div>
@@ -50,7 +50,7 @@ export default async function ProductAnalyticsPage({
             {a.analytics.backToAnalytics}
           </Link>
         </p>
-        <p className="mt-4 text-sm text-red-600">{a.analytics.productNotFound}</p>
+        <p className="mt-4 text-sm text-[var(--danger)]">{a.analytics.productNotFound}</p>
       </div>
     );
   }

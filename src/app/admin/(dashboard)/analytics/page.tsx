@@ -33,7 +33,7 @@ export default async function AdminAnalyticsPage({
     return (
       <div>
         <h1 className="text-2xl font-semibold">{a.analytics.title}</h1>
-        <p className="mt-4 text-sm text-red-600">
+        <p className="mt-4 text-sm text-[var(--danger)]">
           {a.orders.loadError} {result.error}
         </p>
       </div>

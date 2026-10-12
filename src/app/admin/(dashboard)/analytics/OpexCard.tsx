@@ -34,7 +34,7 @@ export function OpexCard({ opex, period, orderNetProfit }: { opex: OpexData; per
     <section className="admin-card p-4 sm:p-5">
       <h2 className="text-base font-semibold text-[var(--foreground)]">{t.title}</h2>
       <p className="mt-1 text-xs text-[var(--muted)]">{t.hint.replace("{date}", opex.goLiveOn)}</p>
-      {note ? <p className="mt-2 text-xs text-amber-300">{note}</p> : null}
+      {note ? <p className="mt-2 text-xs text-[var(--warning)]">{note}</p> : null}
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-[var(--admin-border)] px-4 py-3">
@@ -45,13 +45,13 @@ export function OpexCard({ opex, period, orderNetProfit }: { opex: OpexData; per
         </div>
         <div className="rounded-xl border border-[var(--admin-border)] px-4 py-3">
           <dt className="text-xs text-[var(--muted)]">{t.opexTotal}</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums text-red-400" dir="ltr">
+          <dd className="mt-1 text-lg font-bold tabular-nums text-[var(--danger)]" dir="ltr">
             {formatMoney(-summary.total, "MRU")}
           </dd>
         </div>
         <div className="rounded-xl border border-[var(--accent)] px-4 py-3">
           <dt className="text-xs text-[var(--muted)]">{t.netAfterOpex}</dt>
-          <dd className={`mt-1 text-lg font-bold tabular-nums ${net < 0 ? "text-red-400" : "text-emerald-400"}`} dir="ltr">
+          <dd className={`mt-1 text-lg font-bold tabular-nums ${net < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}`} dir="ltr">
             {formatMoney(net, "MRU")}
           </dd>
         </div>

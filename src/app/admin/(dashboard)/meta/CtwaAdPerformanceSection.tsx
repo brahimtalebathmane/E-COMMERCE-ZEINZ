@@ -64,7 +64,7 @@ export function CtwaAdPerformanceSection({ report }: Props) {
       </div>
 
       {report.truncated ? (
-        <p className="mt-3 text-xs text-amber-500">{a.meta.ctwaTruncated}</p>
+        <p className="mt-3 text-xs text-[var(--warning)]">{a.meta.ctwaTruncated}</p>
       ) : null}
 
       {report.rows.length === 0 ? (

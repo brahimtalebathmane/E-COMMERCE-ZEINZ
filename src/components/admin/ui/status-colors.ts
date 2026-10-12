@@ -11,37 +11,39 @@ export type StatusHue =
   | "slate"
   | "neutral";
 
+// Token-driven so badges read correctly in light and dark mode (globals.css, --hue-*).
+// Class names are written out in full: Tailwind only generates classes it can see.
 export const STATUS_HUE_CLASSES: Record<
   StatusHue,
   { dot: string; pill: string }
 > = {
   amber: {
-    dot: "bg-amber-400",
-    pill: "border-amber-400/35 bg-amber-400/12 text-amber-200",
+    dot: "bg-[var(--hue-amber-dot)]",
+    pill: "border-transparent bg-[var(--hue-amber-bg)] text-[var(--hue-amber-fg)]",
   },
   emerald: {
-    dot: "bg-emerald-400",
-    pill: "border-emerald-400/35 bg-emerald-400/12 text-emerald-200",
+    dot: "bg-[var(--hue-emerald-dot)]",
+    pill: "border-transparent bg-[var(--hue-emerald-bg)] text-[var(--hue-emerald-fg)]",
   },
   sky: {
-    dot: "bg-sky-400",
-    pill: "border-sky-400/35 bg-sky-400/12 text-sky-200",
+    dot: "bg-[var(--hue-sky-dot)]",
+    pill: "border-transparent bg-[var(--hue-sky-bg)] text-[var(--hue-sky-fg)]",
   },
   red: {
-    dot: "bg-red-400",
-    pill: "border-red-400/35 bg-red-400/12 text-red-200",
+    dot: "bg-[var(--hue-red-dot)]",
+    pill: "border-transparent bg-[var(--hue-red-bg)] text-[var(--hue-red-fg)]",
   },
   violet: {
-    dot: "bg-violet-400",
-    pill: "border-violet-400/35 bg-violet-400/12 text-violet-200",
+    dot: "bg-[var(--hue-violet-dot)]",
+    pill: "border-transparent bg-[var(--hue-violet-bg)] text-[var(--hue-violet-fg)]",
   },
   slate: {
-    dot: "bg-slate-400",
-    pill: "border-slate-400/35 bg-slate-400/12 text-slate-200",
+    dot: "bg-[var(--hue-slate-dot)]",
+    pill: "border-transparent bg-[var(--hue-slate-bg)] text-[var(--hue-slate-fg)]",
   },
   neutral: {
     dot: "bg-[var(--muted)]",
-    pill: "border-[var(--admin-border-strong)] bg-white/[0.05] text-[var(--foreground)]",
+    pill: "border-transparent bg-[var(--fill)] text-[var(--foreground)]",
   },
 };
 
@@ -50,15 +52,15 @@ export function orderStatusHue(status: OrderStatus): StatusHue {
     case "pending":
       return "amber";
     case "confirmed":
-      return "emerald";
-    case "shipped":
       return "sky";
+    case "shipped":
+      return "emerald";
     case "cancelled":
-      return "red";
-    case "requires_human_intervention":
-      return "violet";
-    case "internal_return":
       return "slate";
+    case "requires_human_intervention":
+      return "red";
+    case "internal_return":
+      return "violet";
     default:
       return "neutral";
   }

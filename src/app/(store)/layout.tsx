@@ -1,7 +1,27 @@
 import dynamic from "next/dynamic";
+import { Geist, Tajawal } from "next/font/google";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { StoreLayoutHeader } from "@/components/store/StoreLayoutHeader";
 import { StorefrontSerwistCleanup } from "@/components/store/StorefrontSerwistCleanup";
+
+// Web fonts belong to the storefront only: the admin uses the phone's system
+// font (SF Arabic on iPhone) and must not download these files.
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+});
+
+const tajawal = Tajawal({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "700", "800"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+});
 
 const StoreToaster = dynamic(() =>
   import("@/components/StoreToaster").then((m) => ({
@@ -28,7 +48,9 @@ export default function StoreLayout({
   return (
     <LanguageProvider>
       <StorefrontSerwistCleanup />
-      <div className="storefront-light flex min-h-screen min-w-0 flex-col overflow-x-clip">
+      <div
+        className={`${tajawal.variable} ${geistSans.variable} storefront-light flex min-h-screen min-w-0 flex-col overflow-x-clip font-sans`}
+      >
         <StoreLayoutHeader />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         <StoreToaster />

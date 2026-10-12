@@ -18,7 +18,7 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
 
 function money(value: number) {
   return (
-    <span className={`tabular-nums ${value < 0 ? "text-red-400" : ""}`} dir="ltr">
+    <span className={`tabular-nums ${value < 0 ? "text-[var(--danger)]" : ""}`} dir="ltr">
       {formatMoney(value, "MRU")}
     </span>
   );
@@ -235,9 +235,9 @@ function Report({ report, period }: { report: ReconciliationReport; period: Peri
 
       <AdminCard title={r.flagsTitle}>
         {flagItems.length === 0 ? (
-          <p className="text-sm text-emerald-400">{r.noFlags}</p>
+          <p className="text-sm text-[var(--success)]">{r.noFlags}</p>
         ) : (
-          <ul className="space-y-2 text-sm text-amber-300">
+          <ul className="space-y-2 text-sm text-[var(--warning)]">
             {flagItems.map((f) => (
               <li key={f}>⚠ {f}</li>
             ))}

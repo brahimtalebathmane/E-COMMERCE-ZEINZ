@@ -81,7 +81,7 @@ function RunOutcome({ result }: { result: DatasetResendActionResult }) {
         </p>
       )}
       {o.stoppedReason && (
-        <p className="text-amber-500">
+        <p className="text-[var(--warning)]">
           {a.meta.gapStopped} {a.meta.gapStopReasons[o.stoppedReason]}
         </p>
       )}
@@ -152,7 +152,7 @@ export function DatasetGapSection({ status }: { status: DatasetGapStatus }) {
         }`}
       >
         <p className="text-sm text-[var(--admin-muted)]">{a.meta.gapEligible}</p>
-        <p className={`mt-1 text-4xl font-bold ${healthy ? "text-emerald-400" : "text-red-400"}`}>
+        <p className={`mt-1 text-4xl font-bold ${healthy ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
           {formatCount(status.eligible)}
         </p>
         <p className="mt-2 text-sm">{healthy ? a.meta.gapHealthy : a.meta.gapUnhealthy}</p>
@@ -221,7 +221,7 @@ export function SignalCoverageSection({ coverage }: { coverage: WhatsAppSignalCo
         <CoverageRow window={coverage.last30} />
         <CoverageRow window={coverage.last7} />
       </div>
-      {coverage.truncated && <p className="mt-3 text-xs text-amber-500">{a.meta.coverageTruncated}</p>}
+      {coverage.truncated && <p className="mt-3 text-xs text-[var(--warning)]">{a.meta.coverageTruncated}</p>}
     </AdminCard>
   );
 }

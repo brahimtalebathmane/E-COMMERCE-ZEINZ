@@ -64,7 +64,7 @@ export function TreasuryDashboard({
                     ) : null}
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className={`font-bold tabular-nums ${acc.balance < 0 ? "text-red-400" : ""}`} dir="ltr">
+                    <span className={`font-bold tabular-nums ${acc.balance < 0 ? "text-[var(--danger)]" : ""}`} dir="ltr">
                       {formatMoney(acc.balance, "MRU")}
                     </span>
                     {canManage && acc.isActive ? (
@@ -107,7 +107,7 @@ export function TreasuryDashboard({
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="font-bold tabular-nums text-amber-300" dir="ltr">
+                    <span className="font-bold tabular-nums text-[var(--warning)]" dir="ltr">
                       {formatMoney(h.cashHeld, "MRU")}
                     </span>
                     {h.partyId ? (
@@ -284,7 +284,7 @@ function QuickAddForm({
             className="block w-full text-xs"
           />
           {uploading ? <span className="text-xs text-[var(--muted)]">{a.treasury.receiptUploading}</span> : null}
-          {receiptPath ? <span className="text-xs text-emerald-400">✓</span> : null}
+          {receiptPath ? <span className="text-xs text-[var(--success)]">✓</span> : null}
         </label>
       </div>
       <div className="mt-4 flex justify-end">
@@ -298,7 +298,7 @@ function QuickAddForm({
 
 function DialogShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4" role="dialog" aria-modal="true">
       <div className="admin-card w-full max-w-md space-y-3 p-5">
         <h2 className="text-base font-semibold">{title}</h2>
         {children}
@@ -348,7 +348,7 @@ function CashCountDialog({ account, onClose }: { account: TreasuryAccount; onClo
         onChange={(e) => setCounted(e.target.value)}
       />
       {diff != null ? (
-        <p className={`text-sm font-semibold ${diff === 0 ? "text-emerald-400" : "text-amber-400"}`}>
+        <p className={`text-sm font-semibold ${diff === 0 ? "text-[var(--success)]" : "text-[var(--warning)]"}`}>
           {a.treasury.difference}: <span dir="ltr">{formatMoney(diff, "MRU")}</span>
         </p>
       ) : null}

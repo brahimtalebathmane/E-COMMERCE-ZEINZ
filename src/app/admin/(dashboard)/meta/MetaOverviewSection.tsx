@@ -97,7 +97,7 @@ export function MetaOverviewSection({ overview }: Props) {
         </AdminButton>
         {healthStatus.ok != null ? (
           <span
-            className={`text-sm font-medium ${healthStatus.ok ? "text-emerald-300" : "text-red-300"}`}
+            className={`text-sm font-medium ${healthStatus.ok ? "text-[var(--success)]" : "text-[var(--danger)]"}`}
           >
             {healthStatus.message}
           </span>

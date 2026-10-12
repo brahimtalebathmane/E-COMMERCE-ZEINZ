@@ -28,6 +28,9 @@ export const adminAr = {
     more: "المزيد",
     moreNav: "المزيد من الخيارات",
     countryScope: "الدولة المعروضة",
+    saleTab: "بيع واتساب",
+    account: "الحساب",
+    pages: "الصفحات",
   },
   common: {
     loading: "جاري التحميل…",
