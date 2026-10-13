@@ -31,10 +31,14 @@ export function InventoryView({
   rows,
   goLiveAt,
   purchases,
+  isOwner = false,
+  showDeletedPurchases = false,
 }: {
   rows: StockRow[];
   goLiveAt: string | null;
   purchases: PurchaseRow[];
+  isOwner?: boolean;
+  showDeletedPurchases?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const lowCount = rows.filter((r) => r.level === "low").length;
@@ -161,7 +165,19 @@ export function InventoryView({
       <p className="text-xs text-[var(--muted)]">{a.inventory.reservedHint}</p>
 
       {goLiveAt ? (
-        <AdminCard title={a.inventory.recentPurchases}>
+        <AdminCard
+          title={showDeletedPurchases ? `${a.inventory.recentPurchases} · ${a.owner.deletedBadge}` : a.inventory.recentPurchases}
+          action={
+            isOwner ? (
+              <Link
+                href={showDeletedPurchases ? "/admin/inventory" : "/admin/inventory?purchases=deleted"}
+                className="inline-flex min-h-[44px] items-center text-[15px] font-semibold text-[var(--accent)]"
+              >
+                {showDeletedPurchases ? a.owner.hideDeleted : a.owner.showDeleted}
+              </Link>
+            ) : undefined
+          }
+        >
           {purchases.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">{a.inventory.noPurchases}</p>
           ) : (
@@ -188,6 +204,14 @@ export function InventoryView({
                     <p className="mt-1 text-xs text-[var(--muted)]">
                       {a.inventory.extraCosts}: <span dir="ltr">{formatMoney(p.extraCosts, "MRU")}</span>
                     </p>
+                  ) : null}
+                  {isOwner ? (
+                    <Link
+                      href={`/admin/inventory/restock/${p.id}`}
+                      className="mt-1 inline-flex min-h-[44px] items-center text-[15px] font-semibold text-[var(--accent)]"
+                    >
+                      {p.deletedAt ? a.owner.restore : a.owner.editRestock}
+                    </Link>
                   ) : null}
                 </li>
               ))}

@@ -35,8 +35,13 @@ export type MovementRow = {
   isCorrection: boolean;
   createdAt: string;
   createdByName: string | null;
-  /** Stock on hand right after this movement (ledger order). */
+  /** Stock on hand right after this movement (ledger order; deleted rows do not count). */
   balanceAfter: number;
+  /** Edited or deleted by hand by the owner. */
+  ownerEdited: boolean;
+  deletedAt: string | null;
+  /** The linked order is "manually edited": its stock no longer follows the order. */
+  orderStockManual: boolean;
 };
 
 export type PurchaseRow = {
@@ -46,7 +51,10 @@ export type PurchaseRow = {
   extraCosts: number;
   note: string | null;
   createdAt: string;
-  lines: { productId: string; productName: string; quantity: number; unitCost: number; landedUnitCost: number }[];
+  deletedAt: string | null;
+  /** Linked treasury expense, when it was paid from the treasury. */
+  treasuryTransactionId: string | null;
+  lines: { id: string; productId: string; productName: string; quantity: number; unitCost: number; landedUnitCost: number }[];
 };
 
 /** Inventory go-live moment for the country, or null before the opening count. */
@@ -129,11 +137,13 @@ export async function loadProductMovements(
     is_correction: boolean;
     created_at: string;
     created_by: string | null;
+    owner_edited: boolean;
+    deleted_at: string | null;
   }>(
     () =>
       service
         .from("inventory_movements")
-        .select("id, type, quantity, unit_cost, reason, order_id, is_correction, created_at, created_by")
+        .select("id, type, quantity, unit_cost, reason, order_id, is_correction, created_at, created_by, owner_edited, deleted_at")
         .eq("country_id", countryId)
         .eq("product_id", productId) as never,
     ["created_at", "id"],
@@ -149,9 +159,20 @@ export async function loadProductMovements(
     }
   }
 
+  const orderIds = [...new Set(rows.map((r) => r.order_id).filter((v): v is string => Boolean(v)))];
+  const manualOrders = new Set<string>();
+  for (let i = 0; i < orderIds.length; i += 150) {
+    const { data } = await service
+      .from("orders")
+      .select("id")
+      .in("id", orderIds.slice(i, i + 150))
+      .eq("stock_manual", true);
+    for (const o of data ?? []) manualOrders.add(String(o.id));
+  }
+
   let balance = 0;
   return rows.map((r) => {
-    balance += Number(r.quantity) || 0;
+    if (!r.deleted_at) balance += Number(r.quantity) || 0;
     return {
       id: String(r.id),
       type: r.type,
@@ -163,6 +184,9 @@ export async function loadProductMovements(
       createdAt: String(r.created_at),
       createdByName: r.created_by ? names.get(r.created_by) ?? null : null,
       balanceAfter: balance,
+      ownerEdited: Boolean(r.owner_edited),
+      deletedAt: r.deleted_at,
+      orderStockManual: r.order_id ? manualOrders.has(r.order_id) : false,
     };
   });
 }
@@ -172,11 +196,15 @@ export async function loadRecentPurchases(
   service: SupabaseClient,
   countryId: string,
   limit = 20,
+  opts: { showDeleted?: boolean; purchaseId?: string } = {},
 ): Promise<PurchaseRow[]> {
-  const { data: purchases, error } = await service
+  let query = service
     .from("stock_purchases")
-    .select("id, supplier, purchased_on, extra_costs, note, created_at")
-    .eq("country_id", countryId)
+    .select("id, supplier, purchased_on, extra_costs, note, created_at, deleted_at, treasury_transaction_id")
+    .eq("country_id", countryId);
+  if (opts.purchaseId) query = query.eq("id", opts.purchaseId);
+  else query = opts.showDeleted ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
+  const { data: purchases, error } = await query
     .order("purchased_on", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -186,16 +214,21 @@ export async function loadRecentPurchases(
 
   const { data: lines, error: linesErr } = await service
     .from("stock_purchase_lines")
-    .select("purchase_id, product_id, quantity, unit_cost, landed_unit_cost, products(name_ar)")
-    .in("purchase_id", ids);
+    .select("id, purchase_id, product_id, quantity, unit_cost, landed_unit_cost, deleted_at, products(name_ar)")
+    .in("purchase_id", ids)
+    .order("id");
   if (linesErr) throw new Error(linesErr.message);
 
   const byPurchase = new Map<string, PurchaseRow["lines"]>();
   for (const l of lines ?? []) {
     const product = l.products as { name_ar?: string } | { name_ar?: string }[] | null;
     const productName = (Array.isArray(product) ? product[0]?.name_ar : product?.name_ar) ?? "—";
+    // A deleted purchase shows the lines it had; a live one only its live lines.
+    const parent = (purchases ?? []).find((p) => String(p.id) === String(l.purchase_id));
+    if (l.deleted_at && (!parent?.deleted_at || l.deleted_at !== parent.deleted_at)) continue;
     const list = byPurchase.get(String(l.purchase_id)) ?? [];
     list.push({
+      id: String(l.id),
       productId: String(l.product_id),
       productName,
       quantity: Number(l.quantity),
@@ -212,6 +245,8 @@ export async function loadRecentPurchases(
     extraCosts: Number(p.extra_costs) || 0,
     note: (p.note as string | null) ?? null,
     createdAt: String(p.created_at),
+    deletedAt: (p.deleted_at as string | null) ?? null,
+    treasuryTransactionId: (p.treasury_transaction_id as string | null) ?? null,
     lines: byPurchase.get(String(p.id)) ?? [],
   }));
 }

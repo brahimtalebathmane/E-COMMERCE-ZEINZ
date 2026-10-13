@@ -10,7 +10,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getInventoryGoLive } from "@/lib/inventory/data";
 
 export type InventoryPageContext =
-  | { ok: true; countryId: string; service: SupabaseClient; goLiveAt: string | null }
+  | { ok: true; countryId: string; service: SupabaseClient; goLiveAt: string | null; isOwner: boolean }
   | { ok: false; reason: "not_local" };
 
 /**
@@ -19,8 +19,9 @@ export type InventoryPageContext =
  * Arabia or Kuwait shows a notice instead of an empty inventory.
  */
 export async function getInventoryPageContext(): Promise<InventoryPageContext> {
+  let isOwner = false;
   try {
-    await assertPermission(PERMISSIONS.manage_inventory);
+    isOwner = (await assertPermission(PERMISSIONS.manage_inventory)).access.isOwner;
   } catch {
     redirect("/admin?error=forbidden");
   }
@@ -30,5 +31,5 @@ export async function getInventoryPageContext(): Promise<InventoryPageContext> {
   }
   const service = createServiceClient();
   const goLiveAt = await getInventoryGoLive(service, selectedCountry.id);
-  return { ok: true, countryId: selectedCountry.id, service, goLiveAt };
+  return { ok: true, countryId: selectedCountry.id, service, goLiveAt, isOwner };
 }

@@ -6,8 +6,8 @@ import { InventoryView } from "./InventoryView";
 
 export const dynamic = "force-dynamic";
 
-export default async function InventoryPage() {
-  const ctx = await getInventoryPageContext();
+export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ purchases?: string }> }) {
+  const [ctx, { purchases: purchasesParam }] = await Promise.all([getInventoryPageContext(), searchParams]);
   if (!ctx.ok) {
     return (
       <div className="space-y-4">
@@ -17,10 +17,13 @@ export default async function InventoryPage() {
     );
   }
 
+  const showDeleted = ctx.isOwner && purchasesParam === "deleted";
   const [rows, purchases] = await Promise.all([
     loadStockRows(ctx.service, ctx.countryId),
-    loadRecentPurchases(ctx.service, ctx.countryId, 5),
+    loadRecentPurchases(ctx.service, ctx.countryId, showDeleted ? 50 : 5, { showDeleted }),
   ]);
 
-  return <InventoryView rows={rows} goLiveAt={ctx.goLiveAt} purchases={purchases} />;
+  return (
+    <InventoryView rows={rows} goLiveAt={ctx.goLiveAt} purchases={purchases} isOwner={ctx.isOwner} showDeletedPurchases={showDeleted} />
+  );
 }

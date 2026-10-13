@@ -18,18 +18,23 @@ import {
 } from "@/components/admin/ui";
 import type { TreasuryTransaction } from "@/lib/treasury/data";
 import { reverseTransactionAction } from "./actions";
+import { OwnerTransactionEditor, type OwnerTreasuryOptions } from "./OwnerTransactionEditor";
 
 export function TransactionsTable({
   rows,
   canManage,
+  owner,
 }: {
   rows: TreasuryTransaction[];
   canManage: boolean;
+  /** Owner only: edit / delete / restore any row. */
+  owner?: OwnerTreasuryOptions;
 }) {
   const router = useRouter();
   const [reversing, setReversing] = useState<TreasuryTransaction | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<TreasuryTransaction | null>(null);
 
   async function confirmReverse() {
     if (!reversing || busy) return;
@@ -70,9 +75,9 @@ export function TransactionsTable({
           {rows.map((t) => {
             const kindLabel = a.treasury.kinds[t.kind];
             const reversible =
-              canManage && t.kind !== "reversal" && !t.isReversed && !t.settlementId && !t.stockPurchaseId;
+              !t.deletedAt && canManage && t.kind !== "reversal" && !t.isReversed && !t.settlementId && !t.stockPurchaseId;
             return (
-              <AdminTableRow key={t.id} className={t.isReversed ? "opacity-60" : ""}>
+              <AdminTableRow key={t.id} className={t.isReversed || t.deletedAt ? "opacity-60" : ""}>
                 <AdminTd className="whitespace-nowrap text-xs">{formatDateAr(t.occurredOn)}</AdminTd>
                 <AdminTd className="text-xs">{t.accountName}</AdminTd>
                 <AdminTd className="text-xs">
@@ -106,8 +111,19 @@ export function TransactionsTable({
                     </>
                   ) : null}
                   {t.isReversed ? <span className="text-[var(--warning)]"> · {a.treasury.reversed}</span> : null}
+                  {t.editedAt ? <span className="text-[var(--info)]"> · {a.owner.editedBadge}</span> : null}
+                  {t.deletedAt ? <span className="text-[var(--danger)]"> · {a.owner.deletedBadge}</span> : null}
                 </AdminTd>
                 <AdminTd align="end">
+                  {owner ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(t)}
+                      className="me-3 min-h-[44px] text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                    >
+                      {t.deletedAt ? a.owner.restore : a.owner.edit}
+                    </button>
+                  ) : null}
                   {reversible ? (
                     <button
                       type="button"
@@ -123,6 +139,10 @@ export function TransactionsTable({
           })}
         </AdminTableBody>
       </AdminTable>
+
+      {editing && owner ? (
+        <OwnerTransactionEditor key={editing.id} txn={editing} rows={rows} options={owner} onClose={() => setEditing(null)} />
+      ) : null}
 
       {reversing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4" role="dialog" aria-modal="true">

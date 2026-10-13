@@ -10,10 +10,12 @@ export const dynamic = "force-dynamic";
 
 export default async function InventoryProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ productId: string }>;
+  searchParams: Promise<{ deleted?: string }>;
 }) {
-  const { productId } = await params;
+  const [{ productId }, { deleted }] = await Promise.all([params, searchParams]);
   const ctx = await getInventoryPageContext();
   if (!ctx.ok) {
     return (
@@ -36,7 +38,13 @@ export default async function InventoryProductPage({
       <Link href="/admin/inventory" className="text-xs font-semibold text-[var(--accent)]">
         {a.inventory.backToInventory}
       </Link>
-      <ProductStockPanel row={row} movements={movements} live={Boolean(ctx.goLiveAt)} />
+      <ProductStockPanel
+        row={row}
+        movements={movements}
+        live={Boolean(ctx.goLiveAt)}
+        owner={ctx.isOwner ? { products: rows.map((r) => ({ id: r.productId, name: r.name })) } : undefined}
+        showDeleted={ctx.isOwner && deleted === "1"}
+      />
     </div>
   );
 }

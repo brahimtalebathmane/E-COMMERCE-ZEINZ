@@ -17,6 +17,8 @@ export type TreasuryPageContext =
       goLive: { goLiveOn: string; goLiveAt: string } | null;
       /** manage_treasury: may record, transfer, settle, reverse. view_treasury alone is read-only. */
       canManage: boolean;
+      /** Owner: may edit, delete and restore any record (migration 076). */
+      isOwner: boolean;
     }
   | { ok: false; reason: "not_local" };
 
@@ -40,5 +42,6 @@ export async function getTreasuryPageContext(): Promise<TreasuryPageContext> {
     service,
     goLive,
     canManage: hasPermission(session.access, PERMISSIONS.manage_treasury),
+    isOwner: session.access.isOwner,
   };
 }

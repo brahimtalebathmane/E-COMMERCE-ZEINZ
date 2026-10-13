@@ -73,7 +73,11 @@ export default async function TreasuryPage() {
           </AdminLinkButton>
         }
       >
-        <TransactionsTable rows={recent.rows} canManage={ctx.canManage} />
+        <TransactionsTable
+          rows={recent.rows}
+          canManage={ctx.canManage}
+          owner={ctx.isOwner ? { accounts, categories, parties } : undefined}
+        />
       </AdminCard>
     </div>
   );

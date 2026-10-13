@@ -22,16 +22,23 @@ import {
   KPI_ACCENT,
 } from "@/components/admin/ui";
 import type { MovementRow, StockRow } from "@/lib/inventory/data";
+import Link from "next/link";
 import { recordInventoryAdjustmentAction, setLowStockThresholdAction } from "../actions";
+import { OwnerMovementEditor, OwnerResetOrderSheet, OwnerSetStockSheet } from "./OwnerMovementEditor";
 
 export function ProductStockPanel({
   row,
   movements,
   live,
+  owner,
+  showDeleted = false,
 }: {
   row: StockRow;
   movements: MovementRow[];
   live: boolean;
+  /** Owner only: edit any movement, set the stock, reset manual orders. */
+  owner?: { products: { id: string; name: string }[] };
+  showDeleted?: boolean;
 }) {
   const router = useRouter();
   const [threshold, setThreshold] = useState(row.threshold == null ? "" : String(row.threshold));
@@ -40,6 +47,9 @@ export function ProductStockPanel({
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  const [editing, setEditing] = useState<MovementRow | null>(null);
+  const [settingStock, setSettingStock] = useState(false);
+  const [resetOrderId, setResetOrderId] = useState<string | null>(null);
 
   async function saveThreshold() {
     if (savingThreshold) return;
@@ -81,7 +91,7 @@ export function ProductStockPanel({
     }
   }
 
-  const newestFirst = [...movements].reverse();
+  const newestFirst = [...movements].reverse().filter((m) => (showDeleted ? Boolean(m.deletedAt) : !m.deletedAt));
 
   return (
     <div className="space-y-5">
@@ -118,6 +128,15 @@ export function ProductStockPanel({
             </AdminButton>
           </div>
         </AdminCard>
+
+        {owner && live ? (
+          <AdminCard title={a.owner.setStockTitle}>
+            <p className="text-xs text-[var(--muted)]">{a.owner.setStockHint}</p>
+            <div className="mt-3">
+              <AdminButton onClick={() => setSettingStock(true)}>{a.owner.setStockTitle}</AdminButton>
+            </div>
+          </AdminCard>
+        ) : null}
 
         {live ? (
           <AdminCard title={a.inventory.adjustTitle}>
@@ -159,7 +178,20 @@ export function ProductStockPanel({
         ) : null}
       </div>
 
-      <AdminCard title={a.inventory.historyTitle} noPadding>
+      <AdminCard
+        title={showDeleted ? `${a.inventory.historyTitle} · ${a.owner.deletedBadge}` : a.inventory.historyTitle}
+        noPadding
+        action={
+          owner ? (
+            <Link
+              href={showDeleted ? `/admin/inventory/${row.productId}` : `/admin/inventory/${row.productId}?deleted=1`}
+              className="inline-flex min-h-[44px] items-center text-[15px] font-semibold text-[var(--accent)]"
+            >
+              {showDeleted ? a.owner.hideDeleted : a.owner.showDeleted}
+            </Link>
+          ) : undefined
+        }
+      >
         {newestFirst.length === 0 ? (
           <p className="p-4 text-sm text-[var(--muted)]">{a.inventory.historyEmpty}</p>
         ) : (
@@ -172,6 +204,7 @@ export function ProductStockPanel({
                 <AdminTh align="end">{a.inventory.colBalance}</AdminTh>
                 <AdminTh>{a.inventory.colReason}</AdminTh>
                 <AdminTh>{a.inventory.colBy}</AdminTh>
+                {owner ? <AdminTh align="end">{a.treasury.colActions}</AdminTh> : null}
               </tr>
             </AdminTableHead>
             <AdminTableBody>
@@ -198,6 +231,12 @@ export function ProductStockPanel({
                     ) : null}
                     {m.orderId && m.reason ? " · " : null}
                     {m.reason}
+                    {m.ownerEdited ? <span className="text-[var(--info)]"> · {a.owner.editedBadge}</span> : null}
+                    {m.orderStockManual ? (
+                      <span className="ms-1 inline-flex items-center rounded-full bg-[var(--hue-violet-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--hue-violet-fg)]">
+                        {a.owner.editedBadge}
+                      </span>
+                    ) : null}
                     {m.unitCost != null && (m.type === "purchase" || m.type === "opening") ? (
                       <span className="text-[var(--muted)]" dir="ltr">
                         {" "}
@@ -206,12 +245,46 @@ export function ProductStockPanel({
                     ) : null}
                   </AdminTd>
                   <AdminTd className="text-xs text-[var(--muted)]">{m.createdByName ?? "—"}</AdminTd>
+                  {owner ? (
+                    <AdminTd align="end" className="whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(m)}
+                        className="min-h-[44px] text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                      >
+                        {m.deletedAt ? a.owner.restore : a.owner.edit}
+                      </button>
+                      {m.orderStockManual && m.orderId ? (
+                        <button
+                          type="button"
+                          onClick={() => setResetOrderId(m.orderId)}
+                          className="ms-3 min-h-[44px] text-xs font-semibold text-[var(--purple)] underline-offset-2 hover:underline"
+                        >
+                          {a.owner.resetManual}
+                        </button>
+                      ) : null}
+                    </AdminTd>
+                  ) : null}
                 </AdminTableRow>
               ))}
             </AdminTableBody>
           </AdminTable>
         )}
       </AdminCard>
+
+      {owner && editing ? (
+        <OwnerMovementEditor
+          key={editing.id}
+          movement={editing}
+          productId={row.productId}
+          products={owner.products}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
+      {owner && settingStock ? (
+        <OwnerSetStockSheet productId={row.productId} onHand={row.onHand} onClose={() => setSettingStock(false)} />
+      ) : null}
+      {owner && resetOrderId ? <OwnerResetOrderSheet orderId={resetOrderId} onClose={() => setResetOrderId(null)} /> : null}
     </div>
   );
 }

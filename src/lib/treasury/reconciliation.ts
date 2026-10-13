@@ -250,3 +250,29 @@ export function unlinkedSales(txns: RecTxn[], categories: RecCategory[], range: 
   }
   return { count, amount: round2(amount) };
 }
+
+export type SaleMismatch = { orderId: string; orderTotal: number; recorded: number; difference: number };
+
+/**
+ * Settled orders whose live Sales entries (after owner edits, reversals and
+ * deletes) no longer add up to the order total. Never blocked — reported so
+ * the owner sees the gap in the reconciliation.
+ */
+export function saleMismatches(
+  saleEntries: { orderId: string; amount: number }[],
+  orderTotals: Map<string, number>,
+): SaleMismatch[] {
+  const recorded = new Map<string, number>();
+  for (const e of saleEntries) recorded.set(e.orderId, (recorded.get(e.orderId) ?? 0) + (Number(e.amount) || 0));
+  const out: SaleMismatch[] = [];
+  for (const [orderId, amount] of recorded) {
+    const total = orderTotals.get(orderId);
+    if (total == null) continue;
+    const r = round2(amount);
+    // A fully reversed sale (returned order) nets to 0 on purpose.
+    if (r === 0) continue;
+    const difference = round2(r - total);
+    if (difference !== 0) out.push({ orderId, orderTotal: total, recorded: r, difference });
+  }
+  return out.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+}

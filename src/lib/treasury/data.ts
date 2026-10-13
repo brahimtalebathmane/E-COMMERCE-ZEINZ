@@ -82,6 +82,10 @@ export type TreasuryTransaction = {
   isReversed: boolean;
   stockPurchaseId: string | null;
   createdAt: string;
+  /** Soft-deleted by the owner (shown only with the "show deleted" filter). */
+  deletedAt: string | null;
+  /** Last owner edit, if any. */
+  editedAt: string | null;
 };
 
 export type TransactionFilters = {
@@ -90,6 +94,8 @@ export type TransactionFilters = {
   accountId?: string | null;
   categoryId?: string | null;
   partyId?: string | null;
+  /** Owner only: list soft-deleted rows instead of live ones. */
+  showDeleted?: boolean;
 };
 
 export type SettlementRow = {
@@ -299,9 +305,10 @@ export async function loadTransactions(
   let query = service
     .from("treasury_transactions")
     .select(
-      "id, account_id, amount, category_id, party_id, occurred_on, note, receipt_path, kind, order_id, order_role, settlement_id, transfer_group_id, reverses_id, stock_purchase_id, created_at, treasury_accounts(name), treasury_categories(name_ar), treasury_parties(name)",
+      "id, account_id, amount, category_id, party_id, occurred_on, note, receipt_path, kind, order_id, order_role, settlement_id, transfer_group_id, reverses_id, stock_purchase_id, created_at, deleted_at, edited_at, treasury_accounts(name), treasury_categories(name_ar), treasury_parties(name)",
     )
     .eq("country_id", countryId);
+  query = filters.showDeleted ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
   if (filters.from) query = query.gte("occurred_on", filters.from);
   if (filters.to) query = query.lte("occurred_on", filters.to);
   if (filters.accountId) query = query.eq("account_id", filters.accountId);
@@ -319,7 +326,11 @@ export async function loadTransactions(
   const ids = rows.map((t) => String(t.id));
   const reversed = new Set<string>();
   if (ids.length > 0) {
-    const { data: revs } = await service.from("treasury_transactions").select("reverses_id").in("reverses_id", ids);
+    const { data: revs } = await service
+      .from("treasury_transactions")
+      .select("reverses_id")
+      .in("reverses_id", ids)
+      .is("deleted_at", null);
     for (const r of revs ?? []) reversed.add(String(r.reverses_id));
   }
 
@@ -361,6 +372,8 @@ export async function loadTransactions(
       isReversed: reversed.has(String(t.id)),
       stockPurchaseId: (t.stock_purchase_id as string | null) ?? null,
       createdAt: String(t.created_at),
+      deletedAt: (t.deleted_at as string | null) ?? null,
+      editedAt: (t.edited_at as string | null) ?? null,
     })),
   };
 }

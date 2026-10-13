@@ -250,3 +250,12 @@ export function SaleIcon(props: IconProps) {
     </Base>
   );
 }
+
+export function AuditIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M8 3h8l4 4v14H4V3h4" />
+      <path d="M8 12h8M8 16h5M12 3v4h4" />
+    </Base>
+  );
+}

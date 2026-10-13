@@ -143,6 +143,13 @@ function Report({ report, period }: { report: ReconciliationReport; period: Peri
   if (flags.outsideTreasury.length > 0) {
     flagItems.push(r.flagOutside.replace("{count}", String(flags.outsideTreasury.length)));
   }
+  if (flags.saleMismatches.length > 0) {
+    flagItems.push(
+      r.flagSaleMismatch
+        .replace("{count}", String(flags.saleMismatches.length))
+        .replace("{amount}", formatMoney(flags.saleMismatches.reduce((s, m) => s + m.difference, 0), "MRU")),
+    );
+  }
   if (Math.abs(adsLine) >= 1) {
     flagItems.push(r.flagAdsGap.replace("{amount}", formatMoney(adsLine, "MRU")));
   }
@@ -243,6 +250,15 @@ function Report({ report, period }: { report: ReconciliationReport; period: Peri
             ))}
           </ul>
         )}
+        {flags.saleMismatches.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-xs" dir="ltr">
+            {flags.saleMismatches.slice(0, 50).map((m) => (
+              <li key={m.orderId}>
+                #{m.orderId.slice(0, 8)} · {m.productName} · {formatMoney(m.orderTotal, "MRU")} → {formatMoney(m.recorded, "MRU")}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {flags.missingDeliveryCost.length > 0 ? (
           <details className="mt-3 text-xs">
             <summary className="cursor-pointer text-[var(--muted)]">{r.showOrders}</summary>

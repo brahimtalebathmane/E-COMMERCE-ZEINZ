@@ -16,6 +16,7 @@ import {
   bucketCash,
   buildBridge,
   inRange,
+  saleMismatches,
   splitRevenue,
   summarizeOpex,
   unlinkedSales,
@@ -27,6 +28,7 @@ import {
   type RecCategory,
   type RecTxn,
   type RevenueSplit,
+  type SaleMismatch,
 } from "@/lib/treasury/reconciliation";
 
 export type { OpexData };
@@ -63,6 +65,7 @@ async function loadRecTxns(
       .from("treasury_transactions")
       .select("id, amount, category_id, occurred_on, order_id")
       .eq("country_id", countryId)
+      .is("deleted_at", null)
       .gte("occurred_on", opts.from);
     if (opts.to) q = q.lte("occurred_on", opts.to);
     if (opts.categoryIds) q = q.in("category_id", opts.categoryIds);
@@ -114,6 +117,8 @@ export type ReconciliationReport = {
     missingCostProducts: string[];
     productsWithoutCampaign: string[];
     outsideTreasury: FlaggedOrder[];
+    /** Settled orders whose Sales entries no longer equal the order total (owner edits). */
+    saleMismatches: (SaleMismatch & { productName: string })[];
   };
 };
 
@@ -244,7 +249,17 @@ export async function loadReconciliation(
   );
 
   const settledIds = new Set<string>();
+  const saleEntries: { orderId: string; amount: number }[] = [];
   for (const ids of chunks(revenueOrders.map((o) => o.id))) {
+    const sales = await service
+      .from("treasury_transactions")
+      .select("order_id, amount")
+      .eq("order_role", "sale")
+      .is("deleted_at", null)
+      .in("order_id", ids);
+    if (sales.error) throw new Error(sales.error.message);
+    for (const r of sales.data ?? []) saleEntries.push({ orderId: String(r.order_id), amount: Number(r.amount) || 0 });
+
     const { data, error } = await service
       .from("treasury_settlement_orders")
       .select("order_id")
@@ -302,6 +317,10 @@ export async function loadReconciliation(
         .map(nameOf)
         .sort(),
       outsideTreasury: revenueOrders.filter((o) => !settledIds.has(o.id) && !unsettledIds.has(o.id)).map(flagged),
+      saleMismatches: saleMismatches(
+        saleEntries,
+        new Map(revenueOrders.filter((o) => settledIds.has(o.id)).map((o) => [o.id, o.total_price])),
+      ).map((m) => ({ ...m, productName: nameOf(revenueOrders.find((o) => o.id === m.orderId)?.product_id ?? "") })),
     },
   };
 }

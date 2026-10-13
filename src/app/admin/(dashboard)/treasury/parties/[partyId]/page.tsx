@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { adminAr as a } from "@/locales/admin-ar";
 import { AdminCard, AdminPageHeader } from "@/components/admin/ui";
 import { formatMoney } from "@/lib/currency";
-import { loadParties, loadSettlements, loadTransactions, loadUnsettledOrders } from "@/lib/treasury/data";
+import { loadAccounts, loadCategories, loadParties, loadSettlements, loadTransactions, loadUnsettledOrders } from "@/lib/treasury/data";
 import { getTreasuryPageContext } from "../../context";
 import { TreasuryTabs } from "../../TreasuryTabs";
 import { TransactionsTable } from "../../TransactionsTable";
@@ -26,10 +26,12 @@ export default async function TreasuryPartyPage({ params }: { params: Promise<{ 
   if (!party) notFound();
 
   const isAgent = party.type === "delivery_agent";
-  const [transactions, settlements, unsettled] = await Promise.all([
+  const [transactions, settlements, unsettled, accounts, categories] = await Promise.all([
     loadTransactions(ctx.service, ctx.countryId, { partyId }),
     isAgent ? loadSettlements(ctx.service, ctx.countryId, partyId) : Promise.resolve([]),
     isAgent ? loadUnsettledOrders(ctx.service, ctx.countryId) : Promise.resolve([]),
+    ctx.isOwner ? loadAccounts(ctx.service, ctx.countryId) : Promise.resolve([]),
+    ctx.isOwner ? loadCategories(ctx.service, ctx.countryId) : Promise.resolve([]),
   ]);
   const owed = unsettled.filter((o) => o.deliveryAgentId === partyId && o.kind === "sale");
   const owedTotal = owed.reduce((s, o) => s + o.totalPrice, 0);
@@ -72,7 +74,11 @@ export default async function TreasuryPartyPage({ params }: { params: Promise<{ 
         {transactions.rows.length === 0 ? (
           <p className="p-4 text-sm text-[var(--muted)]">{a.treasury.statementEmpty}</p>
         ) : (
-          <TransactionsTable rows={transactions.rows} canManage={ctx.canManage} />
+          <TransactionsTable
+            rows={transactions.rows}
+            canManage={ctx.canManage}
+            owner={ctx.isOwner ? { accounts, categories, parties } : undefined}
+          />
         )}
       </AdminCard>
     </div>

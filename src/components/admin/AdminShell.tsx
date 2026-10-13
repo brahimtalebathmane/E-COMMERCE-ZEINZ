@@ -19,6 +19,7 @@ import {
 import {
   AnalyticsIcon,
   AssistantIcon,
+  AuditIcon,
   ChatIcon,
   ChevronIcon,
   CloseIcon,
@@ -228,6 +229,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (access.isOwner) {
       candidates.push({ href: "/admin/staff", label: a.nav.staff, icon: StaffIcon });
       candidates.push({ href: "/admin/countries", label: a.nav.countries, icon: GlobeIcon });
+      candidates.push({ href: "/admin/audit", label: a.owner.auditNav, icon: AuditIcon });
     }
     for (const item of candidates) {
       if (isActive(pathname, item)) {
@@ -342,6 +344,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Link href="/admin/countries" prefetch className="admin-nav-link" data-active={pathname.startsWith("/admin/countries")}>
               <GlobeIcon size={20} className="shrink-0" />
               <span className="truncate">{a.nav.countries}</span>
+            </Link>
+          ) : null}
+          {access.isOwner ? (
+            <Link href="/admin/audit" prefetch className="admin-nav-link" data-active={pathname.startsWith("/admin/audit")}>
+              <AuditIcon size={20} className="shrink-0" />
+              <span className="truncate">{a.owner.auditNav}</span>
             </Link>
           ) : null}
           <Link
@@ -472,6 +480,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   </Link>
                   <Link href="/admin/countries" prefetch className={ROW_CLASS} onClick={() => setMoreOpen(false)}>
                     <SheetRow icon={GlobeIcon} label={a.nav.countries} tint="bg-[var(--hue-sky-bg)] text-[var(--hue-sky-fg)]" active={pathname.startsWith("/admin/countries")} />
+                  </Link>
+                  <Link href="/admin/audit" prefetch className={ROW_CLASS} onClick={() => setMoreOpen(false)}>
+                    <SheetRow icon={AuditIcon} label={a.owner.auditNav} tint="bg-[var(--hue-amber-bg)] text-[var(--hue-amber-fg)]" active={pathname.startsWith("/admin/audit")} />
                   </Link>
                 </>
               ) : null}

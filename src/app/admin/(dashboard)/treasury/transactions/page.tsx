@@ -38,6 +38,8 @@ export default async function TreasuryTransactionsPage({
     accountId: pick(params.account, UUID_RE),
     categoryId: pick(params.category, UUID_RE),
     partyId: pick(params.party, UUID_RE),
+    // Owner only: soft-deleted rows, restorable from here.
+    showDeleted: ctx.isOwner && pick(params.deleted, /^1$/) === "1",
   };
 
   const [accounts, categories, parties, result] = await Promise.all([
@@ -96,6 +98,7 @@ export default async function TreasuryTransactionsPage({
               ))}
             </select>
           </label>
+          {filters.showDeleted ? <input type="hidden" name="deleted" value="1" /> : null}
           <div className="flex gap-2">
             <button type="submit" className="admin-btn-primary flex-1">
               {a.treasury.filters.apply}
@@ -109,7 +112,7 @@ export default async function TreasuryTransactionsPage({
 
       <AdminCard
         noPadding
-        title={a.treasury.nav.transactions}
+        title={filters.showDeleted ? `${a.treasury.nav.transactions} · ${a.owner.deletedBadge}` : a.treasury.nav.transactions}
         action={
           <span className={`text-sm font-bold tabular-nums ${sum < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}`} dir="ltr">
             {formatMoney(sum, "MRU")}
@@ -117,7 +120,21 @@ export default async function TreasuryTransactionsPage({
         }
       >
         {result.truncated ? <p className="px-4 pt-3 text-xs text-[var(--warning)]">{a.treasury.truncated}</p> : null}
-        <TransactionsTable rows={result.rows} canManage={ctx.canManage} />
+        {ctx.isOwner ? (
+          <div className="px-4 pt-3">
+            <Link
+              href={filters.showDeleted ? "/admin/treasury/transactions" : "/admin/treasury/transactions?deleted=1"}
+              className="inline-flex min-h-[44px] items-center text-[15px] font-semibold text-[var(--accent)]"
+            >
+              {filters.showDeleted ? a.owner.hideDeleted : a.owner.showDeleted}
+            </Link>
+          </div>
+        ) : null}
+        <TransactionsTable
+          rows={result.rows}
+          canManage={ctx.canManage}
+          owner={ctx.isOwner ? { accounts, categories, parties } : undefined}
+        />
       </AdminCard>
     </div>
   );
