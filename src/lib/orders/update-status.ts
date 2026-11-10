@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderStatus } from "@/types";
 import { assertValidOrderTransition } from "@/lib/order-state-machine";
 import { dispatchMetaEvent } from "@/lib/meta/dispatch";
+import { sendLeadSubmittedSafely } from "@/lib/meta/lead-submitted";
 
 /** Confirmation payload describing the Meta CAPI side effect for an order status change. */
 export type MetaSideEffect =
@@ -66,7 +67,7 @@ export async function updateOrderStatusWithEffects(
 ): Promise<OrderStatusChangeResult> {
   const { data: existing, error: fetchErr } = await supabase
     .from("orders")
-    .select("id, status, deleted_at")
+    .select("id, status, deleted_at, source, manual_sale_channel")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -125,6 +126,17 @@ export async function updateOrderStatusWithEffects(
     toStatus,
     unchanged: false,
   };
+
+  // LeadSubmitted owed but not sent yet — the click id was only captured after
+  // the sale was recorded, or the first attempt failed. Sent BEFORE the
+  // Purchase, and on the cancel path too: refused orders are exactly the ones
+  // this event exists to count. Never throws; a sale whose event already went
+  // out costs one ledger read.
+  const isWhatsAppSale =
+    existing.source === "manual" && existing.manual_sale_channel === "whatsapp";
+  if (isWhatsAppSale && (toStatus === "confirmed" || toStatus === "cancelled")) {
+    await sendLeadSubmittedSafely(supabase, orderId);
+  }
 
   try {
     if (toStatus === "confirmed") {

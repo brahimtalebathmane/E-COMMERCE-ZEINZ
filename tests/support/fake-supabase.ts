@@ -16,6 +16,7 @@ const INSERT_DEFAULTS: Record<string, () => Row> = {
 /** Composite unique keys, so a duplicate insert fails with 23505 like Postgres. */
 const UNIQUE_KEYS: Record<string, string[]> = {
   order_meta_dispatches: ["order_id", "event_type"],
+  meta_lead_submitted: ["ctwa_clid"],
 };
 
 function compare(a: unknown, b: unknown): number {

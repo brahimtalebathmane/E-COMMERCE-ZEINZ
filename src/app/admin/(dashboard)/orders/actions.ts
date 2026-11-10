@@ -13,6 +13,7 @@ import { sanitizePhoneForMetaE164 } from "@/lib/meta-user-data";
 import { dayKey } from "@/lib/analytics/daily-profit";
 import { isValidOrderDateKey, resolveOrderedAtIso } from "@/lib/orders/ordered-at";
 import { isCtwaClickAttributable } from "@/lib/meta/ctwa-window";
+import { sendLeadSubmittedSafely } from "@/lib/meta/lead-submitted";
 import { loadAvailableByProduct } from "@/lib/inventory/data";
 import type { OrderStatus } from "@/types";
 
@@ -765,6 +766,11 @@ export async function createWhatsAppSaleAction(
       totalPrice: Number(row.total_price),
       status: row.status as OrderStatus,
     }));
+
+    // The customer placed an order in the chat: one LeadSubmitted for the whole
+    // sale (all lines resolve to the first one), whatever its initial status,
+    // and before any Purchase below. Never throws.
+    await sendLeadSubmittedSafely(supabase, results[0].id);
 
     if (input.initialStatus === "confirmed") {
       const requestHeaders = await headers();

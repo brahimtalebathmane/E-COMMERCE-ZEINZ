@@ -33,7 +33,7 @@ export function MetaOverviewSection({ overview }: Props) {
   }>({ loading: false, ok: null, message: null });
 
   const dispatchEventTypes = useMemo(
-    () => ["lead", "purchase", "cancelled_lead", "initiate_checkout"],
+    () => ["lead", "purchase", "cancelled_lead", "initiate_checkout", "lead_submitted"],
     [],
   );
 

@@ -20,7 +20,10 @@ session must be able to continue from this file alone.
   push → post-deploy checks.
 - Inventory and treasury: Mauritania only (`hasLocalOperations`), owned products,
   MRU. Never touch SA/KW affiliate orders. All MR sales are manual WhatsApp sales.
-- No new Meta events; existing Meta behavior unchanged.
+- No new Meta events; existing Meta behavior unchanged. **One owner-approved
+  exception:** LeadSubmitted (WhatsApp dataset only, once per ad click, no value),
+  see "LeadSubmitted" below. Purchase (both legs), storefront Lead and
+  CancelledLead are unchanged.
 - Before asking for approval: `npx tsc --noEmit`, `npm run lint`, `npm test`,
   `npm run check:server-actions`, `npm run build`, PGlite migration checks.
 
@@ -42,6 +45,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
+| LeadSubmitted (WhatsApp funnel) | `lead-submitted` | done | 077 **pending owner approval** | — |
 | 5. Admin redesign (mobile-first) | `stage-5-redesign` | direction approved; push 1 (tokens, system font, 16px/44pt, tab bar, More sheet) pushed; next: push 2 orders list | none planned | — |
 
 ## Stage 1 — follow-ups
@@ -85,6 +89,24 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 - [x] Full-scenario test: tests/phase-d-scenario.test.mts (PGlite + real migrations) + tests/reconciliation.test.ts
 - [x] Approval → push → checks (no migrations in Phase D) — `7f6b61e`, Railway success
 - [x] Final summary + Arabic daily usage guide: docs/DAILY_GUIDE_AR.md
+
+## LeadSubmitted — WhatsApp funnel step (owner-approved exception to "no new Meta events")
+
+Why: Purchase fires on "confirmed", in practice after the phone confirmation
+call. The owner wants to see, per ad in Ads Manager, how many ad conversations
+placed an order, and so how many were lost on the call. Measurement only:
+campaigns keep optimizing on Purchase.
+
+- [x] Measured first (production, read-only, 2026-11-10): last 30 days, 425 WhatsApp sales; 425 confirmed within ~1 s of creation, 0 left pending first, 0 cancelled from pending, 337 with a click id. Refused customers never got an order row, so the event alone would have equalled Purchase. Owner chose the workflow change: record the order **pending** when the customer sends the area, confirm or cancel after the call. The sale form now defaults to pending.
+- [x] `src/lib/meta/lead-submitted.ts`: `LeadSubmitted` to the WABA dataset only (business_messaging, messaging_channel whatsapp, ctwa_clid + WABA id, WhatsApp token), no custom_data (no value, no currency), event_time = when the order was recorded. Name checked against Meta's "Conversions API for Business Messaging" docs (LeadSubmitted listed, Lead not listed; Meta does not deduplicate these events).
+- [x] Once per click id: ledger `meta_lead_submitted` (077), primary key ctwa_clid, compare-and-set claim token, abandoned claims taken over after 5 min, 60 s cooldown before a failed one is retried. Multi-line sale = one event, named after its first line.
+- [x] Sent when the sale is recorded (before any Purchase), and tried again on confirm AND cancel (late click id or earlier failure), before the Purchase / CancelledLead. The cancel path never writes the click id onto the order. The click must be within 7 days before the order and at most 30 min after it.
+- [x] Never throws into a sale (`sendLeadSubmittedSafely`). Failures: `lead_submitted` rows in meta_event_log (push alert like other failures), the ledger's last_error, a card with a retry button on /admin/meta. Stuck-event checks untouched (they only read order flags).
+- [x] Switch `META_WHATSAPP_LEAD_SUBMITTED` (on by default, only "off" disables), in .env.example. Scope: manual WhatsApp sales in local-operations countries (MR) only.
+- [x] Tests: tests/lead-submitted.test.ts (17, incl. a Purchase payload golden captured from main `9b309ee`), PGlite scenario lead-submitted-077.mjs (9), verify_migrations rows for 077.
+- [ ] Owner: "backup done, apply" → apply 077 → verify → merge + push.
+- [ ] After deploy: first real sale from an ad conversation → Meta response events_received, meta_event_log `lead_submitted` success, LeadSubmitted visible on the WhatsApp dataset in Events Manager.
+- [ ] Owner habit: record the sale pending, then confirm or cancel after the call.
 
 ## Stage 5 — Admin redesign: fast, smooth, mobile-first (Apple-level quality)
 
@@ -166,3 +188,4 @@ Motion and feel
 - 2026-10-12: owner approved the direction ("do what you think is best": tabs per spec, Home under More, darker green, light/dark follows phone). Push 1 committed; 075 (orders RLS init-plan) applied 13:41 UTC; push 1 merged and pushed. NEXT: push 2 — orders list (one layout per screen size, virtualized, filters in a bottom sheet, status sheet).
 - 2026-10-13: side task on branch `owner-edits` — owner can edit/soft-delete any treasury transaction (incl. automatic ones, transfers as a whole), stock movement (order-linked → order stock_manual, reset recomputes), restock (lines + linked expense), set stock directly; old → new confirmation; audit log (/admin/audit); reconciliation flags sale entries ≠ order total. Migration 076 pending owner approval (backup + "backup done, apply"). Stage 5 push 2 (orders list) resumes after.
 - 2026-10-13 13:22 UTC: 076 applied on production (owner said "apply"); verified: log table, 10 owner functions, 5 log triggers, no client execute, balances = ledger, stock = movements. owner-edits merged and pushed.
+- 2026-11-10: LeadSubmitted on branch `lead-submitted` (owner-approved exception to "no new Meta events"). Measurement: all 425 WhatsApp sales of the last 30 days were recorded already confirmed; owner chose "default pending". Checks: tsc, lint (no errors), npm test 102/102, check:server-actions, next build, test:migrations 107/107. Migration 077 pending "backup done, apply".

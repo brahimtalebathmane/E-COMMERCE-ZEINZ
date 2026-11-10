@@ -7,9 +7,11 @@ import {
   loadDatasetLastError,
   loadLastDatasetResendRun,
 } from "@/lib/meta/dataset-resend";
+import { loadLeadSubmittedSummary } from "@/lib/meta/lead-submitted";
 import { createServiceClient } from "@/lib/supabase/service";
 import { adminAr as a } from "@/locales/admin-ar";
 import { DatasetGapSection, SignalCoverageSection } from "./WhatsAppDatasetHealthSection";
+import { LeadSubmittedSection } from "./LeadSubmittedSection";
 import { fetchWhatsAppSignalCoverage } from "./queries";
 import type { DatasetGapStatus } from "./types";
 
@@ -51,6 +53,30 @@ export async function DatasetGapPanel() {
     return <DatasetGapSection status={status} />;
   } catch (error) {
     return <PanelError label={a.meta.gapLoadError} error={error} />;
+  }
+}
+
+/** LeadSubmitted: on/off, configured, sent in 7 days, unsent backlog and its last error. */
+export async function LeadSubmittedPanel() {
+  try {
+    await assertPermission(PERMISSIONS.view_meta_monitoring);
+    const summary = await loadLeadSubmittedSummary(createServiceClient());
+    const withError = summary.backlog.find((row) => row.lastError);
+    return (
+      <LeadSubmittedSection
+        status={{
+          enabled: summary.enabled,
+          configured: summary.configured,
+          sent7d: summary.sent7d,
+          backlogCount: summary.backlog.length,
+          lastError: withError
+            ? { message: withError.lastError ?? "", orderId: withError.orderId }
+            : null,
+        }}
+      />
+    );
+  } catch (error) {
+    return <PanelError label={a.meta.leadSubmittedLoadError} error={error} />;
   }
 }
 

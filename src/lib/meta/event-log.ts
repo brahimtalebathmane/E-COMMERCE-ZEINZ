@@ -13,7 +13,8 @@ export type MetaEventLogType =
   | "config_health"
   | "emq_check"
   | "pixel_load_failure"
-  | "dataset_resend";
+  | "dataset_resend"
+  | "lead_submitted";
 
 export type MetaEventLogState = "success" | "failed" | "skipped";
 

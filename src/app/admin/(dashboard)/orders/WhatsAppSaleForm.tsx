@@ -75,7 +75,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
   const [selectedPhone, setSelectedPhone] = useState("");
   const [lines, setLines] = useState<DraftLine[]>(() => [newLine()]);
   const [orderDate, setOrderDate] = useState(() => dayKey(new Date()));
-  const [initialStatus, setInitialStatus] = useState<"pending" | "confirmed">("confirmed");
+  const [initialStatus, setInitialStatus] = useState<"pending" | "confirmed">("pending");
   const [submitting, setSubmitting] = useState(false);
 
   // Conversation mode: a searchable list, not a plain <select>.
@@ -106,7 +106,7 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
     setSelectedPhone("");
     setLines([newLine()]);
     setOrderDate(dayKey(new Date()));
-    setInitialStatus("confirmed");
+    setInitialStatus("pending");
     setLoadError(false);
     setProducts(null);
     setPhoneMode("conversation");
@@ -654,8 +654,8 @@ export function WhatsAppSaleForm({ open, onClose }: Props) {
                 onChange={(e) => setInitialStatus(e.target.value as "pending" | "confirmed")}
                 className="admin-input mt-1.5"
               >
-                <option value="confirmed">{a.manualSale.statusConfirmed}</option>
                 <option value="pending">{a.manualSale.statusPending}</option>
+                <option value="confirmed">{a.manualSale.statusConfirmed}</option>
               </select>
             </div>
           </div>

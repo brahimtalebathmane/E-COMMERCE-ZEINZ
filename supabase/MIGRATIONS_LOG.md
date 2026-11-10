@@ -129,3 +129,4 @@ not known.
 | `074_treasury_functions.sql` | 2026-10-07, branch `phase-c` | applied — go-live, settle/void, quick add, transfer, reverse, cash count, stock purchase payment (service_role only) | 2026-10-07 21:55 UTC |
 | `075_orders_rls_initplan.sql` | 2026-10-12, branch `stage-5-redesign` | applied — orders policies wrapped in (select …) so auth checks run once per query (speed only, same rules) | 2026-10-12 13:41 UTC |
 | `076_owner_edits.sql` | 2026-10-13, branch `owner-edits` | applied — owner can edit / soft-delete any treasury transaction, stock movement and restock, set stock directly; deleted rows ignored everywhere; owner_edit_log by trigger; orders.stock_manual | 2026-10-13 13:22 UTC |
+| `077_meta_lead_submitted.sql` | 2026-11-10, branch `lead-submitted` | **pending** — LeadSubmitted ledger (one row per click id, primary key = once per click) + `lead_submitted` meta_event_log type. Additive; old code never touches it | |

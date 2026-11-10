@@ -24,6 +24,7 @@ const DISPATCH_EVENT_TYPES = [
   "config_health",
   "emq_check",
   "pixel_load_failure",
+  "lead_submitted",
 ] as const;
 
 export async function fetchMetaOverview(

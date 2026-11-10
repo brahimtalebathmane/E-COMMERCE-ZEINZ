@@ -202,6 +202,7 @@ const META_EVENT_LABELS: Record<string, { en: string; ar: string }> = {
   emq_check: { en: "Event Match Quality", ar: "جودة مطابقة الأحداث" },
   pixel_load_failure: { en: "Pixel load", ar: "تحميل البكسل" },
   dataset_resend: { en: "WhatsApp dataset resend", ar: "إعادة إرسال dataset واتساب" },
+  lead_submitted: { en: "LeadSubmitted (WhatsApp)", ar: "LeadSubmitted (طلب واتساب)" },
 };
 
 /** Push alert when a Meta event fails definitively (dedup handled by caller). */

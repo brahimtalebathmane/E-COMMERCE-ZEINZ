@@ -5,6 +5,10 @@ import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { resolveServerMetaPixelId } from "@/lib/meta-pixel-id";
 import { runDatasetResend, type DatasetResendOutcome } from "@/lib/meta/dataset-resend";
+import {
+  retryLeadSubmittedBacklog,
+  type LeadSubmittedRetryOutcome,
+} from "@/lib/meta/lead-submitted";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   resolveClientIpAddress,
@@ -253,4 +257,27 @@ export async function datasetGapDryRunAction(): Promise<DatasetResendActionResul
 
 export async function datasetGapResendAction(): Promise<DatasetResendActionResult> {
   return runDatasetResendAction(false);
+}
+
+/**
+ * LeadSubmitted backlog — retries every unsent ledger row once. Each row goes
+ * through the same once-per-click claim as the live path, so pressing it twice
+ * (or two admins at once) cannot send an event twice.
+ */
+export type LeadSubmittedRetryActionResult =
+  | { ok: true; outcome: LeadSubmittedRetryOutcome }
+  | { ok: false; error: string };
+
+export async function leadSubmittedRetryAction(): Promise<LeadSubmittedRetryActionResult> {
+  try {
+    await assertPermission(PERMISSIONS.view_meta_monitoring);
+  } catch {
+    return { ok: false, error: "غير مصرح لك بهذا الإجراء." };
+  }
+  try {
+    const outcome = await retryLeadSubmittedBacklog(createServiceClient());
+    return { ok: true, outcome };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }

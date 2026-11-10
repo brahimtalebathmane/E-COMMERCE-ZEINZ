@@ -413,7 +413,11 @@ with c(num, file, kind, obj, detail, extra) as (values
   ('076','076_owner_edits.sql','function','owner_set_stock_purchase_deleted',null,null),
   ('076','076_owner_edits.sql','trigger','trg_treasury_transactions_owner_edit_log',null,null),
   ('076','076_owner_edits.sql','trigger','trg_inventory_movements_owner_edit_log',null,null),
-  ('076','076_owner_edits.sql','trigger','trg_orders_owner_edit_log',null,null)
+  ('076','076_owner_edits.sql','trigger','trg_orders_owner_edit_log',null,null),
+  ('077','077_meta_lead_submitted.sql','table','meta_lead_submitted',null,null),
+  ('077','077_meta_lead_submitted.sql','column','meta_lead_submitted','claim_token',null),
+  ('077','077_meta_lead_submitted.sql','index','meta_lead_submitted_unsent_idx',null,null),
+  ('077','077_meta_lead_submitted.sql','constraint','meta_event_log','meta_event_log_event_type_check','%lead_submitted%')
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),
