@@ -45,7 +45,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 2. Phase B inventory | `phase-b` → main | done | 071, 072 (2026-10-07 03:49 UTC) | `30e27f6` (03:49 UTC) |
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
-| LeadSubmitted (WhatsApp funnel) | `lead-submitted` | done | 077 **pending owner approval** | — |
+| LeadSubmitted (WhatsApp funnel) | `lead-submitted` | done | 077 (2026-11-10 13:35 UTC) | **not yet** — awaiting push approval |
 | 5. Admin redesign (mobile-first) | `stage-5-redesign` | direction approved; push 1 (tokens, system font, 16px/44pt, tab bar, More sheet) pushed; next: push 2 orders list | none planned | — |
 
 ## Stage 1 — follow-ups
@@ -104,7 +104,8 @@ campaigns keep optimizing on Purchase.
 - [x] Never throws into a sale (`sendLeadSubmittedSafely`). Failures: `lead_submitted` rows in meta_event_log (push alert like other failures), the ledger's last_error, a card with a retry button on /admin/meta. Stuck-event checks untouched (they only read order flags).
 - [x] Switch `META_WHATSAPP_LEAD_SUBMITTED` (on by default, only "off" disables), in .env.example. Scope: manual WhatsApp sales in local-operations countries (MR) only.
 - [x] Tests: tests/lead-submitted.test.ts (17, incl. a Purchase payload golden captured from main `9b309ee`), PGlite scenario lead-submitted-077.mjs (9), verify_migrations rows for 077.
-- [ ] Owner: "backup done, apply" → apply 077 → verify → merge + push.
+- [x] Owner: "backup done, apply" → 077 applied 2026-11-10 13:35 UTC, verified (table, PK, FK set null, indexes, RLS + 0 policies, log constraint, CLI history unchanged at 37).
+- [ ] Owner approval → merge `lead-submitted` into main → push (Netlify + Railway redeploy).
 - [ ] After deploy: first real sale from an ad conversation → Meta response events_received, meta_event_log `lead_submitted` success, LeadSubmitted visible on the WhatsApp dataset in Events Manager.
 - [ ] Owner habit: record the sale pending, then confirm or cancel after the call.
 
@@ -189,3 +190,4 @@ Motion and feel
 - 2026-10-13: side task on branch `owner-edits` — owner can edit/soft-delete any treasury transaction (incl. automatic ones, transfers as a whole), stock movement (order-linked → order stock_manual, reset recomputes), restock (lines + linked expense), set stock directly; old → new confirmation; audit log (/admin/audit); reconciliation flags sale entries ≠ order total. Migration 076 pending owner approval (backup + "backup done, apply"). Stage 5 push 2 (orders list) resumes after.
 - 2026-10-13 13:22 UTC: 076 applied on production (owner said "apply"); verified: log table, 10 owner functions, 5 log triggers, no client execute, balances = ledger, stock = movements. owner-edits merged and pushed.
 - 2026-11-10: LeadSubmitted on branch `lead-submitted` (owner-approved exception to "no new Meta events"). Measurement: all 425 WhatsApp sales of the last 30 days were recorded already confirmed; owner chose "default pending". Checks: tsc, lint (no errors), npm test 102/102, check:server-actions, next build, test:migrations 107/107. Migration 077 pending "backup done, apply".
+- 2026-11-10 13:35 UTC: 077 applied on production (owner said "backup done, apply"), verified; old code keeps working with it. NEXT: owner approval to merge `lead-submitted` and push, then post-deploy check on the first ad-conversation sale.
