@@ -47,6 +47,7 @@ import {
 } from "@/lib/analytics/period";
 import { AdminBadge, AdminPageHeader, KPI_ACCENT } from "@/components/admin/ui";
 import type { AnalyticsData } from "./data";
+import { isUnattributedSignificant, type UnattributedDay } from "@/lib/analytics/unattributed-spend";
 import { monthLabel } from "./PeriodFilterBar";
 import { CampaignManager } from "./CampaignManager";
 import { OpexCard } from "./OpexCard";
@@ -307,6 +308,8 @@ export function AnalyticsView({
         ) : null}
       </div>
 
+      <UnattributedSpendCard days={data.unattributedDaily} period={period} />
+
       {opex ? <OpexCard opex={opex} period={period} orderNetProfit={totals.netProfit} /> : null}
 
       <MetricsCard
@@ -318,7 +321,7 @@ export function AnalyticsView({
       />
 
       {/* Per-product breakdown */}
-      <section className="admin-card overflow-hidden">
+      <section id="ad-links" className="admin-card scroll-mt-20 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-base font-semibold text-[var(--foreground)]">
@@ -471,6 +474,54 @@ export function AnalyticsView({
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Days where the ad account spent more (or less) than the products account
+ * for — an unlinked campaign or ad set. Shown only above the noise threshold,
+ * so an empty card means everything the account spent reached a product.
+ */
+function UnattributedSpendCard({ days, period }: { days: UnattributedDay[]; period: Period }) {
+  const visible = days.filter((d) => {
+    if (!isUnattributedSignificant(d)) return false;
+    if (period.kind !== "month") return true;
+    const { startKey, endKey } = monthRange(period.month);
+    return d.date >= startKey && d.date <= endKey;
+  });
+  if (visible.length === 0) return null;
+  const totalSource = visible.reduce((sum, d) => sum + d.unattributedSource, 0);
+  const totalMRU = visible.reduce((sum, d) => sum + d.unattributedMRU, 0);
+  const currency = visible[0].currency;
+  const fmt = (n: number) => `${n.toFixed(2)} ${currency}`;
+  const anyNegative = visible.some((d) => d.unattributedSource < 0);
+  return (
+    <section className="admin-alert-warn" role="alert">
+      <h2 className="text-[15px] font-semibold">{a.analytics.unattributedTitle}</h2>
+      <p className="mt-1 text-[13px] leading-relaxed text-[var(--foreground)]">{a.analytics.unattributedHint}</p>
+      {anyNegative ? (
+        <p className="mt-1 text-[13px] text-[var(--foreground)]">{a.analytics.unattributedOverHint}</p>
+      ) : null}
+      <ul className="mt-2 space-y-1 text-[13px] text-[var(--foreground)]">
+        {visible.slice(0, 14).map((d) => (
+          <li key={d.date} className="flex justify-between gap-3">
+            <span dir="ltr">{d.date}</span>
+            <span className="font-semibold tabular-nums" dir="ltr">
+              {fmt(d.unattributedSource)} / {fmt(d.accountSource)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[13px] font-semibold text-[var(--foreground)]">
+        {a.analytics.unattributedTotal.replace("{amount}", `${fmt(totalSource)} ≈ ${formatPrice(totalMRU)}`)}
+      </p>
+      <a
+        href="#ad-links"
+        className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--accent)] underline underline-offset-2"
+      >
+        {a.analytics.unattributedGoToLinks}
+      </a>
+    </section>
   );
 }
 

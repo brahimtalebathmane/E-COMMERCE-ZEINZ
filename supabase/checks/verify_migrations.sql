@@ -417,7 +417,21 @@ with c(num, file, kind, obj, detail, extra) as (values
   ('077','077_meta_lead_submitted.sql','table','meta_lead_submitted',null,null),
   ('077','077_meta_lead_submitted.sql','column','meta_lead_submitted','claim_token',null),
   ('077','077_meta_lead_submitted.sql','index','meta_lead_submitted_unsent_idx',null,null),
-  ('077','077_meta_lead_submitted.sql','constraint','meta_event_log','meta_event_log_event_type_check','%lead_submitted%')
+  ('077','077_meta_lead_submitted.sql','constraint','meta_event_log','meta_event_log_event_type_check','%lead_submitted%'),
+  -- 078
+  ('078','078_product_ad_sets.sql','table','product_ad_sets',null,null),
+  ('078','078_product_ad_sets.sql','index','product_ad_sets_meta_adset_id_key',null,null),
+  ('078','078_product_ad_sets.sql','index','product_ad_sets_product_id_idx',null,null),
+  ('078','078_product_ad_sets.sql','index','product_ad_sets_meta_campaign_id_idx',null,null),
+  ('078','078_product_ad_sets.sql','policy','product_ad_sets','product_ad_sets_select',null),
+  ('078','078_product_ad_sets.sql','policy','product_ad_sets','product_ad_sets_insert',null),
+  ('078','078_product_ad_sets.sql','policy','product_ad_sets','product_ad_sets_delete',null),
+  ('078','078_product_ad_sets.sql','function','enforce_ad_link_exclusion',null,null),
+  ('078','078_product_ad_sets.sql','trigger','trg_product_ad_sets_exclusion',null,null),
+  ('078','078_product_ad_sets.sql','trigger','trg_product_ad_campaigns_exclusion',null,null),
+  ('078','078_product_ad_sets.sql','column','product_ad_campaign_unlinks','meta_adset_id',null),
+  ('078','078_product_ad_sets.sql','table','ad_account_spend_daily',null,null),
+  ('078','078_product_ad_sets.sql','policy','ad_account_spend_daily','ad_account_spend_daily_select',null)
 ),
 notes(file, note) as (values
   ('004_product_whatsapp_e164.sql', 'Was deleted from the repo; restored from git 2026-10-06.'),

@@ -46,6 +46,7 @@ after creating stand-ins: roles anon/authenticated/service_role, schema `auth`
 | 3. Phase C treasury | `phase-c` → main | done | 073, 074 (2026-10-07 ~21:55 UTC) | yes (see log) |
 | 4. Phase D reconciliation | `phase-d` → main | done | none (code only) | `7f6b61e` (2026-10-07) |
 | LeadSubmitted (WhatsApp funnel) | `lead-submitted` → main | done | 077 (2026-11-10 13:35 UTC) | `565eb2a` (2026-11-10 ~15:05 UTC) |
+| Ad set linking (ad spend fix) | `adset-linking` → main | done | 078 **pending** | — |
 | 5. Admin redesign (mobile-first) | `stage-5-redesign` | direction approved; push 1 (tokens, system font, 16px/44pt, tab bar, More sheet) pushed; next: push 2 orders list | none planned | — |
 
 ## Stage 1 — follow-ups
@@ -108,6 +109,24 @@ campaigns keep optimizing on Purchase.
 - [x] Owner approved → fast-forward main to `lead-submitted` → pushed `565eb2a` (tsc + 102 tests re-run on main first).
 - [ ] After deploy: first real sale from an ad conversation → Meta response events_received, meta_event_log `lead_submitted` success, LeadSubmitted visible on the WhatsApp dataset in Events Manager.
 - [ ] Owner habit: record the sale pending, then confirm or cancel after the call.
+
+## Ad set linking — ad spend undercounted since 2026-11-09
+
+Why: the Meta account moved to one ad set per product, grouped into campaigns by
+niche and margin. The app linked whole campaigns only (one product per campaign,
+044), so the niche campaigns stayed unlinked and their spend was never fetched:
+on 2026-11-10 the account spent ~$25, the app recorded $2.15 (production, read-only:
+13 linked products / 27 campaigns, all MR owned).
+
+- [x] 078: `product_ad_sets` (unique ad set; campaign id + name come from Meta; same policies as product_ad_campaigns; no anon grants), exclusion trigger on both link tables (a campaign is linked whole XOR through its ad sets; advisory lock per campaign so two simultaneous clicks can't both pass), `ad_account_spend_daily`, `product_ad_campaign_unlinks.meta_adset_id`.
+- [x] marketing-api.ts: one shared Insights fetcher (time_increment=1, page cap = failure, rates from currency_rates only); campaign, ad set (level=adset, adset.id IN) and account (level=account) requests; ad set lookup (GET /{id}?fields=campaign_id,name,account_id: unknown id or other account refused); active ad set list for the picker.
+- [x] ad-spend-sync.ts: product day = linked campaigns + linked ad sets; one request per level per sync; **all or nothing** (campaign, ad set or account request failing or truncated → nothing written, cache kept); A13 kept; "linked" = campaign OR ad set (stale check, gap backfill, month sync, reconciliation flag); account total refreshed even with no links (gap fill + TTL). Linking an ad set runs the same backfill as a campaign (computeBackfillWindow), so 11-09/11-10 correct themselves.
+- [x] Unattributed spend: account total − sum of product_ad_spend_daily (all products), compared in the account currency (source_amount); amber card on the profits page when ≥ $0.50 and ≥ 2% of that day, with a link to the products list (إدارة الحملات); a negative value means double counting.
+- [x] UI (إدارة الحملات): linked campaigns + ad sets with remove; picker of the account's ACTIVE ad sets (name, campaign, id, already-linked state); manual id fallback; hint "don't link a multi-product campaign whole". 44pt targets, 16px inputs.
+- [x] Tests: tests/ad-set-linking.test.mts (14: exact 3-way split equal to the account total; each of the 3 requests failing or truncated → nothing written; exclusion both directions on the server; Meta lookup rules), PGlite ad-sets-078.mjs (18: trigger both directions incl. updates, RLS/grants, re-run), verify_migrations rows for 078. tsc, lint (no errors), npm test 116/116, check:server-actions, next build, test:migrations 125/125.
+- [ ] Owner: backup, then "backup done, apply" → apply 078, verify.
+- [ ] Owner approval → merge `adset-linking` into main → push.
+- [ ] Post-deploy: owner links each new ad set to its product; Nov 10 total in the app ≈ Ads Manager (~$25); unattributed card empty or ~0. Not yet checked on an iPhone screen (the page needs 078 on production).
 
 ## Stage 5 — Admin redesign: fast, smooth, mobile-first (Apple-level quality)
 
@@ -192,3 +211,4 @@ Motion and feel
 - 2026-11-10: LeadSubmitted on branch `lead-submitted` (owner-approved exception to "no new Meta events"). Measurement: all 425 WhatsApp sales of the last 30 days were recorded already confirmed; owner chose "default pending". Checks: tsc, lint (no errors), npm test 102/102, check:server-actions, next build, test:migrations 107/107. Migration 077 pending "backup done, apply".
 - 2026-11-10 13:35 UTC: 077 applied on production (owner said "backup done, apply"), verified; old code keeps working with it. NEXT: owner approval to merge `lead-submitted` and push, then post-deploy check on the first ad-conversation sale.
 - 2026-11-10 ~15:05 UTC: LeadSubmitted pushed (`565eb2a`). After 15 min no Railway deployment record on GitHub (last one is `9b309ee`) and Netlify reports nothing to GitHub — owner to confirm both dashboards. No WhatsApp sale recorded since the push yet, so the post-deploy LeadSubmitted check is still open.
+- 2026-11-10: ad set linking on branch `adset-linking` (ad spend undercounted since 11-09: niche campaigns hold several products and could not be linked). Checks: tsc, lint (no errors), npm test 116/116, check:server-actions, next build, test:migrations 125/125. Migration 078 pending "backup done, apply".

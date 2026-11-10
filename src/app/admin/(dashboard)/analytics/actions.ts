@@ -5,15 +5,35 @@ import { assertPermission } from "@/lib/auth/admin";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { assertInCountryScope, getCountryScope, requireCountryScope } from "@/lib/auth/country-scope";
 import { createServiceClient } from "@/lib/supabase/service";
-import { computeBackfillWindow, syncProductAdSpend } from "@/lib/analytics/ad-spend-sync";
+import { computeBackfillWindow, linkedProductIds, loadAdLinks, syncProductAdSpend } from "@/lib/analytics/ad-spend-sync";
 import { dayKey, daysBetween } from "@/lib/analytics/daily-profit";
 import { monthRange } from "@/lib/analytics/period";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { fetchAdSetInfo, listActiveAdSets } from "@/lib/meta/marketing-api";
+import { adminAr } from "@/locales/admin-ar";
+import type { LinkedCampaign } from "./data";
+
+const t = adminAr.analytics;
+
+/** The product name a row in a link table points to (embedded `products(name_ar)`). */
+function embeddedProductName(value: unknown): string | null {
+  const p = value as { name_ar?: string } | { name_ar?: string }[] | null;
+  const name = Array.isArray(p) ? p[0]?.name_ar : p?.name_ar;
+  return name ? String(name) : null;
+}
+
+/** Maps the 078 exclusion trigger's error to the owner-facing message. */
+function exclusionTriggerMessage(message: string | undefined): string | null {
+  if (!message) return null;
+  if (message.includes("AD_LINK_CAMPAIGN_LINKED_WHOLE")) return t.adSetCampaignLinkedWhole.replace("{product}", "—");
+  if (message.includes("AD_LINK_ADSETS_LINKED")) return t.campaignHasLinkedAdSets.replace("{product}", "—");
+  return null;
+}
 
 export type LinkCampaignActionResult =
   | {
       ok: true;
-      campaign: { id: string; metaCampaignId: string; label: string | null };
+      campaign: LinkedCampaign;
       /** Set when the campaign linked successfully but the initial backfill sync failed. */
       syncWarning?: string;
     }
@@ -52,6 +72,22 @@ export async function linkAdCampaignAction(
     // a tampered request can't attach spend to another country's product.
     assertInCountryScope(scope, product.country_id as string | null);
 
+    // No double counting: a campaign whose ad sets are linked can't also be
+    // linked whole (the 078 trigger enforces the same rule under concurrency).
+    const { data: adSetOwner, error: adSetOwnerErr } = await supabase
+      .from("product_ad_sets")
+      .select("products(name_ar)")
+      .eq("meta_campaign_id", campaignId)
+      .limit(1)
+      .maybeSingle();
+    if (adSetOwnerErr) return { ok: false, error: adSetOwnerErr.message };
+    if (adSetOwner) {
+      return {
+        ok: false,
+        error: t.campaignHasLinkedAdSets.replace("{product}", embeddedProductName(adSetOwner.products) ?? "—"),
+      };
+    }
+
     const { data: inserted, error: insertErr } = await supabase
       .from("product_ad_campaigns")
       .insert({ product_id: pid, meta_campaign_id: campaignId, label: label?.trim() || null })
@@ -59,6 +95,8 @@ export async function linkAdCampaignAction(
       .single();
 
     if (insertErr) {
+      const exclusion = exclusionTriggerMessage(insertErr.message);
+      if (exclusion) return { ok: false, error: exclusion };
       if (insertErr.code === "23505") {
         const { data: owner } = await supabase
           .from("product_ad_campaigns")
@@ -91,7 +129,9 @@ export async function linkAdCampaignAction(
       ok: true,
       campaign: {
         id: String(inserted.id),
+        kind: "campaign",
         metaCampaignId: String(inserted.meta_campaign_id),
+        metaAdSetId: null,
         label: inserted.label ?? null,
       },
       syncWarning: syncResult.ok ? undefined : (syncResult.error ?? "Ad spend sync failed."),
@@ -168,6 +208,203 @@ export async function unlinkAdCampaignAction(
       ok: false,
       error: error instanceof Error ? error.message : "Failed to unlink campaign.",
     };
+  }
+}
+
+/**
+ * Links one Meta ad set to a product. The ad set is looked up on Meta first:
+ * an id that doesn't exist or belongs to another ad account is refused, and
+ * the campaign id stored with the link comes from Meta's answer, never from
+ * the request. Then the same one-time backfill as a campaign link runs, so
+ * days already spent (e.g. 2026-11-09/10) are corrected right away.
+ */
+export async function linkAdSetAction(productId: string, metaAdSetId: string): Promise<LinkCampaignActionResult> {
+  const pid = productId?.trim();
+  const adSetId = metaAdSetId?.trim();
+  if (!pid) return { ok: false, error: "product_id is required." };
+  if (!adSetId || !/^[0-9]+$/.test(adSetId)) return { ok: false, error: t.adSetIdInvalid };
+
+  try {
+    await assertPermission(PERMISSIONS.view_analytics);
+    const scope = await requireCountryScope();
+    const supabase = createServiceClient();
+
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("id, created_at, country_id")
+      .eq("id", pid)
+      .maybeSingle();
+    if (productErr) return { ok: false, error: productErr.message };
+    if (!product) return { ok: false, error: "Product not found." };
+    assertInCountryScope(scope, product.country_id as string | null);
+
+    const info = await fetchAdSetInfo(adSetId);
+    if (!info.ok) {
+      if (info.reason === "not_found") return { ok: false, error: t.adSetNotFound };
+      if (info.reason === "other_account") return { ok: false, error: t.adSetOtherAccount };
+      return { ok: false, error: `${t.adSetLookupFailed} (${info.reason})` };
+    }
+
+    const { data: wholeOwner, error: wholeErr } = await supabase
+      .from("product_ad_campaigns")
+      .select("products(name_ar)")
+      .eq("meta_campaign_id", info.campaignId)
+      .maybeSingle();
+    if (wholeErr) return { ok: false, error: wholeErr.message };
+    if (wholeOwner) {
+      return {
+        ok: false,
+        error: t.adSetCampaignLinkedWhole.replace("{product}", embeddedProductName(wholeOwner.products) ?? "—"),
+      };
+    }
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("product_ad_sets")
+      .insert({
+        product_id: pid,
+        meta_adset_id: info.adSetId,
+        meta_campaign_id: info.campaignId,
+        label: info.name,
+      })
+      .select("id, meta_adset_id, meta_campaign_id, label")
+      .single();
+
+    if (insertErr) {
+      const exclusion = exclusionTriggerMessage(insertErr.message);
+      if (exclusion) return { ok: false, error: exclusion };
+      if (insertErr.code === "23505") {
+        const { data: owner } = await supabase
+          .from("product_ad_sets")
+          .select("products(name_ar)")
+          .eq("meta_adset_id", info.adSetId)
+          .maybeSingle();
+        return {
+          ok: false,
+          error: t.adSetAlreadyLinked.replace("{product}", embeddedProductName(owner?.products) ?? "—"),
+        };
+      }
+      return { ok: false, error: insertErr.message };
+    }
+
+    const window = computeBackfillWindow(String(product.created_at));
+    const syncResult = await syncProductAdSpend(supabase, {
+      productIds: [pid],
+      sinceISODate: window.sinceISODate,
+      untilISODate: window.untilISODate,
+    });
+
+    revalidatePath("/admin/analytics");
+    revalidatePath(`/admin/analytics/${pid}`);
+
+    return {
+      ok: true,
+      campaign: {
+        id: String(inserted.id),
+        kind: "adset",
+        metaCampaignId: String(inserted.meta_campaign_id),
+        metaAdSetId: String(inserted.meta_adset_id),
+        label: inserted.label ?? null,
+      },
+      syncWarning: syncResult.ok ? undefined : (syncResult.error ?? "Ad spend sync failed."),
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : t.adSetLinkFailed };
+  }
+}
+
+export async function unlinkAdSetAction(productId: string, adSetRowId: string): Promise<UnlinkCampaignActionResult> {
+  const pid = productId?.trim();
+  const rowId = adSetRowId?.trim();
+  if (!pid || !rowId) return { ok: false, error: "product_id and ad set id are required." };
+
+  try {
+    await assertPermission(PERMISSIONS.view_analytics);
+    const scope = await requireCountryScope();
+    const supabase = createServiceClient();
+
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("country_id")
+      .eq("id", pid)
+      .maybeSingle();
+    if (productErr) return { ok: false, error: productErr.message };
+    if (!product) return { ok: false, error: "Product not found." };
+    assertInCountryScope(scope, product.country_id as string | null);
+
+    const { data: row } = await supabase
+      .from("product_ad_sets")
+      .select("meta_adset_id, meta_campaign_id, label")
+      .eq("id", rowId)
+      .eq("product_id", pid)
+      .maybeSingle();
+
+    const { error } = await supabase.from("product_ad_sets").delete().eq("id", rowId).eq("product_id", pid);
+    if (error) return { ok: false, error: error.message };
+
+    // Same dated marker as a campaign unlink (A17); history rows are kept.
+    if (row) {
+      await supabase.from("product_ad_campaign_unlinks").insert({
+        product_id: pid,
+        meta_campaign_id: String(row.meta_campaign_id),
+        meta_adset_id: String(row.meta_adset_id),
+        label: row.label ?? null,
+      });
+    }
+
+    revalidatePath("/admin/analytics");
+    revalidatePath(`/admin/analytics/${pid}`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : t.adSetUnlinkFailed };
+  }
+}
+
+export type ActiveAdSetOption = {
+  id: string;
+  name: string;
+  campaignId: string;
+  campaignName: string | null;
+  /** Product this ad set is already linked to, if any. */
+  linkedTo: string | null;
+  /** Product the whole campaign is linked to, if any (then the ad set can't be linked). */
+  campaignLinkedWholeTo: string | null;
+};
+
+export type ListAdSetsActionResult =
+  | { ok: true; adSets: ActiveAdSetOption[]; truncated: boolean }
+  | { ok: false; error: string };
+
+/** The ad account's active ad sets, with what each is already linked to — for the picker. */
+export async function listActiveAdSetsAction(): Promise<ListAdSetsActionResult> {
+  try {
+    await assertPermission(PERMISSIONS.view_analytics);
+    const supabase = createServiceClient();
+    const [list, adSetLinks, campaignLinks] = await Promise.all([
+      listActiveAdSets(),
+      supabase.from("product_ad_sets").select("meta_adset_id, products(name_ar)"),
+      supabase.from("product_ad_campaigns").select("meta_campaign_id, products(name_ar)"),
+    ]);
+    if (!list.ok) return { ok: false, error: `${t.adSetListFailed} (${list.reason})` };
+    if (adSetLinks.error) return { ok: false, error: adSetLinks.error.message };
+    if (campaignLinks.error) return { ok: false, error: campaignLinks.error.message };
+
+    const adSetOwner = new Map(
+      (adSetLinks.data ?? []).map((r) => [String(r.meta_adset_id), embeddedProductName(r.products) ?? "—"]),
+    );
+    const campaignOwner = new Map(
+      (campaignLinks.data ?? []).map((r) => [String(r.meta_campaign_id), embeddedProductName(r.products) ?? "—"]),
+    );
+    return {
+      ok: true,
+      truncated: list.truncated,
+      adSets: list.adSets.map((s) => ({
+        ...s,
+        linkedTo: adSetOwner.get(s.id) ?? null,
+        campaignLinkedWholeTo: campaignOwner.get(s.campaignId) ?? null,
+      })),
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : t.adSetListFailed };
   }
 }
 
@@ -277,13 +514,11 @@ export async function ensureMonthAdSpendAction(month: string): Promise<EnsureMon
       (productRows ?? []).filter((p) => p.fulfillment_type !== "affiliate").map((p) => String(p.id)),
     );
 
-    const { data: campaignRows, error: campaignErr } = await supabase
-      .from("product_ad_campaigns")
-      .select("product_id")
-      .in("product_id", productIds);
-    if (campaignErr) return { ok: false, error: campaignErr.message };
+    // A product counts as linked with a campaign OR an ad set.
+    const linksRes = await loadAdLinks(supabase, productIds);
+    if (!linksRes.ok) return { ok: false, error: linksRes.error };
 
-    const productsWithCampaigns = [...new Set((campaignRows ?? []).map((r) => String(r.product_id)))];
+    const productsWithCampaigns = linkedProductIds(linksRes.links);
     if (productsWithCampaigns.length === 0) {
       return { ok: true, synced: false, ownedAdSpendDaily: [], affiliateAdSpendDaily: [], incompleteProductIds: [] };
     }

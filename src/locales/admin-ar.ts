@@ -536,6 +536,47 @@ export const adminAr = {
     campaignLinkFailed: "تعذر ربط الحملة",
     campaignUnlinked: "تم إلغاء ربط الحملة",
     campaignUnlinkFailed: "تعذر إلغاء ربط الحملة",
+    campaignHasLinkedAdSets:
+      "مجموعات إعلانية من هذه الحملة مربوطة بالفعل (منها بالمنتج \"{product}\"). لا يمكن ربط الحملة كاملة — ألغِ ربط المجموعات أولًا.",
+
+    // Ad sets (one ad set per product, campaigns grouped by niche)
+    linkKindCampaign: "حملة كاملة",
+    linkKindAdSet: "مجموعة إعلانية",
+    linkWholeCampaignTitle: "ربط حملة كاملة",
+    linkAdSetTitle: "ربط مجموعة إعلانية (Ad Set)",
+    adSetHint:
+      "إذا كانت الحملة تحتوي على أكثر من منتج، لا تربطها كاملة — اربط المجموعة الإعلانية الخاصة بهذا المنتج فقط.",
+    campaignHint: "اربط الحملة كاملة فقط إذا كانت كل مجموعاتها الإعلانية لهذا المنتج وحده.",
+    adSetPickerLoad: "عرض المجموعات الإعلانية النشطة",
+    adSetPickerLoading: "جاري التحميل من Meta…",
+    adSetPickerEmpty: "لا توجد مجموعات إعلانية نشطة في الحساب.",
+    adSetPickerSearch: "ابحث بالاسم أو المعرّف",
+    adSetPickerTruncated: "القائمة طويلة جدًا وقد لا تظهر كل المجموعات — استعمل المعرّف يدويًا عند الحاجة.",
+    adSetLinkedTo: "مربوطة بـ: {product}",
+    adSetCampaignWholeTo: "حملتها مربوطة كاملة بـ: {product}",
+    adSetManualToggle: "أو أدخل معرّف المجموعة يدويًا",
+    adSetIdPlaceholder: "معرّف المجموعة الإعلانية (Ad Set ID)",
+    adSetLinked: "تم ربط المجموعة الإعلانية وتصحيح الإنفاق السابق",
+    adSetLinkFailed: "تعذر ربط المجموعة الإعلانية",
+    adSetUnlinked: "تم إلغاء ربط المجموعة الإعلانية",
+    adSetUnlinkFailed: "تعذر إلغاء ربط المجموعة الإعلانية",
+    adSetIdInvalid: "معرّف المجموعة الإعلانية يجب أن يكون أرقامًا فقط.",
+    adSetNotFound: "لم يتم العثور على هذه المجموعة الإعلانية في Meta. تأكد من المعرّف.",
+    adSetOtherAccount: "هذه المجموعة الإعلانية تابعة لحساب إعلاني آخر.",
+    adSetLookupFailed: "تعذر التحقق من المجموعة الإعلانية في Meta",
+    adSetListFailed: "تعذر جلب المجموعات الإعلانية من Meta",
+    adSetAlreadyLinked: "هذه المجموعة الإعلانية مربوطة بالفعل بالمنتج \"{product}\".",
+    adSetCampaignLinkedWhole:
+      "حملة هذه المجموعة مربوطة كاملة بالمنتج \"{product}\". ألغِ ربط الحملة أولًا ثم اربط مجموعاتها كلًّا بمنتجه.",
+    campaignLabel: "الحملة: {name}",
+
+    // Unattributed spend (account total − what products account for)
+    unattributedTitle: "إنفاق إعلاني غير مربوط بأي منتج",
+    unattributedHint:
+      "صرف الحساب الإعلاني هذه المبالغ ولم تُحسب على أي منتج، لذلك الأرباح أعلى من الحقيقة. اربط المجموعات الإعلانية الناقصة من «إدارة الحملات» تحت كل منتج.",
+    unattributedOverHint: "قيمة سالبة = حُسب على المنتجات أكثر مما صرف الحساب (احتمال احتساب مزدوج).",
+    unattributedTotal: "المجموع في هذه الفترة: {amount}",
+    unattributedGoToLinks: "إدارة الحملات",
 
     viewProductDetail: "عرض التفاصيل",
     backToAnalytics: "← رجوع إلى تحليلات الأرباح",

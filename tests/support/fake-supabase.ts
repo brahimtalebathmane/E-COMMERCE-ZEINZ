@@ -17,6 +17,8 @@ const INSERT_DEFAULTS: Record<string, () => Row> = {
 const UNIQUE_KEYS: Record<string, string[]> = {
   order_meta_dispatches: ["order_id", "event_type"],
   meta_lead_submitted: ["ctwa_clid"],
+  product_ad_campaigns: ["meta_campaign_id"],
+  product_ad_sets: ["meta_adset_id"],
 };
 
 function compare(a: unknown, b: unknown): number {
@@ -43,7 +45,9 @@ function parseOrClause(clause: string): Filter {
 
 class Query implements PromiseLike<{ data: unknown; error: unknown; count?: number | null }> {
   private filters: Filter[] = [];
-  private op: "select" | "insert" | "update" | "delete" = "select";
+  private op: "select" | "insert" | "update" | "delete" | "upsert" = "select";
+  private conflictKeys: string[] = [];
+  private rangeBounds: { from: number; to: number } | null = null;
   private payload: Row | Row[] | null = null;
   private returning = false;
   private head = false;
@@ -69,6 +73,13 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
   insert(payload: Row | Row[]) {
     this.op = "insert";
     this.payload = payload;
+    return this;
+  }
+  /** upsert(rows, { onConflict: "a,b" }): replaces the row with the same key, inserts otherwise. */
+  upsert(payload: Row | Row[], options?: { onConflict?: string }) {
+    this.op = "upsert";
+    this.payload = payload;
+    this.conflictKeys = (options?.onConflict ?? "id").split(",").map((k) => k.trim());
     return this;
   }
   update(payload: Row) {
@@ -103,6 +114,14 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
   }
   gte(column: string, value: unknown) {
     this.filters.push((row) => row[column] != null && compare(row[column], value) >= 0);
+    return this;
+  }
+  lte(column: string, value: unknown) {
+    this.filters.push((row) => row[column] != null && compare(row[column], value) <= 0);
+    return this;
+  }
+  range(from: number, to: number) {
+    this.rangeBounds = { from, to };
     return this;
   }
   lt(column: string, value: unknown) {
@@ -141,6 +160,7 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
       out.sort((a, b) => (ascending ? 1 : -1) * compare(a[column], b[column]));
     }
     if (this.limitN != null) out = out.slice(0, this.limitN);
+    if (this.rangeBounds) out = out.slice(this.rangeBounds.from, this.rangeBounds.to + 1);
     if (this.mode === "many") return { data: out, error: null };
     if (out.length > 1 && this.mode === "maybeSingle") {
       return { data: null, error: { message: "multiple rows", code: "PGRST116" } };
@@ -169,6 +189,15 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
       }
       // insert(...).select() returns the inserted rows, like PostgREST.
       return this.returning ? this.shape(inserted) : { data: null, error: null };
+    }
+    if (this.op === "upsert") {
+      const list = Array.isArray(this.payload) ? this.payload : [this.payload as Row];
+      for (const row of list) {
+        const existing = rows.find((r) => this.conflictKeys.every((k) => String(r[k]) === String(row[k])));
+        if (existing) Object.assign(existing, row);
+        else rows.push({ ...row });
+      }
+      return { data: null, error: null };
     }
     if (this.op === "update") {
       const hits = this.matching();

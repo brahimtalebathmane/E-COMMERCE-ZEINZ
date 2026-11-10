@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderStatus } from "@/types";
 import { createServiceClient } from "@/lib/supabase/service";
-import { ensureFreshAdSpend } from "@/lib/analytics/ad-spend-sync";
+import { ensureFreshAdSpend, GAP_BACKFILL_WINDOW_DAYS } from "@/lib/analytics/ad-spend-sync";
+import { computeUnattributedDaily, type UnattributedDay } from "@/lib/analytics/unattributed-spend";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import {
   buildProductProfitRows,
@@ -15,6 +16,7 @@ import {
   combineAcrossProducts,
   computeSummary,
   dayKey,
+  shiftDateKey,
   type AdSpendDailyInput,
   type CombinedDailyProfit,
   type DailyProductProfit,
@@ -29,7 +31,17 @@ export type ProductMetaInput = {
   createdAt: string;
 };
 
-export type LinkedCampaign = { id: string; metaCampaignId: string; label: string | null };
+/** A product's link to Meta: a whole campaign, or one ad set (078). */
+export type LinkedCampaign = {
+  /** Row id in product_ad_campaigns or product_ad_sets. */
+  id: string;
+  kind: "campaign" | "adset";
+  metaCampaignId: string;
+  /** Set when kind = "adset". */
+  metaAdSetId: string | null;
+  /** Campaign label, or the ad set name as Meta reported it. */
+  label: string | null;
+};
 
 export type AnalyticsData = {
   rows: ProductProfitRow[];
@@ -46,7 +58,11 @@ export type AnalyticsData = {
   adSpendDaily: AdSpendDailyInput[];
   summary: DashboardSummary;
   products: ProductMetaInput[];
+  /** Linked campaigns AND ad sets per product. */
   campaignsByProduct: Map<string, LinkedCampaign[]>;
+  /** Per day (last GAP_BACKFILL_WINDOW_DAYS): ad account total vs what products
+   *  account for. Empty until the account total has been fetched once. */
+  unattributedDaily: UnattributedDay[];
   /** Most recent `fetched_at` per product with any cached ad-spend row (for the "as of" note). */
   adSpendFetchedAtByProduct: Map<string, string>;
   adSpendFreshness: { refreshed: boolean; lastError?: string };
@@ -78,16 +94,19 @@ export async function loadAnalyticsData(
     .eq("fulfillment_type", "owned");
   if (countryId) ownedProductsQuery = ownedProductsQuery.eq("country_id", countryId);
 
-  const [productsRes, campaignsRes] = await Promise.all([
+  const [productsRes, campaignsRes, adSetsRes] = await Promise.all([
     ownedProductsQuery,
     cookieClient.from("product_ad_campaigns").select("id, product_id, meta_campaign_id, label"),
+    cookieClient.from("product_ad_sets").select("id, product_id, meta_adset_id, meta_campaign_id, label"),
   ]);
 
   if (productsRes.error) return { ok: false, error: productsRes.error.message };
   if (campaignsRes.error) return { ok: false, error: campaignsRes.error.message };
+  if (adSetsRes.error) return { ok: false, error: adSetsRes.error.message };
 
   const productRows = productsRes.data ?? [];
   const campaignRows = campaignsRes.data ?? [];
+  const adSetRows = adSetsRes.data ?? [];
   const ownedProductIds = new Set(productRows.map((p) => String(p.id)));
 
   const ownedProductIdList = Array.from(ownedProductIds);
@@ -207,9 +226,30 @@ export async function loadAnalyticsData(
   for (const c of campaignRows) {
     const pid = String(c.product_id);
     const list = campaignsByProduct.get(pid) ?? [];
-    list.push({ id: String(c.id), metaCampaignId: String(c.meta_campaign_id), label: c.label ?? null });
+    list.push({
+      id: String(c.id),
+      kind: "campaign",
+      metaCampaignId: String(c.meta_campaign_id),
+      metaAdSetId: null,
+      label: c.label ?? null,
+    });
     campaignsByProduct.set(pid, list);
   }
+  for (const s of adSetRows) {
+    const pid = String(s.product_id);
+    const list = campaignsByProduct.get(pid) ?? [];
+    list.push({
+      id: String(s.id),
+      kind: "adset",
+      metaCampaignId: String(s.meta_campaign_id),
+      metaAdSetId: String(s.meta_adset_id),
+      label: s.label ?? null,
+    });
+    campaignsByProduct.set(pid, list);
+  }
+
+  const unattributedRes = await loadUnattributedDaily(cookieClient, todayKey);
+  if (!unattributedRes.ok) return { ok: false, error: unattributedRes.error };
 
   return {
     ok: true,
@@ -223,11 +263,63 @@ export async function loadAnalyticsData(
       summary,
       products,
       campaignsByProduct,
+      unattributedDaily: unattributedRes.days,
       adSpendFetchedAtByProduct,
       adSpendFreshness: freshness,
       todayKey,
       truncated,
     },
+  };
+}
+
+/**
+ * Account total vs attributed spend per day. Attributed = product_ad_spend_daily
+ * for EVERY product (all countries, owned and affiliate): the ad account is
+ * one, so a product of another market linked to it is not "unattributed".
+ * Runs after ensureFreshAdSpend, which also refreshes the account total.
+ */
+async function loadUnattributedDaily(
+  client: SupabaseClient,
+  todayKey: string,
+): Promise<{ ok: true; days: UnattributedDay[] } | { ok: false; error: string }> {
+  const since = shiftDateKey(todayKey, -(GAP_BACKFILL_WINDOW_DAYS - 1));
+  const [accountRes, productRes] = await Promise.all([
+    fetchAllRows<{ ad_account_id: string; date: string; amount: number; source_amount: number; source_currency: string | null }>(
+      () =>
+        client
+          .from("ad_account_spend_daily")
+          .select("ad_account_id, date, amount, source_amount, source_currency")
+          .gte("date", since)
+          .lte("date", todayKey) as never,
+      ["date", "ad_account_id"],
+    ),
+    fetchAllRows<{ product_id: string; date: string; source_amount: number | null; source_currency: string | null }>(
+      () =>
+        client
+          .from("product_ad_spend_daily")
+          .select("product_id, date, source_amount, source_currency")
+          .gte("date", since)
+          .lte("date", todayKey) as never,
+      ["date", "product_id"],
+    ),
+  ]);
+  if (accountRes.error) return { ok: false, error: accountRes.error };
+  if (productRes.error) return { ok: false, error: productRes.error };
+  return {
+    ok: true,
+    days: computeUnattributedDaily({
+      accountRows: accountRes.rows.map((r) => ({
+        date: String(r.date),
+        amount: Number(r.amount) || 0,
+        source_amount: Number(r.source_amount) || 0,
+        source_currency: r.source_currency,
+      })),
+      productRows: productRes.rows.map((r) => ({
+        date: String(r.date),
+        source_amount: r.source_amount == null ? null : Number(r.source_amount),
+        source_currency: r.source_currency,
+      })),
+    }),
   };
 }
 

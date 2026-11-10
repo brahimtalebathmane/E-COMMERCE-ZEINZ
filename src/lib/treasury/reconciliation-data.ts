@@ -167,7 +167,7 @@ export async function loadReconciliation(
   const fromIso = `${shiftDateKey(range.startKey, -1)}T00:00:00Z`;
   const toIso = `${shiftDateKey(range.endKey, 2)}T00:00:00Z`;
 
-  const [ordersRes, adSpendRes, campaignsRes, categories, txns, unsettled, holdings, parties] = await Promise.all([
+  const [ordersRes, adSpendRes, campaignsRes, adSetsRes, categories, txns, unsettled, holdings, parties] = await Promise.all([
     productIds.length === 0
       ? Promise.resolve({ rows: [], error: null, truncated: false })
       : fetchAllRows<{
@@ -203,6 +203,7 @@ export async function loadReconciliation(
           ["date", "product_id"],
         ),
     service.from("product_ad_campaigns").select("product_id"),
+    service.from("product_ad_sets").select("product_id"),
     loadRecCategories(service, countryId),
     loadRecTxns(service, countryId, { from: range.startKey, to: range.endKey }),
     loadUnsettledOrders(service, countryId),
@@ -213,6 +214,7 @@ export async function loadReconciliation(
   if (adSpendRes.error) throw new Error(adSpendRes.error);
   if (ordersRes.truncated || adSpendRes.truncated) throw new Error("orders or ad spend read truncated");
   if (campaignsRes.error) throw new Error(campaignsRes.error.message);
+  if (adSetsRes.error) throw new Error(adSetsRes.error.message);
 
   const orders: (ProfitOrderInput & { id: string })[] = ordersRes.rows
     .filter((o) => inRange(dayKey(String(o.ordered_at)), range))
@@ -287,7 +289,10 @@ export async function loadReconciliation(
     totalPrice: o.total_price,
     productName: nameOf(o.product_id),
   });
-  const linked = new Set((campaignsRes.data ?? []).map((c) => String(c.product_id)));
+  // Linked = a whole campaign OR at least one ad set.
+  const linked = new Set(
+    [...(campaignsRes.data ?? []), ...(adSetsRes.data ?? [])].map((c) => String(c.product_id)),
+  );
   const soldProducts = new Set(revenueOrders.map((o) => o.product_id));
   const missingCostProducts = new Set<string>();
   for (const o of revenueOrders) {
